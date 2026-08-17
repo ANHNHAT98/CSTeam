@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HQSOFT Ops Console — PAKD → Estimate Mapper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#12233D;
+    --blueprint:#1F4E79;
+    --blueprint-deep:#0F2138;
+    --paper:#EEF2F6;
+    --panel:#FFFFFF;
+    --grid-line:rgba(31,78,121,.14);
+    --grid-line-strong:rgba(31,78,121,.28);
+    --amber:#E8A33D;
+    --amber-deep:#C9821F;
+    --success:#3F7D58;
+    --danger:#B23A48;
+    --muted:#5B7089;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans',sans-serif;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size:32px 32px;
+    min-height:100vh;
+  }
+  a{color:inherit;}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 28px 80px;}
+
+  /* ---- top bar ---- */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:20px 28px;border-bottom:1px solid var(--grid-line-strong);
+    background:rgba(238,242,246,.85);backdrop-filter:blur(6px);
+    position:sticky;top:0;z-index:20;
+  }
+  .brand{display:flex;align-items:center;gap:12px;}
+  .brand-mark{
+    width:34px;height:34px;border-radius:8px;background:var(--blueprint);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:15px;
+    box-shadow:0 2px 0 var(--blueprint-deep);
+  }
+  .brand-text{line-height:1.15;}
+  .brand-text b{font-family:'Space Grotesk',sans-serif;font-size:15px;letter-spacing:.2px;}
+  .brand-text span{display:block;font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+  .topbar nav{display:flex;gap:22px;font-size:13.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+  .topbar nav span.active{color:var(--blueprint);font-weight:600;}
+  .logout-btn{
+    display:none;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:12px;
+    color:var(--muted);background:transparent;border:1px solid var(--grid-line-strong);border-radius:7px;
+    padding:7px 12px;cursor:pointer;
+  }
+  .logout-btn:hover{color:var(--danger);border-color:var(--danger);}
+  .logout-btn.show{display:inline-flex;}
+
+  /* ---- login gate ---- */
+  .login-gate{
+    position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+    background:var(--blueprint-deep);
+    background-image:
+      linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+    background-size:30px 30px;
+  }
+  .login-card{
+    width:100%;max-width:360px;background:#fff;border-radius:12px;padding:30px 28px 26px;
+    box-shadow:0 20px 60px rgba(0,0,0,.35);
+  }
+  .login-card .brand-mark{margin-bottom:14px;}
+  .login-card h2{font-family:'Space Grotesk',sans-serif;font-size:19px;margin:0 0 4px;}
+  .login-card p{color:var(--muted);font-size:12.5px;margin:0 0 20px;line-height:1.5;}
+  .login-field{margin-bottom:12px;}
+  .login-field label{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--muted);display:block;margin-bottom:5px;}
+  .login-field input{
+    width:100%;padding:10px 11px;border-radius:7px;border:1px solid var(--grid-line-strong);
+    font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;background:#fbfcfe;
+  }
+  .login-field input:focus{outline:2px solid var(--blueprint);outline-offset:1px;}
+  .login-err{font-size:12px;color:var(--danger);font-family:'IBM Plex Mono',monospace;min-height:16px;margin:2px 0 10px;}
+  .login-card .btn-primary{width:100%;justify-content:center;margin-top:4px;}
+  .login-note{margin-top:16px;padding-top:14px;border-top:1px dashed var(--grid-line-strong);font-size:11px;color:var(--muted);line-height:1.5;}
+
+  /* ---- app shell + right side nav ---- */
+  .app-shell{display:grid;grid-template-columns:1fr 250px;gap:32px;align-items:start;}
+  @media(max-width:920px){.app-shell{grid-template-columns:1fr;}}
+  .side-nav{
+    position:sticky;top:96px;border:1px solid var(--grid-line-strong);border-radius:var(--radius);
+    background:var(--panel);padding:16px;margin-top:56px;
+  }
+  .side-nav-head{
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.08em;color:var(--muted);
+    text-transform:uppercase;padding:0 4px 12px;
+  }
+  .side-item{
+    display:flex;align-items:flex-start;gap:10px;padding:11px 10px;border-radius:8px;
+    border:1px solid transparent;margin-bottom:6px;cursor:default;
+  }
+  .side-item.active{border-color:var(--blueprint);background:rgba(31,78,121,.06);}
+  .side-num{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--blueprint);
+    border:1px solid var(--grid-line-strong);border-radius:5px;width:22px;height:22px;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#fff;
+  }
+  .side-item.ghost .side-num{color:var(--muted);border-style:dashed;background:transparent;}
+  .side-label{font-size:13px;line-height:1.3;padding-top:2px;}
+  .side-item.ghost .side-label{color:var(--muted);}
+  .side-tag{
+    margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--success);
+    border:1px solid var(--success);border-radius:4px;padding:2px 5px;align-self:flex-start;
+  }
+  .side-add{
+    width:100%;margin-top:6px;padding:10px;border-radius:8px;border:1.5px dashed var(--grid-line-strong);
+    background:transparent;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:12px;cursor:default;
+  }
+  .side-item.locked{opacity:.55;}
+  .side-item.locked .side-label::after{content:" 🔒";}
+  .side-item.locked .side-tag{border-color:var(--grid-line-strong);color:var(--muted);}
+  .whoami{
+    margin-top:14px;padding-top:12px;border-top:1px dashed var(--grid-line-strong);
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);
+  }
+  .whoami b{color:var(--ink);display:block;font-size:12.5px;margin-bottom:2px;}
+  .role-pill{
+    display:inline-block;margin-top:4px;font-size:9.5px;padding:2px 6px;border-radius:4px;
+    border:1px solid var(--blueprint);color:var(--blueprint);
+  }
+  .admin-open-btn{
+    width:100%;margin-top:12px;padding:10px;border-radius:8px;border:1px solid var(--blueprint);
+    background:#fff;color:var(--blueprint);font-family:'IBM Plex Mono',monospace;font-size:12px;cursor:pointer;
+  }
+  .admin-open-btn:hover{background:rgba(31,78,121,.07);}
+
+  /* ---- access denied panel ---- */
+  .denied-panel{
+    border:1px solid var(--grid-line-strong);border-radius:var(--radius);background:var(--panel);
+    padding:40px 30px;text-align:center;
+  }
+  .denied-panel .ic{font-size:26px;margin-bottom:10px;}
+  .denied-panel h3{font-family:'Space Grotesk',sans-serif;font-size:16px;margin:0 0 8px;}
+  .denied-panel p{color:var(--muted);font-size:13px;max-width:420px;margin:0 auto;line-height:1.6;}
+
+  /* ---- admin modal ---- */
+  .admin-modal{
+    position:fixed;inset:0;z-index:110;display:none;align-items:center;justify-content:center;
+    background:rgba(15,33,56,.55);padding:24px;
+  }
+  .admin-modal.show{display:flex;}
+  .admin-modal-inner{
+    width:100%;max-width:640px;max-height:86vh;overflow:auto;background:#fff;border-radius:12px;
+    padding:26px 26px 22px;box-shadow:0 24px 70px rgba(0,0,0,.4);
+  }
+  .admin-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+  .admin-modal-head h3{font-family:'Space Grotesk',sans-serif;font-size:17px;margin:0;}
+  .admin-modal-head button{background:none;border:none;font-size:16px;cursor:pointer;color:var(--muted);}
+  .admin-note{color:var(--muted);font-size:12px;line-height:1.55;margin:0 0 18px;}
+  .acc-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:18px;}
+  .acc-table th{
+    text-align:left;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);
+    text-transform:uppercase;padding:6px 8px;border-bottom:1px solid var(--grid-line-strong);
+  }
+  .acc-table td{padding:8px;border-bottom:1px solid var(--grid-line);vertical-align:top;}
+  .acc-table .mods{display:flex;flex-wrap:wrap;gap:4px;}
+  .acc-tag{font-family:'IBM Plex Mono',monospace;font-size:10px;background:rgba(31,78,121,.08);color:var(--blueprint);padding:2px 6px;border-radius:4px;}
+  .acc-tag.all{background:rgba(232,163,61,.18);color:var(--amber-deep);}
+  .acc-del{background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px;font-family:'IBM Plex Mono',monospace;}
+  .acc-del:disabled{color:#ccc;cursor:not-allowed;}
+
+  .admin-form{border-top:1px dashed var(--grid-line-strong);padding-top:16px;}
+  .admin-form h4{font-family:'Space Grotesk',sans-serif;font-size:13.5px;margin:0 0 12px;}
+  .admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .admin-grid .login-field{margin-bottom:10px;}
+  .mod-checks{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0 14px;}
+  .mod-checks label{
+    display:flex;align-items:center;gap:6px;font-size:12px;border:1px solid var(--grid-line-strong);
+    border-radius:6px;padding:6px 10px;cursor:pointer;
+  }
+  .admin-btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+  .admin-err{color:var(--danger);font-size:12px;font-family:'IBM Plex Mono',monospace;min-height:16px;}
+  .admin-ok{color:var(--success);font-size:12px;font-family:'IBM Plex Mono',monospace;min-height:16px;}
+
+  /* ---- hero ---- */
+  .hero{padding:56px 0 36px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.08em;
+    color:var(--blueprint);text-transform:uppercase;display:flex;align-items:center;gap:8px;margin-bottom:14px;
+  }
+  .eyebrow::before{content:"";width:18px;height:1px;background:var(--blueprint);display:inline-block;}
+  h1{
+    font-family:'Space Grotesk',sans-serif;font-weight:700;
+    font-size:clamp(30px,4vw,44px);line-height:1.08;margin:0 0 16px;letter-spacing:-.01em;
+    max-width:780px;
+  }
+  h1 em{font-style:normal;color:var(--blueprint);}
+  .hero p{max-width:620px;color:var(--muted);font-size:15.5px;line-height:1.65;margin:0 0 26px;}
+  .module-strip{display:flex;flex-wrap:wrap;gap:10px;}
+  .mod-chip{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;padding:7px 12px;border-radius:999px;
+    border:1px solid var(--grid-line-strong);background:var(--panel);color:var(--muted);
+    display:flex;align-items:center;gap:7px;
+  }
+  .mod-chip.on{color:var(--blueprint);border-color:var(--blueprint);background:#fff;}
+  .mod-chip .dot{width:6px;height:6px;border-radius:50%;background:var(--muted);}
+  .mod-chip.on .dot{background:var(--success);box-shadow:0 0 0 3px rgba(63,125,88,.15);}
+
+  /* ---- main grid ---- */
+  .stage{display:grid;grid-template-columns:1.15fr .85fr;gap:22px;margin-top:8px;}
+  @media(max-width:920px){.stage{grid-template-columns:1fr;}}
+
+  .panel{
+    background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);
+    padding:22px 22px 24px;position:relative;
+  }
+  .panel-title{
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15.5px;margin:0 0 4px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .panel-sub{color:var(--muted);font-size:12.5px;margin:0 0 18px;}
+  .step-index{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--blueprint);
+    border:1px solid var(--grid-line-strong);border-radius:5px;padding:2px 7px;
+  }
+
+  /* dropzone */
+  .dropzone{
+    border:1.5px dashed var(--grid-line-strong);border-radius:8px;padding:30px 18px;
+    text-align:center;cursor:pointer;transition:.15s border-color,.15s background;
+    background:repeating-linear-gradient(135deg, rgba(31,78,121,.03) 0 10px, transparent 10px 20px);
+  }
+  .dropzone:hover,.dropzone.drag{border-color:var(--blueprint);background:rgba(31,78,121,.05);}
+  .dropzone .ic{font-size:22px;margin-bottom:8px;}
+  .dropzone b{font-size:14px;}
+  .dropzone p{margin:6px 0 0;color:var(--muted);font-size:12.5px;}
+  input[type=file]{display:none;}
+
+  .file-pill{
+    margin-top:14px;display:none;align-items:center;gap:10px;
+    border:1px solid var(--grid-line-strong);border-radius:8px;padding:10px 12px;font-size:13px;
+    background:#fbfcfe;
+  }
+  .file-pill.show{display:flex;}
+  .file-pill .name{font-family:'IBM Plex Mono',monospace;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .file-pill .x{cursor:pointer;color:var(--muted);font-weight:600;}
+
+  .sheet-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;}
+  .field label{font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:6px;}
+  select{
+    width:100%;padding:9px 10px;border-radius:7px;border:1px solid var(--grid-line-strong);
+    background:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--ink);
+  }
+
+  .btn{
+    appearance:none;border:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-weight:600;
+    font-size:14px;padding:12px 18px;border-radius:8px;display:inline-flex;align-items:center;gap:8px;
+  }
+  .btn-primary{background:var(--amber);color:#3A2405;box-shadow:0 2px 0 var(--amber-deep);}
+  .btn-primary:disabled{background:#D8DEE6;color:#8B98A6;box-shadow:none;cursor:not-allowed;}
+  .btn-primary:not(:disabled):hover{transform:translateY(-1px);}
+  .btn-ghost{background:transparent;color:var(--blueprint);border:1px solid var(--grid-line-strong);box-shadow:none;}
+  .actions{display:flex;align-items:center;gap:12px;margin-top:18px;}
+  .status{font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);}
+  .status.ok{color:var(--success);}
+  .status.err{color:var(--danger);}
+
+  /* schema / mapping diagram */
+  .schema-cols{display:grid;grid-template-columns:1fr 40px 1fr;align-items:stretch;}
+  .schema-side h4{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);text-transform:uppercase;
+    letter-spacing:.06em;margin:0 0 10px;
+  }
+  .schema-item{
+    border:1px solid var(--grid-line-strong);border-radius:6px;padding:8px 10px;margin-bottom:8px;
+    font-size:12.5px;background:#fbfcfe;position:relative;
+  }
+  .schema-item b{display:block;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--blueprint);}
+  .schema-item span{color:var(--muted);font-size:11.5px;}
+  .schema-mid{position:relative;}
+  .schema-mid svg{position:absolute;inset:0;width:100%;height:100%;}
+  .rule-box{
+    margin-top:14px;border-top:1px dashed var(--grid-line-strong);padding-top:14px;font-size:12px;color:var(--muted);
+  }
+  .rule-box b{color:var(--ink);}
+  code.tag{
+    font-family:'IBM Plex Mono',monospace;background:rgba(31,78,121,.08);color:var(--blueprint);
+    padding:1px 6px;border-radius:4px;font-size:11.5px;
+  }
+
+  /* preview table */
+  .preview-wrap{margin-top:26px;}
+  .preview-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .preview-head h3{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0;}
+  .table-scroll{
+    max-height:420px;overflow:auto;border:1px solid var(--grid-line-strong);border-radius:8px;
+  }
+  table{border-collapse:collapse;width:100%;font-size:12.5px;}
+  thead th{
+    position:sticky;top:0;background:var(--blueprint);color:#fff;text-align:left;padding:9px 10px;
+    font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:11px;white-space:nowrap;
+    border-right:1px solid rgba(255,255,255,.12);
+  }
+  tbody td{padding:8px 10px;border-bottom:1px solid var(--grid-line);border-right:1px solid var(--grid-line);vertical-align:top;}
+  tbody tr:nth-child(even){background:rgba(31,78,121,.025);}
+  td.num{font-family:'IBM Plex Mono',monospace;text-align:right;white-space:nowrap;}
+  td.trunc{max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  td.warn{color:var(--danger);font-family:'IBM Plex Mono',monospace;}
+  tfoot td{font-family:'IBM Plex Mono',monospace;font-weight:600;background:#fbfcfe;border-top:2px solid var(--grid-line-strong);}
+
+  footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--grid-line-strong);color:var(--muted);font-size:11.5px;font-family:'IBM Plex Mono',monospace;display:flex;justify-content:space-between;}
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN GATE ================= -->
+<div class="login-gate" id="loginGate">
+  <div class="login-card">
+    <div class="brand-mark">HQ</div>
+    <h2>Đăng nhập Ops Console</h2>
+    <p>Công cụ nội bộ HQSOFT — chỉ dành cho thành viên team.</p>
+    <form id="loginForm">
+      <div class="login-field">
+        <label>TÀI KHOẢN</label>
+        <input type="text" id="loginUser" autocomplete="username" required>
+      </div>
+      <div class="login-field">
+        <label>MẬT KHẨU</label>
+        <input type="password" id="loginPass" autocomplete="current-password" required>
+      </div>
+      <div class="login-err" id="loginErr"></div>
+      <button type="submit" class="btn btn-primary">Đăng nhập</button>
+    </form>
+    <div class="login-note">Tài khoản được quản lý tập trung trên server nội bộ HQSOFT — mọi thành viên cùng thấy chung một danh sách, admin thêm/xóa quyền ở đâu thì áp dụng ngay cho cả team.</div>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">HQ</div>
+    <div class="brand-text"><b>HQSOFT Ops Console</b><span>internal tooling · v0.1</span></div>
+  </div>
+  <button class="logout-btn" id="logoutBtn">⎋ Đăng xuất</button>
+</div>
+
+<div class="wrap">
+<div class="app-shell">
+<main class="main-col">
+
+  <div class="hero">
+    <div class="eyebrow">Module 01 · Effort Mapping</div>
+    <h1>Biến file PAKD thành file <em>Estimate</em> chuẩn, không cần copy‑paste tay.</h1>
+    <p>Tải file PAKD &amp; Quotation lên, công cụ tự đọc 2 sheet Effort Crs (_AI và _TC), áp đúng công thức mapping cột và xuất ra file Estimate theo đúng khung mẫu HQSOFT — sẵn sàng gửi review.</p>
+  </div>
+
+  <div class="denied-panel" id="deniedPanel" style="display:none;">
+    <div class="ic">🔒</div>
+    <h3>Tài khoản này chưa được cấp quyền truy cập</h3>
+    <p>Chức năng "Crs: PAKD và Báo Giá" chưa nằm trong danh sách quyền của tài khoản bạn đang đăng nhập. Liên hệ quản trị viên (admin) để được cấp quyền.</p>
+  </div>
+
+  <div class="stage" id="stagePanel">
+    <!-- LEFT: upload & action -->
+    <div class="panel">
+      <div class="panel-title">Nạp dữ liệu <span class="step-index">BƯỚC 1—2</span></div>
+      <div class="panel-sub">Chấp nhận file .xlsx dạng PAKD_and_Quotation, giữ nguyên tên sheet gốc.</div>
+
+      <div class="dropzone" id="dropzone">
+        <div class="ic">📄</div>
+        <b>Kéo thả file vào đây, hoặc bấm để chọn</b>
+        <p>Chỉ đọc dữ liệu trên máy bạn — không upload lên server nào.</p>
+        <input type="file" id="fileInput" accept=".xlsx">
+      </div>
+      <div class="file-pill" id="filePill">
+        <span class="name" id="fileName"></span>
+        <span class="x" id="fileClear">Xóa ✕</span>
+      </div>
+
+      <div class="sheet-row">
+        <div class="field">
+          <label>SHEET NGUỒN — AI</label>
+          <select id="sheetAI"></select>
+        </div>
+        <div class="field">
+          <label>SHEET NGUỒN — TC</label>
+          <select id="sheetTC"></select>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="genBtn" disabled>⚙ Tạo bảng Estimate</button>
+        <button class="btn btn-ghost" id="downloadBtn" style="display:none;">⬇ Tải file .xlsx</button>
+        <span class="status" id="statusText"></span>
+      </div>
+
+      <div class="preview-wrap" id="previewWrap" style="display:none;">
+        <div class="preview-head">
+          <h3>Xem trước kết quả mapping</h3>
+          <span class="status" id="rowCountText"></span>
+        </div>
+        <div class="table-scroll">
+          <table id="previewTable">
+            <thead><tr>
+              <th>STT</th><th>Ứng dụng</th><th>Chức năng</th><th>Nội dung</th><th>PIC</th>
+              <th>Human</th><th>Human Hỗ trợ KH</th><th>AI</th>
+            </tr></thead>
+            <tbody id="previewBody"></tbody>
+            <tfoot><tr id="previewFoot"></tr></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: mapping schema (signature) -->
+    <div class="panel">
+      <div class="panel-title">Sơ đồ mapping <span class="step-index">SCHEMA</span></div>
+      <div class="panel-sub">Quy tắc cố định — chỉnh ở đây nếu quy trình PAKD thay đổi.</div>
+
+      <div class="schema-cols">
+        <div class="schema-side">
+          <h4>PAKD_and_Quotation</h4>
+          <div class="schema-item" data-k="ung_dung"><b>Phân Hệ</b><span>cột B · cả 2 sheet</span></div>
+          <div class="schema-item" data-k="chuc_nang"><b>Màn Hình</b><span>cột D · cả 2 sheet</span></div>
+          <div class="schema-item" data-k="noi_dung"><b>Nội Dung</b><span>cột E · cả 2 sheet</span></div>
+          <div class="schema-item" data-k="human"><b>Mansday Thực Tế</b><span>cột N · sheet _TC</span></div>
+          <div class="schema-item" data-k="hotro"><b>Manday Báo Giá</b><span>cột Q · sheet _TC</span></div>
+          <div class="schema-item" data-k="ai"><b>Mansday Thực Tế</b><span>cột N · sheet _AI</span></div>
+        </div>
+        <div class="schema-mid"><svg id="schemaSvg"></svg></div>
+        <div class="schema-side" style="text-align:right;">
+          <h4 style="text-align:right;">Template Estimate</h4>
+          <div class="schema-item" data-k="ung_dung"><b>Ứng dụng</b><span>cột B</span></div>
+          <div class="schema-item" data-k="chuc_nang"><b>Chức năng</b><span>cột C</span></div>
+          <div class="schema-item" data-k="noi_dung"><b>Nội dung</b><span>cột D</span></div>
+          <div class="schema-item" data-k="human"><b>Human</b><span>cột F</span></div>
+          <div class="schema-item" data-k="hotro"><b>Human Hỗ trợ KH</b><span>cột G — mới</span></div>
+          <div class="schema-item" data-k="ai"><b>AI</b><span>cột H</span></div>
+        </div>
+      </div>
+      <div class="schema-item" style="margin-top:2px;" data-k="pic"><b>PIC</b><span>suy ra, không copy trực tiếp</span></div>
+
+      <div class="rule-box">
+        <b>Quy tắc PIC:</b> nếu <code class="tag">Phân Hệ</code> ∈ { <code class="tag">BO</code>, <code class="tag">SFA</code> } → <code class="tag">Dev</code>, ngược lại → <code class="tag">NA</code>.<br><br>
+        <b>Khớp dòng AI↔TC:</b> theo giá trị cột <code class="tag">Màn Hình</code> — dòng nào không tìm thấy bên sheet _AI sẽ được đánh dấu đỏ trong bảng xem trước.
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>HQSOFT Ops Console — internal use only</span>
+    <span>xử lý hoàn toàn phía trình duyệt, không lưu trữ dữ liệu</span>
+  </footer>
+
+</main>
+
+<!-- ================= RIGHT SIDE MENU ================= -->
+<aside class="side-nav">
+  <div class="side-nav-head">Chức năng</div>
+  <div id="sideNavItems"></div>
+  <button class="side-add" disabled>+ Chức năng sẽ thêm dần</button>
+
+  <div class="whoami" id="whoamiBox"></div>
+  <button class="admin-open-btn" id="openAdminBtn" style="display:none;">⚙ Quản lý tài khoản &amp; phân quyền</button>
+</aside>
+
+</div>
+</div>
+
+<!-- ================= ADMIN: ACCOUNTS & PERMISSIONS ================= -->
+<div class="admin-modal" id="adminModal">
+  <div class="admin-modal-inner">
+    <div class="admin-modal-head">
+      <h3>Quản lý tài khoản &amp; phân quyền</h3>
+      <button id="closeAdminBtn">✕</button>
+    </div>
+    <p class="admin-note">
+      Tài khoản <code class="tag">admin</code> mặc định luôn có toàn quyền và không thể xóa. Danh sách này lưu trên
+      server — vừa tạo/xóa xong là <b>áp dụng ngay cho toàn bộ team</b>, không cần gửi lại file.
+    </p>
+
+    <table class="acc-table">
+      <thead><tr><th>Tài khoản</th><th>Vai trò</th><th>Quyền truy cập</th><th></th></tr></thead>
+      <tbody id="accTableBody"></tbody>
+    </table>
+
+    <div class="admin-form">
+      <h4>+ Thêm tài khoản mới</h4>
+      <div class="admin-grid">
+        <div class="login-field"><label>TÀI KHOẢN</label><input type="text" id="newAccUser"></div>
+        <div class="login-field"><label>MẬT KHẨU</label><input type="text" id="newAccPass"></div>
+      </div>
+      <label style="font-size:12px;display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+        <input type="checkbox" id="newAccIsAdmin"> Cấp quyền admin (toàn quyền, bỏ qua chọn màn hình bên dưới)
+      </label>
+      <div id="modChecksWrap" class="mod-checks"></div>
+      <div class="admin-err" id="newAccErr"></div>
+      <div class="admin-btn-row">
+        <button class="btn btn-primary" id="addAccBtn" type="button">+ Tạo tài khoản</button>
+      </div>
+      <div class="admin-ok" id="copyOkMsg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ AUTH + PHÂN QUYỀN — quản lý tập trung trên server ============
+   Toàn bộ tài khoản & quyền lưu ở server (file db/accounts.json), qua REST API
+   /api/*. Mọi trình duyệt gọi chung 1 server nên admin sửa quyền là áp dụng
+   ngay cho cả team, không cần đồng bộ/gửi file thủ công. */
+
+let MODULES = [];        // nạp từ /api/modules sau khi đăng nhập
+let currentSession = null; // {username, role, modules}
+
+const loginGate   = document.getElementById('loginGate');
+const loginForm   = document.getElementById('loginForm');
+const loginErr    = document.getElementById('loginErr');
+const logoutBtn   = document.getElementById('logoutBtn');
+const sideNavItems= document.getElementById('sideNavItems');
+const whoamiBox   = document.getElementById('whoamiBox');
+const openAdminBtn= document.getElementById('openAdminBtn');
+const deniedPanel = document.getElementById('deniedPanel');
+const stagePanel  = document.getElementById('stagePanel');
+
+async function api(path, opts){
+  const res = await fetch(path, Object.assign({
+    headers: {'Content-Type':'application/json'},
+    credentials: 'same-origin',
+  }, opts));
+  let data = {};
+  try{ data = await res.json(); }catch(e){}
+  if (!res.ok) throw new Error(data.error || `Lỗi ${res.status}`);
+  return data;
+}
+
+function isModuleAllowed(moduleId){
+  if (!currentSession) return false;
+  return currentSession.modules.includes('*') || currentSession.modules.includes(moduleId);
+}
+
+function renderSidebar(){
+  sideNavItems.innerHTML = MODULES.map((m,i)=>{
+    const allowed = isModuleAllowed(m.id);
+    const cls = ['side-item'];
+    if (m.id === 'crs-pakd-baogia' && allowed) cls.push('active');
+    if (!m.ready) cls.push('ghost');
+    if (!allowed) cls.push('locked');
+    const tag = allowed ? (m.ready ? '<span class="side-tag">Đang dùng</span>' : '') : '';
+    return `<div class="${cls.join(' ')}">
+      <span class="side-num">${String(i+1).padStart(2,'0')}</span>
+      <span class="side-label">${m.label}</span>
+      ${tag}
+    </div>`;
+  }).join('');
+
+  whoamiBox.innerHTML = `<b>${currentSession.username}</b>Đăng nhập lúc ${new Date().toLocaleTimeString('vi-VN')}<br>
+    <span class="role-pill">${currentSession.role === 'admin' ? 'ADMIN' : 'THÀNH VIÊN'}</span>`;
+
+  openAdminBtn.style.display = currentSession.role === 'admin' ? 'block' : 'none';
+}
+
+function renderMainAccess(){
+  const allowed = isModuleAllowed('crs-pakd-baogia');
+  stagePanel.style.display = allowed ? 'grid' : 'none';
+  deniedPanel.style.display = allowed ? 'none' : 'block';
+}
+
+async function showApp(user){
+  currentSession = user;
+  try{
+    const data = await api('/api/modules');
+    MODULES = data.modules;
+  }catch(e){
+    MODULES = [{id:'crs-pakd-baogia', label:'Crs: PAKD và Báo Giá', ready:true}];
+  }
+  loginGate.style.display = 'none';
+  logoutBtn.classList.add('show');
+  renderSidebar();
+  renderMainAccess();
+  requestAnimationFrame(drawSchema);
+}
+function showGate(){
+  currentSession = null;
+  loginGate.style.display = 'flex';
+  logoutBtn.classList.remove('show');
+}
+
+(async function tryRestoreSession(){
+  try{
+    const data = await api('/api/me');
+    await showApp(data.user);
+  }catch(e){
+    showGate();
+  }
+})();
+
+loginForm.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  try{
+    const data = await api('/api/login', {method:'POST', body: JSON.stringify({username, password})});
+    loginErr.textContent = '';
+    loginForm.reset();
+    await showApp(data.user);
+  }catch(err){
+    loginErr.textContent = err.message || 'Sai tài khoản hoặc mật khẩu.';
+  }
+});
+logoutBtn.addEventListener('click', async ()=>{
+  try{ await api('/api/logout', {method:'POST'}); }catch(e){}
+  showGate();
+});
+
+/* ============ ADMIN PANEL: quản lý tài khoản & phân quyền ============ */
+const adminModal   = document.getElementById('adminModal');
+const accTableBody = document.getElementById('accTableBody');
+const modChecksWrap= document.getElementById('modChecksWrap');
+const newAccErr    = document.getElementById('newAccErr');
+const copyOkMsg    = document.getElementById('copyOkMsg');
+
+function renderModChecks(){
+  modChecksWrap.innerHTML = MODULES.map(m=>`
+    <label><input type="checkbox" class="modChk" value="${m.id}"> ${m.label}</label>
+  `).join('');
+}
+
+function renderAccountsRows(accounts){
+  accTableBody.innerHTML = accounts.map(acc=>{
+    const isAdminAcc = acc.modules.includes('*');
+    const modsHtml = isAdminAcc
+      ? `<span class="acc-tag all">TOÀN QUYỀN</span>`
+      : (acc.modules.map(id=>{
+          const mod = MODULES.find(m=>m.id===id);
+          return `<span class="acc-tag">${mod?mod.label:id}</span>`;
+        }).join('') || '<span class="acc-tag">— không có quyền nào —</span>');
+    return `<tr>
+      <td><b>${acc.username}</b>${acc.isDefault?' <span style="color:var(--muted);font-size:10px;">(mặc định)</span>':''}</td>
+      <td>${acc.role === 'admin' ? 'Admin' : 'Thành viên'}</td>
+      <td class="mods">${modsHtml}</td>
+      <td><button class="acc-del" data-user="${acc.username}" ${acc.isDefault?'disabled':''}>Xóa</button></td>
+    </tr>`;
+  }).join('');
+
+  accTableBody.querySelectorAll('.acc-del').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if (!confirm(`Xóa tài khoản "${btn.dataset.user}"?`)) return;
+      try{
+        const data = await api(`/api/accounts/${encodeURIComponent(btn.dataset.user)}`, {method:'DELETE'});
+        renderAccountsRows(data.accounts);
+      }catch(e){ alert(e.message); }
+    });
+  });
+}
+
+async function loadAccountsTable(){
+  const data = await api('/api/accounts');
+  renderAccountsRows(data.accounts);
+}
+
+function openAdmin(){
+  renderModChecks();
+  loadAccountsTable().catch(e=>{ newAccErr.textContent = e.message; });
+  newAccErr.textContent = '';
+  copyOkMsg.textContent = '';
+  document.getElementById('newAccUser').value = '';
+  document.getElementById('newAccPass').value = '';
+  document.getElementById('newAccIsAdmin').checked = false;
+  adminModal.classList.add('show');
+}
+function closeAdmin(){ adminModal.classList.remove('show'); }
+
+openAdminBtn.addEventListener('click', openAdmin);
+document.getElementById('closeAdminBtn').addEventListener('click', closeAdmin);
+adminModal.addEventListener('click', (e)=>{ if (e.target === adminModal) closeAdmin(); });
+
+document.getElementById('addAccBtn').addEventListener('click', async ()=>{
+  const username = document.getElementById('newAccUser').value.trim();
+  const password = document.getElementById('newAccPass').value;
+  const isAdmin = document.getElementById('newAccIsAdmin').checked;
+  const modules = [...modChecksWrap.querySelectorAll('.modChk:checked')].map(c=>c.value);
+
+  if (!username || !password){ newAccErr.textContent = 'Nhập đủ tài khoản và mật khẩu.'; return; }
+  if (!isAdmin && modules.length === 0){ newAccErr.textContent = 'Chọn ít nhất 1 chức năng, hoặc tick "Cấp quyền admin".'; return; }
+
+  try{
+    const data = await api('/api/accounts', {method:'POST', body: JSON.stringify({
+      username, password, role: isAdmin ? 'admin' : 'member', modules,
+    })});
+    newAccErr.textContent = '';
+    renderAccountsRows(data.accounts);
+    document.getElementById('newAccUser').value='';
+    document.getElementById('newAccPass').value='';
+    document.getElementById('newAccIsAdmin').checked=false;
+    modChecksWrap.querySelectorAll('.modChk').forEach(c=>c.checked=false);
+  }catch(e){
+    newAccErr.textContent = e.message;
+  }
+});
+
+/* ---------- helpers ---------- */
+const norm = (v) => (v===undefined||v===null) ? '' : String(v).replace(/\s+/g,' ').trim();
+const normLower = (v) => norm(v).toLowerCase();
+
+function findColIndex(headerRow, keyword){
+  const kw = normLower(keyword);
+  for (let i=0;i<headerRow.length;i++){
+    if (normLower(headerRow[i]).includes(kw)) return i;
+  }
+  return -1;
+}
+
+function sheetToAOA(ws){
+  return XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
+}
+
+/* ---------- state ---------- */
+let workbook = null;
+let mappedRows = null;
+
+/* ---------- drop zone / file input ---------- */
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const filePill = document.getElementById('filePill');
+const fileNameEl = document.getElementById('fileName');
+const fileClear = document.getElementById('fileClear');
+const sheetAISel = document.getElementById('sheetAI');
+const sheetTCSel = document.getElementById('sheetTC');
+const genBtn = document.getElementById('genBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const statusText = document.getElementById('statusText');
+const previewWrap = document.getElementById('previewWrap');
+const previewBody = document.getElementById('previewBody');
+const previewFoot = document.getElementById('previewFoot');
+const rowCountText = document.getElementById('rowCountText');
+
+dropzone.addEventListener('click', ()=>fileInput.click());
+['dragenter','dragover'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.remove('drag');}));
+dropzone.addEventListener('drop', e=>{
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+fileInput.addEventListener('change', e=>{
+  const f = e.target.files[0];
+  if (f) handleFile(f);
+});
+fileClear.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  workbook=null; mappedRows=null;
+  filePill.classList.remove('show');
+  fileInput.value='';
+  sheetAISel.innerHTML=''; sheetTCSel.innerHTML='';
+  genBtn.disabled=true; downloadBtn.style.display='none';
+  previewWrap.style.display='none';
+  setStatus('','');
+});
+
+function setStatus(msg, cls){
+  statusText.textContent = msg;
+  statusText.className = 'status ' + (cls||'');
+}
+
+function handleFile(file){
+  if (!/\.xlsx$/i.test(file.name)){
+    setStatus('Chỉ hỗ trợ file .xlsx','err'); return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const data = new Uint8Array(e.target.result);
+      workbook = XLSX.read(data, {type:'array'});
+      fileNameEl.textContent = file.name;
+      filePill.classList.add('show');
+      populateSheetSelectors();
+      setStatus('Đã đọc file — chọn đúng 2 sheet nguồn rồi bấm Tạo bảng.','ok');
+      genBtn.disabled=false;
+      downloadBtn.style.display='none';
+      previewWrap.style.display='none';
+    }catch(err){
+      console.error(err);
+      setStatus('Không đọc được file, kiểm tra lại định dạng.','err');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function populateSheetSelectors(){
+  const names = workbook.SheetNames;
+  sheetAISel.innerHTML = names.map(n=>`<option value="${n}">${n}</option>`).join('');
+  sheetTCSel.innerHTML = names.map(n=>`<option value="${n}">${n}</option>`).join('');
+  const guessAI = names.find(n=>/_ai$/i.test(n.trim())) || names.find(n=>/\bai\b/i.test(n));
+  const guessTC = names.find(n=>/_tc$/i.test(n.trim())) || names.find(n=>/\btc\b/i.test(n));
+  if (guessAI) sheetAISel.value = guessAI;
+  if (guessTC) sheetTCSel.value = guessTC;
+}
+
+/* ---------- core mapping ---------- */
+function extractRows(aoa){
+  if (!aoa.length) return {header:[], rows:[]};
+  const header = aoa[0];
+  const idx = {
+    phanHe: findColIndex(header,'phân hệ'),
+    manHinh: findColIndex(header,'màn hình'),
+    noiDung: findColIndex(header,'nội dung'),
+    thucTe: findColIndex(header,'thực tế'),
+    baoGia: findColIndex(header,'báo giá'),
+  };
+  const rows = [];
+  for (let r=1;r<aoa.length;r++){
+    const row = aoa[r];
+    if (!row) continue;
+    const stt0 = norm(row[0]);
+    const manHinhVal = idx.manHinh>=0 ? norm(row[idx.manHinh]) : '';
+    const noiDungVal = idx.noiDung>=0 ? norm(row[idx.noiDung]) : '';
+    if (normLower(stt0) === 'tổng cộng') continue;
+    if (!manHinhVal && !noiDungVal) continue;
+    rows.push({
+      phanHe: idx.phanHe>=0 ? norm(row[idx.phanHe]) : '',
+      manHinh: manHinhVal,
+      noiDung: idx.noiDung>=0 ? row[idx.noiDung] : '',
+      thucTe: idx.thucTe>=0 ? Number(row[idx.thucTe])||0 : 0,
+      baoGia: idx.baoGia>=0 ? Number(row[idx.baoGia])||0 : 0,
+    });
+  }
+  return {header, idx, rows};
+}
+
+function buildMapping(){
+  const aiName = sheetAISel.value, tcName = sheetTCSel.value;
+  if (!aiName || !tcName || aiName===tcName){
+    setStatus('Chọn 2 sheet khác nhau cho AI và TC.','err');
+    return null;
+  }
+  const aiAOA = sheetToAOA(workbook.Sheets[aiName]);
+  const tcAOA = sheetToAOA(workbook.Sheets[tcName]);
+  const aiData = extractRows(aiAOA);
+  const tcData = extractRows(tcAOA);
+
+  const aiMap = new Map();
+  aiData.rows.forEach(r=>{ if(r.manHinh) aiMap.set(normLower(r.manHinh), r.thucTe); });
+
+  const PIC_DEV_SET = new Set(['bo','sfa']);
+
+  const out = tcData.rows.map((r,i)=>{
+    const key = normLower(r.manHinh);
+    const aiFound = aiMap.has(key);
+    const aiVal = aiFound ? aiMap.get(key) : 0;
+    const pic = PIC_DEV_SET.has(normLower(r.phanHe)) ? 'Dev' : 'NA';
+    return {
+      stt: i+1,
+      ungDung: r.phanHe,
+      chucNang: r.manHinh,
+      noiDung: r.noiDung,
+      pic,
+      human: r.thucTe,
+      humanHoTro: r.baoGia,
+      ai: aiVal,
+      aiMatched: aiFound,
+    };
+  });
+  return out;
+}
+
+/* ---------- preview render ---------- */
+function renderPreview(rows){
+  previewBody.innerHTML = rows.map(r=>`
+    <tr>
+      <td class="num">${r.stt}</td>
+      <td>${r.ungDung}</td>
+      <td>${r.chucNang}</td>
+      <td class="trunc" title="${escapeHtml(String(r.noiDung))}">${escapeHtml(String(r.noiDung))}</td>
+      <td>${r.pic}</td>
+      <td class="num">${r.human}</td>
+      <td class="num">${r.humanHoTro}</td>
+      <td class="num ${r.aiMatched?'':'warn'}">${r.ai}${r.aiMatched?'':' ⚠'}</td>
+    </tr>`).join('');
+
+  const sum = (k)=>rows.reduce((a,b)=>a+(Number(b[k])||0),0);
+  previewFoot.innerHTML = `
+      <td colspan="5">Tổng</td>
+      <td class="num">${round2(sum('human'))}</td>
+      <td class="num">${round2(sum('humanHoTro'))}</td>
+      <td class="num">${round2(sum('ai'))}</td>`;
+
+  rowCountText.textContent = `${rows.length} dòng đã mapping`;
+  previewWrap.style.display = 'block';
+}
+function round2(n){ return Math.round(n*100)/100; }
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ---------- generate ---------- */
+genBtn.addEventListener('click', ()=>{
+  setStatus('Đang xử lý…','');
+  setTimeout(()=>{
+    const rows = buildMapping();
+    if (!rows){ return; }
+    if (!rows.length){
+      setStatus('Không tìm thấy dòng dữ liệu hợp lệ trong 2 sheet đã chọn.','err');
+      previewWrap.style.display='none';
+      downloadBtn.style.display='none';
+      return;
+    }
+    mappedRows = rows;
+    renderPreview(rows);
+    const unmatched = rows.filter(r=>!r.aiMatched).length;
+    setStatus(unmatched
+      ? `Xong — ${rows.length} dòng, ${unmatched} dòng không khớp AI (đánh dấu ⚠).`
+      : `Xong — ${rows.length} dòng, khớp AI/TC 100%.`, unmatched? 'err':'ok');
+    downloadBtn.style.display='inline-flex';
+  }, 50);
+});
+
+downloadBtn.addEventListener('click', ()=>{
+  if (!mappedRows) return;
+  const header = ['STT','Ứng dụng','Chức năng','Nội dung','PIC','Human','Human Hỗ trợ KH','AI'];
+  const aoa = [header];
+  mappedRows.forEach(r=>aoa.push([r.stt, r.ungDung, r.chucNang, r.noiDung, r.pic, r.human, r.humanHoTro, r.ai]));
+
+  const sum = (k)=>round2(mappedRows.reduce((a,b)=>a+(Number(b[k])||0),0));
+  const totalRowIdx = aoa.length; // 0-based index of totals row in aoa (after push, before adding)
+  aoa.push(['Tổng','','','','', sum('human'), sum('humanHoTro'), sum('ai')]);
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:6},{wch:14},{wch:20},{wch:48},{wch:8},{wch:10},{wch:16},{wch:8}];
+
+  // formulas for totals row (so it recalculates if user edits data)
+  const r = totalRowIdx; // 0-based row index within sheet data (row after header + N data rows)
+  const lastDataRow = totalRowIdx; // 1-based excel row of last data row = totalRowIdx (since header is row1)
+  ['F','G','H'].forEach((col)=>{
+    const cellRef = col + (totalRowIdx+1);
+    if (ws[cellRef]) ws[cellRef].f = `SUM(${col}2:${col}${totalRowIdx})`;
+  });
+
+  const wb2 = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb2, ws, 'CRs');
+  XLSX.writeFile(wb2, 'HQSOFT_Estimate_Output.xlsx');
+});
+
+/* ---------- schema connector lines ---------- */
+function drawSchema(){
+  const svg = document.getElementById('schemaSvg');
+  const mid = svg.parentElement;
+  const rect = mid.getBoundingClientRect();
+  svg.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
+  svg.innerHTML = '';
+  const keys = ['ung_dung','chuc_nang','noi_dung','human','hotro','ai'];
+  const leftItems = document.querySelectorAll('.schema-side:first-child .schema-item');
+  const rightItems = document.querySelectorAll('.schema-side:last-child .schema-item');
+  const containerRect = document.querySelector('.schema-cols').getBoundingClientRect();
+
+  keys.forEach((k)=>{
+    const l = [...leftItems].find(el=>el.dataset.k===k);
+    const rEl = [...rightItems].find(el=>el.dataset.k===k);
+    if (!l || !rEl) return;
+    const lb = l.getBoundingClientRect(), rb = rEl.getBoundingClientRect();
+    const x1 = lb.right - containerRect.left - (document.querySelector('.schema-side:first-child').getBoundingClientRect().left - containerRect.left) - 0;
+    const y1 = lb.top + lb.height/2 - containerRect.top;
+    const x2 = 0;
+    const y2 = rb.top + rb.height/2 - containerRect.top;
+    const startX = lb.right - containerRect.left;
+    const endX = rb.left - containerRect.left;
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    const c = (endX-startX)/2;
+    path.setAttribute('d', `M ${startX} ${y1} C ${startX+c} ${y1}, ${endX-c} ${y2}, ${endX} ${y2}`);
+    path.setAttribute('stroke', '#4C7EA8');
+    path.setAttribute('stroke-width', '1.4');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('opacity', '0.55');
+    svg.appendChild(path);
+    [ [startX,y1], [endX,y2] ].forEach(([cx,cy])=>{
+      const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      dot.setAttribute('cx',cx); dot.setAttribute('cy',cy); dot.setAttribute('r',2.5);
+      dot.setAttribute('fill','#1F4E79');
+      svg.appendChild(dot);
+    });
+  });
+}
+window.addEventListener('load', drawSchema);
+window.addEventListener('resize', drawSchema);
+</script>
+</body>
+</html>
