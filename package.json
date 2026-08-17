@@ -1,0 +1,15 @@
+{
+  "name": "hqsoft-estimate-mapper-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "HQSOFT Ops Console - server quan ly tai khoan & phan quyen cho module PAKD -> Estimate Mapper",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "bcryptjs": "^2.4.3"
+  }
+}

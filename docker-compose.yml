@@ -1,0 +1,15 @@
+services:
+  ops-console:
+    build: .
+    container_name: hqsoft-ops-console
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./db:/app/db   # giữ file tài khoản (accounts.json) khi container restart/rebuild
+    environment:
+      - PORT=4000
+      - SESSION_SECRET=doi-chuoi-nay-thanh-gia-tri-bi-mat-cua-ban
+      - ADMIN_USER=admin
+      - ADMIN_PASS=admin123@
+      # - COOKIE_SECURE=1   # bat khi da chay sau HTTPS reverse proxy
+    restart: unless-stopped
