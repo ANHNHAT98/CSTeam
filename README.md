@@ -1,76 +1,42 @@
 # HQSOFT Ops Console — server (Docker)
 
-Bản này chạy như một server thật (Node.js + Express) trên máy/server của anh, thay vì
-file HTML tĩnh. Tài khoản & phân quyền lưu tập trung tại `db/accounts.json` trên server
-đó — cả team dùng chung 1 địa chỉ, admin đổi quyền là áp dụng ngay cho mọi người.
+Server thật (Node.js + Express) chạy trên máy/server của anh — cả team dùng
+chung **1 tài khoản đăng nhập**, cấu hình qua biến môi trường. Không lưu tài
+khoản động nào cả, nên **không có gì để mất** khi server restart (kể cả trên
+gói miễn phí của Render — server "ngủ" rồi dậy lại vẫn đăng nhập được bình
+thường bằng đúng tài khoản đã cấu hình).
 
 ## Chạy nhanh bằng Docker Compose
-
-Yêu cầu: máy đã cài **Docker Desktop** (Windows/Mac) hoặc **Docker Engine + Docker
-Compose** (Linux/Windows Server).
 
 ```bash
 cd estimate-mapper-server
 docker compose up -d --build
 ```
 
-Sau khi container chạy, mở trình duyệt vào:
+Mở trình duyệt: `http://localhost:4000` (hoặc `http://<IP-máy>:4000` từ máy
+khác trong mạng LAN công ty).
 
-```
-http://localhost:4000
-```
+Tài khoản mặc định: **admin / admin123@**
 
-Từ máy khác trong cùng mạng LAN công ty, dùng địa chỉ IP nội bộ của máy chạy server, ví dụ:
-
-```
-http://192.168.1.25:4000
-```
-
-(xem IP máy chạy server bằng `ipconfig` trên Windows hoặc `ip addr` trên Linux/Mac).
-
-Tài khoản admin mặc định: **admin / admin123@** — nên đổi mật khẩu ngay sau lần đăng
-nhập đầu (đăng nhập admin → mở "Quản lý tài khoản" → tạo admin mới với mật khẩu riêng,
-hoặc sửa biến môi trường `ADMIN_PASS` bên dưới rồi khởi động lại lần đầu).
-
-## Dừng / khởi động lại
-
-```bash
-docker compose down        # dừng
-docker compose up -d       # chạy lại (không build lại)
-docker compose logs -f     # xem log realtime
-```
-
-## Dữ liệu tài khoản được lưu ở đâu
-
-File `db/accounts.json` trên máy host (được mount vào container qua `docker-compose.yml`),
-nên **dừng/khởi động lại container không mất dữ liệu tài khoản**. Chỉ mất nếu xóa hẳn
-thư mục `db/` trên máy host.
-
-Nên backup định kỳ file này (copy ra chỗ khác) nếu coi đây là danh sách quan trọng.
-
-## Đổi cấu hình
+## Đổi tài khoản dùng chung
 
 Sửa trong `docker-compose.yml`, mục `environment`:
 
 | Biến | Ý nghĩa | Mặc định |
 |---|---|---|
 | `PORT` | Cổng server lắng nghe | `4000` |
-| `SESSION_SECRET` | Chuỗi bí mật ký session — **nên đổi** trước khi dùng thật | `doi-chuoi-nay...` |
-| `ADMIN_USER` | Username admin, chỉ áp dụng lần đầu tạo DB | `admin` |
-| `ADMIN_PASS` | Mật khẩu admin, chỉ áp dụng lần đầu tạo DB | `admin123@` |
-| `COOKIE_SECURE` | Đặt `1` nếu đã chạy sau HTTPS (reverse proxy) | tắt |
+| `SESSION_SECRET` | Chuỗi bí mật ký session — nên đổi | `doi-chuoi-nay...` |
+| `ADMIN_USER` | Tài khoản dùng chung cho cả team | `admin` |
+| `ADMIN_PASS` | Mật khẩu dùng chung cho cả team | `admin123@` |
+| `COOKIE_SECURE` | Đặt `1` nếu đã chạy sau HTTPS | tắt |
 
-`ADMIN_USER`/`ADMIN_PASS` chỉ có tác dụng ở **lần chạy đầu tiên** (khi `db/accounts.json`
-chưa tồn tại). Sau đó phải đổi mật khẩu qua giao diện (Quản lý tài khoản) hoặc xóa file
-`db/accounts.json` để server tạo lại từ đầu.
-
-Sau khi sửa `docker-compose.yml`:
+Sau khi sửa:
 
 ```bash
 docker compose up -d --build
 ```
 
-## Chạy không dùng Docker (thẳng bằng Node, để test nhanh)
+## Chạy không dùng Docker (test nhanh)
 
 ```bash
 cd estimate-mapper-server
@@ -78,36 +44,57 @@ npm install
 node server.js
 ```
 
-Mặc định chạy ở `http://localhost:4000`.
+## Deploy lên Render.com (không phụ thuộc máy cá nhân)
 
-## Lưu ý triển khai thật (khuyến nghị, không bắt buộc để dùng thử)
+1. Push code lên GitHub (đã làm).
+2. Trên Render: New → Web Service → chọn repo → Runtime tự nhận Docker.
+3. Thêm Environment Variables: `SESSION_SECRET`, `ADMIN_USER`, `ADMIN_PASS`.
+4. Create Web Service — Render cho 1 link dạng `https://ten-app.onrender.com`
+   dùng chung cho cả team.
 
-- Server hiện chạy HTTP thường. Nếu mở ra ngoài internet (không chỉ trong mạng nội bộ
-  công ty), nên đặt sau một reverse proxy có HTTPS (Nginx/Caddy/Traefik) rồi bật
-  `COOKIE_SECURE=1`, để tránh lộ mật khẩu/cookie khi truyền qua mạng.
-- `SESSION_SECRET` mặc định chỉ để test — đổi thành chuỗi ngẫu nhiên dài trước khi dùng
-  thật cho cả team.
-- Đây là lưu trữ dạng file JSON đơn giản, phù hợp quy mô đội nhóm nội bộ (vài chục tài
-  khoản). Nếu sau này cần audit log, phân quyền chi tiết theo từng thao tác, hoặc số
-  lượng tài khoản lớn, nên nâng cấp sang một database thật (PostgreSQL/MySQL) — báo lại
-  khi cần, phần API đã được viết tách riêng (`accountsStore.js`) nên nâng cấp không ảnh
-  hưởng giao diện.
+Vì không còn lưu tài khoản động, **không cần** Persistent Disk trên Render
+nữa — server "ngủ" rồi dậy lại (~30-60s lần đầu sau khi ngủ) vẫn đăng nhập
+bình thường.
+
+## Lưu ý bảo mật
+
+- Tài khoản dùng chung nghĩa là **không phân biệt được ai đang thao tác** —
+  phù hợp cho nội bộ team nhỏ, tin cậy lẫn nhau.
+- Nếu sau này cần phân quyền riêng từng người, báo lại — có thể khôi phục
+  cơ chế tài khoản đa người dùng (đã từng làm ở phiên bản trước) kèm database
+  bền vững.
+- Nếu mở ra ngoài internet, nên đặt sau HTTPS (reverse proxy) và bật
+  `COOKIE_SECURE=1`.
 
 ## Cấu trúc thư mục
 
 ```
 estimate-mapper-server/
-├─ server.js           # Express server, API auth + phân quyền
-├─ accountsStore.js     # đọc/ghi db/accounts.json, định nghĩa danh sách module
-├─ db/
-│  └─ accounts.json     # dữ liệu tài khoản (tự tạo khi chạy lần đầu)
+├─ server.js           # Express server, login/logout dùng chung 1 tài khoản
 ├─ public/
-│  └─ index.html        # giao diện Estimate Mapper + trang quản trị
+│  └─ index.html        # Trang chính (menu trái: Crs, Dự Án...)
+├─ protected/
+│  └─ abi-dashboard-ticket.html   # Module Dự Án > ABI > Dashboard Ticket
 ├─ Dockerfile
 ├─ docker-compose.yml
 └─ package.json
 ```
 
-Thêm chức năng mới (module) sau này: thêm 1 dòng vào mảng `MODULES` trong
-`accountsStore.js`, phần giao diện bên `public/index.html` sẽ tự đọc danh sách này qua
-API `/api/modules` — không cần sửa gì thêm ở phần đăng nhập/phân quyền.
+**Thêm chức năng mới (module) sau này** — 2 bước:
+1. Bỏ file HTML của module đó vào thư mục `protected/` (không phải `public/`,
+   để bắt buộc phải đăng nhập mới xem được).
+2. Trong `server.js`, thêm 1 route theo mẫu:
+   ```js
+   app.get('/du-an/ten-du-an', requirePageAuth, (req, res) => {
+     res.sendFile(path.join(__dirname, 'protected', 'ten-file.html'));
+   });
+   ```
+   (đặt route này TRƯỚC dòng `app.use(express.static(...))`).
+3. Trong `public/index.html`, phần `<aside class="side-nav">`, thêm mục
+   menu trỏ tới đường dẫn đó, theo đúng mẫu mục "Dashboard Ticket" đang có
+   dưới ABI.
+
+Module hiện có:
+- **Crs → PAKD và Báo Giá**: mapping file PAKD sang file Estimate (`/`).
+- **Dự Án → ABI → Dashboard Ticket**: upload file Excel ticket, xem dashboard
+  tổng hợp + xuất PNG (`/abi/dashboard-ticket`).
