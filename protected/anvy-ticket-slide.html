@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AnVy – Tồn đọng | Ticket Slide Generator</title>
+<style>
+:root{
+  --red:#b52f20; --blue:#245a83; --line:#ffffff; --body:#eef2f8;
+  --text:#111; --working:#dce6f1; --review:#f47b20; --open:#9bbb59;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#f4f5f7;font-family:Arial,Helvetica,sans-serif;color:var(--text)}
+.app{max-width:1500px;margin:0 auto;padding:18px}
+.toolbar{background:#fff;border:1px solid #d7dce2;border-radius:10px;padding:14px;box-shadow:0 2px 8px #0000000d}
+.toolbar h1{font-size:20px;margin:0 0 10px}
+.grid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:10px}
+label{font-size:12px;font-weight:700;color:#344054;display:block;margin-bottom:5px}
+input,select,textarea,button{font:inherit}
+input,select,textarea{width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:8px;background:#fff}
+textarea{min-height:115px;resize:vertical;font-family:Consolas,monospace;font-size:12px}
+.help{font-size:11px;color:#667085;margin-top:5px}.file-import{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-top:10px}.file-import>div{min-width:220px}.dropzone{border:1px dashed #98a2b3;border-radius:6px;padding:10px;background:#f8fafc}.file-name{font-size:11px;color:#475467;margin-top:5px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+button{border:0;border-radius:6px;padding:9px 13px;cursor:pointer;font-weight:700}
+.primary{background:#245a83;color:#fff}.secondary{background:#e9eef4;color:#183b56}
+.danger{background:#fee4e2;color:#b42318}.green{background:#e7f4df;color:#38761d}
+#slideWrap{overflow:auto;margin-top:16px;padding:10px;background:#dfe3e8;border-radius:10px}
+#slideDeck{display:flex;flex-direction:column;gap:18px}.slide-page{width:1400px;margin:0 auto}.slide-meta{font-size:12px;font-weight:700;color:#475467;margin:0 0 6px}.empty-preview{text-align:center;padding:40px;color:#667085}.slide{
+  width:1400px; min-height:478px; margin:0 auto; background:#fff;
+  box-shadow:0 3px 12px #0003; overflow:hidden;
+}
+.slide-title{height:48px;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:25px;font-weight:700}
+table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:14px}
+th,td{border:1px solid #fff}
+th{background:var(--blue);color:#fff;text-align:center;height:39px;font-weight:700}
+td{background:var(--body);vertical-align:top;padding:8px 9px;line-height:1.38;word-break:break-word}
+tbody tr:nth-child(even) td{background:#e5ebf3}
+.c-stt{width:3%}.c-hm{width:5.5%}.c-noi{width:15%}.c-ct{width:50%}.c-tt{width:7%}.c-han{width:8.5%}.c-ghichu{width:11%}
+td.stt{text-align:center}.status{text-align:center;padding:0!important;vertical-align:middle!important;font-weight:400}
+.status.working{background:var(--working)!important}.status.review{background:var(--review)!important}.status.open{background:var(--open)!important}
+.status.done{background:#70ad47!important}.status.blocked{background:#c00000!important;color:#fff}.status.pending{background:#ffd966!important}
+.status-text{display:flex;align-items:center;justify-content:center;min-height:75px;height:100%;line-height:1.35}
+.ticket-title{font-weight:700}
+.muted{color:#667085}
+.editor{margin-top:16px;background:#fff;border:1px solid #d7dce2;border-radius:10px;padding:12px}
+.editor h2{font-size:15px;margin:0 0 8px}
+.table-wrap{overflow:auto}
+.edit-table{min-width:1450px}
+.edit-table th{height:34px}.edit-table td{padding:5px;background:#fff}.edit-table th:nth-child(1){width:70px}.edit-table th:nth-child(2){width:150px}.edit-table th:nth-child(3){width:360px}.edit-table th:nth-child(4){width:720px}.edit-table th:nth-child(5){width:145px}.edit-table th:nth-child(6){width:170px}.edit-table th:nth-child(7){width:230px}.edit-table th:nth-child(8){width:65px}
+.edit-table input,.edit-table textarea,.edit-table select{padding:7px;border-radius:4px;font-size:14px}.edit-table input,.edit-table select{min-height:34px}
+.edit-table textarea{min-height:145px;line-height:1.5;font-family:Arial,Helvetica,sans-serif;white-space:pre-wrap}
+.row-actions button{padding:5px 8px;font-size:11px}
+.footer-note{font-size:11px;color:#667085;margin-top:8px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.app{padding:8px}}
+@media print{
+ body{background:#fff}.toolbar,.editor{display:none!important}#slideWrap{padding:0;background:#fff;margin:0}
+ #slideDeck .slide{box-shadow:none;margin:0;width:1400px}
+}
+/* ---------- ops console top bar (thêm để đồng bộ với trang chính) ---------- */
+.ops-topbar {
+  background: #12233D;
+  color: #fff;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: Arial, "Helvetica Neue", sans-serif;
+}
+.ops-topbar a {
+  color: #fff;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: .9;
+}
+.ops-topbar a:hover { opacity: 1; text-decoration: underline; }
+.ops-topbar .crumb {
+  font-size: 12px;
+  color: #B9C6D6;
+  font-family: monospace;
+}
+</style>
+</head>
+<body>
+<div class="ops-topbar">
+  <a href="/">← Ops Console</a>
+  <span class="crumb">Dự Án / AnVy / Ticket Slide</span>
+</div>
+<div class="app">
+  <div class="toolbar">
+    <h1>🧩 AnVy – TỒN ĐỌNG | Công cụ tạo slide ticket</h1>
+    <div class="grid">
+      <div><label>Tiêu đề</label><input id="title" value="AnVy – TỒN ĐỌNG"></div>
+      <div><label>Font size nội dung</label><select id="fontSize"><option value="12">12px</option><option value="13">13px</option><option value="14" selected>14px</option><option value="15">15px</option><option value="16">16px</option></select></div>
+      <div><label>Chiều cao slide</label><select id="slideHeight"><option value="560">Compact</option><option value="650" selected>Medium</option><option value="760">Large</option><option value="900">XL</option></select></div>
+      <div><label>Tự lưu dữ liệu</label><select id="autosave"><option value="1" selected>Có</option><option value="0">Không</option></select></div>
+    </div>
+    <div class="file-import">
+      <div class="dropzone">
+        <label>Import từ Excel</label>
+        <input id="excelFile" type="file" accept=".xlsx,.xls,.csv" onchange="importExcel(this.files[0])">
+        <div id="fileName" class="file-name">Hỗ trợ .xlsx, .xls, .csv — lấy sheet đầu tiên.</div>
+      </div>
+      <button class="primary" onclick="document.getElementById('excelFile').click()">📊 Chọn file Excel</button>
+    </div>
+    <div style="margin-top:10px">
+      <label>Dán dữ liệu ticket (mỗi dòng 7 cột, ngăn cách bằng TAB)</label>
+      <textarea id="pasteBox" placeholder="STT[TAB]Hạng mục[TAB]Nội dung[TAB]Thông tin chi tiết[TAB]Trạng thái[TAB]Hạn hoàn thành[TAB]Ghi chú"></textarea>
+      <div class="help">Có thể copy trực tiếp từ Excel/Google Sheets rồi paste vào đây. Hoặc dùng nút <b>Chọn file Excel</b> để import .xlsx/.xls/.csv. Dòng đầu tiên nếu là header sẽ được tự nhận diện.</div>
+    </div>
+    <div class="actions">
+      <button class="primary" onclick="importTSV()">Dán & tạo bảng</button>
+      <button class="secondary" onclick="addRow()">+ Thêm ticket</button>
+      <button class="green" onclick="exportPNG()">Xuất PNG</button>
+      <button class="primary" onclick="exportPPTX()">Xuất PPTX</button>
+      <button class="secondary" onclick="saveData()">Lưu dữ liệu</button>
+      <button class="secondary" onclick="loadData()">Khôi phục dữ liệu</button>
+      <button class="danger" onclick="clearAll()">Xóa tất cả</button>
+    </div>
+  </div>
+
+  <div class="editor">
+    <h2>✏️ Dữ liệu ticket <span style="font-size:12px;font-weight:400;color:#667085">(Mỗi 5 ticket sẽ tách thành 1 slide khi xuất)</span></h2>
+    <div class="table-wrap">
+      <table class="edit-table">
+        <thead><tr>
+          <th>STT</th><th>Hạng mục</th><th>Nội dung</th><th>Thông tin chi tiết</th><th>Trạng thái</th><th>Hạn hoàn thành</th><th>Ghi chú</th><th></th>
+        </tr></thead>
+        <tbody id="editorBody"></tbody>
+      </table>
+    </div>
+    <div class="footer-note">Trạng thái hỗ trợ: Working, Review, Open, Done, Blocked, Pending. Không cần sửa HTML để dùng hàng ngày.</div>
+  </div>
+
+  <div id="slideWrap">
+    <div id="slideDeck"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<script>
+const KEY='anvy_ticket_slide_data_v1';
+let rows=[
+ {hm:'Cloud',noi:'[OM10100] Thỉnh thoảng không phát sinh dữ liệu LOT khi xử lý xuất hàng',ct:'Thỉnh thoảng phát sinh trường hợp sau khi xử lý đơn hàng sang trạng thái Đã xuất hàng, hệ thống không phát sinh đầy đủ dữ liệu LOT, dẫn đến mất dữ liệu.\\nHiện chưa tái hiện được case. Đề nghị Dev kiểm tra toàn bộ process từ Duyệt đơn → Đã xuất hàng, xác định nguyên nhân khiến dữ liệu đôi khi không được insert đủ và sử dụng API/trace để debug lại điều kiện phát sinh.',tt:'Working',han:'',ghichu:''},
+ {hm:'Cloud',noi:'OM10100 - Cập nhật DL làm mất hàng khuyến mãi của CTKM vẫn còn trong Thông tin chiết khấu',ct:'1/ Mô tả lỗi\\nĐơn hàng đã áp dụng CTKM và vẫn hiển thị thông tin khuyến mại trong tab Thông tin chiết khấu. Tuy nhiên, sau khi thực hiện chức năng Cập nhật DL, hàng khuyến mại (HKM) trên đơn hàng bị mất, mặc dù thông tin CTKM vẫn còn lưu trên đơn.\\n2/ Kết quả mong đợi (Expected)\\n• Sau khi Cập nhật DL, hệ thống vẫn giữ nguyên hàng khuyến mãi đã được áp dụng.\\n• Dữ liệu hàng khuyến mại phải đồng bộ với thông tin CTKM trong tab Thông tin chiết khấu.',tt:'Working',han:'',ghichu:''},
+ {hm:'Report',noi:'[R16018] Báo cáo chi tiết công nợ bán hàng hiển thị Sai Dư nợ cuối/Dư có cuối',ct:'Trên báo cáo R16018 - Báo cáo chi tiết công nợ bán hàng phát hiện 02 trường hợp hiển thị công nợ chưa đúng với nghiệp vụ.\\nCase 1: Dư nợ cuối hiển thị giá trị âm\\nTheo nghiệp vụ, hệ thống không cho phép thu tiền vượt quá công nợ (ngoại trừ thanh toán trước hoặc Phiếu báo có do hàng trả lại). Do đó nếu phát sinh số dư âm thì phải được chuyển sang Dư có cuối, không được hiển thị tại Dư nợ cuối.\\nHiện tại báo cáo đang tính: Dư nợ cuối = Dư nợ đầu + PS Nợ - Dư có đầu - PS Có.\\nCase 2: Một đơn hàng hiển thị đồng thời dòng công nợ âm và công nợ dương.\\nĐối với đơn hàng S00005961, báo cáo sinh ra 02 dòng: Dòng 1: Dư nợ cuối = -1.300.005; Dòng 2: Dư nợ cuối = 1.300.005',tt:'Review',han:'',ghichu:''},
+ {hm:'Cloud',noi:'[OM10100] Sao chép đơn hàng thỉnh thoảng báo lỗi yêu cầu nhập Mã Địa Chỉ GH',ct:'• Người dùng phản ánh khi thực hiện chức năng Sao chép đơn hàng trên màn hình OM10100, hệ thống không ổn định: có lúc sao chép thành công, có lúc phát sinh lỗi.\\nExpected Result:\\n• Chức năng Sao chép đơn hàng cần sao chép đầy đủ thông tin địa chỉ giao hàng, bao gồm Mã Địa Chỉ GH.\\n• Không phát sinh lỗi khi sao chép đơn hàng.\\n• Nếu dữ liệu nguồn không hợp lệ thì cần xử lý nhất quán, không xảy ra tình trạng lúc được lúc lỗi.',tt:'Open',han:'',ghichu:''}
+];
+
+function normalizeText(s){return String(s??'').replace(/\\n/g,'\n').replace(/\r\n/g,'\n').replace(/\r/g,'\n')}
+function esc(s){return normalizeText(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function nl(s){return esc(s).replace(/\n/g,'<br>')}
+function statusClass(s){return String(s||'').toLowerCase().replace(/\s+/g,'-')}
+function slideChunks(){
+ const chunks=[];
+ for(let i=0;i<rows.length;i+=5) chunks.push(rows.slice(i,i+5).map((r,j)=>({r,idx:i+j})));
+ return chunks;
+}
+function renderSlideTable(chunk){
+ return `<table class="previewTable">
+  <colgroup><col class="c-stt"><col class="c-hm"><col class="c-noi"><col class="c-ct"><col class="c-tt"><col class="c-han"><col class="c-ghichu"></colgroup>
+  <thead><tr><th>STT</th><th>Hạng mục</th><th>Nội dung</th><th>Thông tin chi tiết</th><th>Trạng thái</th><th>Hạn hoàn thành</th><th>Ghi chú</th></tr></thead>
+  <tbody>${chunk.map(({r,idx})=>`<tr>
+   <td class="stt">${idx+1}</td><td>${nl(r.hm)}</td><td>${nl(r.noi)}</td><td>${nl(r.ct)}</td>
+   <td class="status ${statusClass(r.tt)}"><div class="status-text">${nl(r.tt)}</div></td>
+   <td>${nl(r.han)}</td><td>${nl(r.ghichu)}</td>
+  </tr>`).join('')}</tbody></table>`;
+}
+function renderPreview(){
+ const deck=document.getElementById('slideDeck');
+ const title=document.getElementById('title').value||'AnVy – TỒN ĐỌNG';
+ const fs=document.getElementById('fontSize').value;
+ const h=document.getElementById('slideHeight').value;
+ const chunks=slideChunks();
+ deck.innerHTML=chunks.length ? chunks.map((chunk,i)=>`<div class="slide-page"><div class="slide-meta">Slide ${i+1} / ${chunks.length} · Ticket ${chunk[0].idx+1}–${chunk[chunk.length-1].idx+1}</div><div class="slide" style="min-height:${h}px"><div class="slide-title">${esc(title)}</div>${renderSlideTable(chunk)}</div></div>`).join('') : '<div class="empty-preview">Chưa có ticket.</div>';
+ deck.querySelectorAll('.previewTable').forEach(t=>t.style.fontSize=fs+'px');
+}
+function render(){
+ const eb=document.getElementById('editorBody');
+ eb.innerHTML=rows.map((r,i)=>`<tr>
+  <td><input value="${esc(i+1)}" disabled></td>
+  <td><input data-i="${i}" data-k="hm" value="${esc(r.hm)}"></td>
+  <td><textarea data-i="${i}" data-k="noi">${esc(r.noi)}</textarea></td>
+  <td><textarea data-i="${i}" data-k="ct">${esc(r.ct)}</textarea></td>
+  <td><select data-i="${i}" data-k="tt">${['Working','Review','Open','Done','Blocked','Pending'].map(x=>`<option ${x===r.tt?'selected':''}>${x}</option>`).join('')}</select></td>
+  <td><input data-i="${i}" data-k="han" value="${esc(r.han)}"></td>
+  <td><textarea data-i="${i}" data-k="ghichu">${esc(r.ghichu)}</textarea></td>
+  <td class="row-actions"><button class="danger" onclick="removeRow(${i})">Xóa</button></td>
+ </tr>`).join('');
+ document.querySelectorAll('[data-i]').forEach(el=>el.addEventListener('input',()=>{
+   rows[+el.dataset.i][el.dataset.k]=normalizeText(el.value); renderPreview(); if(document.getElementById('autosave').value==='1') saveData(true);
+ }));
+ renderPreview();
+}
+function renderPreviewOnly(){renderPreview()}
+function addRow(){rows.push({hm:'Cloud',noi:'',ct:'',tt:'Working',han:'',ghichu:''});render();scrollTo(0,document.body.scrollHeight)}
+function removeRow(i){rows.splice(i,1);render()}
+function normalizeHeader(v){
+ return String(v??'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9]/g,'');
+}
+function findCol(headers, aliases){
+ const normalized=headers.map(normalizeHeader);
+ for(const alias of aliases){ const idx=normalized.indexOf(normalizeHeader(alias)); if(idx>=0)return idx; }
+ return -1;
+}
+function mapExcelRows(data){
+ if(!data.length) return [];
+ const headers=data[0].map(v=>String(v??''));
+ const hasHeader = headers.some(h=>['stt','hangmuc','noidung','thongtinchitiet','trangthai','hanhoanthanh','ghichu'].includes(normalizeHeader(h)));
+ const start=hasHeader?1:0;
+ const cols={
+   stt:findCol(headers,['STT']),
+   hm:findCol(headers,['Hạng mục','Hang muc','Hạng Mục']),
+   noi:findCol(headers,['Nội dung','Noi dung']),
+   ct:findCol(headers,['Thông tin chi tiết','Thong tin chi tiet','Chi tiết','Chi tiet']),
+   tt:findCol(headers,['Trạng thái','Trang thai','Status']),
+   han:findCol(headers,['Hạn hoàn thành','Han hoan thanh','Deadline','Due date']),
+   ghichu:findCol(headers,['Ghi chú','Ghi chu','Note','Notes'])
+ };
+ // Nếu file không có header, dùng đúng thứ tự 7 cột của template.
+ if(!hasHeader){
+   cols.hm=1; cols.noi=2; cols.ct=3; cols.tt=4; cols.han=5; cols.ghichu=6;
+ }
+ const val=(arr,idx)=>idx>=0 ? String(arr[idx]??'') : '';
+ return data.slice(start).filter(r=>r.some(v=>String(v??'').trim()!=='' )).map((r,i)=>({
+   hm:normalizeText(val(r,cols.hm)), noi:normalizeText(val(r,cols.noi)), ct:normalizeText(val(r,cols.ct)),
+   tt:normalizeText(val(r,cols.tt))||'Working', han:normalizeText(val(r,cols.han)), ghichu:normalizeText(val(r,cols.ghichu))
+ })).map(r=>{r.tt=['Working','Review','Open','Done','Blocked','Pending'].includes(r.tt)?r.tt:'Working';return r;});
+}
+async function importExcel(file){
+ if(!file)return;
+ document.getElementById('fileName').textContent='Đang đọc: '+file.name;
+ try{
+   if(typeof XLSX==='undefined') throw new Error('Không tải được thư viện Excel. Hãy mở máy có Internet rồi thử lại.');
+   const buffer=await file.arrayBuffer();
+   const wb=XLSX.read(buffer,{type:'array',cellDates:true});
+   const sheetName=wb.SheetNames[0];
+   const ws=wb.Sheets[sheetName];
+   const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+   const imported=mapExcelRows(data);
+   if(!imported.length) throw new Error('Không tìm thấy dòng ticket hợp lệ trong sheet đầu tiên.');
+   rows=imported;
+   render(); saveData(true);
+   document.getElementById('fileName').textContent=`Đã import ${rows.length} ticket từ ${file.name} (sheet: ${sheetName})`;
+ }catch(e){
+   document.getElementById('fileName').textContent='Import thất bại: '+e.message;
+   alert('Không thể import Excel.\n\n'+e.message);
+ }
+}
+function importTSV(){
+ const text=document.getElementById('pasteBox').value.trim();
+ if(!text)return;
+ const lines=text.split(/\r?\n/).filter(Boolean);
+ rows=lines.map(line=>line.split('\t')).filter(a=>a.length>=2 && !/^stt$/i.test(a[0].trim())).map(a=>({
+   hm:normalizeText(a[1]??''),noi:normalizeText(a[2]??''),ct:normalizeText(a[3]??''),tt:normalizeText(a[4]??'Working'),han:normalizeText(a[5]??''),ghichu:normalizeText(a[6]??'')
+ }));
+ render(); saveData(true);
+}
+function saveData(silent=false){
+ localStorage.setItem(KEY,JSON.stringify({title:document.getElementById('title').value,rows}));
+ if(!silent) alert('Đã lưu dữ liệu trên trình duyệt.');
+}
+function loadData(){
+ const x=localStorage.getItem(KEY); if(!x){alert('Chưa có dữ liệu đã lưu.');return}
+ const d=JSON.parse(x); document.getElementById('title').value=d.title||'AnVy – TỒN ĐỌNG'; rows=d.rows||[]; render();
+}
+function clearAll(){if(confirm('Xóa toàn bộ ticket hiện tại?')){rows=[];render();}}
+document.getElementById('title').addEventListener('input',render);
+document.getElementById('fontSize').addEventListener('change',render);
+document.getElementById('slideHeight').addEventListener('change',render);
+
+async function canvases(){
+ const els=[...document.querySelectorAll('#slideDeck .slide')];
+ const out=[];
+ for(const el of els){ out.push(await html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:true})); }
+ return out;
+}
+async function exportPNG(){
+ const cs=await canvases();
+ const base=(document.getElementById('title').value||'AnVy-Ton-Dong').replace(/[\\/:*?"<>|]/g,'_');
+ for(let i=0;i<cs.length;i++){
+   const a=document.createElement('a'); a.download=`${base}_slide_${String(i+1).padStart(2,'0')}.png`;
+   a.href=cs[i].toDataURL('image/png'); a.click();
+   await new Promise(r=>setTimeout(r,250));
+ }
+}
+async function exportPPTX(){
+ if(typeof pptxgen=== 'undefined'){alert('Không tải được thư viện PPTX. Hãy mở máy có Internet rồi thử lại.');return}
+ const cs=await canvases(); if(!cs.length)return;
+ const pptx=new pptxgen();
+ const base=(document.getElementById('title').value||'AnVy-Ton-Dong').replace(/[\\/:*?"<>|]/g,'_');
+ pptx.layout='LAYOUT_WIDE'; pptx.author='AnVy Ticket Slide Generator'; pptx.subject='AnVy – Tồn đọng';
+ for(const c of cs){ const slide=pptx.addSlide(); slide.background={color:'FFFFFF'}; slide.addImage({data:c.toDataURL('image/png'),x:0,y:0,w:13.333,h:7.5}); }
+ await pptx.writeFile({fileName:base+'.pptx'});
+}
+render();
+</script>
+</body>
+</html>
