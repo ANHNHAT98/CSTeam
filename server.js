@@ -59,6 +59,10 @@ app.get('/abi/dashboard-ticket', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'abi-dashboard-ticket.html'));
 });
 
+app.get('/anvy/ticket-slide', requirePageAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'protected', 'anvy-ticket-slide.html'));
+});
+
 /* ---------- static frontend ---------- */
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('*', (req, res) => {
