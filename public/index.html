@@ -312,7 +312,6 @@
         </button>
         <div class="side-branch-children">
           <a class="side-leaf sub" href="/abi/dashboard-ticket" data-path="/abi/dashboard-ticket">Dashboard Ticket</a>
-          <a class="side-leaf sub" href="/abi/erp-tickets" data-path="/abi/erp-tickets">Lấy Ticket từ ERP</a>
         </div>
       </div>
 
@@ -330,6 +329,11 @@
       <div class="side-branch empty">
         <div class="side-branch-head static"><span class="chevron">▾</span><span>Sabeco</span></div>
       </div>
+    </div>
+
+    <div class="side-group">
+      <div class="side-group-label">Ticket dự án</div>
+      <a class="side-leaf" href="/tickets/tra-cuu-erp" data-path="/tickets/tra-cuu-erp">Tra cứu ERP</a>
     </div>
   </div>
 
@@ -486,9 +490,22 @@ function showGate(){
   logoutBtn.classList.remove('show');
 }
 
+// Nếu bị chuyển về đây kèm ?next=/duong-dan (do phiên hết hạn khi đang xem 1
+// chức năng), sau khi xác nhận còn/đang đăng nhập thì quay lại đúng chỗ đó
+// thay vì bắt bấm menu lại từ đầu.
+function redirectToNextIfAny(){
+  const next = new URLSearchParams(window.location.search).get('next');
+  if (next && next.startsWith('/')) {
+    window.location.href = next;
+    return true;
+  }
+  return false;
+}
+
 (async function tryRestoreSession(){
   try{
     const data = await api('/api/me');
+    if (redirectToNextIfAny()) return;
     showApp(data.username);
   }catch(e){
     showGate();
@@ -503,6 +520,7 @@ loginForm.addEventListener('submit', async (e)=>{
     const data = await api('/api/login', {method:'POST', body: JSON.stringify({username, password})});
     loginErr.textContent = '';
     loginForm.reset();
+    if (redirectToNextIfAny()) return;
     showApp(data.username);
   }catch(err){
     loginErr.textContent = err.message || 'Sai tài khoản hoặc mật khẩu.';

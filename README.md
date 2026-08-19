@@ -98,18 +98,24 @@ Module hiện có:
 - **Crs → PAKD và Báo Giá**: mapping file PAKD sang file Estimate (`/`).
 - **Dự Án → ABI → Dashboard Ticket**: upload file Excel ticket, xem dashboard
   tổng hợp + xuất PNG (`/abi/dashboard-ticket`).
-- **Dự Án → ABI → Lấy Ticket từ ERP**: gọi trực tiếp erp.hqsoft.vn lấy ticket
-  theo project/status, xem trước, xuất Excel (`/abi/erp-tickets`).
 - **Dự Án → AnVy → Ticket Slide**: dán/nhập ticket, tự tạo slide + xuất
   PNG/PPTX (`/anvy/ticket-slide`).
+- **Ticket dự án → Tra cứu ERP**: gọi trực tiếp erp.hqsoft.vn lấy ticket theo
+  nhiều project + nhiều trạng thái cùng lúc, xem trước, xuất Excel
+  (`/tickets/tra-cuu-erp`).
 
 ## Kết nối ERP (đăng nhập bằng email/mật khẩu, không cần API key)
 
-Module "Lấy Ticket từ ERP" gọi thẳng erp.hqsoft.vn bằng phiên đăng nhập
-(giống hệt lúc anh bấm nút Login trên web ERP), không cần API Key/Secret hay
-quyền System Manager.
+Module "Ticket dự án → Tra cứu ERP" gọi thẳng erp.hqsoft.vn bằng phiên đăng
+nhập (giống hệt lúc anh bấm nút Login trên web ERP), không cần API
+Key/Secret hay quyền System Manager.
 
-Cấu hình trong `docker-compose.yml`:
+Bộ lọc hỗ trợ **chọn nhiều project** (`MerapLion_eSales`,
+`ABI_eSales_Support`, `ANVY_eSale_Support`, `Sabeco_PG`) và **chọn nhiều
+trạng thái** (`Open`, `Assign`, `Working`, `Reviewing`, `Waiting`, `Pending`,
+`Re-open`, `Closed`, và cả "chưa có trạng thái") cùng lúc.
+
+Cấu hình trong `docker-compose.yml` (hoặc Environment Variables trên Render):
 
 | Biến | Ý nghĩa |
 |---|---|
@@ -130,3 +136,14 @@ quyền), để giảm rủi ro nếu server bị lộ.
 ERPNext — chưa map vào đúng cột Hạng mục/Nội dung/Chi tiết/Trạng thái/Hạn/
 Ghi chú vì chưa biết tên field chính xác. Sau khi anh chạy thử và xem được
 dữ liệu thật, báo lại tên field tương ứng để em hoàn thiện mapping tự động.
+
+## Vì sao thỉnh thoảng bị đá về màn hình đăng nhập giữa chừng?
+
+Trên gói **miễn phí của Render**, server tự "ngủ" sau ~15 phút không có ai
+truy cập, và khi "thức" lại thì toàn bộ phiên đăng nhập đang lưu trong RAM bị
+mất (không có gì để giữ lại vì không dùng database cho phiên đăng nhập, cố ý
+để tránh phức tạp không cần thiết). Đây không phải lỗi — là đặc điểm của gói
+miễn phí. Để đỡ khó chịu, đã thêm cơ chế: nếu bị đá về đăng nhập giữa chừng,
+đăng nhập lại xong sẽ **tự động quay đúng về trang đang xem** thay vì phải
+bấm menu lại từ đầu. Nếu muốn hết hẳn tình trạng này, cần nâng cấp lên gói
+Render trả phí (không bị "ngủ") hoặc tự host trên máy/server luôn bật.

@@ -13,6 +13,6 @@ services:
 
       # --- Ket noi ERP (dang nhap bang email/mat khau, khong can API key) ---
       - ERP_BASE_URL=https://erp.hqsoft.vn
-      - ERP_USER=Nhatha
-      - ERP_PASS=eU56^I6$
+      - ERP_USER=email-dang-nhap-erp@hqsoft.vn
+      - ERP_PASS=mat-khau-erp-that
     restart: unless-stopped

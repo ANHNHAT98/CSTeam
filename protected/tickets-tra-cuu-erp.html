@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ticket dự án — Tra cứu ERP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#12233D; --blueprint:#1F4E79; --blueprint-deep:#0F2138;
+    --paper:#EEF2F6; --panel:#FFFFFF;
+    --grid-line:rgba(31,78,121,.14); --grid-line-strong:rgba(31,78,121,.28);
+    --amber:#E8A33D; --amber-deep:#C9821F;
+    --success:#3F7D58; --danger:#B23A48; --muted:#5B7089; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans',sans-serif;
+    background-image:linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size:32px 32px; min-height:100vh;
+  }
+  .ops-topbar{
+    background:#12233D; color:#fff; padding:12px 24px; display:flex; align-items:center; gap:14px;
+  }
+  .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;opacity:.9;}
+  .ops-topbar a:hover{opacity:1;text-decoration:underline;}
+  .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
+
+  .wrap{max-width:1160px;margin:0 auto;padding:32px 24px 70px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 6px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 26px;line-height:1.6;}
+
+  .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:22px;margin-bottom:20px;}
+  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0 0 14px;}
+
+  .filter-cols{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  @media(max-width:760px){.filter-cols{grid-template-columns:1fr;}}
+  .filter-col-label{
+    font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;
+    text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:block;
+  }
+  .check-list{display:flex;flex-direction:column;gap:2px;}
+  .check-item{
+    display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:6px;font-size:13px;cursor:pointer;
+  }
+  .check-item:hover{background:rgba(31,78,121,.05);}
+  .check-item input{width:16px;height:16px;accent-color:var(--blueprint);cursor:pointer;}
+
+  .actions{display:flex;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap;}
+  .btn{
+    appearance:none;border:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-weight:600;
+    font-size:14px;padding:11px 18px;border-radius:8px;display:inline-flex;align-items:center;gap:8px;
+  }
+  .btn-primary{background:var(--amber);color:#3A2405;box-shadow:0 2px 0 var(--amber-deep);}
+  .btn-primary:disabled{background:#D8DEE6;color:#8B98A6;box-shadow:none;cursor:not-allowed;}
+  .btn-ghost{background:transparent;color:var(--blueprint);border:1px solid var(--grid-line-strong);}
+  .btn-mini{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--blueprint);background:none;border:none;
+    cursor:pointer;text-decoration:underline;padding:0;
+  }
+
+  .status{font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);margin-top:12px;}
+  .status.ok{color:var(--success);}
+  .status.err{color:var(--danger);white-space:pre-wrap;}
+
+  .table-scroll{max-height:520px;overflow:auto;border:1px solid var(--grid-line-strong);border-radius:8px;}
+  table{border-collapse:collapse;width:100%;font-size:12px;}
+  thead th{
+    position:sticky;top:0;background:var(--blueprint);color:#fff;text-align:left;padding:8px 9px;
+    font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:10.5px;white-space:nowrap;
+    border-right:1px solid rgba(255,255,255,.12);
+  }
+  tbody td{padding:7px 9px;border-bottom:1px solid var(--grid-line);border-right:1px solid var(--grid-line);white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis;}
+  tbody tr:nth-child(even){background:rgba(31,78,121,.025);}
+
+  .hint{
+    margin-top:14px;padding-top:14px;border-top:1px dashed var(--grid-line-strong);
+    font-size:12px;color:var(--muted);line-height:1.6;
+  }
+  code.tag{font-family:'IBM Plex Mono',monospace;background:rgba(31,78,121,.08);color:var(--blueprint);padding:1px 6px;border-radius:4px;font-size:11.5px;}
+</style>
+</head>
+<body>
+<div class="ops-topbar">
+  <a href="/">← Quay về</a>
+  <span class="crumb">Ticket dự án / Tra cứu ERP</span>
+</div>
+
+<div class="wrap">
+  <h1>Tra cứu Ticket từ ERP</h1>
+  <p class="sub">Lấy trực tiếp danh sách ticket từ erp.hqsoft.vn (doctype <code class="tag">Ticket</code>) theo project &amp; trạng thái, xem trước rồi xuất Excel.</p>
+
+  <div class="panel">
+    <h2>Bộ lọc</h2>
+    <div class="filter-cols">
+      <div>
+        <span class="filter-col-label">Project (chọn nhiều) <button class="btn-mini" id="allProjectsBtn" type="button">chọn hết</button></span>
+        <div class="check-list" id="projectList"></div>
+      </div>
+      <div>
+        <span class="filter-col-label">Trạng thái (chọn nhiều) <button class="btn-mini" id="allStatusBtn" type="button">chọn hết</button></span>
+        <div class="check-list" id="statusList"></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="fetchBtn">⇩ Lấy dữ liệu từ ERP</button>
+    </div>
+    <div class="status" id="statusText"></div>
+  </div>
+
+  <div class="panel" id="resultPanel" style="display:none;">
+    <h2>Kết quả (<span id="rowCount">0</span> ticket)</h2>
+    <div class="table-scroll"><table id="resultTable"><thead><tr id="resultHead"></tr></thead><tbody id="resultBody"></tbody></table></div>
+    <div class="actions">
+      <button class="btn btn-ghost" id="exportBtn">⬇ Xuất Excel</button>
+    </div>
+    <div class="hint">
+      Đây là <b>toàn bộ field thô</b> ERPNext trả về (chưa map vào đúng cột Hạng mục/Nội dung/Chi tiết/Trạng thái/Hạn/Ghi chú) —
+      xuất Excel rồi báo lại tên cột nào tương ứng với gì để hoàn thiện mapping tự động cho lần sau.
+    </div>
+  </div>
+</div>
+
+<script>
+const PROJECTS = ['MerapLion_eSales', 'ABI_eSales_Support', 'ANVY_eSale_Support', 'Sabeco_PG'];
+const STATUSES = ['Open', 'Assign', 'Working', 'Reviewing', 'Waiting', 'Pending', 'Re-open', 'Closed', 'null'];
+const STATUS_LABELS = { null: 'Chưa có trạng thái (null)' };
+const DEFAULT_STATUS_CHECKED = ['Open', 'Assign', 'Working', 'Reviewing', 'Waiting', 'Pending', 'Re-open'];
+
+const projectList = document.getElementById('projectList');
+const statusList = document.getElementById('statusList');
+const fetchBtn = document.getElementById('fetchBtn');
+const exportBtn = document.getElementById('exportBtn');
+const statusText = document.getElementById('statusText');
+const resultPanel = document.getElementById('resultPanel');
+const resultHead = document.getElementById('resultHead');
+const resultBody = document.getElementById('resultBody');
+const rowCount = document.getElementById('rowCount');
+
+let lastRows = [];
+
+projectList.innerHTML = PROJECTS.map((p) => `
+  <label class="check-item"><input type="checkbox" class="projChk" value="${p}" checked> ${p}</label>
+`).join('');
+
+statusList.innerHTML = STATUSES.map((s) => {
+  const label = STATUS_LABELS[s] || s;
+  const checked = DEFAULT_STATUS_CHECKED.includes(s) ? 'checked' : '';
+  return `<label class="check-item"><input type="checkbox" class="statusChk" value="${s}" ${checked}> ${label}</label>`;
+}).join('');
+
+document.getElementById('allProjectsBtn').addEventListener('click', () => {
+  const boxes = document.querySelectorAll('.projChk');
+  const allChecked = [...boxes].every(b => b.checked);
+  boxes.forEach(b => b.checked = !allChecked);
+});
+document.getElementById('allStatusBtn').addEventListener('click', () => {
+  const boxes = document.querySelectorAll('.statusChk');
+  const allChecked = [...boxes].every(b => b.checked);
+  boxes.forEach(b => b.checked = !allChecked);
+});
+
+function setStatus(msg, cls){
+  statusText.textContent = msg;
+  statusText.className = 'status ' + (cls || '');
+}
+
+fetchBtn.addEventListener('click', async () => {
+  const projects = [...document.querySelectorAll('.projChk:checked')].map(b => b.value);
+  const statuses = [...document.querySelectorAll('.statusChk:checked')].map(b => b.value === 'null' ? null : b.value);
+
+  fetchBtn.disabled = true;
+  setStatus('Đang đăng nhập & lấy dữ liệu từ ERP…', '');
+  resultPanel.style.display = 'none';
+
+  try{
+    const qs = new URLSearchParams();
+    qs.set('projects', JSON.stringify(projects));
+    qs.set('statuses', JSON.stringify(statuses));
+    const res = await fetch('/api/erp/tickets?' + qs.toString(), { credentials:'same-origin' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || ('Lỗi HTTP ' + res.status));
+
+    const rows = Array.isArray(data.data) ? data.data : [];
+    lastRows = rows;
+    renderTable(rows);
+    resultPanel.style.display = rows.length ? 'block' : 'none';
+    setStatus(rows.length
+      ? `Xong — lấy được ${rows.length} ticket.`
+      : 'Không có ticket nào khớp bộ lọc (kiểm tra lại project/status đã chọn).', rows.length ? 'ok' : 'err');
+  }catch(err){
+    console.error(err);
+    setStatus('Lỗi: ' + err.message, 'err');
+  }finally{
+    fetchBtn.disabled = false;
+  }
+});
+
+function renderTable(rows){
+  if (!rows.length){ resultHead.innerHTML=''; resultBody.innerHTML=''; rowCount.textContent='0'; return; }
+  const cols = Object.keys(rows[0]);
+  resultHead.innerHTML = cols.map(c => `<th>${escapeHtml(c)}</th>`).join('');
+  resultBody.innerHTML = rows.map(r => `<tr>${cols.map(c => `<td title="${escapeHtml(String(r[c] ?? ''))}">${escapeHtml(String(r[c] ?? ''))}</td>`).join('')}</tr>`).join('');
+  rowCount.textContent = String(rows.length);
+}
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+exportBtn.addEventListener('click', () => {
+  if (!lastRows.length) return;
+  const ws = XLSX.utils.json_to_sheet(lastRows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'ERP Tickets');
+  XLSX.writeFile(wb, 'Ticket_Du_An_ERP.xlsx');
+});
+</script>
+</body>
+</html>

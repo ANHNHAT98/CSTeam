@@ -85,13 +85,20 @@ async function erpFetch(pathWithQuery, { retry = true } = {}) {
 }
 
 /**
- * Lay danh sach ticket theo doctype "Ticket", loc theo project/status neu co.
- * Tra ve nguyen JSON cua ERPNext (data.data la mang ban ghi).
+ * Lay danh sach ticket theo doctype "Ticket".
+ * projects: string | string[] -> loc theo project (operator "=" neu 1 gia tri, "in" neu nhieu)
+ * statuses: string | (string|null)[] -> loc theo status, ho tro ca gia tri null (chua co status)
  */
-async function fetchTickets({ project, status, limit = 200 } = {}) {
+async function fetchTickets({ projects, statuses, limit = 500 } = {}) {
   const filters = [];
-  if (project) filters.push(['project', '=', project]);
-  if (status) filters.push(['status', '=', status]);
+
+  const projList = normalizeList(projects);
+  if (projList.length === 1) filters.push(['project', '=', projList[0]]);
+  else if (projList.length > 1) filters.push(['project', 'in', projList]);
+
+  const statusList = normalizeList(statuses, { keepNull: true });
+  if (statusList.length === 1 && statusList[0] !== null) filters.push(['status', '=', statusList[0]]);
+  else if (statusList.length > 1) filters.push(['status', 'in', statusList]);
 
   const qs = new URLSearchParams();
   qs.set('filters', JSON.stringify(filters));
@@ -99,6 +106,14 @@ async function fetchTickets({ project, status, limit = 200 } = {}) {
   qs.set('limit_page_length', String(limit));
 
   return erpFetch(`/api/resource/Ticket?${qs.toString()}`);
+}
+
+function normalizeList(value, { keepNull = false } = {}) {
+  if (value === undefined || value === null) return [];
+  const arr = Array.isArray(value) ? value : [value];
+  return arr
+    .map((v) => (v === 'null' || v === null ? (keepNull ? null : undefined) : v))
+    .filter((v) => v !== undefined && v !== '');
 }
 
 module.exports = { fetchTickets, isConfigured: () => Boolean(ERP_BASE_URL && ERP_USER && ERP_PASS) };
