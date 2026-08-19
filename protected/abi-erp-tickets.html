@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ABI — Lấy Ticket từ ERP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#12233D; --blueprint:#1F4E79; --blueprint-deep:#0F2138;
+    --paper:#EEF2F6; --panel:#FFFFFF;
+    --grid-line:rgba(31,78,121,.14); --grid-line-strong:rgba(31,78,121,.28);
+    --amber:#E8A33D; --amber-deep:#C9821F;
+    --success:#3F7D58; --danger:#B23A48; --muted:#5B7089; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans',sans-serif;
+    background-image:linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size:32px 32px; min-height:100vh;
+  }
+  .ops-topbar{
+    background:#12233D; color:#fff; padding:12px 24px; display:flex; align-items:center; gap:14px;
+  }
+  .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;opacity:.9;}
+  .ops-topbar a:hover{opacity:1;text-decoration:underline;}
+  .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
+
+  .wrap{max-width:1100px;margin:0 auto;padding:32px 24px 70px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 6px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 26px;line-height:1.6;}
+
+  .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:22px;margin-bottom:20px;}
+  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0 0 14px;}
+
+  .form-row{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;}
+  @media(max-width:700px){.form-row{grid-template-columns:1fr;}}
+  .field label{font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:6px;}
+  .field input, .field select{
+    width:100%;padding:9px 10px;border-radius:7px;border:1px solid var(--grid-line-strong);
+    background:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--ink);
+  }
+
+  .btn{
+    appearance:none;border:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-weight:600;
+    font-size:14px;padding:11px 18px;border-radius:8px;display:inline-flex;align-items:center;gap:8px;
+  }
+  .btn-primary{background:var(--amber);color:#3A2405;box-shadow:0 2px 0 var(--amber-deep);}
+  .btn-primary:disabled{background:#D8DEE6;color:#8B98A6;box-shadow:none;cursor:not-allowed;}
+  .btn-ghost{background:transparent;color:var(--blueprint);border:1px solid var(--grid-line-strong);}
+
+  .status{font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);margin-top:12px;}
+  .status.ok{color:var(--success);}
+  .status.err{color:var(--danger);white-space:pre-wrap;}
+
+  .actions{display:flex;align-items:center;gap:12px;margin-top:16px;}
+
+  .table-scroll{max-height:520px;overflow:auto;border:1px solid var(--grid-line-strong);border-radius:8px;}
+  table{border-collapse:collapse;width:100%;font-size:12px;}
+  thead th{
+    position:sticky;top:0;background:var(--blueprint);color:#fff;text-align:left;padding:8px 9px;
+    font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:10.5px;white-space:nowrap;
+    border-right:1px solid rgba(255,255,255,.12);
+  }
+  tbody td{padding:7px 9px;border-bottom:1px solid var(--grid-line);border-right:1px solid var(--grid-line);white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis;}
+  tbody tr:nth-child(even){background:rgba(31,78,121,.025);}
+
+  .hint{
+    margin-top:14px;padding-top:14px;border-top:1px dashed var(--grid-line-strong);
+    font-size:12px;color:var(--muted);line-height:1.6;
+  }
+  code.tag{font-family:'IBM Plex Mono',monospace;background:rgba(31,78,121,.08);color:var(--blueprint);padding:1px 6px;border-radius:4px;font-size:11.5px;}
+</style>
+</head>
+<body>
+<div class="ops-topbar">
+  <a href="/">← Ops Console</a>
+  <span class="crumb">Dự Án / ABI / Lấy Ticket từ ERP</span>
+</div>
+
+<div class="wrap">
+  <h1>Lấy Ticket từ ERP</h1>
+  <p class="sub">Lấy trực tiếp danh sách ticket từ erp.hqsoft.vn (doctype <code class="tag">Ticket</code>) theo project &amp; trạng thái, xem trước rồi xuất Excel để import vào Dashboard Ticket / Ticket Slide.</p>
+
+  <div class="panel">
+    <h2>Bộ lọc</h2>
+    <div class="form-row">
+      <div class="field">
+        <label>PROJECT</label>
+        <input type="text" id="projectInput" value="ABI_eSales_Support" placeholder="ví dụ: ABI_eSales_Support">
+      </div>
+      <div class="field">
+        <label>STATUS (để trống = lấy tất cả)</label>
+        <input type="text" id="statusInput" value="Open" placeholder="ví dụ: Open">
+      </div>
+      <button class="btn btn-primary" id="fetchBtn">⇩ Lấy dữ liệu từ ERP</button>
+    </div>
+    <div class="status" id="statusText"></div>
+  </div>
+
+  <div class="panel" id="resultPanel" style="display:none;">
+    <h2>Kết quả (<span id="rowCount">0</span> ticket)</h2>
+    <div class="table-scroll"><table id="resultTable"><thead><tr id="resultHead"></tr></thead><tbody id="resultBody"></tbody></table></div>
+    <div class="actions">
+      <button class="btn btn-ghost" id="exportBtn">⬇ Xuất Excel</button>
+    </div>
+    <div class="hint">
+      Đây là <b>toàn bộ field thô</b> ERPNext trả về (chưa được map vào đúng cột Hạng mục/Nội dung/Chi tiết/Trạng thái/Hạn/Ghi chú) —
+      xuất Excel rồi anh xem tên cột nào tương ứng với gì, báo lại để em chỉnh mapping tự động cho lần sau khỏi phải làm tay.
+    </div>
+  </div>
+</div>
+
+<script>
+const fetchBtn = document.getElementById('fetchBtn');
+const exportBtn = document.getElementById('exportBtn');
+const statusText = document.getElementById('statusText');
+const resultPanel = document.getElementById('resultPanel');
+const resultHead = document.getElementById('resultHead');
+const resultBody = document.getElementById('resultBody');
+const rowCount = document.getElementById('rowCount');
+
+let lastRows = [];
+
+function setStatus(msg, cls){
+  statusText.textContent = msg;
+  statusText.className = 'status ' + (cls || '');
+}
+
+fetchBtn.addEventListener('click', async () => {
+  const project = document.getElementById('projectInput').value.trim();
+  const status = document.getElementById('statusInput').value.trim();
+  fetchBtn.disabled = true;
+  setStatus('Đang đăng nhập & lấy dữ liệu từ ERP…', '');
+  resultPanel.style.display = 'none';
+
+  try{
+    const qs = new URLSearchParams();
+    if (project) qs.set('project', project);
+    if (status) qs.set('status', status);
+    const res = await fetch('/api/erp/tickets?' + qs.toString(), { credentials:'same-origin' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || ('Lỗi HTTP ' + res.status));
+
+    const rows = Array.isArray(data.data) ? data.data : [];
+    lastRows = rows;
+    renderTable(rows);
+    setStatus(`Xong — lấy được ${rows.length} ticket.`, rows.length ? 'ok' : '');
+    resultPanel.style.display = rows.length ? 'block' : 'none';
+    if (!rows.length) setStatus('Không có ticket nào khớp bộ lọc (kiểm tra lại tên project/status).', 'err');
+  }catch(err){
+    console.error(err);
+    setStatus('Lỗi: ' + err.message, 'err');
+  }finally{
+    fetchBtn.disabled = false;
+  }
+});
+
+function renderTable(rows){
+  if (!rows.length){ resultHead.innerHTML=''; resultBody.innerHTML=''; rowCount.textContent='0'; return; }
+  const cols = Object.keys(rows[0]);
+  resultHead.innerHTML = cols.map(c => `<th>${escapeHtml(c)}</th>`).join('');
+  resultBody.innerHTML = rows.map(r => `<tr>${cols.map(c => `<td title="${escapeHtml(String(r[c] ?? ''))}">${escapeHtml(String(r[c] ?? ''))}</td>`).join('')}</tr>`).join('');
+  rowCount.textContent = String(rows.length);
+}
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+exportBtn.addEventListener('click', () => {
+  if (!lastRows.length) return;
+  const ws = XLSX.utils.json_to_sheet(lastRows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'ERP Tickets');
+  XLSX.writeFile(wb, 'ABI_ERP_Tickets.xlsx');
+});
+</script>
+</body>
+</html>
