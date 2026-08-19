@@ -98,3 +98,35 @@ Module hiện có:
 - **Crs → PAKD và Báo Giá**: mapping file PAKD sang file Estimate (`/`).
 - **Dự Án → ABI → Dashboard Ticket**: upload file Excel ticket, xem dashboard
   tổng hợp + xuất PNG (`/abi/dashboard-ticket`).
+- **Dự Án → ABI → Lấy Ticket từ ERP**: gọi trực tiếp erp.hqsoft.vn lấy ticket
+  theo project/status, xem trước, xuất Excel (`/abi/erp-tickets`).
+- **Dự Án → AnVy → Ticket Slide**: dán/nhập ticket, tự tạo slide + xuất
+  PNG/PPTX (`/anvy/ticket-slide`).
+
+## Kết nối ERP (đăng nhập bằng email/mật khẩu, không cần API key)
+
+Module "Lấy Ticket từ ERP" gọi thẳng erp.hqsoft.vn bằng phiên đăng nhập
+(giống hệt lúc anh bấm nút Login trên web ERP), không cần API Key/Secret hay
+quyền System Manager.
+
+Cấu hình trong `docker-compose.yml`:
+
+| Biến | Ý nghĩa |
+|---|---|
+| `ERP_BASE_URL` | Địa chỉ gốc ERP, mặc định `https://erp.hqsoft.vn` |
+| `ERP_USER` | Email đăng nhập ERP (tài khoản cá nhân hoặc service account) |
+| `ERP_PASS` | Mật khẩu tương ứng |
+
+Server tự đăng nhập lại nếu phiên hết hạn, không cần thao tác gì thêm.
+
+**Lưu ý bảo mật:** mật khẩu ERP được lưu dạng biến môi trường trên server —
+không hiển thị ra trình duyệt, nhưng ai có quyền truy cập server (SSH, đọc
+file `docker-compose.yml`) sẽ thấy được. Nếu có thể, nên dùng một tài khoản
+ERP riêng chỉ có quyền đọc ticket (không phải tài khoản cá nhân có toàn
+quyền), để giảm rủi ro nếu server bị lộ.
+
+**Doctype hiện giả định là `Ticket`** (khớp với URL anh gửi
+`/app/ticket?project=...`). Field trả về hiện là **toàn bộ field thô** của
+ERPNext — chưa map vào đúng cột Hạng mục/Nội dung/Chi tiết/Trạng thái/Hạn/
+Ghi chú vì chưa biết tên field chính xác. Sau khi anh chạy thử và xem được
+dữ liệu thật, báo lại tên field tương ứng để em hoàn thiện mapping tự động.

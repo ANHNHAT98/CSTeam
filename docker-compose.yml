@@ -10,4 +10,9 @@ services:
       - ADMIN_USER=admin
       - ADMIN_PASS=admin123@
       # - COOKIE_SECURE=1   # bat khi da chay sau HTTPS reverse proxy
+
+      # --- Ket noi ERP (dang nhap bang email/mat khau, khong can API key) ---
+      - ERP_BASE_URL=https://erp.hqsoft.vn
+      - ERP_USER=Nhatha
+      - ERP_PASS=eU56^I6$
     restart: unless-stopped

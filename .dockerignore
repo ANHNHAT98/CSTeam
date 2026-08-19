@@ -1,5 +1,4 @@
 node_modules
-db/accounts.json
 npm-debug.log
 .git
 .DS_Store

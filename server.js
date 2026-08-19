@@ -1,6 +1,7 @@
 const path = require('path');
 const express = require('express');
 const session = require('express-session');
+const erp = require('./erpClient');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -54,6 +55,10 @@ function requirePageAuth(req, res, next) {
   if (!req.session.username) return res.redirect('/');
   next();
 }
+function requireAuth(req, res, next) {
+  if (!req.session.username) return res.status(401).json({ error: 'Chưa đăng nhập' });
+  next();
+}
 
 app.get('/abi/dashboard-ticket', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'abi-dashboard-ticket.html'));
@@ -61,6 +66,28 @@ app.get('/abi/dashboard-ticket', requirePageAuth, (req, res) => {
 
 app.get('/anvy/ticket-slide', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'anvy-ticket-slide.html'));
+});
+
+app.get('/abi/erp-tickets', requirePageAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'protected', 'abi-erp-tickets.html'));
+});
+
+/* ---------- API: lấy ticket từ ERPNext (đăng nhập bằng email/mật khẩu) ---------- */
+app.get('/api/erp/tickets', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) {
+    return res.status(501).json({
+      error: 'Server chưa cấu hình kết nối ERP (thiếu ERP_BASE_URL / ERP_USER / ERP_PASS).',
+    });
+  }
+  try {
+    const project = (req.query.project || '').toString().trim();
+    const status = (req.query.status || '').toString().trim();
+    const data = await erp.fetchTickets({ project, status });
+    res.json(data);
+  } catch (e) {
+    console.error('[erp/tickets] lỗi:', e.message);
+    res.status(502).json({ error: e.message });
+  }
 });
 
 /* ---------- static frontend ---------- */
