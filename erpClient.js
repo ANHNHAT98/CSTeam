@@ -116,4 +116,45 @@ function normalizeList(value, { keepNull = false } = {}) {
     .filter((v) => v !== undefined && v !== '');
 }
 
-module.exports = { fetchTickets, isConfigured: () => Boolean(ERP_BASE_URL && ERP_USER && ERP_PASS) };
+/**
+ * Lay danh sach du an (doctype "Project"), loc theo project_type neu co.
+ * Dung cho combobox chon du an o cac man hinh loc theo project (vd Timesheet).
+ */
+async function fetchProjects({ project_type, limit = 500 } = {}) {
+  const filters = [];
+  if (project_type) filters.push(['project_type', '=', project_type]);
+
+  const qs = new URLSearchParams();
+  qs.set('filters', JSON.stringify(filters));
+  qs.set('fields', JSON.stringify(['name', 'project_name', 'status', 'project_type']));
+  qs.set('limit_page_length', String(limit));
+  qs.set('order_by', 'project_name asc');
+
+  return erpFetch(`/api/resource/Project?${qs.toString()}`);
+}
+
+/**
+ * Chay Query Report "Detail Timesheet Report" truc tiep tren ERP (khong can
+ * export file .xlsx thu cong). Query Report khac doctype thuong nen phai goi
+ * qua endpoint frappe.desk.query_report.run, khong phai /api/resource.
+ */
+async function fetchTimesheetReport({ from_date, to_date, project } = {}) {
+  const filters = {};
+  if (from_date) filters.from_date = from_date;
+  if (to_date) filters.to_date = to_date;
+  if (project) filters.project = project;
+
+  const qs = new URLSearchParams();
+  qs.set('report_name', 'Detail Timesheet Report');
+  qs.set('filters', JSON.stringify(filters));
+  qs.set('ignore_prepared_report', '1');
+
+  return erpFetch(`/api/method/frappe.desk.query_report.run?${qs.toString()}`);
+}
+
+module.exports = {
+  fetchTickets,
+  fetchProjects,
+  fetchTimesheetReport,
+  isConfigured: () => Boolean(ERP_BASE_URL && ERP_USER && ERP_PASS),
+};

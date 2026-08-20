@@ -102,6 +102,45 @@ app.get('/api/erp/tickets', requireAuth, async (req, res) => {
   }
 });
 
+/* ---------- API: lấy danh sách dự án từ ERPNext (dùng cho combobox lọc) ----------
+   ?project_type=Change Request  -> lọc theo loại dự án (vd dùng cho màn Crs) */
+app.get('/api/erp/projects', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) {
+    return res.status(501).json({
+      error: 'Server chưa cấu hình kết nối ERP (thiếu ERP_BASE_URL / ERP_USER / ERP_PASS).',
+    });
+  }
+  try {
+    const project_type = req.query.project_type || undefined;
+    const data = await erp.fetchProjects({ project_type });
+    res.json(data);
+  } catch (e) {
+    console.error('[erp/projects] lỗi:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+/* ---------- API: lấy Detail Timesheet Report trực tiếp từ ERPNext ----------
+   ?project=...&from_date=YYYY-MM-DD&to_date=YYYY-MM-DD (cả 3 đều bắt buộc) */
+app.get('/api/erp/timesheet', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) {
+    return res.status(501).json({
+      error: 'Server chưa cấu hình kết nối ERP (thiếu ERP_BASE_URL / ERP_USER / ERP_PASS).',
+    });
+  }
+  const { from_date, to_date, project } = req.query;
+  if (!from_date || !to_date || !project) {
+    return res.status(400).json({ error: 'Thiếu tham số from_date / to_date / project.' });
+  }
+  try {
+    const data = await erp.fetchTimesheetReport({ from_date, to_date, project });
+    res.json(data);
+  } catch (e) {
+    console.error('[erp/timesheet] lỗi:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+
 function parseJsonArrayParam(raw) {
   if (!raw) return [];
   try {

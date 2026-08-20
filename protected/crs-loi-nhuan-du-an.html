@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Crs — Lợi Nhuận Dự Án</title>
+<title>Crs — Lợi Nhuận Crs</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -47,6 +47,22 @@
   .dropzone b{font-size:13.5px;}
   .dropzone p{margin:5px 0 0;color:var(--muted);font-size:11.5px;}
   input[type=file]{display:none;}
+
+  .ts-tabs{display:flex;gap:6px;margin-bottom:10px;}
+  .ts-tab{
+    flex:1;appearance:none;border:1px solid var(--grid-line-strong);background:#fff;color:var(--muted);
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;padding:8px 10px;border-radius:7px;cursor:pointer;
+  }
+  .ts-tab.active{background:var(--blueprint);border-color:var(--blueprint);color:#fff;}
+  .erp-box{border:1.5px dashed var(--grid-line-strong);border-radius:8px;padding:16px;background:repeating-linear-gradient(135deg, rgba(31,78,121,.03) 0 10px, transparent 10px 20px);}
+  .erp-label{display:block;font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.03em;margin:0 0 4px;}
+  .erp-box select, .erp-box input[type=date]{
+    width:100%;padding:8px 9px;border-radius:6px;border:1px solid var(--grid-line-strong);font-size:12.5px;
+    background:#fff;font-family:'IBM Plex Sans',sans-serif;margin-bottom:10px;
+  }
+  .erp-date-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .erp-box .btn{width:100%;justify-content:center;}
+  .erp-box .status{margin-top:8px;margin-bottom:0;}
   .file-pill{
     margin-top:10px;display:none;align-items:center;gap:8px;border:1px solid var(--grid-line-strong);
     border-radius:8px;padding:8px 10px;font-size:12.5px;background:#fbfcfe;
@@ -107,11 +123,11 @@
 <body>
 <div class="ops-topbar">
   <a href="/">← Quay về</a>
-  <span class="crumb">Crs / Lợi Nhuận Dự Án</span>
+  <span class="crumb">Crs / Lợi Nhuận Crs</span>
 </div>
 
 <div class="wrap">
-  <h1>Tính Lợi Nhuận Dự Án</h1>
+  <h1>Tính Lợi Nhuận Crs</h1>
   <p class="sub">Upload file PAKD dự án (khung mẫu HQSOFT) + file Detail Timesheet Report xuất từ ERP → tự động tính chi phí nhân công theo giờ làm thực tế, ra lợi nhuận, xuất Excel gửi sếp. Xử lý hoàn toàn trong trình duyệt, không gửi file lên đâu cả.</p>
 
   <div class="panel">
@@ -126,11 +142,31 @@
         <div class="file-pill" id="pillPakd"><span class="name" id="namePakd"></span><span class="x" id="xPakd">Xóa ✕</span></div>
       </div>
       <div>
-        <div class="dropzone" id="dzTs">
-          <div class="ic">🕒</div><b>Detail Timesheet Report (từ ERP)</b><p>.xlsx — sheet "Query Report"</p>
-          <input type="file" id="fTs" accept=".xlsx">
+        <div class="ts-tabs">
+          <button type="button" class="ts-tab active" id="tsTabUpload">📁 Upload file</button>
+          <button type="button" class="ts-tab" id="tsTabErp">🔌 Lấy trực tiếp từ ERP</button>
         </div>
-        <div class="file-pill" id="pillTs"><span class="name" id="nameTs"></span><span class="x" id="xTs">Xóa ✕</span></div>
+
+        <div class="ts-pane" id="tsPaneUpload">
+          <div class="dropzone" id="dzTs">
+            <div class="ic">🕒</div><b>Detail Timesheet Report (từ ERP)</b><p>.xlsx — sheet "Query Report"</p>
+            <input type="file" id="fTs" accept=".xlsx">
+          </div>
+          <div class="file-pill" id="pillTs"><span class="name" id="nameTs"></span><span class="x" id="xTs">Xóa ✕</span></div>
+        </div>
+
+        <div class="ts-pane" id="tsPaneErp" style="display:none;">
+          <div class="erp-box">
+            <label class="erp-label">Dự án (project_type = Change Request)</label>
+            <select id="erpProjectSelect"><option value="">— đang tải danh sách dự án —</option></select>
+            <div class="erp-date-row">
+              <div><label class="erp-label">Từ ngày</label><input type="date" id="erpFromDate"></div>
+              <div><label class="erp-label">Đến ngày</label><input type="date" id="erpToDate"></div>
+            </div>
+            <button class="btn btn-ghost" id="erpFetchBtn" type="button">⬇ Lấy dữ liệu từ ERP</button>
+            <div class="status" id="erpStatus"></div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="actions">
@@ -180,7 +216,9 @@ const PROFIT_ROW = { revenue: 15, cost: 16, labor: 19, profitBeforeTax: 27, tax:
 const PROFIT_COL = 'E'; // cột "Thực tế"
 
 let pakdWb = null, pakdFileName = '';
-let tsWb = null;
+let tsWb = null;       // workbook khi nạp bằng file .xlsx
+let tsRows = null;     // rows khi lấy trực tiếp qua API ERP (bỏ qua workbook)
+let erpProjectsLoaded = false;
 let tierMap = {};      // designation -> tier label (vd 'Middle')
 let unresolvedDesigs = []; // designation chưa map được, chờ user chọn
 let monthTierHours = {};   // { '2025-07': { Fresher: 80, Senior: 16 } }
@@ -205,7 +243,121 @@ function wireUpload(dzId, inputId, pillId, nameId, xId, onFile){
   }
 }
 function updateParseBtn(){
-  document.getElementById('parseBtn').disabled = !(pakdWb && tsWb);
+  const hasTimesheet = !!tsWb || !!(tsRows && tsRows.length);
+  document.getElementById('parseBtn').disabled = !(pakdWb && hasTimesheet);
+}
+function readTimesheetRows(){
+  return tsWb ? readTimesheet(tsWb).rows : (tsRows || []);
+}
+
+/* ---------- chuyển tab Upload file / Lấy từ ERP ---------- */
+const tsTabUpload = document.getElementById('tsTabUpload');
+const tsTabErp = document.getElementById('tsTabErp');
+const tsPaneUpload = document.getElementById('tsPaneUpload');
+const tsPaneErp = document.getElementById('tsPaneErp');
+
+tsTabUpload.addEventListener('click', () => {
+  tsTabUpload.classList.add('active'); tsTabErp.classList.remove('active');
+  tsPaneUpload.style.display = ''; tsPaneErp.style.display = 'none';
+});
+tsTabErp.addEventListener('click', () => {
+  tsTabErp.classList.add('active'); tsTabUpload.classList.remove('active');
+  tsPaneErp.style.display = ''; tsPaneUpload.style.display = 'none';
+  if (!erpProjectsLoaded) loadErpProjects();
+});
+
+async function loadErpProjects(){
+  const sel = document.getElementById('erpProjectSelect');
+  try{
+    const res = await fetch('/api/erp/projects?project_type=' + encodeURIComponent('Change Request'));
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    const list = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+    if (!list.length){
+      sel.innerHTML = '<option value="">— không tìm thấy dự án nào (Change Request) —</option>';
+      return;
+    }
+    sel.innerHTML = '<option value="">— chọn dự án —</option>' +
+      list.map(p => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.project_name || p.name)}</option>`).join('');
+    erpProjectsLoaded = true;
+  }catch(err){
+    console.error(err);
+    sel.innerHTML = '<option value="">— lỗi tải danh sách dự án —</option>';
+    document.getElementById('erpStatus').textContent = 'Lỗi tải danh sách dự án: ' + err.message;
+    document.getElementById('erpStatus').className = 'status err';
+  }
+}
+
+document.getElementById('erpFetchBtn').addEventListener('click', async () => {
+  const project = document.getElementById('erpProjectSelect').value;
+  const from_date = document.getElementById('erpFromDate').value;
+  const to_date = document.getElementById('erpToDate').value;
+  const statusEl = document.getElementById('erpStatus');
+  if (!project || !from_date || !to_date){
+    statusEl.textContent = 'Chọn đủ dự án + từ ngày + đến ngày trước.';
+    statusEl.className = 'status err';
+    return;
+  }
+  statusEl.textContent = 'Đang lấy dữ liệu từ ERP…';
+  statusEl.className = 'status';
+  try{
+    const qs = new URLSearchParams({ project, from_date, to_date });
+    const res = await fetch('/api/erp/timesheet?' + qs.toString());
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    const rows = parseQueryReportResponse(data);
+    if (!rows.length) throw new Error('ERP trả về nhưng không đọc được dòng dữ liệu nào (kiểm tra lại dự án/khoảng ngày).');
+    tsRows = rows;
+    tsWb = null; // ưu tiên dữ liệu vừa lấy qua API
+    statusEl.textContent = `Đã lấy ${rows.length} dòng timesheet từ ERP (dự án ${project}, ${from_date} → ${to_date}).`;
+    statusEl.className = 'status ok';
+    updateParseBtn();
+  }catch(err){
+    console.error(err);
+    statusEl.textContent = 'Lỗi: ' + err.message;
+    statusEl.className = 'status err';
+  }
+});
+
+/* Query Report tra ve dang { message: { columns, result } } (hoac khong wrap "message"
+   tuy version ERPNext). result co the la mang cac mang (khop thu tu columns) hoac mang
+   cac object (khop theo fieldname) — ham nay xu ly ca 2 truong hop. */
+function parseQueryReportResponse(data){
+  const payload = data.message || data;
+  const columns = payload.columns || [];
+  const result = payload.result || [];
+  const labelOf = c => (typeof c === 'string' ? c : (c.label || c.fieldname || ''));
+  const fieldOf = c => (typeof c === 'string' ? c : (c.fieldname || c.label || ''));
+
+  const desigIdx = columns.findIndex(c => labelOf(c).trim() === 'Designation');
+  const hoursIdx = columns.findIndex(c => labelOf(c).trim() === 'Hours');
+  const ftIdx = columns.findIndex(c => labelOf(c).trim() === 'From Time');
+
+  const rows = [];
+  result.forEach(r => {
+    let desig, hours, ft;
+    if (Array.isArray(r)){
+      if (String(r[0] ?? '').trim() === 'Total') return;
+      desig = desigIdx >= 0 ? r[desigIdx] : null;
+      hours = hoursIdx >= 0 ? Number(r[hoursIdx]) || 0 : 0;
+      ft = ftIdx >= 0 ? r[ftIdx] : null;
+    } else if (r && typeof r === 'object'){
+      const desigField = desigIdx >= 0 ? fieldOf(columns[desigIdx]) : 'designation';
+      const hoursField = hoursIdx >= 0 ? fieldOf(columns[hoursIdx]) : 'hours';
+      const ftField = ftIdx >= 0 ? fieldOf(columns[ftIdx]) : 'from_time';
+      if (String(r.designation ?? Object.values(r)[0] ?? '').trim() === 'Total') return;
+      desig = r[desigField] ?? r.designation;
+      hours = Number(r[hoursField] ?? r.hours) || 0;
+      ft = r[ftField] ?? r.from_time;
+    } else {
+      return;
+    }
+    if (!desig || !hours || !ft) return;
+    const d = (ft instanceof Date) ? ft : new Date(ft);
+    if (isNaN(d.getTime())) return;
+    rows.push({ designation: String(desig).trim(), hours, monthKey: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` });
+  });
+  return rows;
 }
 function setStatus(msg, cls){
   const el = document.getElementById('statusText');
@@ -219,6 +371,7 @@ wireUpload('dzPakd','fPakd','pillPakd','namePakd','xPakd', (file)=>{
 });
 wireUpload('dzTs','fTs','pillTs','nameTs','xTs', (file)=>{
   if (!file){ tsWb=null; return; }
+  tsRows = null; // ưu tiên dữ liệu file vừa upload, bỏ dữ liệu lấy qua API (nếu có)
   readWorkbook(file).then(wb => { tsWb = wb; updateParseBtn(); });
 });
 
@@ -241,8 +394,8 @@ document.getElementById('parseBtn').addEventListener('click', () => {
   try{
     setStatus('Đang đọc dữ liệu…','');
     rateTable = readRateTable(pakdWb);
-    const { rows } = readTimesheet(tsWb);
-    if (!rows.length) throw new Error('Không đọc được dòng dữ liệu nào từ file Timesheet (kiểm tra lại có đúng sheet "Query Report" không).');
+    const rows = readTimesheetRows();
+    if (!rows.length) throw new Error('Không đọc được dòng dữ liệu nào từ Timesheet (kiểm tra lại file/khoảng ngày-dự án đã chọn).');
 
     const { tiers, unresolved } = detectTiers(rows);
     tierMap = tiers;
@@ -353,8 +506,7 @@ document.getElementById('confirmMappingBtn').addEventListener('click', () => {
   });
   if (!ok){ setStatus('Còn chức danh chưa chọn cấp bậc — chọn hết rồi bấm lại.', 'err'); return; }
   document.getElementById('mappingPanel').style.display = 'none';
-  const { rows } = readTimesheet(tsWb);
-  runCalculation(rows);
+  runCalculation(readTimesheetRows());
 });
 
 /* ---------- Bước 3: tính toán & hiển thị ---------- */

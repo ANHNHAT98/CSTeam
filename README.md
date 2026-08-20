@@ -96,7 +96,7 @@ estimate-mapper-server/
 
 Module hiện có:
 - **Crs → PAKD và Báo Giá**: mapping file PAKD sang file Estimate (`/`).
-- **Crs → Lợi Nhuận Dự Án**: upload file PAKD + Detail Timesheet Report từ
+- **Crs → Lợi Nhuận Crs**: upload file PAKD + Detail Timesheet Report từ
   ERP → tự tính chi phí nhân công theo giờ làm thực tế, ra lợi nhuận, xuất
   Excel gửi sếp (`/crs/loi-nhuan-du-an`).
 - **Dự Án → ABI → Dashboard Ticket**: upload file Excel ticket, xem dashboard
