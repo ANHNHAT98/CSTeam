@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crs — Lợi Nhuận Dự Án</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#12233D; --blueprint:#1F4E79; --blueprint-deep:#0F2138;
+    --paper:#EEF2F6; --panel:#FFFFFF;
+    --grid-line:rgba(31,78,121,.14); --grid-line-strong:rgba(31,78,121,.28);
+    --amber:#E8A33D; --amber-deep:#C9821F;
+    --success:#3F7D58; --danger:#B23A48; --warn:#B8860B; --muted:#5B7089; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans',sans-serif;
+    background-image:linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size:32px 32px; min-height:100vh;
+  }
+  .ops-topbar{background:#12233D;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:14px;}
+  .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;opacity:.9;}
+  .ops-topbar a:hover{opacity:1;text-decoration:underline;}
+  .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
+
+  .wrap{max-width:1160px;margin:0 auto;padding:32px 24px 80px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 6px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 26px;line-height:1.6;}
+
+  .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:22px;margin-bottom:20px;}
+  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0 0 4px;}
+  .panel .panel-sub{color:var(--muted);font-size:12px;margin:0 0 16px;}
+
+  .upload-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media(max-width:760px){.upload-row{grid-template-columns:1fr;}}
+  .dropzone{
+    border:1.5px dashed var(--grid-line-strong);border-radius:8px;padding:22px 16px;text-align:center;cursor:pointer;
+    background:repeating-linear-gradient(135deg, rgba(31,78,121,.03) 0 10px, transparent 10px 20px);
+  }
+  .dropzone:hover,.dropzone.drag{border-color:var(--blueprint);background:rgba(31,78,121,.05);}
+  .dropzone .ic{font-size:20px;margin-bottom:6px;}
+  .dropzone b{font-size:13.5px;}
+  .dropzone p{margin:5px 0 0;color:var(--muted);font-size:11.5px;}
+  input[type=file]{display:none;}
+  .file-pill{
+    margin-top:10px;display:none;align-items:center;gap:8px;border:1px solid var(--grid-line-strong);
+    border-radius:8px;padding:8px 10px;font-size:12.5px;background:#fbfcfe;
+  }
+  .file-pill.show{display:flex;}
+  .file-pill .name{font-family:'IBM Plex Mono',monospace;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .file-pill .x{cursor:pointer;color:var(--muted);font-weight:600;}
+
+  .btn{
+    appearance:none;border:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-weight:600;
+    font-size:14px;padding:11px 18px;border-radius:8px;display:inline-flex;align-items:center;gap:8px;
+  }
+  .btn-primary{background:var(--amber);color:#3A2405;box-shadow:0 2px 0 var(--amber-deep);}
+  .btn-primary:disabled{background:#D8DEE6;color:#8B98A6;box-shadow:none;cursor:not-allowed;}
+  .btn-ghost{background:transparent;color:var(--blueprint);border:1px solid var(--grid-line-strong);}
+  .actions{display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap;}
+
+  .status{font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);margin-top:10px;white-space:pre-wrap;}
+  .status.ok{color:var(--success);}
+  .status.err{color:var(--danger);}
+
+  .mapping-row{
+    display:flex;align-items:center;gap:12px;padding:9px 10px;border:1px solid var(--grid-line-strong);
+    border-radius:7px;margin-bottom:8px;background:#fffaf0;
+  }
+  .mapping-row .desig{font-family:'IBM Plex Mono',monospace;font-size:12.5px;flex:1;}
+  .mapping-row .hrs{font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+  .mapping-row select{
+    padding:7px 9px;border-radius:6px;border:1px solid var(--grid-line-strong);font-size:12.5px;background:#fff;
+  }
+
+  table{border-collapse:collapse;width:100%;font-size:12.5px;}
+  thead th{
+    background:var(--blueprint);color:#fff;text-align:left;padding:8px 10px;
+    font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:10.5px;white-space:nowrap;
+  }
+  tbody td{padding:7px 10px;border-bottom:1px solid var(--grid-line);}
+  tbody tr:nth-child(even){background:rgba(31,78,121,.025);}
+  td.num{font-family:'IBM Plex Mono',monospace;text-align:right;}
+  tfoot td{font-family:'IBM Plex Mono',monospace;font-weight:700;background:#fbfcfe;border-top:2px solid var(--grid-line-strong);}
+
+  .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px;}
+  @media(max-width:700px){.summary-grid{grid-template-columns:1fr;}}
+  .summary-card{border:1px solid var(--grid-line-strong);border-radius:8px;padding:16px;background:#fbfcfe;}
+  .summary-card .label{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+  .summary-card .value{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;margin-top:6px;}
+  .summary-card.highlight{background:rgba(63,125,88,.07);border-color:var(--success);}
+  .summary-card.highlight .value{color:var(--success);}
+  .summary-card .note{font-size:11px;color:var(--muted);margin-top:4px;}
+
+  .warn-box{
+    background:rgba(184,134,11,.08);border:1px solid rgba(184,134,11,.4);border-radius:8px;
+    padding:12px 14px;font-size:12.5px;color:var(--warn);margin-bottom:14px;line-height:1.6;
+  }
+  code.tag{font-family:'IBM Plex Mono',monospace;background:rgba(31,78,121,.08);color:var(--blueprint);padding:1px 6px;border-radius:4px;font-size:11.5px;}
+</style>
+</head>
+<body>
+<div class="ops-topbar">
+  <a href="/">← Quay về</a>
+  <span class="crumb">Crs / Lợi Nhuận Dự Án</span>
+</div>
+
+<div class="wrap">
+  <h1>Tính Lợi Nhuận Dự Án</h1>
+  <p class="sub">Upload file PAKD dự án (khung mẫu HQSOFT) + file Detail Timesheet Report xuất từ ERP → tự động tính chi phí nhân công theo giờ làm thực tế, ra lợi nhuận, xuất Excel gửi sếp. Xử lý hoàn toàn trong trình duyệt, không gửi file lên đâu cả.</p>
+
+  <div class="panel">
+    <h2>Bước 1 — Nạp 2 file</h2>
+    <div class="panel-sub">File PAKD phải có sheet <code class="tag">Monitor</code> (bảng đơn giá theo cấp bậc) và 1 sheet chứa chữ "PAKD" (bảng Doanh thu/Chi phí/Lợi nhuận).</div>
+    <div class="upload-row">
+      <div>
+        <div class="dropzone" id="dzPakd">
+          <div class="ic">📊</div><b>File PAKD dự án</b><p>.xlsx — ví dụ MerapLion_PL08_PAKD.xlsx</p>
+          <input type="file" id="fPakd" accept=".xlsx">
+        </div>
+        <div class="file-pill" id="pillPakd"><span class="name" id="namePakd"></span><span class="x" id="xPakd">Xóa ✕</span></div>
+      </div>
+      <div>
+        <div class="dropzone" id="dzTs">
+          <div class="ic">🕒</div><b>Detail Timesheet Report (từ ERP)</b><p>.xlsx — sheet "Query Report"</p>
+          <input type="file" id="fTs" accept=".xlsx">
+        </div>
+        <div class="file-pill" id="pillTs"><span class="name" id="nameTs"></span><span class="x" id="xTs">Xóa ✕</span></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="parseBtn" disabled>⚙ Đọc &amp; đối chiếu dữ liệu</button>
+    </div>
+    <div class="status" id="statusText"></div>
+  </div>
+
+  <div class="panel" id="mappingPanel" style="display:none;">
+    <h2>Bước 2 — Xác nhận cấp bậc chưa nhận diện được</h2>
+    <div class="panel-sub">Các chức danh dưới đây không khớp tiền tố chuẩn (Fresher/Junior/Middle/Senior) — chọn đúng cấp bậc đơn giá trước khi tính.</div>
+    <div id="mappingList"></div>
+    <div class="actions">
+      <button class="btn btn-primary" id="confirmMappingBtn">✓ Xác nhận &amp; Tính lợi nhuận</button>
+    </div>
+  </div>
+
+  <div class="panel" id="resultPanel" style="display:none;">
+    <h2>Bước 3 — Kết quả</h2>
+    <div class="warn-box" id="deltaWarn" style="display:none;"></div>
+
+    <table id="breakdownTable">
+      <thead><tr id="breakdownHead"></tr></thead>
+      <tbody id="breakdownBody"></tbody>
+      <tfoot><tr id="breakdownFoot"></tr></tfoot>
+    </table>
+
+    <div class="summary-grid">
+      <div class="summary-card"><div class="label">Doanh thu thuần</div><div class="value" id="sumRevenue">—</div></div>
+      <div class="summary-card"><div class="label">Chi phí nhân công (ERP)</div><div class="value" id="sumLabor">—</div></div>
+      <div class="summary-card"><div class="label">Tổng chi phí</div><div class="value" id="sumCost">—</div></div>
+      <div class="summary-card highlight"><div class="label">Lợi nhuận sau thuế</div><div class="value" id="sumProfit">—</div><div class="note" id="sumProfitPct">—</div></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-ghost" id="exportBtn">⬇ Xuất file PAKD đã cập nhật</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ Cấu hình cố định theo template HQSOFT ============ */
+const TIER_KEYWORDS = ['Fresher','Junior','Middle','Senior']; // nhận diện qua tiền tố Designation
+const RATE_SHEET_NAME = 'Monitor';
+const RATE_ROW_START = 2, RATE_ROW_END = 11; // Monitor!J2:K11
+const PROFIT_ROW = { revenue: 15, cost: 16, labor: 19, profitBeforeTax: 27, tax: 28, profitAfterTax: 29, profitPct: 30 };
+const PROFIT_COL = 'E'; // cột "Thực tế"
+
+let pakdWb = null, pakdFileName = '';
+let tsWb = null;
+let tierMap = {};      // designation -> tier label (vd 'Middle')
+let unresolvedDesigs = []; // designation chưa map được, chờ user chọn
+let monthTierHours = {};   // { '2025-07': { Fresher: 80, Senior: 16 } }
+let rateTable = {};        // { Fresher: 100000, Junior: 150000, ... }
+let calcResult = null;
+
+/* ---------- upload UI (dùng chung cho 2 dropzone) ---------- */
+function wireUpload(dzId, inputId, pillId, nameId, xId, onFile){
+  const dz = document.getElementById(dzId), input = document.getElementById(inputId);
+  const pill = document.getElementById(pillId), nameEl = document.getElementById(nameId), xEl = document.getElementById(xId);
+  dz.addEventListener('click', ()=>input.click());
+  ['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('drag');}));
+  ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('drag');}));
+  dz.addEventListener('drop', e=>{ const f=e.dataTransfer.files[0]; if (f) handle(f); });
+  input.addEventListener('change', e=>{ const f=e.target.files[0]; if (f) handle(f); });
+  xEl.addEventListener('click', (e)=>{ e.stopPropagation(); pill.classList.remove('show'); input.value=''; onFile(null); updateParseBtn(); });
+  function handle(f){
+    nameEl.textContent = f.name;
+    pill.classList.add('show');
+    onFile(f);
+    updateParseBtn();
+  }
+}
+function updateParseBtn(){
+  document.getElementById('parseBtn').disabled = !(pakdWb && tsWb);
+}
+function setStatus(msg, cls){
+  const el = document.getElementById('statusText');
+  el.textContent = msg; el.className = 'status ' + (cls||'');
+}
+
+wireUpload('dzPakd','fPakd','pillPakd','namePakd','xPakd', (file)=>{
+  if (!file){ pakdWb=null; return; }
+  pakdFileName = file.name;
+  readWorkbook(file).then(wb => { pakdWb = wb; updateParseBtn(); });
+});
+wireUpload('dzTs','fTs','pillTs','nameTs','xTs', (file)=>{
+  if (!file){ tsWb=null; return; }
+  readWorkbook(file).then(wb => { tsWb = wb; updateParseBtn(); });
+});
+
+function readWorkbook(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = e => {
+      try{
+        const data = new Uint8Array(e.target.result);
+        resolve(XLSX.read(data, {type:'array', cellDates:true}));
+      }catch(err){ reject(err); }
+    };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/* ---------- Bước 1: đọc & đối chiếu ---------- */
+document.getElementById('parseBtn').addEventListener('click', () => {
+  try{
+    setStatus('Đang đọc dữ liệu…','');
+    rateTable = readRateTable(pakdWb);
+    const { rows } = readTimesheet(tsWb);
+    if (!rows.length) throw new Error('Không đọc được dòng dữ liệu nào từ file Timesheet (kiểm tra lại có đúng sheet "Query Report" không).');
+
+    const { tiers, unresolved } = detectTiers(rows);
+    tierMap = tiers;
+    unresolvedDesigs = unresolved;
+
+    if (unresolved.length){
+      renderMappingPanel(unresolved, rows);
+      document.getElementById('mappingPanel').style.display = 'block';
+      document.getElementById('resultPanel').style.display = 'none';
+      setStatus(`Đã đọc ${rows.length} dòng timesheet — còn ${unresolved.length} chức danh cần xác nhận cấp bậc bên dưới.`, 'ok');
+    } else {
+      document.getElementById('mappingPanel').style.display = 'none';
+      runCalculation(rows);
+    }
+  }catch(err){
+    console.error(err);
+    setStatus('Lỗi: ' + err.message, 'err');
+  }
+});
+
+function readRateTable(wb){
+  const ws = wb.Sheets[RATE_SHEET_NAME];
+  if (!ws) throw new Error(`File PAKD không có sheet "${RATE_SHEET_NAME}" (bảng đơn giá).`);
+  const table = {};
+  for (let r = RATE_ROW_START; r <= RATE_ROW_END; r++){
+    const label = ws[`J${r}`] ? ws[`J${r}`].v : null;
+    const rate = ws[`K${r}`] ? ws[`K${r}`].v : null;
+    if (label && typeof rate === 'number') table[String(label).trim()] = rate;
+  }
+  if (!Object.keys(table).length) throw new Error('Không đọc được bảng đơn giá ở Monitor!J2:K11 — kiểm tra lại cấu trúc file PAKD.');
+  return table;
+}
+
+function findHeaderRow(aoa){
+  for (let r=0; r<Math.min(aoa.length,10); r++){
+    const row = (aoa[r]||[]).map(v => String(v||'').trim());
+    if (row.includes('Designation') && row.includes('Hours')) return r;
+  }
+  return -1;
+}
+
+function readTimesheet(wb){
+  const sheetName = wb.SheetNames.includes('Query Report') ? 'Query Report' : wb.SheetNames[0];
+  const ws = wb.Sheets[sheetName];
+  const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true});
+  const headerRowIdx = findHeaderRow(aoa);
+  if (headerRowIdx === -1) throw new Error('Không tìm thấy dòng tiêu đề có cột "Designation" và "Hours" trong file Timesheet.');
+  const header = aoa[headerRowIdx].map(v => String(v||'').trim());
+  const idx = {
+    designation: header.indexOf('Designation'),
+    hours: header.indexOf('Hours'),
+    fromTime: header.indexOf('From Time'),
+  };
+  const rows = [];
+  for (let r = headerRowIdx+1; r < aoa.length; r++){
+    const row = aoa[r];
+    if (!row || row[0] == null) continue;
+    if (String(row[0]).trim() === 'Total') continue; // dòng tổng cuối report
+    const desig = idx.designation>=0 ? row[idx.designation] : null;
+    const hours = idx.hours>=0 ? Number(row[idx.hours])||0 : 0;
+    const ft = idx.fromTime>=0 ? row[idx.fromTime] : null;
+    if (!desig || !hours || !ft) continue;
+    const d = (ft instanceof Date) ? ft : new Date(ft);
+    if (isNaN(d.getTime())) continue;
+    rows.push({ designation: String(desig).trim(), hours, monthKey: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` });
+  }
+  return { rows };
+}
+
+function detectTiers(rows){
+  const uniqueDesigs = [...new Set(rows.map(r=>r.designation))];
+  const tiers = {};
+  const unresolved = [];
+  uniqueDesigs.forEach(d=>{
+    const found = TIER_KEYWORDS.find(kw => d.startsWith(kw));
+    if (found) tiers[d] = found;
+    else unresolved.push(d);
+  });
+  return { tiers, unresolved };
+}
+
+/* ---------- Bước 2: xác nhận cấp bậc còn thiếu ---------- */
+function renderMappingPanel(unresolved, rows){
+  const hoursByDesig = {};
+  rows.forEach(r => { hoursByDesig[r.designation] = (hoursByDesig[r.designation]||0) + r.hours; });
+
+  const rateOptions = Object.keys(rateTable);
+  const wrap = document.getElementById('mappingList');
+  wrap.innerHTML = unresolved.map(d => `
+    <div class="mapping-row" data-desig="${escapeHtml(d)}">
+      <span class="desig">${escapeHtml(d)}</span>
+      <span class="hrs">${(hoursByDesig[d]||0)} giờ</span>
+      <select class="tierSelect">
+        <option value="">— chọn cấp bậc —</option>
+        ${rateOptions.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)} (${formatVnd(rateTable[o])}/h)</option>`).join('')}
+      </select>
+    </div>`).join('');
+}
+
+document.getElementById('confirmMappingBtn').addEventListener('click', () => {
+  const rowsEl = document.querySelectorAll('#mappingList .mapping-row');
+  let ok = true;
+  rowsEl.forEach(row => {
+    const desig = row.dataset.desig;
+    const val = row.querySelector('.tierSelect').value;
+    if (!val){ ok = false; row.style.borderColor = 'var(--danger)'; }
+    else { tierMap[desig] = val; row.style.borderColor = 'var(--grid-line-strong)'; }
+  });
+  if (!ok){ setStatus('Còn chức danh chưa chọn cấp bậc — chọn hết rồi bấm lại.', 'err'); return; }
+  document.getElementById('mappingPanel').style.display = 'none';
+  const { rows } = readTimesheet(tsWb);
+  runCalculation(rows);
+});
+
+/* ---------- Bước 3: tính toán & hiển thị ---------- */
+function runCalculation(rows){
+  monthTierHours = {};
+  rows.forEach(r => {
+    const tier = tierMap[r.designation];
+    if (!tier) return;
+    if (!monthTierHours[r.monthKey]) monthTierHours[r.monthKey] = {};
+    monthTierHours[r.monthKey][tier] = (monthTierHours[r.monthKey][tier]||0) + r.hours;
+  });
+
+  const months = Object.keys(monthTierHours).sort();
+  const tiersUsed = [...new Set(Object.values(tierMap))].filter(t => rateTable[t] !== undefined);
+
+  let totalLabor = 0;
+  const monthRows = months.map(m => {
+    const hoursObj = monthTierHours[m];
+    let costMonth = 0;
+    const cells = tiersUsed.map(t => {
+      const h = hoursObj[t] || 0;
+      costMonth += h * (rateTable[t]||0);
+      return h;
+    });
+    totalLabor += costMonth;
+    return { month: m, cells, cost: costMonth };
+  });
+
+  const profitSheetName = findProfitSheet(pakdWb);
+  const ws = pakdWb.Sheets[profitSheetName];
+  const getVal = (row) => { const c = ws[`${PROFIT_COL}${row}`]; return c ? Number(c.v)||0 : 0; };
+
+  const revenue = getVal(PROFIT_ROW.revenue);
+  const fixedCostRows = [17,18,20,21,22,23,24,25,26];
+  let otherCost = 0;
+  fixedCostRows.forEach(r => { otherCost += getVal(r); });
+  const totalCost = otherCost + totalLabor;
+  const profitBeforeTax = revenue - totalCost;
+  const tax = profitBeforeTax * 0.2;
+  const profitAfterTax = profitBeforeTax - tax;
+  const profitPct = revenue ? profitAfterTax / revenue : 0;
+
+  const oldLabor = getVal(PROFIT_ROW.labor);
+
+  calcResult = { months, tiersUsed, monthRows, totalLabor, revenue, otherCost, totalCost,
+                 profitBeforeTax, tax, profitAfterTax, profitPct, oldLabor, profitSheetName };
+
+  renderResult(calcResult);
+}
+
+function findProfitSheet(wb){
+  if (wb.SheetNames.includes('PAKD (MERAP REP)')) return 'PAKD (MERAP REP)';
+  const found = wb.SheetNames.find(n => n.toUpperCase().includes('PAKD') && n !== 'PAKD');
+  if (found) return found;
+  if (wb.SheetNames.includes('PAKD')) return 'PAKD';
+  throw new Error('Không tìm thấy sheet báo cáo Doanh thu/Chi phí/Lợi nhuận (tên có chứa "PAKD") trong file.');
+}
+
+function renderResult(res){
+  const head = document.getElementById('breakdownHead');
+  head.innerHTML = '<th>Tháng</th>' + res.tiersUsed.map(t=>`<th>${t} (giờ)</th>`).join('') + '<th>Chi phí tháng</th>';
+
+  const body = document.getElementById('breakdownBody');
+  body.innerHTML = res.monthRows.map(r => `
+    <tr><td>${r.month}</td>${r.cells.map(h=>`<td class="num">${h?h:''}</td>`).join('')}<td class="num">${formatVnd(r.cost)}</td></tr>
+  `).join('');
+
+  const foot = document.getElementById('breakdownFoot');
+  foot.innerHTML = `<td>Tổng</td>${res.tiersUsed.map(()=>'<td></td>').join('')}<td class="num">${formatVnd(res.totalLabor)}</td>`;
+
+  document.getElementById('sumRevenue').textContent = formatVnd(res.revenue);
+  document.getElementById('sumLabor').textContent = formatVnd(res.totalLabor);
+  document.getElementById('sumCost').textContent = formatVnd(res.totalCost);
+  document.getElementById('sumProfit').textContent = formatVnd(res.profitAfterTax);
+  document.getElementById('sumProfitPct').textContent = `${(res.profitPct*100).toFixed(2)}% doanh thu thuần (ngưỡng tối thiểu 27%)`;
+
+  const deltaBox = document.getElementById('deltaWarn');
+  const diff = res.totalLabor - res.oldLabor;
+  if (Math.abs(diff) > 1000){
+    deltaBox.style.display = 'block';
+    deltaBox.textContent = `⚠ Chi phí nhân công tính từ ERP (${formatVnd(res.totalLabor)}) khác với số đang lưu trong file (${formatVnd(res.oldLabor)}), chênh lệch ${formatVnd(Math.abs(diff))}. Nên rà soát lại trước khi gửi số này cho sếp.`;
+  } else {
+    deltaBox.style.display = 'none';
+  }
+
+  document.getElementById('resultPanel').style.display = 'block';
+  setStatus('Tính xong.', 'ok');
+}
+
+function formatVnd(n){
+  return Math.round(n).toLocaleString('vi-VN') + 'đ';
+}
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ---------- Xuất file Excel đã cập nhật ---------- */
+document.getElementById('exportBtn').addEventListener('click', () => {
+  if (!calcResult) return;
+  const res = calcResult;
+
+  const sheetName = 'Monitor (ERP Auto)';
+  const aoa = [];
+  aoa.push(['CHI PHÍ NHÂN CÔNG — TỰ ĐỘNG TỪ TIMESHEET ERP']);
+  aoa.push([`Nguồn: Detail Timesheet Report — tính lúc ${new Date().toLocaleString('vi-VN')}`]);
+  aoa.push(['Tháng', ...res.tiersUsed.map(t=>`${t} (giờ)`), 'Chi phí tháng (VNĐ)']);
+  res.monthRows.forEach(r => aoa.push([r.month, ...r.cells, r.cost]));
+  const totalRowIdx = aoa.length; // 0-based, sẽ là dòng "Tổng"
+  aoa.push(['TỔNG CHI PHÍ NHÂN CÔNG', ...res.tiersUsed.map(()=>''), res.totalLabor]);
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const costColLetter = XLSX.utils.encode_col(res.tiersUsed.length + 1);
+  ws['!cols'] = [{wch:12}, ...res.tiersUsed.map(()=>({wch:13})), {wch:20}];
+
+  const newWb = XLSX.utils.book_new();
+  // copy tất cả sheet gốc sang workbook mới rồi thêm sheet mới, để giữ nguyên toàn bộ dữ liệu/công thức cũ
+  pakdWb.SheetNames.forEach(name => {
+    XLSX.utils.book_append_sheet(newWb, pakdWb.Sheets[name], name);
+  });
+  XLSX.utils.book_append_sheet(newWb, ws, sheetName);
+
+  const totalCellRef = `${costColLetter}${totalRowIdx+1}`;
+  const profitWs = newWb.Sheets[res.profitSheetName];
+  const e19 = `${PROFIT_COL}${PROFIT_ROW.labor}`;
+  profitWs[e19] = { t:'n', f: `'${sheetName}'!${totalCellRef}`, v: res.totalLabor };
+
+  const outName = pakdFileName.replace(/\.xlsx$/i, '') + '_LoiNhuan.xlsx';
+  XLSX.writeFile(newWb, outName);
+});
+</script>
+</body>
+</html>
