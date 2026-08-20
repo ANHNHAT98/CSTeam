@@ -112,7 +112,8 @@ app.get('/api/erp/projects', requireAuth, async (req, res) => {
   }
   try {
     const project_type = req.query.project_type || undefined;
-    const data = await erp.fetchProjects({ project_type });
+    const project_owner = parseJsonArrayParam(req.query.project_owner);
+    const data = await erp.fetchProjects({ project_type, project_owner });
     res.json(data);
   } catch (e) {
     console.error('[erp/projects] lỗi:', e.message);

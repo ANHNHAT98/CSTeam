@@ -120,13 +120,17 @@ function normalizeList(value, { keepNull = false } = {}) {
  * Lay danh sach du an (doctype "Project"), loc theo project_type neu co.
  * Dung cho combobox chon du an o cac man hinh loc theo project (vd Timesheet).
  */
-async function fetchProjects({ project_type, limit = 500 } = {}) {
+async function fetchProjects({ project_type, project_owner, limit = 500 } = {}) {
   const filters = [];
   if (project_type) filters.push(['project_type', '=', project_type]);
 
+  const ownerList = normalizeList(project_owner);
+  if (ownerList.length === 1) filters.push(['project_owner', '=', ownerList[0]]);
+  else if (ownerList.length > 1) filters.push(['project_owner', 'in', ownerList]);
+
   const qs = new URLSearchParams();
   qs.set('filters', JSON.stringify(filters));
-  qs.set('fields', JSON.stringify(['name', 'project_name', 'status', 'project_type']));
+  qs.set('fields', JSON.stringify(['name', 'project_name', 'status', 'project_type', 'project_owner']));
   qs.set('limit_page_length', String(limit));
   qs.set('order_by', 'project_name asc');
 

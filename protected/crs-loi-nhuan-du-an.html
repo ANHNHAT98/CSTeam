@@ -131,44 +131,43 @@
   <p class="sub">Upload file PAKD dự án (khung mẫu HQSOFT) + file Detail Timesheet Report xuất từ ERP → tự động tính chi phí nhân công theo giờ làm thực tế, ra lợi nhuận, xuất Excel gửi sếp. Xử lý hoàn toàn trong trình duyệt, không gửi file lên đâu cả.</p>
 
   <div class="panel">
-    <h2>Bước 1 — Nạp 2 file</h2>
-    <div class="panel-sub">File PAKD phải có sheet <code class="tag">Monitor</code> (bảng đơn giá theo cấp bậc) và 1 sheet chứa chữ "PAKD" (bảng Doanh thu/Chi phí/Lợi nhuận).</div>
-    <div class="upload-row">
-      <div>
-        <div class="dropzone" id="dzPakd">
-          <div class="ic">📊</div><b>File PAKD dự án</b><p>.xlsx — ví dụ MerapLion_PL08_PAKD.xlsx</p>
-          <input type="file" id="fPakd" accept=".xlsx">
-        </div>
-        <div class="file-pill" id="pillPakd"><span class="name" id="namePakd"></span><span class="x" id="xPakd">Xóa ✕</span></div>
+    <h2>Bước 1 — Lấy Timesheet</h2>
+    <div class="panel-sub">Upload file Detail Timesheet Report (.xlsx, sheet "Query Report") hoặc lấy trực tiếp từ ERP theo dự án + khoảng ngày.</div>
+    <div class="ts-tabs">
+      <button type="button" class="ts-tab active" id="tsTabUpload">📁 Upload file</button>
+      <button type="button" class="ts-tab" id="tsTabErp">🔌 Lấy trực tiếp từ ERP</button>
+    </div>
+
+    <div class="ts-pane" id="tsPaneUpload">
+      <div class="dropzone" id="dzTs">
+        <div class="ic">🕒</div><b>Detail Timesheet Report (từ ERP)</b><p>.xlsx — sheet "Query Report"</p>
+        <input type="file" id="fTs" accept=".xlsx">
       </div>
-      <div>
-        <div class="ts-tabs">
-          <button type="button" class="ts-tab active" id="tsTabUpload">📁 Upload file</button>
-          <button type="button" class="ts-tab" id="tsTabErp">🔌 Lấy trực tiếp từ ERP</button>
-        </div>
+      <div class="file-pill" id="pillTs"><span class="name" id="nameTs"></span><span class="x" id="xTs">Xóa ✕</span></div>
+    </div>
 
-        <div class="ts-pane" id="tsPaneUpload">
-          <div class="dropzone" id="dzTs">
-            <div class="ic">🕒</div><b>Detail Timesheet Report (từ ERP)</b><p>.xlsx — sheet "Query Report"</p>
-            <input type="file" id="fTs" accept=".xlsx">
-          </div>
-          <div class="file-pill" id="pillTs"><span class="name" id="nameTs"></span><span class="x" id="xTs">Xóa ✕</span></div>
+    <div class="ts-pane" id="tsPaneErp" style="display:none;">
+      <div class="erp-box">
+        <label class="erp-label">Dự án (Change Request — team Crs)</label>
+        <select id="erpProjectSelect"><option value="">— đang tải danh sách dự án —</option></select>
+        <div class="erp-date-row">
+          <div><label class="erp-label">Từ ngày</label><input type="date" id="erpFromDate"></div>
+          <div><label class="erp-label">Đến ngày</label><input type="date" id="erpToDate"></div>
         </div>
-
-        <div class="ts-pane" id="tsPaneErp" style="display:none;">
-          <div class="erp-box">
-            <label class="erp-label">Dự án (project_type = Change Request)</label>
-            <select id="erpProjectSelect"><option value="">— đang tải danh sách dự án —</option></select>
-            <div class="erp-date-row">
-              <div><label class="erp-label">Từ ngày</label><input type="date" id="erpFromDate"></div>
-              <div><label class="erp-label">Đến ngày</label><input type="date" id="erpToDate"></div>
-            </div>
-            <button class="btn btn-ghost" id="erpFetchBtn" type="button">⬇ Lấy dữ liệu từ ERP</button>
-            <div class="status" id="erpStatus"></div>
-          </div>
-        </div>
+        <button class="btn btn-ghost" id="erpFetchBtn" type="button">⬇ Lấy dữ liệu từ ERP</button>
+        <div class="status" id="erpStatus"></div>
       </div>
     </div>
+  </div>
+
+  <div class="panel">
+    <h2>Bước 2 — Nạp file PAKD dự án</h2>
+    <div class="panel-sub">File PAKD phải có sheet <code class="tag">Monitor</code> (bảng đơn giá theo cấp bậc) và 1 sheet chứa chữ "PAKD" (bảng Doanh thu/Chi phí/Lợi nhuận).</div>
+    <div class="dropzone" id="dzPakd">
+      <div class="ic">📊</div><b>File PAKD dự án</b><p>.xlsx — ví dụ MerapLion_PL08_PAKD.xlsx</p>
+      <input type="file" id="fPakd" accept=".xlsx">
+    </div>
+    <div class="file-pill" id="pillPakd"><span class="name" id="namePakd"></span><span class="x" id="xPakd">Xóa ✕</span></div>
     <div class="actions">
       <button class="btn btn-primary" id="parseBtn" disabled>⚙ Đọc &amp; đối chiếu dữ liệu</button>
     </div>
@@ -176,7 +175,7 @@
   </div>
 
   <div class="panel" id="mappingPanel" style="display:none;">
-    <h2>Bước 2 — Xác nhận cấp bậc chưa nhận diện được</h2>
+    <h2>Bước 3 — Xác nhận cấp bậc chưa nhận diện được</h2>
     <div class="panel-sub">Các chức danh dưới đây không khớp tiền tố chuẩn (Fresher/Junior/Middle/Senior) — chọn đúng cấp bậc đơn giá trước khi tính.</div>
     <div id="mappingList"></div>
     <div class="actions">
@@ -185,7 +184,7 @@
   </div>
 
   <div class="panel" id="resultPanel" style="display:none;">
-    <h2>Bước 3 — Kết quả</h2>
+    <h2>Bước 4 — Kết quả</h2>
     <div class="warn-box" id="deltaWarn" style="display:none;"></div>
 
     <table id="breakdownTable">
@@ -266,10 +265,23 @@ tsTabErp.addEventListener('click', () => {
   if (!erpProjectsLoaded) loadErpProjects();
 });
 
+/* Danh sách chủ dự án (project_owner) thuộc team Crs — dùng để lọc combobox dự án
+   khi lấy Timesheet trực tiếp từ ERP, theo yêu cầu chỉ hiện dự án của team mình. */
+const CRS_TEAM_OWNERS = [
+  'lamlt1@hqsoft.com.vn',
+  'phuctm@hqsoft.com.vn',
+  'nhatha@hqsoft.com.vn',
+  'nhuttm@hqsoft.com.vn',
+];
+
 async function loadErpProjects(){
   const sel = document.getElementById('erpProjectSelect');
   try{
-    const res = await fetch('/api/erp/projects?project_type=' + encodeURIComponent('Change Request'));
+    const qs = new URLSearchParams({
+      project_type: 'Change Request',
+      project_owner: JSON.stringify(CRS_TEAM_OWNERS),
+    });
+    const res = await fetch('/api/erp/projects?' + qs.toString());
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
     const list = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
@@ -520,7 +532,11 @@ function runCalculation(rows){
   });
 
   const months = Object.keys(monthTierHours).sort();
-  const tiersUsed = [...new Set(Object.values(tierMap))].filter(t => rateTable[t] !== undefined);
+  // Lấy tiersUsed theo ĐÚNG thứ tự cấp bậc trong bảng đơn giá Monitor (rateTable),
+  // thay vì thứ tự xuất hiện ngẫu nhiên trong timesheet — tránh việc mỗi lần tính
+  // ra thứ tự cột khác nhau khiến header và số giờ theo tháng bị lệch cột.
+  const usedTierSet = new Set(Object.values(tierMap));
+  const tiersUsed = Object.keys(rateTable).filter(t => usedTierSet.has(t));
 
   let totalLabor = 0;
   const monthRows = months.map(m => {
