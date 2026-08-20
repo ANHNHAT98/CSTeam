@@ -102,6 +102,7 @@
   tbody td{padding:7px 10px;border-bottom:1px solid var(--grid-line);}
   tbody tr:nth-child(even){background:rgba(31,78,121,.025);}
   td.num{font-family:'IBM Plex Mono',monospace;text-align:right;}
+  thead th.num{text-align:right;}
   tfoot td{font-family:'IBM Plex Mono',monospace;font-weight:700;background:#fbfcfe;border-top:2px solid var(--grid-line-strong);}
 
   .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px;}
@@ -201,7 +202,8 @@
     </div>
 
     <div class="actions">
-      <button class="btn btn-ghost" id="exportBtn">⬇ Xuất file PAKD đã cập nhật</button>
+      <button class="btn btn-ghost" id="exportBtn">⬇ Xuất file Lợi nhuận Crs (.xlsx)</button>
+      <div class="panel-sub" style="margin-top:6px;">File xuất gồm 2 sheet: <code class="tag">PAKD</code> (giữ nguyên màu/giao diện gốc, cột Thực tế được điền công thức) và <code class="tag">Chi tiết theo tháng</code> (như bảng Bước 4).</div>
     </div>
   </div>
 </div>
@@ -211,10 +213,13 @@
 const TIER_KEYWORDS = ['Fresher','Junior','Middle','Senior']; // nhận diện qua tiền tố Designation
 const RATE_SHEET_NAME = 'Monitor';
 const RATE_ROW_START = 2, RATE_ROW_END = 11; // Monitor!J2:K11
-const PROFIT_ROW = { revenue: 15, cost: 16, labor: 19, profitBeforeTax: 27, tax: 28, profitAfterTax: 29, profitPct: 30 };
-const PROFIT_COL = 'E'; // cột "Thực tế"
+// Không còn hard-code số dòng (PROFIT_ROW) — sheet PAKD của mỗi dự án có thể lệch vài dòng
+// so với dòng tiêu chuẩn, nên các dòng Doanh thu/Chi phí/Lợi nhuận được DÒ ĐỘNG bên dưới
+// (resolveProfitRows) theo nhãn cột A (A/B/C/D/E/F/G) và nhãn cột B ("Doanh thu thuần",
+// "...nhân công"). Cột "Thực tế" luôn là cột E theo mẫu chuẩn của công ty.
+const PROFIT_COL = 'E';
 
-let pakdWb = null, pakdFileName = '';
+let pakdWb = null, pakdFileName = '', pakdFile = null;
 let tsWb = null;       // workbook khi nạp bằng file .xlsx
 let tsRows = null;     // rows khi lấy trực tiếp qua API ERP (bỏ qua workbook)
 let erpProjectsLoaded = false;
@@ -377,8 +382,9 @@ function setStatus(msg, cls){
 }
 
 wireUpload('dzPakd','fPakd','pillPakd','namePakd','xPakd', (file)=>{
-  if (!file){ pakdWb=null; return; }
+  if (!file){ pakdWb=null; pakdFile=null; return; }
   pakdFileName = file.name;
+  pakdFile = file; // giữ lại file gốc (bytes) để gửi lên server lúc xuất — đảm bảo giữ nguyên màu/style
   readWorkbook(file).then(wb => { pakdWb = wb; updateParseBtn(); });
 });
 wireUpload('dzTs','fTs','pillTs','nameTs','xTs', (file)=>{
@@ -522,6 +528,46 @@ document.getElementById('confirmMappingBtn').addEventListener('click', () => {
 });
 
 /* ---------- Bước 3: tính toán & hiển thị ---------- */
+function findRowByColALetter(ws, letter, maxRow=80){
+  for (let r=1; r<=maxRow; r++){
+    const c = ws[`A${r}`];
+    if (c && String(c.v).trim() === letter) return r;
+  }
+  return -1;
+}
+function findRowByLabelContains(ws, col, needleLower, maxRow=80){
+  for (let r=1; r<=maxRow; r++){
+    const c = ws[`${col}${r}`];
+    if (c && c.v != null && String(c.v).toLowerCase().includes(needleLower)) return r;
+  }
+  return -1;
+}
+/* Dò các dòng Doanh thu/Chi phí/Lợi nhuận trong sheet PAKD theo nhãn, KHÔNG hard-code
+   số dòng — vì mỗi file PAKD có thể lệch vài dòng ghi chú so với mẫu chuẩn. */
+function resolveProfitRows(ws){
+  const rowsMap = {
+    revenue: findRowByLabelContains(ws, 'B', 'doanh thu thuần'),
+    labor: findRowByLabelContains(ws, 'B', 'nhân công'),
+    cost: findRowByColALetter(ws, 'C'),
+    profitBeforeTax: findRowByColALetter(ws, 'D'),
+    tax: findRowByColALetter(ws, 'E'),
+    profitAfterTax: findRowByColALetter(ws, 'F'),
+    profitPct: findRowByColALetter(ws, 'G'),
+  };
+  const missing = Object.entries(rowsMap).filter(([,v])=>v===-1).map(([k])=>k);
+  if (missing.length){
+    throw new Error('Không tìm thấy dòng: ' + missing.join(', ') + ' trong sheet PAKD — kiểm tra lại cấu trúc file '
+      + '(cột A phải có A/B/C/D/E/F/G, cột B phải có dòng "Doanh thu thuần" và dòng chứa "nhân công").');
+  }
+  return rowsMap;
+}
+function extractSumRange(formula){
+  if (typeof formula !== 'string') return null;
+  const m = formula.match(/SUM\(\$?[A-Z]\$?(\d+):\$?[A-Z]\$?(\d+)\)/i);
+  if (!m) return null;
+  return { start: Number(m[1]), end: Number(m[2]) };
+}
+
 function runCalculation(rows){
   monthTierHours = {};
   rows.forEach(r => {
@@ -553,37 +599,47 @@ function runCalculation(rows){
 
   const profitSheetName = findProfitSheet(pakdWb);
   const ws = pakdWb.Sheets[profitSheetName];
-  const getVal = (row) => { const c = ws[`${PROFIT_COL}${row}`]; return c ? Number(c.v)||0 : 0; };
+  const rowsMap = resolveProfitRows(ws);
 
-  const revenue = getVal(PROFIT_ROW.revenue);
-  const fixedCostRows = [17,18,20,21,22,23,24,25,26];
+  // Đọc từ cột D (Kế hoạch) — cột E (Thực tế) của sheet PAKD gốc luôn TRỐNG (chưa ai
+  // điền), nên không thể đọc "thực tế" từ đó. Doanh thu & các khoản chi phí theo %
+  // doanh thu (quỹ phát triển, thưởng dự án...) không đổi so với Kế hoạch; riêng chi
+  // phí nhân công được thay bằng số liệu ERP thực tế tính ở trên.
+  const getVal = (col, row) => { const c = ws[`${col}${row}`]; return c && typeof c.v === 'number' ? c.v : 0; };
+
+  const revenue = getVal('D', rowsMap.revenue);
+  const planLabor = getVal('D', rowsMap.labor);
+
+  const costFormula = ws[`D${rowsMap.cost}`] ? ws[`D${rowsMap.cost}`].f : null;
+  const sumRange = extractSumRange(costFormula) || { start: rowsMap.labor, end: rowsMap.labor };
   let otherCost = 0;
-  fixedCostRows.forEach(r => { otherCost += getVal(r); });
+  for (let r = sumRange.start; r <= sumRange.end; r++){
+    if (r === rowsMap.labor) continue;
+    otherCost += getVal('D', r);
+  }
+
   const totalCost = otherCost + totalLabor;
   const profitBeforeTax = revenue - totalCost;
   const tax = profitBeforeTax * 0.2;
   const profitAfterTax = profitBeforeTax - tax;
   const profitPct = revenue ? profitAfterTax / revenue : 0;
 
-  const oldLabor = getVal(PROFIT_ROW.labor);
-
   calcResult = { months, tiersUsed, monthRows, totalLabor, revenue, otherCost, totalCost,
-                 profitBeforeTax, tax, profitAfterTax, profitPct, oldLabor, profitSheetName };
+                 profitBeforeTax, tax, profitAfterTax, profitPct, planLabor, profitSheetName, rowsMap, sumRange };
 
   renderResult(calcResult);
 }
 
 function findProfitSheet(wb){
-  if (wb.SheetNames.includes('PAKD (MERAP REP)')) return 'PAKD (MERAP REP)';
-  const found = wb.SheetNames.find(n => n.toUpperCase().includes('PAKD') && n !== 'PAKD');
-  if (found) return found;
   if (wb.SheetNames.includes('PAKD')) return 'PAKD';
-  throw new Error('Không tìm thấy sheet báo cáo Doanh thu/Chi phí/Lợi nhuận (tên có chứa "PAKD") trong file.');
+  const found = wb.SheetNames.find(n => n.toUpperCase().includes('PAKD'));
+  if (found) return found;
+  throw new Error('Không tìm thấy sheet "PAKD" trong file — kiểm tra lại file PAKD đã nạp đúng chưa.');
 }
 
 function renderResult(res){
   const head = document.getElementById('breakdownHead');
-  head.innerHTML = '<th>Tháng</th>' + res.tiersUsed.map(t=>`<th>${t} (giờ)</th>`).join('') + '<th>Chi phí tháng</th>';
+  head.innerHTML = '<th>Tháng</th>' + res.tiersUsed.map(t=>`<th class="num">${t} (giờ)</th>`).join('') + '<th class="num">Chi phí tháng</th>';
 
   const body = document.getElementById('breakdownBody');
   body.innerHTML = res.monthRows.map(r => `
@@ -600,10 +656,11 @@ function renderResult(res){
   document.getElementById('sumProfitPct').textContent = `${(res.profitPct*100).toFixed(2)}% doanh thu thuần (ngưỡng tối thiểu 27%)`;
 
   const deltaBox = document.getElementById('deltaWarn');
-  const diff = res.totalLabor - res.oldLabor;
+  const diff = res.totalLabor - res.planLabor;
   if (Math.abs(diff) > 1000){
     deltaBox.style.display = 'block';
-    deltaBox.textContent = `⚠ Chi phí nhân công tính từ ERP (${formatVnd(res.totalLabor)}) khác với số đang lưu trong file (${formatVnd(res.oldLabor)}), chênh lệch ${formatVnd(Math.abs(diff))}. Nên rà soát lại trước khi gửi số này cho sếp.`;
+    const sign = diff > 0 ? 'cao hơn' : 'thấp hơn';
+    deltaBox.textContent = `⚠ Chi phí nhân công thực tế tính từ ERP (${formatVnd(res.totalLabor)}) ${sign} Kế hoạch trong PAKD (${formatVnd(res.planLabor)}), chênh lệch ${formatVnd(Math.abs(diff))}.`;
   } else {
     deltaBox.style.display = 'none';
   }
@@ -617,38 +674,53 @@ function formatVnd(n){
 }
 function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-/* ---------- Xuất file Excel đã cập nhật ---------- */
-document.getElementById('exportBtn').addEventListener('click', () => {
-  if (!calcResult) return;
+/* ---------- Xuất file "Lợi nhuận Crs" ----------
+   Việc GHI file thật sự được giao cho server (Python/openpyxl) — thư viện SheetJS chạy
+   ở trình duyệt chỉ đọc được style của sheet PAKD gốc (màu nền, in đậm...) chứ không ghi
+   lại được khi xuất file mới, nên trang này chỉ gửi file gốc + số liệu đã tính lên
+   /api/crs/loi-nhuan/export và server trả về file .xlsx hoàn chỉnh để tải xuống. */
+document.getElementById('exportBtn').addEventListener('click', async () => {
+  if (!calcResult || !pakdFile) return;
   const res = calcResult;
+  const btn = document.getElementById('exportBtn');
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang tạo file...';
+  setStatus('Đang gửi dữ liệu lên server để build file...', '');
 
-  const sheetName = 'Monitor (ERP Auto)';
-  const aoa = [];
-  aoa.push(['CHI PHÍ NHÂN CÔNG — TỰ ĐỘNG TỪ TIMESHEET ERP']);
-  aoa.push([`Nguồn: Detail Timesheet Report — tính lúc ${new Date().toLocaleString('vi-VN')}`]);
-  aoa.push(['Tháng', ...res.tiersUsed.map(t=>`${t} (giờ)`), 'Chi phí tháng (VNĐ)']);
-  res.monthRows.forEach(r => aoa.push([r.month, ...r.cells, r.cost]));
-  const totalRowIdx = aoa.length; // 0-based, sẽ là dòng "Tổng"
-  aoa.push(['TỔNG CHI PHÍ NHÂN CÔNG', ...res.tiersUsed.map(()=>''), res.totalLabor]);
+  try{
+    const payload = {
+      tiersUsed: res.tiersUsed,
+      rateTable,
+      monthRows: res.monthRows.map(r => ({ month: r.month, cells: r.cells })),
+    };
+    const outName = pakdFileName.replace(/\.xlsx$/i, '') + '_LoiNhuan_Crs.xlsx';
 
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  const costColLetter = XLSX.utils.encode_col(res.tiersUsed.length + 1);
-  ws['!cols'] = [{wch:12}, ...res.tiersUsed.map(()=>({wch:13})), {wch:20}];
+    const fd = new FormData();
+    fd.append('pakdFile', pakdFile, pakdFileName);
+    fd.append('payload', JSON.stringify(payload));
+    fd.append('outName', outName);
 
-  const newWb = XLSX.utils.book_new();
-  // copy tất cả sheet gốc sang workbook mới rồi thêm sheet mới, để giữ nguyên toàn bộ dữ liệu/công thức cũ
-  pakdWb.SheetNames.forEach(name => {
-    XLSX.utils.book_append_sheet(newWb, pakdWb.Sheets[name], name);
-  });
-  XLSX.utils.book_append_sheet(newWb, ws, sheetName);
-
-  const totalCellRef = `${costColLetter}${totalRowIdx+1}`;
-  const profitWs = newWb.Sheets[res.profitSheetName];
-  const e19 = `${PROFIT_COL}${PROFIT_ROW.labor}`;
-  profitWs[e19] = { t:'n', f: `'${sheetName}'!${totalCellRef}`, v: res.totalLabor };
-
-  const outName = pakdFileName.replace(/\.xlsx$/i, '') + '_LoiNhuan.xlsx';
-  XLSX.writeFile(newWb, outName);
+    const resp = await fetch('/api/crs/loi-nhuan/export', { method: 'POST', body: fd });
+    if (!resp.ok){
+      let errMsg = `HTTP ${resp.status}`;
+      try{ const errJson = await resp.json(); if (errJson.error) errMsg = errJson.error; }catch(e){}
+      throw new Error(errMsg);
+    }
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = outName;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    setStatus('Đã xuất file — kiểm tra thư mục Downloads.', 'ok');
+  }catch(err){
+    console.error(err);
+    setStatus('Lỗi khi xuất file: ' + err.message, 'err');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
 });
 </script>
 </body>

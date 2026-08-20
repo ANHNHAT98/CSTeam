@@ -1,6 +1,10 @@
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
+const { spawn } = require('child_process');
 const express = require('express');
 const session = require('express-session');
+const multer = require('multer');
 const erp = require('./erpClient');
 
 const app = express();
@@ -151,6 +155,91 @@ function parseJsonArrayParam(raw) {
     return [];
   }
 }
+
+/* ---------- API: build file "Lợi nhuận Crs" (2 sheet: PAKD + Chi tiết theo tháng) ----------
+   Nhận file PAKD gốc (multipart) + payload JSON (tiersUsed/rateTable/monthRows đã tính ở
+   trình duyệt từ Timesheet). Việc "ghi" file thật sự giao cho script Python (openpyxl) vì
+   SheetJS ở trình duyệt không ghi lại được màu sắc/định dạng khi xuất file mới — chỉ
+   openpyxl mới giữ nguyên style gốc của sheet PAKD. */
+const exportUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, os.tmpdir()),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname) || '.xlsx';
+      cb(null, `crs-export-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+    },
+  }),
+  limits: { fileSize: 25 * 1024 * 1024 },
+});
+
+app.post('/api/crs/loi-nhuan/export', requireAuth, exportUpload.single('pakdFile'), async (req, res) => {
+  const uploadedPath = req.file && req.file.path;
+  const cleanup = (...paths) => paths.forEach((p) => { if (p) fs.unlink(p, () => {}); });
+
+  if (!uploadedPath) {
+    return res.status(400).json({ error: 'Thiếu file PAKD (pakdFile).' });
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(req.body.payload || '{}');
+  } catch (e) {
+    cleanup(uploadedPath);
+    return res.status(400).json({ error: 'payload không phải JSON hợp lệ: ' + e.message });
+  }
+  if (!Array.isArray(payload.tiersUsed) || !payload.rateTable || !Array.isArray(payload.monthRows)) {
+    cleanup(uploadedPath);
+    return res.status(400).json({ error: 'Thiếu tiersUsed / rateTable / monthRows trong payload.' });
+  }
+
+  const payloadPath = `${uploadedPath}.payload.json`;
+  const outputPath = `${uploadedPath}.output.xlsx`;
+
+  try {
+    fs.writeFileSync(payloadPath, JSON.stringify(payload), 'utf8');
+  } catch (e) {
+    cleanup(uploadedPath, payloadPath);
+    return res.status(500).json({ error: 'Không ghi được payload tạm: ' + e.message });
+  }
+
+  const scriptPath = path.join(__dirname, 'scripts', 'build_loi_nhuan_report.py');
+  const py = spawn('python3', [scriptPath, uploadedPath, payloadPath, outputPath]);
+
+  let stdout = '';
+  let stderr = '';
+  py.stdout.on('data', (d) => { stdout += d.toString(); });
+  py.stderr.on('data', (d) => { stderr += d.toString(); });
+
+  py.on('error', (err) => {
+    console.error('[export loi-nhuan] không chạy được python3:', err.message);
+    cleanup(uploadedPath, payloadPath, outputPath);
+    if (!res.headersSent) res.status(500).json({ error: 'Không chạy được python3 trên server: ' + err.message });
+  });
+
+  py.on('close', (code) => {
+    if (res.headersSent) return;
+    let result = null;
+    try {
+      const lastLine = stdout.trim().split('\n').filter(Boolean).pop();
+      result = lastLine ? JSON.parse(lastLine) : null;
+    } catch (e) {
+      // giữ result = null, dùng thông báo lỗi mặc định bên dưới
+    }
+
+    if (code !== 0 || !result || result.ok !== true) {
+      console.error('[export loi-nhuan] lỗi python:', stderr || stdout);
+      cleanup(uploadedPath, payloadPath, outputPath);
+      return res.status(500).json({ error: (result && result.error) || 'Lỗi khi build file (xem log server để biết chi tiết).' });
+    }
+
+    const rawName = (req.body.outName || 'LoiNhuan_Crs.xlsx').toString();
+    const downloadName = rawName.replace(/[\\/:*?"<>|]+/g, '_');
+    res.download(outputPath, downloadName, (err) => {
+      if (err) console.error('[export loi-nhuan] lỗi gửi file:', err.message);
+      cleanup(uploadedPath, payloadPath, outputPath);
+    });
+  });
+});
 
 /* ---------- static frontend ---------- */
 app.use(express.static(path.join(__dirname, 'public')));
