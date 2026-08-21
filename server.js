@@ -86,6 +86,10 @@ app.get('/crs/loi-nhuan-du-an', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'crs-loi-nhuan-du-an.html'));
 });
 
+app.get('/crs/pakd-bao-gia', requirePageAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'protected', 'crs-pakd-bao-gia.html'));
+});
+
 /* ---------- API: lấy ticket từ ERPNext (đăng nhập bằng email/mật khẩu) ----------
    projects / statuses: gửi dạng JSON array trong query string, ví dụ
    ?projects=["ABI_eSales_Support","Sabeco_PG"]&statuses=["Open","Working"] */

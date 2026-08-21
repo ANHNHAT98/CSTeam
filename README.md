@@ -95,10 +95,16 @@ estimate-mapper-server/
    dưới ABI.
 
 Module hiện có:
-- **Crs → PAKD và Báo Giá**: mapping file PAKD sang file Estimate (`/`).
-- **Crs → Lợi Nhuận Crs**: upload file PAKD + Detail Timesheet Report từ
-  ERP → tự tính chi phí nhân công theo giờ làm thực tế, ra lợi nhuận, xuất
-  Excel gửi sếp (`/crs/loi-nhuan-du-an`).
+- **Tổng quan → Dashboard** (`/`, trang chủ sau khi đăng nhập): tổng hợp
+  ticket đang mở toàn bộ 4 dự án từ ERP theo project/status. CSAT và First
+  Response Time có sẵn khung nhưng **chưa bật** vì chưa xác nhận tên field
+  ERP tương ứng (xem hướng dẫn ngay trên trang).
+- **Crs → PAKD và Báo Giá**: mapping file PAKD sang file Estimate
+  (`/crs/pakd-bao-gia`).
+- **Crs → Lợi Nhuận Crs**: upload file PAKD + lấy Timesheet trực tiếp từ ERP
+  (hoặc file Detail Timesheet Report export tay) → tự tính chi phí nhân công
+  theo giờ làm thực tế, ra lợi nhuận, xuất Excel giữ nguyên định dạng gốc
+  gửi sếp (`/crs/loi-nhuan-du-an`).
 - **Dự Án → ABI → Dashboard Ticket**: upload file Excel ticket, xem dashboard
   tổng hợp + xuất PNG (`/abi/dashboard-ticket`).
 - **Dự Án → AnVy → Ticket Slide**: dán/nhập ticket, tự tạo slide + xuất
@@ -106,6 +112,26 @@ Module hiện có:
 - **Ticket dự án → Tra cứu ERP**: gọi trực tiếp erp.hqsoft.vn lấy ticket theo
   nhiều project + nhiều trạng thái cùng lúc, xem trước, xuất Excel
   (`/tickets/tra-cuu-erp`).
+
+## Bật CSAT / First Response Time trên Dashboard
+
+Trang chủ (`/`) đã có sẵn 2 ô KPI cho CSAT và First Response Time nhưng đang
+hiện "chưa cấu hình" — vì cần đúng tên field ERPNext lưu điểm hài lòng và
+thời điểm phản hồi đầu tiên. Cách xác nhận tên field: vào **Ticket dự án →
+Tra cứu ERP**, bấm "Lấy dữ liệu từ ERP", xem tên cột trong bảng kết quả thô
+(đó là tên field thật) — báo lại tên field để hoàn thiện 2 chỉ số này.
+
+## Export "Lợi nhuận Crs" giữ nguyên định dạng file gốc
+
+Khác với Estimate Mapper (xử lý hoàn toàn ở trình duyệt bằng SheetJS), bước
+xuất file cuối của "Lợi Nhuận Crs" được giao cho `scripts/build_loi_nhuan_report.py`
+chạy ở server (dùng `openpyxl`) — vì SheetJS bản miễn phí chỉ đọc được style
+(màu nền, in đậm...) chứ không ghi lại được khi xuất file mới. Vì vậy
+`Dockerfile` có cài thêm Python + `openpyxl`, và `server.js` có route
+`POST /api/crs/loi-nhuan/export` nhận file PAKD gốc + dữ liệu đã tính ở
+trình duyệt, gọi script Python build file, rồi trả file về cho người dùng
+tải xuống. Nếu deploy không qua Docker (chạy thẳng `node server.js`), cần
+tự cài `python3` + `pip install openpyxl` trên máy đó.
 
 ## Kết nối ERP (đăng nhập bằng email/mật khẩu, không cần API key)
 

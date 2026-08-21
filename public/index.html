@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HQSOFT Ops Console — PAKD → Estimate Mapper</title>
+<title>HQSOFT Ops Console — Dashboard Tổng Quan</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -162,50 +162,18 @@
   h1 em{font-style:normal;color:var(--blueprint);}
   .hero p{max-width:620px;color:var(--muted);font-size:15.5px;line-height:1.65;margin:0 0 26px;}
 
-  /* ---- main grid ---- */
-  .stage{display:grid;grid-template-columns:1.15fr .85fr;gap:22px;margin-top:8px;}
-  @media(max-width:920px){.stage{grid-template-columns:1fr;}}
-
   .panel{
     background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);
-    padding:22px 22px 24px;position:relative;
+    padding:22px 22px 24px;position:relative;margin-bottom:20px;
   }
   .panel-title{
     font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15.5px;margin:0 0 4px;
     display:flex;align-items:center;justify-content:space-between;
   }
-  .panel-sub{color:var(--muted);font-size:12.5px;margin:0 0 18px;}
-  .step-index{
-    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--blueprint);
-    border:1px solid var(--grid-line-strong);border-radius:5px;padding:2px 7px;
-  }
-
-  /* dropzone */
-  .dropzone{
-    border:1.5px dashed var(--grid-line-strong);border-radius:8px;padding:30px 18px;
-    text-align:center;cursor:pointer;transition:.15s border-color,.15s background;
-    background:repeating-linear-gradient(135deg, rgba(31,78,121,.03) 0 10px, transparent 10px 20px);
-  }
-  .dropzone:hover,.dropzone.drag{border-color:var(--blueprint);background:rgba(31,78,121,.05);}
-  .dropzone .ic{font-size:22px;margin-bottom:8px;}
-  .dropzone b{font-size:14px;}
-  .dropzone p{margin:6px 0 0;color:var(--muted);font-size:12.5px;}
-  input[type=file]{display:none;}
-
-  .file-pill{
-    margin-top:14px;display:none;align-items:center;gap:10px;
-    border:1px solid var(--grid-line-strong);border-radius:8px;padding:10px 12px;font-size:13px;
-    background:#fbfcfe;
-  }
-  .file-pill.show{display:flex;}
-  .file-pill .name{font-family:'IBM Plex Mono',monospace;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .file-pill .x{cursor:pointer;color:var(--muted);font-weight:600;}
-
-  .sheet-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;}
-  .field label{font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:6px;}
-  select{
-    width:100%;padding:9px 10px;border-radius:7px;border:1px solid var(--grid-line-strong);
-    background:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--ink);
+  .panel-sub{color:var(--muted);font-size:12.5px;margin:0 0 16px;}
+  code.tag{
+    font-family:'IBM Plex Mono',monospace;background:rgba(31,78,121,.08);color:var(--blueprint);
+    padding:1px 6px;border-radius:4px;font-size:11.5px;
   }
 
   .btn{
@@ -215,56 +183,35 @@
   .btn-primary{background:var(--amber);color:#3A2405;box-shadow:0 2px 0 var(--amber-deep);}
   .btn-primary:disabled{background:#D8DEE6;color:#8B98A6;box-shadow:none;cursor:not-allowed;}
   .btn-primary:not(:disabled):hover{transform:translateY(-1px);}
-  .btn-ghost{background:transparent;color:var(--blueprint);border:1px solid var(--grid-line-strong);box-shadow:none;}
-  .actions{display:flex;align-items:center;gap:12px;margin-top:18px;}
   .status{font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);}
   .status.ok{color:var(--success);}
   .status.err{color:var(--danger);}
 
-  /* schema / mapping diagram */
-  .schema-cols{display:grid;grid-template-columns:1fr 40px 1fr;align-items:stretch;}
-  .schema-side h4{
-    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);text-transform:uppercase;
-    letter-spacing:.06em;margin:0 0 10px;
-  }
-  .schema-item{
-    border:1px solid var(--grid-line-strong);border-radius:6px;padding:8px 10px;margin-bottom:8px;
-    font-size:12.5px;background:#fbfcfe;position:relative;
-  }
-  .schema-item b{display:block;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--blueprint);}
-  .schema-item span{color:var(--muted);font-size:11.5px;}
-  .schema-mid{position:relative;}
-  .schema-mid svg{position:absolute;inset:0;width:100%;height:100%;}
-  .rule-box{
-    margin-top:14px;border-top:1px dashed var(--grid-line-strong);padding-top:14px;font-size:12px;color:var(--muted);
-  }
-  .rule-box b{color:var(--ink);}
-  code.tag{
-    font-family:'IBM Plex Mono',monospace;background:rgba(31,78,121,.08);color:var(--blueprint);
-    padding:1px 6px;border-radius:4px;font-size:11.5px;
-  }
-
-  /* preview table */
-  .preview-wrap{margin-top:26px;}
-  .preview-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-  .preview-head h3{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0;}
-  .table-scroll{
-    max-height:420px;overflow:auto;border:1px solid var(--grid-line-strong);border-radius:8px;
-  }
-  table{border-collapse:collapse;width:100%;font-size:12.5px;}
+  table{border-collapse:collapse;width:100%;font-size:13px;}
   thead th{
-    position:sticky;top:0;background:var(--blueprint);color:#fff;text-align:left;padding:9px 10px;
-    font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:11px;white-space:nowrap;
-    border-right:1px solid rgba(255,255,255,.12);
+    text-align:left;padding:8px 4px;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:11px;
+    color:var(--muted);border-bottom:1px solid var(--grid-line-strong);text-transform:uppercase;letter-spacing:.03em;
   }
-  tbody td{padding:8px 10px;border-bottom:1px solid var(--grid-line);border-right:1px solid var(--grid-line);vertical-align:top;}
-  tbody tr:nth-child(even){background:rgba(31,78,121,.025);}
-  td.num{font-family:'IBM Plex Mono',monospace;text-align:right;white-space:nowrap;}
-  td.trunc{max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  td.warn{color:var(--danger);font-family:'IBM Plex Mono',monospace;}
-  tfoot td{font-family:'IBM Plex Mono',monospace;font-weight:600;background:#fbfcfe;border-top:2px solid var(--grid-line-strong);}
+  tbody td{padding:8px 4px;border-bottom:1px solid var(--grid-line);}
+  tbody td:last-child{font-family:'IBM Plex Mono',monospace;text-align:right;}
 
-  footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--grid-line-strong);color:var(--muted);font-size:11.5px;font-family:'IBM Plex Mono',monospace;display:flex;justify-content:space-between;}
+  /* ---- dashboard tổng quan ---- */
+  .dash-actions{display:flex;align-items:center;gap:14px;margin-bottom:20px;}
+  .dash-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;}
+  @media(max-width:800px){.dash-grid{grid-template-columns:1fr;}}
+  .dash-kpi{margin-bottom:0;}
+  .dash-kpi .label{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+  .dash-kpi .value{font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:700;margin-top:8px;color:var(--blueprint);}
+  .dash-kpi .value.muted{color:var(--muted);font-size:20px;}
+  .dash-kpi .note{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;}
+
+  .dash-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media(max-width:800px){.dash-cols{grid-template-columns:1fr;}}
+
+  .csat-help p{font-size:12.5px;color:var(--muted);line-height:1.7;margin:0;}
+  .csat-help a{color:var(--blueprint);font-weight:600;}
+
+  footer{margin-top:20px;padding-top:20px;border-top:1px solid var(--grid-line-strong);color:var(--muted);font-size:11.5px;font-family:'IBM Plex Mono',monospace;display:flex;justify-content:space-between;}
 </style>
 </head>
 <body>
@@ -299,8 +246,13 @@
 
   <div class="side-nav-scroll">
     <div class="side-group">
+      <div class="side-group-label">Tổng quan</div>
+      <a class="side-leaf" href="/" data-path="/">Dashboard</a>
+    </div>
+
+    <div class="side-group">
       <div class="side-group-label">Crs</div>
-      <a class="side-leaf" href="/" data-path="/">PAKD và Báo Giá</a>
+      <a class="side-leaf" href="/crs/pakd-bao-gia" data-path="/crs/pakd-bao-gia">PAKD và Báo Giá</a>
       <a class="side-leaf" href="/crs/loi-nhuan-du-an" data-path="/crs/loi-nhuan-du-an">Lợi Nhuận Crs</a>
     </div>
 
@@ -355,96 +307,50 @@
 <main class="main-col">
 
   <div class="hero">
-    <div class="eyebrow">Crs · PAKD và Báo Giá</div>
-    <h1>Biến file PAKD thành file <em>Estimate</em> chuẩn, không cần copy‑paste tay.</h1>
-    <p>Tải file PAKD &amp; Quotation lên, công cụ tự đọc 2 sheet Effort Crs (_AI và _TC), áp đúng công thức mapping cột và xuất ra file Estimate theo đúng khung mẫu HQSOFT — sẵn sàng gửi review.</p>
+    <div class="eyebrow">Tổng quan</div>
+    <h1>Dashboard hoạt động Ticket &amp; Dự án</h1>
+    <p>Tổng hợp trực tiếp từ ERP (erp.hqsoft.vn) — số ticket đang mở theo dự án/trạng thái, cùng các chỉ số CSAT / First Response Time (đang chờ cấu hình tên field).</p>
   </div>
 
-  <div class="stage">
-    <!-- LEFT: upload & action -->
-    <div class="panel">
-      <div class="panel-title">Nạp dữ liệu <span class="step-index">BƯỚC 1—2</span></div>
-      <div class="panel-sub">Chấp nhận file .xlsx dạng PAKD_and_Quotation, giữ nguyên tên sheet gốc.</div>
+  <div class="dash-actions">
+    <button class="btn btn-primary" id="loadDashBtn">⟳ Tải dữ liệu ERP</button>
+    <span class="status" id="dashStatus"></span>
+  </div>
 
-      <div class="dropzone" id="dropzone">
-        <div class="ic">📄</div>
-        <b>Kéo thả file vào đây, hoặc bấm để chọn</b>
-        <p>Chỉ xử lý trong trình duyệt của bạn — file không upload lên server.</p>
-        <input type="file" id="fileInput" accept=".xlsx">
-      </div>
-      <div class="file-pill" id="filePill">
-        <span class="name" id="fileName"></span>
-        <span class="x" id="fileClear">Xóa ✕</span>
-      </div>
-
-      <div class="sheet-row">
-        <div class="field">
-          <label>SHEET NGUỒN — AI</label>
-          <select id="sheetAI"></select>
-        </div>
-        <div class="field">
-          <label>SHEET NGUỒN — TC</label>
-          <select id="sheetTC"></select>
-        </div>
-      </div>
-
-      <div class="actions">
-        <button class="btn btn-primary" id="genBtn" disabled>⚙ Tạo bảng Estimate</button>
-        <button class="btn btn-ghost" id="downloadBtn" style="display:none;">⬇ Tải file .xlsx</button>
-        <span class="status" id="statusText"></span>
-      </div>
-
-      <div class="preview-wrap" id="previewWrap" style="display:none;">
-        <div class="preview-head">
-          <h3>Xem trước kết quả mapping</h3>
-          <span class="status" id="rowCountText"></span>
-        </div>
-        <div class="table-scroll">
-          <table id="previewTable">
-            <thead><tr>
-              <th>STT</th><th>Ứng dụng</th><th>Chức năng</th><th>Nội dung</th><th>PIC</th>
-              <th>Human</th><th>Human Hỗ trợ KH</th><th>AI</th>
-            </tr></thead>
-            <tbody id="previewBody"></tbody>
-            <tfoot><tr id="previewFoot"></tr></tfoot>
-          </table>
-        </div>
-      </div>
+  <div class="dash-grid">
+    <div class="panel dash-kpi">
+      <div class="label">Tổng ticket đang mở</div>
+      <div class="value" id="kpiOpenTotal">—</div>
+      <div class="note">4 dự án · trạng thái chưa Closed</div>
     </div>
-
-    <!-- RIGHT: mapping schema -->
-    <div class="panel">
-      <div class="panel-title">Sơ đồ mapping <span class="step-index">SCHEMA</span></div>
-      <div class="panel-sub">Quy tắc cố định — chỉnh ở đây nếu quy trình PAKD thay đổi.</div>
-
-      <div class="schema-cols">
-        <div class="schema-side">
-          <h4>PAKD_and_Quotation</h4>
-          <div class="schema-item" data-k="ung_dung"><b>Phân Hệ</b><span>cột B · cả 2 sheet</span></div>
-          <div class="schema-item" data-k="chuc_nang"><b>Màn Hình</b><span>cột D · cả 2 sheet</span></div>
-          <div class="schema-item" data-k="noi_dung"><b>Nội Dung</b><span>cột E · cả 2 sheet</span></div>
-          <div class="schema-item" data-k="human"><b>Mansday Thực Tế</b><span>cột N · sheet _TC</span></div>
-          <div class="schema-item" data-k="hotro"><b>Manday Báo Giá</b><span>cột Q · sheet _TC</span></div>
-          <div class="schema-item" data-k="ai"><b>Mansday Thực Tế</b><span>cột N · sheet _AI</span></div>
-        </div>
-        <div class="schema-mid"><svg id="schemaSvg"></svg></div>
-        <div class="schema-side" style="text-align:right;">
-          <h4 style="text-align:right;">Template Estimate</h4>
-          <div class="schema-item" data-k="ung_dung"><b>Ứng dụng</b><span>cột B</span></div>
-          <div class="schema-item" data-k="chuc_nang"><b>Chức năng</b><span>cột C</span></div>
-          <div class="schema-item" data-k="noi_dung"><b>Nội dung</b><span>cột D</span></div>
-          <div class="schema-item" data-k="human"><b>Human</b><span>cột F</span></div>
-          <div class="schema-item" data-k="hotro"><b>Human Hỗ trợ KH</b><span>cột G — mới</span></div>
-          <div class="schema-item" data-k="ai"><b>AI</b><span>cột H</span></div>
-        </div>
-      </div>
-      <div class="schema-item" style="margin-top:2px;" data-k="pic"><b>PIC</b><span>suy ra, không copy trực tiếp</span></div>
-
-      <div class="rule-box">
-        <b>Quy tắc PIC:</b> nếu <code class="tag">Phân Hệ</code> ∈ { <code class="tag">BO</code>, <code class="tag">SFA</code> } → <code class="tag">Dev</code>, ngược lại → <code class="tag">NA</code>.<br><br>
-        <b>Khớp dòng AI↔TC:</b> theo giá trị cột <code class="tag">Màn Hình</code> — dòng nào không tìm thấy bên sheet _AI sẽ được đánh dấu đỏ trong bảng xem trước.
-      </div>
+    <div class="panel dash-kpi">
+      <div class="label">CSAT</div>
+      <div class="value muted" id="kpiCsat">—</div>
+      <div class="note" id="kpiCsatNote">Chưa cấu hình tên field điểm hài lòng từ ERP</div>
     </div>
+    <div class="panel dash-kpi">
+      <div class="label">First Response Time</div>
+      <div class="value muted" id="kpiFrt">—</div>
+      <div class="note" id="kpiFrtNote">Chưa cấu hình tên field thời gian phản hồi đầu</div>
+    </div>
+  </div>
+
+  <div class="dash-cols">
+    <div class="panel">
+      <div class="panel-title">Theo dự án</div>
+      <div class="panel-sub">Số ticket đang mở, nhóm theo project</div>
+      <table id="byProjectTable"><thead><tr><th>Project</th><th style="text-align:right;">Số ticket</th></tr></thead><tbody id="byProjectBody"></tbody></table>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Theo trạng thái</div>
+      <div class="panel-sub">Số ticket đang mở, nhóm theo status</div>
+      <table id="byStatusTable"><thead><tr><th>Status</th><th style="text-align:right;">Số ticket</th></tr></thead><tbody id="byStatusBody"></tbody></table>
+    </div>
+  </div>
+
+  <div class="panel csat-help">
+    <div class="panel-title">Cách bật CSAT &amp; First Response Time</div>
+    <p>Hai chỉ số này cần đúng tên field trong doctype <code class="tag">Ticket</code> của ERP (ví dụ field điểm hài lòng, field thời điểm phản hồi đầu tiên). Cách lấy tên field nhanh nhất: vào <a href="/tickets/tra-cuu-erp">Ticket dự án → Tra cứu ERP</a>, bấm "Lấy dữ liệu", xem tên cột trong bảng kết quả (đó chính là tên field thật trong ERP) rồi báo lại — sẽ bật 2 chỉ số này ngay trên dashboard.</p>
   </div>
 
   <footer>
@@ -484,7 +390,7 @@ function showApp(username){
   loginGate.style.display = 'none';
   logoutBtn.classList.add('show');
   whoamiBox.innerHTML = `<b>${username}</b>Đăng nhập lúc ${new Date().toLocaleTimeString('vi-VN')}`;
-  requestAnimationFrame(drawSchema);
+  if (typeof loadDashboard === 'function') loadDashboard();
 }
 function showGate(){
   loginGate.style.display = 'flex';
@@ -542,281 +448,58 @@ document.querySelectorAll('.side-leaf[data-path]').forEach(a=>{
   if (a.dataset.path === window.location.pathname) a.classList.add('active');
 });
 
-/* ---------- helpers ---------- */
-const norm = (v) => (v===undefined||v===null) ? '' : String(v).replace(/\s+/g,' ').trim();
-const normLower = (v) => norm(v).toLowerCase();
+/* ---------- Dashboard Tổng Quan: gọi lại API /api/erp/tickets đã có ---------- */
+const ALL_PROJECTS = ['MerapLion_eSales', 'ABI_eSales_Support', 'ANVY_eSale_Support', 'Sabeco_PG'];
+const OPEN_STATUSES = ['Open','Assign','Working','Reviewing','Waiting','Pending','Re-open'];
 
-function findColIndex(headerRow, keyword){
-  const kw = normLower(keyword);
-  for (let i=0;i<headerRow.length;i++){
-    if (normLower(headerRow[i]).includes(kw)) return i;
+const loadDashBtn = document.getElementById('loadDashBtn');
+const dashStatus = document.getElementById('dashStatus');
+
+function setDashStatus(msg, cls){
+  dashStatus.textContent = msg;
+  dashStatus.className = 'status ' + (cls||'');
+}
+
+async function loadDashboard(){
+  loadDashBtn.disabled = true;
+  setDashStatus('Đang tải dữ liệu từ ERP…','');
+  try{
+    const qs = new URLSearchParams();
+    qs.set('projects', JSON.stringify(ALL_PROJECTS));
+    qs.set('statuses', JSON.stringify(OPEN_STATUSES));
+    const res = await fetch('/api/erp/tickets?' + qs.toString(), {credentials:'same-origin'});
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || ('Lỗi HTTP ' + res.status));
+    const rows = Array.isArray(data.data) ? data.data : [];
+    renderDashboard(rows);
+    setDashStatus(`Xong — ${rows.length} ticket đang mở (cập nhật ${new Date().toLocaleTimeString('vi-VN')}).`, 'ok');
+  }catch(err){
+    console.error(err);
+    setDashStatus('Lỗi: ' + err.message, 'err');
+  }finally{
+    loadDashBtn.disabled = false;
   }
-  return -1;
 }
 
-function sheetToAOA(ws){
-  return XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
-}
+function renderDashboard(rows){
+  document.getElementById('kpiOpenTotal').textContent = rows.length;
 
-/* ---------- state ---------- */
-let workbook = null;
-let mappedRows = null;
-
-/* ---------- drop zone / file input ---------- */
-const dropzone = document.getElementById('dropzone');
-const fileInput = document.getElementById('fileInput');
-const filePill = document.getElementById('filePill');
-const fileNameEl = document.getElementById('fileName');
-const fileClear = document.getElementById('fileClear');
-const sheetAISel = document.getElementById('sheetAI');
-const sheetTCSel = document.getElementById('sheetTC');
-const genBtn = document.getElementById('genBtn');
-const downloadBtn = document.getElementById('downloadBtn');
-const statusText = document.getElementById('statusText');
-const previewWrap = document.getElementById('previewWrap');
-const previewBody = document.getElementById('previewBody');
-const previewFoot = document.getElementById('previewFoot');
-const rowCountText = document.getElementById('rowCountText');
-
-dropzone.addEventListener('click', ()=>fileInput.click());
-['dragenter','dragover'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.add('drag');}));
-['dragleave','drop'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.remove('drag');}));
-dropzone.addEventListener('drop', e=>{
-  const f = e.dataTransfer.files[0];
-  if (f) handleFile(f);
-});
-fileInput.addEventListener('change', e=>{
-  const f = e.target.files[0];
-  if (f) handleFile(f);
-});
-fileClear.addEventListener('click', (e)=>{
-  e.stopPropagation();
-  workbook=null; mappedRows=null;
-  filePill.classList.remove('show');
-  fileInput.value='';
-  sheetAISel.innerHTML=''; sheetTCSel.innerHTML='';
-  genBtn.disabled=true; downloadBtn.style.display='none';
-  previewWrap.style.display='none';
-  setStatus('','');
-});
-
-function setStatus(msg, cls){
-  statusText.textContent = msg;
-  statusText.className = 'status ' + (cls||'');
-}
-
-function handleFile(file){
-  if (!/\.xlsx$/i.test(file.name)){
-    setStatus('Chỉ hỗ trợ file .xlsx','err'); return;
-  }
-  const reader = new FileReader();
-  reader.onload = (e)=>{
-    try{
-      const data = new Uint8Array(e.target.result);
-      workbook = XLSX.read(data, {type:'array'});
-      fileNameEl.textContent = file.name;
-      filePill.classList.add('show');
-      populateSheetSelectors();
-      setStatus('Đã đọc file — chọn đúng 2 sheet nguồn rồi bấm Tạo bảng.','ok');
-      genBtn.disabled=false;
-      downloadBtn.style.display='none';
-      previewWrap.style.display='none';
-    }catch(err){
-      console.error(err);
-      setStatus('Không đọc được file, kiểm tra lại định dạng.','err');
-    }
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-function populateSheetSelectors(){
-  const names = workbook.SheetNames;
-  sheetAISel.innerHTML = names.map(n=>`<option value="${n}">${n}</option>`).join('');
-  sheetTCSel.innerHTML = names.map(n=>`<option value="${n}">${n}</option>`).join('');
-  const guessAI = names.find(n=>/_ai$/i.test(n.trim())) || names.find(n=>/\bai\b/i.test(n));
-  const guessTC = names.find(n=>/_tc$/i.test(n.trim())) || names.find(n=>/\btc\b/i.test(n));
-  if (guessAI) sheetAISel.value = guessAI;
-  if (guessTC) sheetTCSel.value = guessTC;
-}
-
-/* ---------- core mapping ---------- */
-function extractRows(aoa){
-  if (!aoa.length) return {header:[], rows:[]};
-  const header = aoa[0];
-  const idx = {
-    phanHe: findColIndex(header,'phân hệ'),
-    manHinh: findColIndex(header,'màn hình'),
-    noiDung: findColIndex(header,'nội dung'),
-    thucTe: findColIndex(header,'thực tế'),
-    baoGia: findColIndex(header,'báo giá'),
-  };
-  const rows = [];
-  for (let r=1;r<aoa.length;r++){
-    const row = aoa[r];
-    if (!row) continue;
-    const stt0 = norm(row[0]);
-    const manHinhVal = idx.manHinh>=0 ? norm(row[idx.manHinh]) : '';
-    const noiDungVal = idx.noiDung>=0 ? norm(row[idx.noiDung]) : '';
-    if (normLower(stt0) === 'tổng cộng') continue;
-    if (!manHinhVal && !noiDungVal) continue;
-    rows.push({
-      phanHe: idx.phanHe>=0 ? norm(row[idx.phanHe]) : '',
-      manHinh: manHinhVal,
-      noiDung: idx.noiDung>=0 ? row[idx.noiDung] : '',
-      thucTe: idx.thucTe>=0 ? Number(row[idx.thucTe])||0 : 0,
-      baoGia: idx.baoGia>=0 ? Number(row[idx.baoGia])||0 : 0,
-    });
-  }
-  return {header, idx, rows};
-}
-
-function buildMapping(){
-  const aiName = sheetAISel.value, tcName = sheetTCSel.value;
-  if (!aiName || !tcName || aiName===tcName){
-    setStatus('Chọn 2 sheet khác nhau cho AI và TC.','err');
-    return null;
-  }
-  const aiAOA = sheetToAOA(workbook.Sheets[aiName]);
-  const tcAOA = sheetToAOA(workbook.Sheets[tcName]);
-  const aiData = extractRows(aiAOA);
-  const tcData = extractRows(tcAOA);
-
-  const aiMap = new Map();
-  aiData.rows.forEach(r=>{ if(r.manHinh) aiMap.set(normLower(r.manHinh), r.thucTe); });
-
-  const PIC_DEV_SET = new Set(['bo','sfa']);
-
-  const out = tcData.rows.map((r,i)=>{
-    const key = normLower(r.manHinh);
-    const aiFound = aiMap.has(key);
-    const aiVal = aiFound ? aiMap.get(key) : 0;
-    const pic = PIC_DEV_SET.has(normLower(r.phanHe)) ? 'Dev' : 'NA';
-    return {
-      stt: i+1,
-      ungDung: r.phanHe,
-      chucNang: r.manHinh,
-      noiDung: r.noiDung,
-      pic,
-      human: r.thucTe,
-      humanHoTro: r.baoGia,
-      ai: aiVal,
-      aiMatched: aiFound,
-    };
-  });
-  return out;
-}
-
-/* ---------- preview render ---------- */
-function renderPreview(rows){
-  previewBody.innerHTML = rows.map(r=>`
-    <tr>
-      <td class="num">${r.stt}</td>
-      <td>${r.ungDung}</td>
-      <td>${r.chucNang}</td>
-      <td class="trunc" title="${escapeHtml(String(r.noiDung))}">${escapeHtml(String(r.noiDung))}</td>
-      <td>${r.pic}</td>
-      <td class="num">${r.human}</td>
-      <td class="num">${r.humanHoTro}</td>
-      <td class="num ${r.aiMatched?'':'warn'}">${r.ai}${r.aiMatched?'':' ⚠'}</td>
-    </tr>`).join('');
-
-  const sum = (k)=>rows.reduce((a,b)=>a+(Number(b[k])||0),0);
-  previewFoot.innerHTML = `
-      <td colspan="5">Tổng</td>
-      <td class="num">${round2(sum('human'))}</td>
-      <td class="num">${round2(sum('humanHoTro'))}</td>
-      <td class="num">${round2(sum('ai'))}</td>`;
-
-  rowCountText.textContent = `${rows.length} dòng đã mapping`;
-  previewWrap.style.display = 'block';
-}
-function round2(n){ return Math.round(n*100)/100; }
-function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-/* ---------- generate ---------- */
-genBtn.addEventListener('click', ()=>{
-  setStatus('Đang xử lý…','');
-  setTimeout(()=>{
-    const rows = buildMapping();
-    if (!rows){ return; }
-    if (!rows.length){
-      setStatus('Không tìm thấy dòng dữ liệu hợp lệ trong 2 sheet đã chọn.','err');
-      previewWrap.style.display='none';
-      downloadBtn.style.display='none';
-      return;
-    }
-    mappedRows = rows;
-    renderPreview(rows);
-    const unmatched = rows.filter(r=>!r.aiMatched).length;
-    setStatus(unmatched
-      ? `Xong — ${rows.length} dòng, ${unmatched} dòng không khớp AI (đánh dấu ⚠).`
-      : `Xong — ${rows.length} dòng, khớp AI/TC 100%.`, unmatched? 'err':'ok');
-    downloadBtn.style.display='inline-flex';
-  }, 50);
-});
-
-downloadBtn.addEventListener('click', ()=>{
-  if (!mappedRows) return;
-  const header = ['STT','Ứng dụng','Chức năng','Nội dung','PIC','Human','Human Hỗ trợ KH','AI'];
-  const aoa = [header];
-  mappedRows.forEach(r=>aoa.push([r.stt, r.ungDung, r.chucNang, r.noiDung, r.pic, r.human, r.humanHoTro, r.ai]));
-
-  const sum = (k)=>round2(mappedRows.reduce((a,b)=>a+(Number(b[k])||0),0));
-  const totalRowIdx = aoa.length;
-  aoa.push(['Tổng','','','','', sum('human'), sum('humanHoTro'), sum('ai')]);
-
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = [{wch:6},{wch:14},{wch:20},{wch:48},{wch:8},{wch:10},{wch:16},{wch:8}];
-
-  ['F','G','H'].forEach((col)=>{
-    const cellRef = col + (totalRowIdx+1);
-    if (ws[cellRef]) ws[cellRef].f = `SUM(${col}2:${col}${totalRowIdx})`;
+  const byProject = {};
+  const byStatus = {};
+  rows.forEach(r => {
+    byProject[r.project] = (byProject[r.project]||0) + 1;
+    byStatus[r.status] = (byStatus[r.status]||0) + 1;
   });
 
-  const wb2 = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb2, ws, 'CRs');
-  XLSX.writeFile(wb2, 'HQSOFT_Estimate_Output.xlsx');
-});
+  document.getElementById('byProjectBody').innerHTML = ALL_PROJECTS.map(p => `
+    <tr><td>${p}</td><td>${byProject[p]||0}</td></tr>`).join('');
 
-/* ---------- schema connector lines ---------- */
-function drawSchema(){
-  const svg = document.getElementById('schemaSvg');
-  const mid = svg.parentElement;
-  const rect = mid.getBoundingClientRect();
-  svg.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
-  svg.innerHTML = '';
-  const keys = ['ung_dung','chuc_nang','noi_dung','human','hotro','ai'];
-  const leftItems = document.querySelectorAll('.schema-side:first-child .schema-item');
-  const rightItems = document.querySelectorAll('.schema-side:last-child .schema-item');
-  const containerRect = document.querySelector('.schema-cols').getBoundingClientRect();
-
-  keys.forEach((k)=>{
-    const l = [...leftItems].find(el=>el.dataset.k===k);
-    const rEl = [...rightItems].find(el=>el.dataset.k===k);
-    if (!l || !rEl) return;
-    const lb = l.getBoundingClientRect(), rb = rEl.getBoundingClientRect();
-    const y1 = lb.top + lb.height/2 - containerRect.top;
-    const y2 = rb.top + rb.height/2 - containerRect.top;
-    const startX = lb.right - containerRect.left;
-    const endX = rb.left - containerRect.left;
-    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
-    const c = (endX-startX)/2;
-    path.setAttribute('d', `M ${startX} ${y1} C ${startX+c} ${y1}, ${endX-c} ${y2}, ${endX} ${y2}`);
-    path.setAttribute('stroke', '#4C7EA8');
-    path.setAttribute('stroke-width', '1.4');
-    path.setAttribute('fill', 'none');
-    path.setAttribute('opacity', '0.55');
-    svg.appendChild(path);
-    [ [startX,y1], [endX,y2] ].forEach(([cx,cy])=>{
-      const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
-      dot.setAttribute('cx',cx); dot.setAttribute('cy',cy); dot.setAttribute('r',2.5);
-      dot.setAttribute('fill','#1F4E79');
-      svg.appendChild(dot);
-    });
-  });
+  const statusRows = Object.keys(byStatus).sort((a,b)=>byStatus[b]-byStatus[a]);
+  document.getElementById('byStatusBody').innerHTML = statusRows.map(s => `
+    <tr><td>${s}</td><td>${byStatus[s]}</td></tr>`).join('') || '<tr><td colspan="2" style="color:var(--muted);">Không có dữ liệu</td></tr>';
 }
-window.addEventListener('load', drawSchema);
-window.addEventListener('resize', drawSchema);
+
+loadDashBtn.addEventListener('click', loadDashboard);
 </script>
 </body>
 </html>
