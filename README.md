@@ -118,6 +118,10 @@ Module hiện có:
   (MerapLion_eSales, ABI_eSales_Support, ANVY_eSale_Support, Sabeco_PG) từ
   ERP, tính Pass/Fail SLA phản hồi đầu theo Priority, xem theo dự
   án/priority, xuất Excel (`/tickets/sla-first-response`).
+- **Hotfix → Gộp SQL**: upload nhiều file .sql, gộp lại, tự nhận diện các
+  PROC cần backup, tạo query lấy definition hiện tại, tạo SQL backup, xác
+  nhận rồi mới cho tải `Deploy_All.sql` (`/hotfix/gop-sql`). Hoàn toàn xử lý
+  ở trình duyệt, không gửi gì lên server.
 
 ### Công thức SLA Phản hồi đầu
 
@@ -141,6 +145,31 @@ hiện "chưa cấu hình" — vì cần đúng tên field ERPNext lưu điểm 
 thời điểm phản hồi đầu tiên. Cách xác nhận tên field: vào **Ticket dự án →
 Tra cứu ERP**, bấm "Lấy dữ liệu từ ERP", xem tên cột trong bảng kết quả thô
 (đó là tên field thật) — báo lại tên field để hoàn thiện 2 chỉ số này.
+
+## Gửi báo cáo Dashboard Ticket ABI tự động qua email (cron)
+
+Ngoài 3 cách xuất tay trên trang `/abi/dashboard-ticket` (PNG/PDF/HTML/Email
+thủ công), thư mục `automation/abi-dashboard-report/` chứa một **script
+Node.js độc lập** để tự động tạo + gửi báo cáo này qua email theo lịch (ví
+dụ mỗi sáng), không cần ai mở trình duyệt.
+
+- Dùng chung công thức/thống kê với bản web (`dashboardLogic.js` là bản port
+  từ logic trong `protected/abi-dashboard-ticket.html`) — nếu sau này sửa
+  công thức ở 1 bên, nhớ soát lại bên còn lại cho khớp.
+- Xuất PDF bằng **wkhtmltopdf** (khác với bản web dùng html2canvas+jsPDF
+  ngay trong trình duyệt), nên cần cài `wkhtmltopdf` trên máy chạy script.
+  Script này **không chạy trong Docker image chính** (Alpine không có sẵn
+  gói wkhtmltopdf ổn định) — nên chạy trực tiếp trên 1 máy chủ Ubuntu/Debian
+  (có thể là máy đang chạy Docker container chính, chạy song song ở host,
+  hoặc 1 máy/cron job riêng), theo hướng dẫn trong
+  `automation/abi-dashboard-report/README.md`.
+- Cấu hình SMTP + danh sách người nhận trong `send-dashboard-report.js`
+  (mục `CONFIG`) trước khi chạy — **đừng commit mật khẩu SMTP thật lên
+  GitHub**, nên dùng biến môi trường (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`
+  đã hỗ trợ sẵn qua `process.env`).
+- Muốn gửi luôn vào 1 channel Teams: lấy địa chỉ email riêng của channel đó
+  (`...` > Get email address) rồi thêm vào `mail.cc` — không cần code thêm
+  gì để tích hợp Teams.
 
 ## Export "Lợi nhuận Crs" giữ nguyên định dạng file gốc
 

@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hotfix — Gộp SQL</title>
+<style>
+body{margin:0;background:#f3f6fa;font-family:Arial,Segoe UI,sans-serif;color:#172033}
+.wrap{max-width:1250px;margin:24px auto;padding:0 16px}
+.header{background:#172033;color:white;padding:22px;border-radius:12px;margin-bottom:16px}
+.header h1{margin:0 0 6px;font-size:24px}.header p{margin:0;color:#cbd5e1}
+.card{background:#fff;border-radius:12px;padding:18px;margin:14px 0;box-shadow:0 2px 8px #0000000d}
+h2{font-size:17px;margin:0 0 10px}.muted{color:#64748b;font-size:13px}
+input[type=file]{display:block;width:100%;padding:14px;border:1px solid #94a3b8;border-radius:8px;background:white}
+button{border:0;border-radius:8px;padding:10px 15px;font-weight:700;cursor:pointer;background:#2563eb;color:#fff}
+button:disabled{opacity:.45;cursor:not-allowed}
+.secondary{background:#64748b}.success{background:#15803d}
+.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.file{padding:6px 0;font-size:13px}
+textarea{width:100%;min-height:260px;resize:vertical;border:1px solid #cbd5e1;border-radius:8px;padding:12px;box-sizing:border-box;font:12px Consolas,monospace}
+pre{background:#0f172a;color:#e2e8f0;padding:14px;border-radius:8px;white-space:pre-wrap;overflow:auto;font:12px Consolas,monospace}
+.status{padding:12px;border-radius:8px;font-size:13px;margin-top:10px}
+.info{background:#eff6ff;color:#1e40af}.ok{background:#f0fdf4;color:#166534}.bad{background:#fef2f2;color:#991b1b}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px;border-bottom:1px solid #e5e7eb;text-align:left}
+.steps{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}.step{padding:8px 11px;background:#e5e7eb;border-radius:8px;font-size:12px;font-weight:700;color:#64748b}.active{background:#dbeafe;color:#1d4ed8!important}.done{background:#dcfce7;color:#166534!important}.locked{background:#fee2e2;color:#991b1b!important}
+#downloadDeployBtn,#copyDeployBtn{display:none!important}
+.ops-topbar{background:#172033;color:#fff;padding:12px 18px;display:flex;align-items:center;gap:14px;font-family:Arial,sans-serif;margin:-1px -1px 0;}
+.ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;opacity:.9;}
+.ops-topbar a:hover{opacity:1;text-decoration:underline;}
+.ops-topbar .crumb{font-size:12px;color:#94a3b8;font-family:monospace;}
+</style>
+</head>
+<body>
+<div class="ops-topbar">
+  <a href="/">← Quay về</a>
+  <span class="crumb">Hotfix / Gộp SQL</span>
+</div>
+<div class="wrap">
+<div class="header"><h1>SQL PROC Deploy & Backup Tool</h1><p>Upload → Gộp SQL → Detect PROC → Backup → Confirm → Deploy</p></div>
+
+<div class="steps">
+ <span id="st1" class="step active">1. Upload</span>
+ <span id="st2" class="step locked">2. Gộp SQL</span>
+ <span id="st3" class="step locked">3. Detect PROC</span>
+ <span id="st4" class="step locked">4. Backup</span>
+ <span id="st5" class="step locked">5. Confirm</span>
+ <span id="st6" class="step locked">6. Deploy</span>
+</div>
+
+<div class="card">
+<h2>1. Chọn file SQL</h2>
+<p class="muted">Chọn nhiều file .sql cùng lúc. Sau khi chọn, bấm nút <b>Gộp SQL</b>.</p>
+<input id="sqlFiles" type="file" accept=".sql,.txt" multiple>
+<div id="fileCount" class="status info">Chưa chọn file.</div>
+<div id="fileList" style="margin-top:8px"></div>
+<div class="row" style="margin-top:12px">
+<button id="mergeBtn" type="button" disabled>Gộp SQL</button>
+<button id="clearBtn" type="button" class="secondary">Xóa</button>
+</div>
+</div>
+
+<div class="card">
+<h2>2. SQL đã gộp</h2><p class="muted">Xem trước nội dung tại đây. <b>Chỉ được Copy/Download sau khi Generate Backup PROC thành công (bước 4)</b> — để đảm bảo luôn backup trước khi thao tác với PROC production.</p>
+<textarea id="merged" readonly placeholder="Sau khi bấm Gộp SQL, nội dung sẽ hiện ở đây..."></textarea>
+<div class="row" style="margin-top:10px">
+<button id="downloadMergedBtn" type="button" class="secondary" disabled>Download SQL đã gộp</button>
+<button id="copyMergedBtn" type="button" class="secondary" disabled>Copy SQL đã gộp</button>
+</div>
+</div>
+
+<div class="card">
+<h2>3. PROC cần Backup — tự động từ SQL đã gộp</h2>
+<div id="procStatus" class="status info">Chưa phân tích PROC.</div>
+<div id="procList" style="margin-top:10px"></div>
+</div>
+
+<div class="card">
+<h2>4. Lấy SQL definition hiện tại</h2>
+<p class="muted">Chạy query trên SQL Server. Kết quả trả về <b>1 dòng / 1 ô duy nhất</b> chứa toàn bộ definition của các PROC, sau đó copy nguyên ô đó và paste vào phần Definition bên dưới.</p>
+<textarea id="lookup" readonly style="font-family:Consolas,'Courier New',monospace;font-size:13px;line-height:1.45;white-space:pre;tab-size:4" placeholder="Query lấy definition PROC sẽ xuất hiện ở đây...">Hãy gộp SQL trước.</textarea>
+<div class="row">
+<button id="copyLookupBtn" type="button" class="secondary" disabled>Copy Query</button>
+<button id="downloadLookupBtn" type="button" class="secondary" disabled>Download Lookup SQL</button>
+</div>
+<textarea id="definitions" placeholder="Paste nguyên ô AllProcDefinitions từ SQL Server vào đây..."></textarea>
+<div class="row" style="margin-top:10px">
+<button id="backupBtn" type="button" disabled>Generate Backup PROC</button>
+</div>
+<div id="backupStatus" class="status info">Chưa tạo backup.</div>
+<pre id="backupPreview" style="display:none"></pre>
+<div class="row" style="margin-top:10px">
+<button id="downloadBackupBtn" type="button" class="secondary" disabled>Download Backup SQL</button>
+<button id="copyBackupBtn" type="button" class="secondary" disabled>Copy Backup SQL</button>
+</div>
+</div>
+
+<div class="card">
+<h2>5. Xác nhận Backup</h2>
+<label style="display:flex;gap:8px;align-items:center;font-size:13px">
+<input id="confirm" type="checkbox" disabled>
+Tôi đã chạy Backup SQL thành công và kiểm tra backup.
+</label>
+</div>
+
+<div class="card">
+<h2>6. Deploy</h2><p class="muted">Chỉ tại bước này, sau khi Backup đã chạy thành công và được xác nhận, hệ thống mới cho phép Download Deploy_All.sql.</p>
+<button id="deployBtn" type="button" class="success" disabled>Download Deploy_All.sql</button>
+<div id="deployStatus" class="status bad">🔒 Chưa xác nhận backup.</div>
+</div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+var state={
+ files:[],
+ merged:"",
+ procs:[],
+ backup:"",
+ backupReady:false
+};
+
+function $(id){return document.getElementById(id);}
+function today(){
+ var d=new Date();
+ return d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0");
+}
+function esc(s){
+ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function download(name,text){
+ try{
+  var blob=new Blob(["\\ufeff", text],{type:"application/sql;charset=utf-8"});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement("a");
+  a.style.display="none";
+  a.href=url;
+  a.download=name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){
+   document.body.removeChild(a);
+   URL.revokeObjectURL(url);
+  },1000);
+ }catch(err){
+  console.error(err);
+  // Fallback: open the generated SQL in a new tab so it can be saved manually.
+  var w=window.open();
+  if(w){
+   w.document.open();
+   w.document.write("<pre style='white-space:pre-wrap'>" + esc(text) + "</pre>");
+   w.document.close();
+  }else{
+   alert("Trình duyệt chặn tải file. Hãy cho phép pop-up hoặc dùng nút Copy.");
+  }
+ }
+}
+function steps(n){
+ for(var i=1;i<=6;i++){
+  var e=$("st"+i);
+  e.className="step "+(i<n?"done":i===n?"active":"locked");
+ }
+}
+
+/* FILE UPLOAD */
+$("sqlFiles").addEventListener("change",function(e){
+ state.files=Array.from(e.target.files||[]).filter(function(f){return /\.(sql|txt)$/i.test(f.name);});
+ state.files.sort(function(a,b){return a.name.localeCompare(b.name,undefined,{numeric:true});});
+ renderFiles();
+ $("mergeBtn").disabled=state.files.length===0;
+ if(state.files.length) steps(1);
+});
+
+function renderFiles(){
+ $("fileCount").textContent=state.files.length
+  ?"Đã chọn "+state.files.length+" file."
+  :"Chưa chọn file.";
+ $("fileList").innerHTML=state.files.map(function(f,i){
+  return '<div class="file">'+(i+1)+". "+esc(f.name)+" ("+f.size.toLocaleString()+" bytes)</div>";
+ }).join("");
+}
+
+/* MERGE */
+$("mergeBtn").addEventListener("click",async function(){
+  if(!state.files.length){
+    alert("Chưa có file SQL.");
+    return;
+  }
+
+  try{
+    var arr=[];
+    for(var i=0;i<state.files.length;i++){
+      var f=state.files[i];
+      var text=await f.text();
+      arr.push(
+        "/* =========================================================\n"+
+        "   FILE: "+f.name+"\n"+
+        "   ========================================================= */\n"+
+        text.trim()+"\nGO\n"
+      );
+    }
+
+    state.merged=arr.join("\n");
+    $("merged").value=state.merged;
+
+    // Gộp lại (SQL nguồn thay đổi) → coi như backup cũ không còn hợp lệ,
+    // khoá lại toàn bộ nút liên quan tới backup/copy cho tới khi backup lại.
+    state.backupReady=false;
+    $("downloadBackupBtn").disabled=true;
+    $("copyBackupBtn").disabled=true;
+    $("downloadMergedBtn").disabled=true;
+    $("copyMergedBtn").disabled=true;
+    $("confirm").disabled=true;
+    $("confirm").checked=false;
+    $("deployBtn").disabled=true;
+
+    // Immediately analyze the exact SQL that was just merged.
+    detect();
+
+    // Move UI to step 3 after detection.
+    steps(3);
+    document.getElementById("procStatus").scrollIntoView({behavior:"smooth",block:"start"});
+  }catch(err){
+    console.error(err);
+    alert("Lỗi khi gộp SQL: "+err.message);
+  }
+});
+
+/* DETECT PROC */
+/*
+ * Best-effort SQL "pretty print" — chỉ chèn thêm xuống dòng trước các từ khóa
+ * chính, không thay đổi nội dung/logic câu lệnh (xuống dòng = whitespace,
+ * SQL Server coi như dấu cách). Dùng khi definition bị dồn thành 1 dòng dài
+ * (mất CR/LF lúc copy từ SSMS, hoặc bản thân definition trên DB vốn không
+ * có xuống dòng).
+ */
+function looksSquished(sql){
+  var lines=sql.split("\n");
+  var longLines=lines.filter(function(l){ return l.length>200; });
+  return longLines.length>0 && (lines.length<=2 || longLines.length/lines.length>0.3);
+}
+
+function autoFormatSqlIfSquished(sql){
+  if(!looksSquished(sql)) return sql;
+
+  var s=sql.replace(/[ \t]+/g," ");
+
+  var keywords=[
+    "CREATE OR ALTER PROCEDURE","CREATE OR ALTER PROC",
+    "CREATE PROCEDURE","CREATE PROC","ALTER PROCEDURE","ALTER PROC",
+    "BEGIN","END","IF NOT EXISTS","IF EXISTS","IF","ELSE","WHILE",
+    "SELECT","FROM","WHERE","GROUP BY","ORDER BY","HAVING",
+    "INSERT INTO","VALUES","UPDATE","SET","DELETE FROM","DELETE",
+    "INNER JOIN","LEFT JOIN","RIGHT JOIN","FULL JOIN","JOIN",
+    "UNION ALL","UNION","DECLARE","PRINT","RETURN","GO",
+    "AND","OR"
+  ];
+  keywords.sort(function(a,b){ return b.length-a.length; });
+
+  keywords.forEach(function(kw){
+    var pattern=kw.replace(/ /g,"\\s+");
+    var re=new RegExp("\\s+("+pattern+")\\b","gi");
+    s=s.replace(re,"\n$1");
+  });
+
+  /* Biến @ (vd @UserId, @@ROWCOUNT) cũng nên xuống dòng riêng để dễ đọc,
+     giống cách xử lý từ khóa ở trên — áp dụng SAU khi đã tách từ khóa.
+     Bắt cả trường hợp đứng sát dấu =, ,, ( ... chứ không chỉ sau dấu cách. */
+  s=s.replace(/[ \t]*(@{1,2}[A-Za-z_][A-Za-z0-9_]*)/g,"\n$1");
+
+  s=s.replace(/\n{3,}/g,"\n\n");
+  return s.trim();
+}
+
+function detect(){
+  var text=state.merged || "";
+  var map={};
+
+  /*
+   * Detect only CREATE/ALTER PROC declarations.
+   * Tested against:
+   *   CREATE PROC dbo.X
+   *   ALTER PROCEDURE [dbo].[X]
+   *   CREATE OR ALTER PROC dbo.X
+   */
+  var rx=/\b(CREATE\s+OR\s+ALTER|CREATE|ALTER)\s+(PROC|PROCEDURE)\s+((?:\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_$#]*)(?:\s*\.\s*(?:\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_$#]*))?)/gi;
+  var m;
+
+  while((m=rx.exec(text))!==null){
+    var full=m[3].trim();
+    var parts=full.split(/\s*\.\s*/);
+    var schema="dbo";
+    var name=parts.length===2 ? parts[1] : parts[0];
+
+    if(parts.length===2) schema=parts[0];
+
+    schema=schema.replace(/^\[|\]$/g,"").trim();
+    name=name.replace(/^\[|\]$/g,"").trim();
+
+    if(name){
+      var key=(schema+"."+name).toLowerCase();
+      map[key]={schema:schema,name:name};
+    }
+  }
+
+  state.procs=Object.keys(map).map(function(k){return map[k];});
+
+  $("procStatus").textContent="Đã gộp "+state.files.length+" file → phát hiện "+state.procs.length+" PROC.";
+  $("procStatus").className="status "+(state.procs.length?"ok":"bad");
+
+  if(!state.procs.length){
+    $("procList").innerHTML=
+      "<div class='status bad'>Không tìm thấy PROC.</div>"+
+      "<pre style='max-height:220px'>"+esc(text.substring(0,3000))+"</pre>";
+    $("lookup").textContent="-- Không tìm thấy PROC trong SQL đã gộp.";
+    $("copyLookupBtn").disabled=true;
+    $("downloadLookupBtn").disabled=true;
+    $("backupBtn").disabled=true;
+    return;
+  }
+
+  $("procList").innerHTML=
+    "<table><thead><tr><th>#</th><th>Schema</th><th>PROC</th><th>Trạng thái</th><th>Backup</th></tr></thead><tbody>"+
+    state.procs.map(function(p,i){
+      return "<tr><td>"+(i+1)+"</td><td>"+esc(p.schema)+"</td><td><b>"+esc(p.name)+"</b></td><td><span class='muted'>Chờ paste definition (bước 4)</span></td><td>"+esc(p.name+"_"+today())+"</td></tr>";
+    }).join("")+
+    "</tbody></table>";
+
+  var names=state.procs.map(function(p){
+    return "'"+p.name.replace(/'/g,"''")+"'";
+  }).join(",\n    ");
+
+  $("lookup").value =
+    "/* Lấy toàn bộ definition PROC vào 1 ô duy nhất */\r\n" +
+    "/* Dùng FOR XML PATH thay STRING_AGG để tương thích SQL Server 2008/2012/2014/2016 (STRING_AGG chỉ có từ 2017 trở lên) */\r\n" +
+    "SELECT STUFF((\r\n" +
+    "  SELECT CHAR(13)+CHAR(10)+CHAR(13)+CHAR(10) +\r\n" +
+    "    N'/* ===== ' + s.name + N'.' + p.name + N' ===== */' + CHAR(13)+CHAR(10) +\r\n" +
+    "    m.definition + CHAR(13)+CHAR(10) + N'GO'\r\n" +
+    "  FROM sys.procedures p\r\n" +
+    "  JOIN sys.schemas s ON p.schema_id=s.schema_id\r\n" +
+    "  JOIN sys.sql_modules m ON p.object_id=m.object_id\r\n" +
+    "  WHERE p.name IN (\r\n    " + names + "\r\n  )\r\n" +
+    "  FOR XML PATH(''), TYPE\r\n" +
+    ").value('.', 'nvarchar(max)'), 1, 4, '') AS AllProcDefinitions;";
+
+  $("copyLookupBtn").disabled=false;
+  $("downloadLookupBtn").disabled=false;
+  $("backupBtn").disabled=false;
+  steps(3);
+}
+function selectTextareaForCopy(el){
+  el.focus();
+  el.select();
+  el.setSelectionRange(0, el.value.length);
+  return true;
+}
+
+function copyWithFallback(text, textarea){
+  var ok=false;
+  try{
+    var ta=document.createElement("textarea");
+    ta.value=text;
+    ta.setAttribute("readonly","");
+    ta.style.position="fixed";
+    ta.style.left="-10000px";
+    ta.style.top="0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0,ta.value.length);
+    ok=document.execCommand("copy");
+    document.body.removeChild(ta);
+  }catch(e){ ok=false; }
+
+  if(!ok && textarea){
+    selectTextareaForCopy(textarea);
+  }
+  return ok;
+}
+
+/* COPY LOOKUP */
+$("copyLookupBtn").addEventListener("click",function(){
+  var el=$("lookup");
+  var text=String(el.value || "");
+  if(!text){ alert("Chưa có query để copy."); return; }
+  var ok=false;
+  try{
+    el.focus();
+    el.select();
+    el.setSelectionRange(0,text.length);
+    ok=document.execCommand("copy");
+  }catch(e){ ok=false; }
+  if(ok){
+    $("copyLookupBtn").textContent="Đã copy";
+    setTimeout(function(){ $("copyLookupBtn").textContent="Copy Query"; },1200);
+  }else{
+    alert("Query đã được bôi đen. Nhấn Ctrl+C để copy.");
+  }
+});
+
+$("downloadLookupBtn").addEventListener("click",function(){
+  var text=$("lookup").value || "";
+  if(!text || text.indexOf("Hãy gộp SQL trước")===0){
+    alert("Chưa có query để download.");
+    return;
+  }
+  download("Lookup_PROC_"+today()+".sql",text);
+});
+
+/* BACKUP GENERATION */
+$("backupBtn").addEventListener("click",function(){
+ var input=String($("definitions").value || "").trim();
+ if(!input){
+   alert("Hãy paste SQL definition hiện tại của PROC.");
+   return;
+ }
+
+ /* SSMS copy có thể đưa về CR/LF hoặc chỉ LF; chuẩn hóa trước khi detect. */
+ input=input.replace(/\r\n/g,"\n").replace(/\r/g,"\n");
+ /* Một số trường hợp copy từ HTML/text cũ có literal \n. Chỉ đổi khi thực sự có dạng này. */
+ if(input.indexOf("\\n")>=0 && input.indexOf("\n")<0){
+   input=input.replace(/\\r\\n/g,"\n").replace(/\\n/g,"\n").replace(/\\r/g,"\n");
+ }
+
+ var date=today(), out=[];
+ out.push("/* BACKUP PROC - "+date+" */\n\n");
+
+ /*
+  * "Không tìm thấy definition khi paste" KHÔNG phải lỗi — vì query Lookup (bước 4)
+  * chỉ trả definition của PROC đã tồn tại trong sys.procedures. Nếu 1 PROC không
+  * xuất hiện trong kết quả paste vào, nghĩa là PROC đó CHƯA có trên DB (NEW PROC),
+  * nên không cần/không thể backup — vẫn cho phép Deploy bình thường.
+  */
+ var newProcs=[];
+ var existingProcs=[];
+
+ state.procs.forEach(function(p){
+   var escaped=p.name.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+
+   /*
+    * Detect declaration by PROC NAME.
+    * Supports:
+    * CREATE PROC dbo.X
+    * CREATE PROCEDURE [dbo].[X]
+    * ALTER PROC [dbo].[X]
+    * CREATE OR ALTER PROCEDURE dbo.X
+    * schema/name on separate lines
+    */
+   var decl=new RegExp(
+     "\\b(?:CREATE\\s+OR\\s+ALTER|CREATE|ALTER)\\s+(?:PROC|PROCEDURE)\\s+"+
+     "(?:(?:\\[[^\\]]+\\]|[A-Za-z0-9_$#]+)\\s*\\.\\s*)?"+
+     "\\[?"+escaped+"\\]?(?=\\s|\\(|;|$)",
+     "im"
+   );
+
+   var match=decl.exec(input);
+
+   /* Fallback: find PROC name after any CREATE/ALTER PROCEDURE text. */
+   if(!match){
+     var fallback=new RegExp(
+       "\\b(?:CREATE\\s+OR\\s+ALTER|CREATE|ALTER)\\s+(?:PROC|PROCEDURE)[\\s\\S]{0,300}?\\b"+
+       escaped+"\\b","im"
+     );
+     match=fallback.exec(input);
+   }
+
+   if(!match){
+     newProcs.push(p);
+     return;
+   }
+
+   var start=match.index;
+   var after=input.slice(start);
+
+   /* End at GO, or at the next CREATE/ALTER PROC if GO is absent. */
+   var go=after.search(/^\s*GO\s*$/im);
+   var nextDecl=after.search(/\n\s*(?:CREATE\s+OR\s+ALTER|CREATE|ALTER)\s+(?:PROC|PROCEDURE)\s+/im);
+
+   var end=-1;
+   if(go>=0) end=go;
+   else if(nextDecl>0) end=nextDecl;
+
+   var block=(end>=0 ? after.slice(0,end) : after).trim();
+
+   if(!block){
+     newProcs.push(p);
+     return;
+   }
+
+   /* Nếu definition gốc bị dồn thành 1 (hoặc vài) dòng cực dài (do SSMS mất
+      CR/LF khi copy, hoặc bản thân definition trên DB vốn không có xuống
+      dòng), tự động chèn xuống dòng trước các từ khóa chính cho dễ đọc.
+      Chỉ là whitespace nên không ảnh hưởng gì đến việc chạy SQL. */
+   block=autoFormatSqlIfSquished(block);
+
+   var backupName=p.name+"_"+date;
+
+   /* Convert ALTER/CREATE OR ALTER to CREATE PROCEDURE. */
+   block=block.replace(
+     /^\s*(?:CREATE\s+OR\s+ALTER|CREATE|ALTER)\s+(?:PROC|PROCEDURE)\b/i,
+     "CREATE PROCEDURE"
+   );
+
+   /* Rename the original PROC while preserving schema. */
+   var procNameRe=new RegExp(
+     "((?:\\["+p.schema.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\]|"+
+     p.schema.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")\\s*\\.\\s*)?"+
+     "\\[?"+escaped+"\\]?",
+     "i"
+   );
+
+   block=block.replace(procNameRe,function(m){
+     /* Luôn build lại schema.backupName sạch — không nối thêm vào prefix cũ,
+        tránh bị lặp schema kiểu "[dbo].dbo.Ten_backup" khi tên gốc đã có
+        schema qualifier (vd "[dbo].[Ten]"). */
+     return p.schema+"."+backupName;
+   });
+
+   existingProcs.push(p);
+   out.push(
+     "IF OBJECT_ID(N'"+p.schema+"."+backupName+"',N'P') IS NOT NULL\n"+
+     "    DROP PROCEDURE ["+p.schema+"].["+backupName+"];\nGO\n\n"
+   );
+   out.push(block+"\nGO\n\n");
+ });
+
+ if(newProcs.length){
+   out.push(
+     "/* NEW PROC (chưa tồn tại trên DB — không cần backup): "+
+     newProcs.map(function(p){return p.schema+"."+p.name;}).join(", ")+" */\n\n"
+   );
+ }
+
+ /* Cập nhật lại bảng ở Bước 3 để hiển thị rõ PROC nào đã tồn tại (backup)
+    và PROC nào là NEW (không backup). */
+ renderProcTable(existingProcs, newProcs);
+
+ state.backupReady=true;
+ if(existingProcs.length && newProcs.length){
+   $("backupStatus").className="status ok";
+   $("backupStatus").textContent=
+     "Đã backup "+existingProcs.length+" PROC đã tồn tại. "+
+     newProcs.length+" PROC là NEW (chưa có trên DB) — không cần backup, vẫn Deploy bình thường.";
+ }else if(existingProcs.length && !newProcs.length){
+   $("backupStatus").className="status ok";
+   $("backupStatus").textContent=
+     "Đã generate backup đầy đủ "+existingProcs.length+
+     " PROC. Hãy chạy file backup trên SQL Server trước.";
+ }else if(!existingProcs.length && newProcs.length){
+   $("backupStatus").className="status ok";
+   $("backupStatus").textContent=
+     "Cả "+newProcs.length+" PROC đều là NEW (chưa tồn tại trên DB) — không có gì để backup, có thể Deploy trực tiếp.";
+ }else{
+   state.backupReady=false;
+   $("backupStatus").className="status bad";
+   $("backupStatus").textContent="Không nhận diện được PROC nào trong nội dung đã paste. Kiểm tra lại query Lookup / paste đúng ô AllProcDefinitions.";
+ }
+
+ /* Chuẩn hóa xuống dòng theo CRLF (\r\n) — đúng chuẩn Windows/SQL Server,
+    giống định dạng khi copy trực tiếp từ PROD/SSMS, tránh bị dính liền dòng
+    khi paste vào SSMS hoặc Notepad. */
+ state.backup=out.join("").replace(/\r\n/g,"\n").replace(/\n/g,"\r\n");
+ $("backupPreview").style.display="block";
+ $("backupPreview").textContent=state.backup;
+ $("downloadBackupBtn").disabled=!state.backupReady;
+ $("copyBackupBtn").disabled=!state.backupReady;
+ $("downloadMergedBtn").disabled=!state.backupReady;
+ $("copyMergedBtn").disabled=!state.backupReady;
+ $("confirm").disabled=!state.backupReady;
+ $("confirm").checked=false;
+ $("deployBtn").disabled=true;
+ steps(4);
+});
+
+function renderProcTable(existingProcs, newProcs){
+ var existingKeys={};
+ existingProcs.forEach(function(p){ existingKeys[(p.schema+"."+p.name).toLowerCase()]=true; });
+ var newKeys={};
+ newProcs.forEach(function(p){ newKeys[(p.schema+"."+p.name).toLowerCase()]=true; });
+
+ $("procList").innerHTML=
+   "<table><thead><tr><th>#</th><th>Schema</th><th>PROC</th><th>Trạng thái</th><th>Backup</th></tr></thead><tbody>"+
+   state.procs.map(function(p,i){
+     var key=(p.schema+"."+p.name).toLowerCase();
+     var statusHtml;
+     var backupCell;
+     if(existingKeys[key]){
+       statusHtml="<span style='color:#166534;font-weight:700'>✅ Đã tồn tại DB</span>";
+       backupCell=esc(p.name+"_"+today());
+     }else if(newKeys[key]){
+       statusHtml="<span style='color:#1d4ed8;font-weight:700'>🆕 NEW (chưa có DB)</span>";
+       backupCell="—";
+     }else{
+       statusHtml="<span class='muted'>Chờ backup</span>";
+       backupCell=esc(p.name+"_"+today());
+     }
+     return "<tr><td>"+(i+1)+"</td><td>"+esc(p.schema)+"</td><td><b>"+esc(p.name)+"</b></td><td>"+statusHtml+"</td><td>"+backupCell+"</td></tr>";
+   }).join("")+
+   "</tbody></table>";
+}
+
+$("downloadBackupBtn").addEventListener("click",function(){
+ if(state.backupReady) download("Backup_PROC_"+today()+".sql",state.backup);
+});
+
+$("downloadMergedBtn").addEventListener("click",function(){
+ if(!state.backupReady){
+   alert("Hãy Generate Backup PROC (bước 4) trước khi Download SQL đã gộp.");
+   return;
+ }
+ download("SQL_Gop_"+today()+".sql",state.merged);
+});
+
+$("copyMergedBtn").addEventListener("click",function(){
+ if(!state.backupReady){
+   alert("Hãy Generate Backup PROC (bước 4) trước khi Copy SQL đã gộp.");
+   return;
+ }
+ copyTextRobust(state.merged).then(function(ok){
+  if(ok){
+   $("copyMergedBtn").textContent="Đã copy";
+   setTimeout(function(){$("copyMergedBtn").textContent="Copy SQL đã gộp";},1200);
+  }else{
+   selectTextareaForCopy($("merged"));
+   alert("Trình duyệt chặn Clipboard API. SQL đã gộp đã được bôi đen; nhấn Ctrl+C để copy.");
+  }
+ });
+});
+
+/* Chặn copy/cut/right-click-copy thủ công trên ô "SQL đã gộp" cho tới khi
+   đã Generate Backup PROC thành công — tránh thao tác với PROC production
+   mà chưa có backup, dù người dùng bôi đen bằng tay thay vì bấm nút Copy. */
+$("merged").addEventListener("copy",function(e){
+ if(!state.backupReady){
+  e.preventDefault();
+  alert("Vui lòng Generate Backup PROC (bước 4) trước khi copy SQL đã gộp.");
+ }
+});
+$("merged").addEventListener("cut",function(e){
+ if(!state.backupReady) e.preventDefault();
+});
+
+
+
+
+
+$("copyBackupBtn").addEventListener("click",function(){
+ if(!state.backup)return;
+ copyTextRobust(state.backup).then(function(ok){
+  if(ok){
+   $("copyBackupBtn").textContent="Đã copy";
+   setTimeout(function(){$("copyBackupBtn").textContent="Copy Backup SQL";},1200);
+  }else{
+   var pre=$("backupPreview");
+   var range=document.createRange();
+   range.selectNodeContents(pre);
+   var sel=window.getSelection();
+   sel.removeAllRanges();
+   sel.addRange(range);
+   alert("Trình duyệt chặn Clipboard API. Backup SQL đã được bôi đen; nhấn Ctrl+C để copy.");
+  }
+ });
+});
+
+function copyTextRobust(text){
+  function execCommandFallback(){
+    return new Promise(function(resolve){
+      var ta=document.createElement("textarea");
+      ta.value=text;
+      ta.setAttribute("readonly","");
+      ta.style.position="fixed";
+      ta.style.left="-9999px";
+      ta.style.top="0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0, ta.value.length);
+
+      var ok=false;
+      try{ ok=document.execCommand("copy"); }catch(e){ ok=false; }
+
+      document.body.removeChild(ta);
+      resolve(ok);
+    });
+  }
+
+  // navigator.clipboard is unavailable/restricted on many file:// HTML pages,
+  // và cũng có thể bị trình duyệt từ chối quyền (NotAllowedError) ngay cả khi
+  // isSecureContext=true. Nếu writeText() reject, PHẢI rơi về execCommand,
+  // nếu không Promise sẽ bị reject âm thầm và nút Copy sẽ như không phản ứng gì.
+  if(navigator.clipboard && window.isSecureContext){
+    return navigator.clipboard.writeText(text)
+      .then(function(){ return true; })
+      .catch(function(){ return execCommandFallback(); });
+  }
+
+  return execCommandFallback();
+}
+
+/* CONFIRM */
+$("confirm").addEventListener("change",function(){
+ if(this.checked && state.backupReady){
+  $("deployBtn").disabled=false;
+  $("deployStatus").className="status ok";
+  $("deployStatus").textContent="✅ Backup đã xác nhận. Có thể download Deploy_All.";
+  steps(5);
+ }else{
+  $("deployBtn").disabled=true;
+  $("deployStatus").className="status bad";
+  $("deployStatus").textContent="🔒 Chưa xác nhận backup.";
+  steps(4);
+ }
+});
+
+$("deployBtn").addEventListener("click",function(){
+ if(!state.merged){alert("Chưa có Deploy SQL.");return;}
+ if(!state.backupReady || !$("confirm").checked){
+  alert("Phải backup và xác nhận trước.");
+  return;
+ }
+ download("Deploy_All_"+today()+".sql",state.merged);
+ $("deployStatus").className="status ok";
+ $("deployStatus").textContent="✅ Đã tạo file Deploy_All_"+today()+".sql.";
+ steps(6);
+});
+
+/* CLEAR */
+$("clearBtn").addEventListener("click",function(){
+ location.reload();
+});
+
+})();
+</script>
+</body>
+</html>

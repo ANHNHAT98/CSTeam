@@ -1,0 +1,10 @@
+{
+  "name": "abi-dashboard-report",
+  "version": "1.0.0",
+  "description": "Render Dashboard Ticket ABI tu file Excel, xuat PDF va gui email theo template",
+  "main": "send-dashboard-report.js",
+  "dependencies": {
+    "nodemailer": "^6.9.13",
+    "xlsx": "^0.18.5"
+  }
+}
