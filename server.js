@@ -82,6 +82,10 @@ app.get('/tickets/tra-cuu-erp', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'tickets-tra-cuu-erp.html'));
 });
 
+app.get('/tickets/sla-first-response', requirePageAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'protected', 'tickets-sla-first-response.html'));
+});
+
 app.get('/crs/loi-nhuan-du-an', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'crs-loi-nhuan-du-an.html'));
 });

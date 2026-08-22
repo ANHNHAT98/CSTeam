@@ -6,6 +6,7 @@
 <title>Dashboard Ticket ABI — Upload &amp; Xem</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root {
     --ink: #1F2D38;
@@ -58,6 +59,18 @@
     display: none;
   }
   .png-btn:hover { background: #255B7C; }
+  .html-btn {
+    background: #fff;
+    border: 1.5px solid var(--accent);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 13.5px;
+    padding: 9px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: none;
+  }
+  .html-btn:hover { background: #EAF2F6; }
   .status { font-size: 12.5px; color: var(--sub); width: 100%; }
   .status.err { color: #B5533C; font-weight: 700; }
 
@@ -110,6 +123,11 @@
   .hbar-track { flex: 1; background: #EEF2F4; border-radius: 5px; height: 12px; overflow: hidden; }
   .hbar-fill { height: 100%; border-radius: 5px; }
   .hbar-val { width: 22px; text-align: right; font-weight: 700; flex: none; }
+  .vbar-wrap { display: flex; align-items: flex-end; gap: 8px; padding-top: 4px; }
+  .vbar-col { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+  .vbar-val { font-size: 11px; font-weight: 700; margin-bottom: 4px; color: var(--ink); }
+  .vbar-bar { width: 62%; border-radius: 4px 4px 0 0; min-height: 2px; }
+  .vbar-label { font-size: 10px; color: var(--sub); margin-top: 6px; text-align: center; line-height: 1.3; white-space: nowrap; }
   table { width: 100%; border-collapse: collapse; font-size: 12.3px; }
   thead th {
     text-align: left; color: var(--sub); font-weight: 700; font-size: 11px;
@@ -177,6 +195,9 @@
     <label class="file-btn" for="fileInput">📁 Tải file Excel (.xlsx)</label>
     <input type="file" id="fileInput" accept=".xlsx,.xls">
     <button class="png-btn" id="pngBtn">⬇️ Tải PNG</button>
+    <button class="png-btn" id="pdfBtn" style="display:none">📄 Tải PDF</button>
+    <button class="html-btn" id="emailBtn" style="display:none">📧 Gửi Email</button>
+    <button class="html-btn" id="htmlBtn">🌐 Tải file HTML (gửi xem trên trình duyệt)</button>
     <div class="status" id="status"></div>
   </div>
 
@@ -225,7 +246,9 @@ function normalizeRows(rawRows) {
       }
     }
     if (row['TicketPriority'] === 'Medim') row['TicketPriority'] = 'Medium';
+    if (row['TicketPriority'] === 'Hight') row['TicketPriority'] = 'High';
     if (typeof row['Assign'] === 'string') row['Assign'] = row['Assign'].trim();
+    if (typeof row['Priority'] === 'string') row['Priority'] = row['Priority'].trim();
     return row;
   });
   return { rows, cols };
@@ -299,6 +322,32 @@ function sameDay(a, b) {
 }
 function isWeekend(d) { const wd = d.getDay(); return wd === 0 || wd === 6; }
 
+/* ---------- Created date parsing (mixed Date/string formats) + weekly bucket ---------- */
+function parseCreatedDate(raw) {
+  if (raw === null || raw === undefined || raw === '') return null;
+  if (raw instanceof Date) return toMidnight(raw.getFullYear(), raw.getMonth(), raw.getDate());
+  if (typeof raw === 'number') return excelSerialToDate(raw);
+  const s = String(raw).trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) {
+    const y = +m[1], mo = +m[2] - 1, d = +m[3];
+    if (isValidYMD(y, mo, d)) return toMidnight(y, mo, d);
+  }
+  m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (m) {
+    const d = +m[1], mo = +m[2] - 1, y = +m[3];
+    if (isValidYMD(y, mo, d)) return toMidnight(y, mo, d);
+  }
+  return null;
+}
+function mondayOf(d) {
+  const day = d.getDay();
+  const diff = (day === 0 ? -6 : 1) - day;
+  const m = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  m.setDate(m.getDate() + diff);
+  return m;
+}
+
 function businessDaysSigned(start, end) {
   if (!end) return null;
   if (sameDay(start, end)) return 0;
@@ -332,9 +381,12 @@ const PALETTE = {
   Urgent: '#8B2E2E', Critical: '#B5533C', High: '#E3A857', Medium: '#2E6F95', Low: '#8FA6B3',
   CS: '#2E6F95', Dev: '#5B4B8A', ABI: '#5FA778', HQ: '#2E6F95', SOLAR: '#5FA778',
   Pending: '#2E6F95', 'Waiting for customer': '#E3A857',
+  'Trễ SLA': '#B5533C', 'Cảnh báo SLA': '#E3A857', 'Trong SLA': '#5FA778',
 };
 const DEFAULT_COLORS = ['#2E6F95', '#E3A857', '#5FA778', '#B5533C', '#5B4B8A', '#8FA6B3'];
 function colorFor(label, idx) { return PALETTE[label] || DEFAULT_COLORS[idx % DEFAULT_COLORS.length]; }
+
+function dispLabel(l) { return l === 'Close' ? 'Closed' : l; }
 
 function esc(s) {
   if (s === null || s === undefined) return '';
@@ -368,7 +420,7 @@ function legendHtml(counts) {
   return entries.map(([label, val], i) => {
     const pct = Math.round(val / total * 100);
     return `<div class="legend-row"><span class="dot" style="background:${colorFor(label, i)}"></span>` +
-      `<span class="legend-label">${esc(label)}</span>` +
+      `<span class="legend-label">${esc(dispLabel(label))}</span>` +
       `<span class="legend-val">${val} <span class="legend-pct">(${pct}%)</span></span></div>`;
   }).join('');
 }
@@ -378,10 +430,57 @@ function hbarChart(counts) {
   const maxVal = Math.max(...entries.map(([, v]) => v), 1);
   return entries.map(([label, val], i) => {
     const pct = (val / maxVal * 100);
-    return `<div class="hbar-row"><div class="hbar-label">${esc(label)}</div>` +
+    return `<div class="hbar-row"><div class="hbar-label">${esc(dispLabel(label))}</div>` +
       `<div class="hbar-track"><div class="hbar-fill" style="width:${pct.toFixed(1)}%; background:${colorFor(label, i)}"></div></div>` +
       `<div class="hbar-val">${val}</div></div>`;
   }).join('');
+}
+
+function vbarChart(counts, opts = {}) {
+  const height = opts.height || 130;
+  const suffix = opts.suffix || '';
+  const entries = Object.entries(counts);
+  const maxVal = opts.maxOverride || Math.max(...entries.map(([, v]) => v), 1);
+  const colorFn = opts.colorFn || ((label, val, i) => colorFor(label, i));
+  const cols = entries.map(([label, val], i) => {
+    const pct = Math.max((val / maxVal * 100), val > 0 ? 4 : 0);
+    return `<div class="vbar-col">` +
+      `<div class="vbar-val">${val}${suffix}</div>` +
+      `<div class="vbar-bar" style="height:${pct.toFixed(1)}%; background:${colorFn(label, val, i)}"></div>` +
+      `<div class="vbar-label">${esc(dispLabel(label))}</div>` +
+      `</div>`;
+  }).join('');
+  return `<div class="vbar-wrap" style="height:${height}px">${cols}</div>`;
+}
+
+function slaStackedBar(dat, tre) {
+  const total = dat + tre || 1;
+  const datPct = (dat / total * 100).toFixed(1);
+  const trePct = (tre / total * 100).toFixed(1);
+  return `<div class="hbar-track" style="display:flex;">` +
+    (dat ? `<div style="width:${datPct}%; background:#5FA778; height:12px;"></div>` : '') +
+    (tre ? `<div style="width:${trePct}%; background:#B5533C; height:12px;"></div>` : '') +
+    `</div>`;
+}
+
+function assignAgingChart(assignAgingRows, buckets, height = 210) {
+  const maxTotal = Math.max(...assignAgingRows.map(r => r.total), 1);
+  const cols = assignAgingRows.map(r => {
+    const totalPct = Math.max((r.total / maxTotal * 100), r.total > 0 ? 4 : 0);
+    const segmentsHtml = r.segments.filter(s => s.count).map(s => {
+      const segPct = r.total ? (s.count / r.total * 100) : 0;
+      return `<div style="height:${segPct.toFixed(1)}%; background:${s.color};" title="${esc(s.label)}: ${s.count}"></div>`;
+    }).join('');
+    return `<div class="vbar-col">` +
+      `<div class="vbar-val">${r.total}</div>` +
+      `<div class="vbar-bar" style="height:${totalPct.toFixed(1)}%; display:flex; flex-direction:column-reverse; overflow:hidden;">${segmentsHtml}</div>` +
+      `<div class="vbar-label">${esc(r.label)}</div>` +
+      `</div>`;
+  }).join('');
+  const legend = `<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:11.5px;color:var(--sub)">` +
+    buckets.map(b => `<span style="display:flex;align-items:center;gap:5px"><span class="dot" style="background:${b.color}"></span>${esc(b.label)}</span>`).join('') +
+    `</div>`;
+  return `<div class="vbar-wrap" style="height:${height}px">${cols}</div>` + legend;
 }
 
 function valueCounts(rows, field) {
@@ -419,7 +518,7 @@ function buildDashboard(rawRows, reportDateStr) {
   const total = rows.length;
   const nClose = rows.filter(r => r['Tình Trạng'] === 'Close').length;
   const nOpen = total - nClose;
-  const nAging20 = rows.filter(r => r._daysOpen >= 20).length;
+  const nAging20 = rows.filter(r => r._daysOpen >= 20 && r['Tình Trạng'] !== 'Close').length;
   const nCriticalUrgent = rows.filter(r => ['Critical', 'Urgent'].includes(r['TicketPriority'])).length;
   const nHigh = rows.filter(r => r['TicketPriority'] === 'High').length;
 
@@ -443,10 +542,69 @@ function buildDashboard(rawRows, reportDateStr) {
     });
 
   const tinhTrangCounts = orderedCounts(rows, 'Tình Trạng', ['Working', 'Review', 'Open', 'Close']);
-  const priorityCounts = orderedCounts(rows, 'TicketPriority', ['Urgent', 'Critical', 'High', 'Medium', 'Low']);
-  const statusCounts = valueCounts(rows, 'Status');
-  const assignCounts = valueCounts(rows, 'Assign');
-  const respTeamCounts = valueCounts(rows, 'ResponseTeam');
+  const openRows = rows.filter(r => r['Tình Trạng'] !== 'Close');
+  const priorityCounts = orderedCounts(openRows, 'TicketPriority', ['Urgent', 'Critical', 'High', 'Medium', 'Low']);
+  const jiraPriorityCounts = orderedCounts(openRows, 'Priority', ['P1', 'S1', 'P2', 'S2', 'P3', 'S3', 'P4', 'S4']);
+  const currentMonthRows = rows.filter(r => {
+    const cd = parseCreatedDate(r['Created']);
+    return cd && cd.getFullYear() === today.getFullYear() && cd.getMonth() === today.getMonth();
+  });
+  const currentMonthOpenRows = currentMonthRows.filter(r => r['Tình Trạng'] !== 'Close');
+  const nSlaTre = currentMonthOpenRows.filter(r => r['Tình trạng SLA'] === 'Trễ SLA').length;
+  const monthLabel = `Tháng ${pad(today.getMonth() + 1)}/${today.getFullYear()}`;
+
+  const slaPriorityOrder = ['P1', 'S1', 'P2', 'S2', 'P3', 'S3', 'P4', 'S4'];
+  const monthPriorityValues = Array.from(new Set(currentMonthRows.map(r => r['Priority']).filter(v => v !== null && v !== undefined && v !== '')));
+  const slaPriorityList = slaPriorityOrder.filter(p => monthPriorityValues.includes(p))
+    .concat(monthPriorityValues.filter(p => !slaPriorityOrder.includes(p)));
+  const slaByPriority = slaPriorityList.map(p => {
+    const list = currentMonthRows.filter(r => r['Priority'] === p);
+    const tre = list.filter(r => r['Tình trạng SLA'] === 'Trễ SLA').length;
+    const total = list.length;
+    const dat = total - tre;
+    return { p, total, dat, tre, trePct: total ? Math.round(tre / total * 100) : 0 };
+  });
+
+  const weekCounts = {};
+  const weekTreCounts = {};
+  rows.forEach(r => {
+    const cd = parseCreatedDate(r['Created']);
+    if (!cd) return;
+    const wk = mondayOf(cd).getTime();
+    weekCounts[wk] = (weekCounts[wk] || 0) + 1;
+    if (r['Tình trạng SLA'] === 'Trễ SLA') weekTreCounts[wk] = (weekTreCounts[wk] || 0) + 1;
+  });
+  const weekKeys = Object.keys(weekCounts).map(Number).sort((a, b) => a - b);
+  const weeklyCounts = {};
+  const weeklyOnTimeRate = {};
+  weekKeys.forEach(k => {
+    const start = new Date(k);
+    const end = new Date(k); end.setDate(end.getDate() + 6);
+    const label = `${pad(start.getDate())}/${pad(start.getMonth() + 1)}–${pad(end.getDate())}/${pad(end.getMonth() + 1)}`;
+    weeklyCounts[label] = weekCounts[k];
+    const tre = weekTreCounts[k] || 0;
+    weeklyOnTimeRate[label] = Math.round((weekCounts[k] - tre) / weekCounts[k] * 100);
+  });
+
+  const assignCounts = valueCounts(openRows, 'Assign');
+  const agingBuckets = [
+    { label: '0–5 ngày', min: 0, max: 5, color: '#5FA778' },
+    { label: '6–10 ngày', min: 6, max: 10, color: '#2E6F95' },
+    { label: '11–20 ngày', min: 11, max: 20, color: '#E3A857' },
+    { label: '> 20 ngày', min: 21, max: Infinity, color: '#B5533C' },
+  ];
+  const agingCounts = {};
+  agingBuckets.forEach(b => {
+    agingCounts[b.label] = openRows.filter(r => r._daysOpen >= b.min && r._daysOpen <= b.max).length;
+  });
+  const assignAgingRows = Object.keys(assignCounts).map(a => {
+    const list = openRows.filter(r => r['Assign'] === a);
+    const segments = agingBuckets.map(b => ({
+      label: b.label, color: b.color,
+      count: list.filter(r => r._daysOpen >= b.min && r._daysOpen <= b.max).length,
+    }));
+    return { label: a, total: list.length, segments };
+  });
 
   const avgDays = rows.length ? (rows.reduce((a, r) => a + r._daysOpen, 0) / rows.length) : 0;
   const maxDays = rows.length ? Math.max(...rows.map(r => r._daysOpen)) : 0;
@@ -469,7 +627,7 @@ function buildDashboard(rawRows, reportDateStr) {
       const daysCls = days >= 20 ? 'days-hot' : (days >= 7 ? 'days-warm' : 'days-cool');
       const prio = r['TicketPriority'] || '';
       const prioCls = prioClsMap[prio] || 'chip-medium';
-      const tt = esc(r['Tình Trạng'] || '');
+      const tt = esc(dispLabel(r['Tình Trạng'] || ''));
       const lastCol = showDelta ? deadlineTag(r._bizDelta) : String(days);
       return '<tr>' +
         `<td class="cell-key">${esc(ticketCode(r))}</td>` +
@@ -499,12 +657,13 @@ function buildDashboard(rawRows, reportDateStr) {
 
     <div class="kpi-row">
       <div class="kpi"><div class="num">${total}</div><div class="label">TỔNG SỐ TICKET</div></div>
-      <div class="kpi warn"><div class="num">${nOpen}</div><div class="label">ĐANG XỬ LÝ (chưa Close)</div></div>
-      <div class="kpi ok"><div class="num">${nClose}</div><div class="label">ĐÃ CLOSE</div></div>
+      <div class="kpi warn"><div class="num">${nOpen}</div><div class="label">ĐANG XỬ LÝ (chưa Closed)</div></div>
+      <div class="kpi ok"><div class="num">${nClose}</div><div class="label">ĐÃ CLOSED</div></div>
       <div class="kpi warn"><div class="num">${nAging20}</div><div class="label">TỒN &ge; 20 NGÀY</div></div>
       <div class="kpi danger"><div class="num">${nCriticalUrgent}</div><div class="label">CRITICAL / URGENT</div></div>
       <div class="kpi info"><div class="num">${nHigh}</div><div class="label">HIGH</div></div>
       <div class="kpi info"><div class="num">${todayList.length}</div><div class="label">CẦN XỬ LÝ / RLS HÔM NAY</div></div>
+      <div class="kpi warn"><div class="num">${nSlaTre}</div><div class="label">TRỄ SLA (tháng này, chưa Closed)</div></div>
     </div>
 
     <div class="grid">
@@ -513,16 +672,39 @@ function buildDashboard(rawRows, reportDateStr) {
         <div class="donut-wrap">${donutChart(tinhTrangCounts)}<div style="flex:1">${legendHtml(tinhTrangCounts)}</div></div>
       </div>
       <div class="card">
-        <h3>Mức độ ưu tiên</h3>
+        <h3>Mức độ ưu tiên (chưa Closed)</h3>
         ${hbarChart(priorityCounts)}
-        <h3 style="margin-top:16px">Trạng thái Jira</h3>
-        ${hbarChart(statusCounts)}
+        <h3 style="margin-top:16px">Priority Jira (P1–S3, chưa Closed) — ${openRows.length} ticket</h3>
+        ${hbarChart(jiraPriorityCounts)}
       </div>
       <div class="card">
-        <h3>Đội xử lý (Assign)</h3>
-        ${hbarChart(assignCounts)}
-        <h3 style="margin-top:16px">Response Team</h3>
-        ${hbarChart(respTeamCounts)}
+        <h3>SLA theo Priority (${monthLabel})</h3>
+        <table>
+          <thead><tr><th>Priority</th><th>Tổng</th><th>Đạt / Trễ</th><th>Đạt SLA</th><th>Trễ SLA</th><th>% Trễ</th></tr></thead>
+          <tbody>${slaByPriority.map(x => `<tr>` +
+            `<td><span class="chip ${x.p.startsWith('P1') || x.p.startsWith('S1') ? 'chip-urgent' : (x.p.startsWith('P2') || x.p.startsWith('S2')) ? 'chip-critical' : (x.p.startsWith('P4') || x.p.startsWith('S4')) ? 'chip-low' : 'chip-medium'}">${x.p}</span></td>` +
+            `<td>${x.total}</td>` +
+            `<td style="min-width:90px">${slaStackedBar(x.dat, x.tre)}</td>` +
+            `<td style="color:#5FA778;font-weight:700">${x.dat}</td>` +
+            `<td style="color:#B5533C;font-weight:700">${x.tre}</td>` +
+            `<td>${x.total ? x.trePct + '%' : '—'}</td>` +
+            `</tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Đội xử lý & số ngày tồn (chưa Closed)</h3>
+        ${assignAgingChart(assignAgingRows, agingBuckets)}
+      </div>
+      <div class="card">
+        <h3>Ticket tạo mới theo tuần</h3>
+        ${vbarChart(weeklyCounts)}
+      </div>
+      <div class="card">
+        <h3>Tỷ lệ đúng hạn theo tuần</h3>
+        ${vbarChart(weeklyOnTimeRate, { suffix: '%', maxOverride: 100, colorFn: (l, v) => v >= 90 ? '#5FA778' : v >= 70 ? '#E3A857' : '#B5533C' })}
       </div>
     </div>
 
@@ -558,6 +740,9 @@ const statusEl = document.getElementById('status');
 const dashboardEl = document.getElementById('dashboard');
 const emptyState = document.getElementById('emptyState');
 const pngBtn = document.getElementById('pngBtn');
+const pdfBtn = document.getElementById('pdfBtn');
+const emailBtn = document.getElementById('emailBtn');
+const htmlBtn = document.getElementById('htmlBtn');
 let lastFileLabel = 'dashboard';
 
 fileInput.addEventListener('change', (e) => {
@@ -586,6 +771,9 @@ fileInput.addEventListener('change', (e) => {
       dashboardEl.style.display = 'block';
       emptyState.style.display = 'none';
       pngBtn.style.display = 'inline-block';
+      pdfBtn.style.display = 'inline-block';
+      emailBtn.style.display = 'inline-block';
+      htmlBtn.style.display = 'inline-block';
       statusEl.textContent = `Đã tải "${file.name}" — ${rawRows.length} dòng dữ liệu.`;
       statusEl.className = 'status';
       lastFileLabel = file.name.replace(/\.[^.]+$/, '') || 'dashboard';
@@ -618,6 +806,117 @@ pngBtn.addEventListener('click', () => {
     statusEl.className = 'status err';
     pngBtn.textContent = '⬇️ Tải PNG';
   });
+});
+
+function buildPdfBlob() {
+  return html2canvas(dashboardEl, { backgroundColor: '#F3F6F8', scale: 2 }).then(canvas => {
+    const { jsPDF } = window.jspdf;
+    const imgData = canvas.toDataURL('image/png');
+    const pageWidth = 210; // A4 mm, portrait width
+    const imgWidthMm = pageWidth;
+    const imgHeightMm = (canvas.height * imgWidthMm) / canvas.width;
+    const pdf = new jsPDF({ orientation: imgHeightMm > imgWidthMm ? 'p' : 'l', unit: 'mm', format: [imgWidthMm, imgHeightMm] });
+    pdf.addImage(imgData, 'PNG', 0, 0, imgWidthMm, imgHeightMm);
+    const today = new Date();
+    const dateTag = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+    const fileName = `Dashboard_Ticket_ABI_${dateTag}.pdf`;
+    return { blob: pdf.output('blob'), fileName, dateTag };
+  });
+}
+
+pdfBtn.addEventListener('click', () => {
+  pdfBtn.textContent = '⏳ Đang tạo PDF...';
+  buildPdfBlob().then(({ blob, fileName }) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = fileName;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+    statusEl.textContent = 'Đã tải file PDF — gửi lên Teams/Zalo/email là người nhận bấm vào xem được ngay, không cần tải về hay mở trình duyệt riêng.';
+    statusEl.className = 'status';
+    pdfBtn.textContent = '📄 Tải PDF';
+  }).catch(err => {
+    console.error(err);
+    statusEl.textContent = 'Lỗi khi tạo PDF: ' + err.message;
+    statusEl.className = 'status err';
+    pdfBtn.textContent = '📄 Tải PDF';
+  });
+});
+
+emailBtn.addEventListener('click', () => {
+  emailBtn.textContent = '⏳ Đang chuẩn bị...';
+  buildPdfBlob().then(async ({ blob, fileName, dateTag }) => {
+    const subject = `Dashboard Ticket ABI - ${dateTag}`;
+    const canShareFiles = !!(navigator.canShare && (() => {
+      try { return navigator.canShare({ files: [new File([blob], fileName, { type: 'application/pdf' })] }); }
+      catch (e) { return false; }
+    })());
+
+    if (canShareFiles) {
+      try {
+        const file = new File([blob], fileName, { type: 'application/pdf' });
+        await navigator.share({ files: [file], title: subject, text: subject });
+        statusEl.textContent = 'Đã mở hộp thoại chia sẻ — chọn Mail/Outlook/Gmail để gửi kèm file PDF.';
+        statusEl.className = 'status';
+        emailBtn.textContent = '📧 Gửi Email';
+        return;
+      } catch (e) {
+        if (e && e.name === 'AbortError') { emailBtn.textContent = '📧 Gửi Email'; return; }
+        // fall through to mailto fallback below
+      }
+    }
+
+    // Fallback: trình duyệt không cho đính kèm file tự động qua email —
+    // tải PDF về máy và mở sẵn email nhắc đính kèm.
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = fileName;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+    const body = `Chào,\n\nGửi bạn Dashboard Ticket ABI cập nhật ngày ${dateTag}.\n` +
+      `File PDF vừa được tải về máy (${fileName}) — vui lòng đính kèm file này vào email trước khi gửi ` +
+      `(trình duyệt không cho tự động đính kèm file vào email).\n\nTrân trọng.`;
+    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    statusEl.textContent = `Đã tải file PDF "${fileName}" và mở sẵn email — bạn đính kèm file vừa tải vào rồi gửi nhé.`;
+    statusEl.className = 'status';
+    emailBtn.textContent = '📧 Gửi Email';
+  }).catch(err => {
+    console.error(err);
+    statusEl.textContent = 'Lỗi khi chuẩn bị email: ' + err.message;
+    statusEl.className = 'status err';
+    emailBtn.textContent = '📧 Gửi Email';
+  });
+});
+
+htmlBtn.addEventListener('click', () => {
+  try {
+    const styleTag = document.querySelector('style').outerHTML;
+    const today = new Date();
+    const dateTag = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+    const standaloneHtml = '<!DOCTYPE html>\n' +
+      '<html lang="vi">\n<head>\n<meta charset="UTF-8">\n' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
+      `<title>Dashboard Ticket ABI — ${dateTag}</title>\n` +
+      styleTag + '\n</head>\n<body>\n' +
+      dashboardEl.outerHTML.replace('id="dashboard"', 'id="dashboard" style="display:block"') +
+      '\n</body>\n</html>';
+
+    const blob = new Blob([standaloneHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = `Dashboard_Ticket_ABI_${dateTag}.html`;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+    statusEl.textContent = 'Đã tải file HTML — gửi file này (qua email/Zalo/Drive) cho người xem, chỉ cần mở bằng trình duyệt, không cần Excel hay cài đặt gì thêm.';
+    statusEl.className = 'status';
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = 'Lỗi khi tạo file HTML: ' + err.message;
+    statusEl.className = 'status err';
+  }
 });
 </script>
 </body>

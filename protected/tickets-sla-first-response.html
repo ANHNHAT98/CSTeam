@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ticket dự án — SLA Phản hồi đầu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#12233D; --blueprint:#1F4E79; --blueprint-deep:#0F2138;
+    --paper:#EEF2F6; --panel:#FFFFFF;
+    --grid-line:rgba(31,78,121,.14); --grid-line-strong:rgba(31,78,121,.28);
+    --amber:#E8A33D; --amber-deep:#C9821F;
+    --success:#3F7D58; --danger:#B23A48; --muted:#5B7089; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans',sans-serif;
+    background-image:linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size:32px 32px; min-height:100vh;
+  }
+  .ops-topbar{background:#12233D;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:14px;}
+  .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;opacity:.9;}
+  .ops-topbar a:hover{opacity:1;text-decoration:underline;}
+  .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
+
+  .wrap{max-width:1200px;margin:0 auto;padding:32px 24px 80px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 6px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 26px;line-height:1.6;}
+
+  .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:22px;margin-bottom:20px;}
+  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0 0 4px;}
+  .panel .panel-sub{color:var(--muted);font-size:12px;margin:0 0 16px;}
+
+  .btn{
+    appearance:none;border:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-weight:600;
+    font-size:14px;padding:11px 18px;border-radius:8px;display:inline-flex;align-items:center;gap:8px;
+  }
+  .btn-primary{background:var(--amber);color:#3A2405;box-shadow:0 2px 0 var(--amber-deep);}
+  .btn-primary:disabled{background:#D8DEE6;color:#8B98A6;box-shadow:none;cursor:not-allowed;}
+  .btn-ghost{background:transparent;color:var(--blueprint);border:1px solid var(--grid-line-strong);}
+  .actions{display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap;}
+
+  .status{font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);margin-top:10px;white-space:pre-wrap;}
+  .status.ok{color:var(--success);}
+  .status.err{color:var(--danger);}
+
+  .map-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+  @media(max-width:760px){.map-row{grid-template-columns:1fr;}}
+  .map-field label{font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;display:block;margin-bottom:6px;}
+  .map-field select{width:100%;padding:9px 10px;border-radius:7px;border:1px solid var(--grid-line-strong);background:#fff;font-size:13px;}
+
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+  @media(max-width:800px){.kpi-grid{grid-template-columns:1fr 1fr;}}
+  .kpi{border:1px solid var(--grid-line-strong);border-radius:8px;padding:16px;background:#fbfcfe;}
+  .kpi .label{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+  .kpi .value{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;margin-top:6px;}
+  .kpi.pass .value{color:var(--success);}
+  .kpi.fail .value{color:var(--danger);}
+
+  table{border-collapse:collapse;width:100%;font-size:12.5px;}
+  thead th{
+    background:var(--blueprint);color:#fff;text-align:left;padding:8px 10px;
+    font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:10.5px;white-space:nowrap;
+  }
+  tbody td{padding:7px 10px;border-bottom:1px solid var(--grid-line);}
+  tbody tr:nth-child(even){background:rgba(31,78,121,.025);}
+  td.num{font-family:'IBM Plex Mono',monospace;text-align:right;}
+  td.pass{color:var(--success);font-weight:600;}
+  td.fail{color:var(--danger);font-weight:600;}
+  tfoot td{font-family:'IBM Plex Mono',monospace;font-weight:700;background:#fbfcfe;border-top:2px solid var(--grid-line-strong);}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media(max-width:800px){.two-col{grid-template-columns:1fr;}}
+
+  .table-scroll{max-height:420px;overflow:auto;border:1px solid var(--grid-line-strong);border-radius:8px;}
+  code.tag{font-family:'IBM Plex Mono',monospace;background:rgba(31,78,121,.08);color:var(--blueprint);padding:1px 6px;border-radius:4px;font-size:11.5px;}
+</style>
+</head>
+<body>
+<div class="ops-topbar">
+  <a href="/">← Quay về</a>
+  <span class="crumb">Ticket dự án / SLA Phản hồi đầu</span>
+</div>
+
+<div class="wrap">
+  <h1>SLA First Response — 4 dự án</h1>
+  <p class="sub">Tính Pass/Fail thời gian phản hồi đầu tiên (First Responded On − Opening On) theo ngưỡng SLA từng Priority, lấy trực tiếp từ ERP cho MerapLion_eSales, ABI_eSales_Support, ANVY_eSale_Support, Sabeco_PG.</p>
+
+  <div class="panel">
+    <h2>Bước 1 — Lấy dữ liệu</h2>
+    <div class="panel-sub">Lấy toàn bộ ticket (mọi trạng thái) của 4 dự án để tính SLA phản hồi đầu.</div>
+    <div class="actions">
+      <button class="btn btn-primary" id="fetchBtn">⇩ Lấy dữ liệu từ ERP</button>
+    </div>
+    <div class="status" id="fetchStatus"></div>
+  </div>
+
+  <div class="panel" id="mapPanel" style="display:none;">
+    <h2>Bước 2 — Xác nhận field</h2>
+    <div class="panel-sub">Chọn đúng field ERP tương ứng (tool đã đoán sẵn dựa theo tên field, kiểm tra lại trước khi tính).</div>
+    <div class="map-row">
+      <div class="map-field"><label>PRIORITY</label><select id="mapPriority"></select></div>
+      <div class="map-field"><label>OPENING ON</label><select id="mapOpening"></select></div>
+      <div class="map-field"><label>FIRST RESPONDED ON</label><select id="mapFirstResp"></select></div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="calcBtn">✓ Tính SLA</button>
+    </div>
+    <div class="status" id="mapStatus"></div>
+  </div>
+
+  <div id="resultBlock" style="display:none;">
+    <div class="kpi-grid">
+      <div class="kpi"><div class="label">Tổng ticket</div><div class="value" id="kpiTotal">—</div></div>
+      <div class="kpi pass"><div class="label">Pass</div><div class="value" id="kpiPass">—</div></div>
+      <div class="kpi fail"><div class="label">Fail</div><div class="value" id="kpiFail">—</div></div>
+      <div class="kpi"><div class="label">Tỷ lệ Pass</div><div class="value" id="kpiRate">—</div></div>
+    </div>
+
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Theo dự án</div>
+        <table><thead><tr><th>Project</th><th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">Fail</th><th style="text-align:right;">% Pass</th></tr></thead>
+          <tbody id="byProjectBody"></tbody></table>
+      </div>
+      <div class="panel">
+        <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Theo Priority</div>
+        <table><thead><tr><th>Priority</th><th style="text-align:right;">Ngưỡng (phút)</th><th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Pass</th></tr></thead>
+          <tbody id="byPriorityBody"></tbody></table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Chi tiết ticket Fail</div>
+      <div class="panel-sub">Danh sách ticket không đạt SLA phản hồi đầu, để rà soát/follow-up.</div>
+      <div class="table-scroll">
+        <table><thead><tr><th>Ticket</th><th>Project</th><th>Priority</th><th>Opening On</th><th>First Responded On</th><th style="text-align:right;">W (phút)</th></tr></thead>
+          <tbody id="failBody"></tbody></table>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-ghost" id="exportBtn">⬇ Xuất Excel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PROJECTS = ['MerapLion_eSales', 'ABI_eSales_Support', 'ANVY_eSale_Support', 'Sabeco_PG'];
+// Ngưỡng SLA phản hồi đầu (phút) theo Priority — đúng công thức đã xác nhận.
+const SLA_THRESHOLD = { critical: 60, urgent: 240, high: 480, medium: 4320 };
+const SLA_DEFAULT_THRESHOLD = 7200; // Priority khác (vd Low) hoặc không khớp danh sách trên
+
+let rawTickets = [];
+let calcRows = [];
+
+const fetchBtn = document.getElementById('fetchBtn');
+const fetchStatus = document.getElementById('fetchStatus');
+const mapPanel = document.getElementById('mapPanel');
+const mapPriority = document.getElementById('mapPriority');
+const mapOpening = document.getElementById('mapOpening');
+const mapFirstResp = document.getElementById('mapFirstResp');
+const mapStatus = document.getElementById('mapStatus');
+const calcBtn = document.getElementById('calcBtn');
+const resultBlock = document.getElementById('resultBlock');
+const exportBtn = document.getElementById('exportBtn');
+
+function setStatus(el, msg, cls){ el.textContent = msg; el.className = 'status ' + (cls||''); }
+
+fetchBtn.addEventListener('click', async () => {
+  fetchBtn.disabled = true;
+  setStatus(fetchStatus, 'Đang đăng nhập & lấy dữ liệu từ ERP…', '');
+  resultBlock.style.display = 'none';
+  mapPanel.style.display = 'none';
+  try{
+    const qs = new URLSearchParams();
+    qs.set('projects', JSON.stringify(PROJECTS));
+    qs.set('statuses', JSON.stringify([])); // lấy mọi trạng thái, không lọc
+    const res = await fetch('/api/erp/tickets?' + qs.toString(), {credentials:'same-origin'});
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || ('Lỗi HTTP ' + res.status));
+    rawTickets = Array.isArray(data.data) ? data.data : [];
+    if (!rawTickets.length) throw new Error('Không lấy được ticket nào — kiểm tra lại tên project trên ERP.');
+    populateFieldMapping(rawTickets);
+    mapPanel.style.display = 'block';
+    setStatus(fetchStatus, `Xong — lấy được ${rawTickets.length} ticket. Xác nhận field ở bước 2.`, 'ok');
+  }catch(err){
+    console.error(err);
+    setStatus(fetchStatus, 'Lỗi: ' + err.message, 'err');
+  }finally{
+    fetchBtn.disabled = false;
+  }
+});
+
+function populateFieldMapping(rows){
+  const fields = Object.keys(rows[0]);
+  const opts = fields.map(f => `<option value="${f}">${f}</option>`).join('');
+  mapPriority.innerHTML = opts;
+  mapOpening.innerHTML = opts;
+  mapFirstResp.innerHTML = opts;
+
+  guessSelect(mapPriority, fields, ['priority']);
+  guessSelect(mapOpening, fields, ['opening_date','opening_on','creation','opening']);
+  guessSelect(mapFirstResp, fields, ['first_responded_on','first_response','first_respond']);
+}
+function guessSelect(selectEl, fields, keywords){
+  const lower = fields.map(f => f.toLowerCase());
+  for (const kw of keywords){
+    const idx = lower.findIndex(f => f.includes(kw));
+    if (idx >= 0){ selectEl.value = fields[idx]; return; }
+  }
+}
+
+function priorityThreshold(priorityRaw){
+  const p = String(priorityRaw||'').trim().toLowerCase();
+  if (p in SLA_THRESHOLD) return SLA_THRESHOLD[p];
+  return SLA_DEFAULT_THRESHOLD;
+}
+
+calcBtn.addEventListener('click', () => {
+  const priorityField = mapPriority.value;
+  const openingField = mapOpening.value;
+  const firstRespField = mapFirstResp.value;
+  if (!priorityField || !openingField || !firstRespField){
+    setStatus(mapStatus, 'Chọn đủ 3 field trước khi tính.', 'err');
+    return;
+  }
+
+  calcRows = rawTickets.map(t => {
+    const priority = t[priorityField];
+    const openingRaw = t[openingField];
+    const firstRespRaw = t[firstRespField];
+
+    let w, result;
+    if (!firstRespRaw){
+      w = 1.1; // sentinel: chưa có ai phản hồi
+      result = 'Fail';
+    } else {
+      const openDate = new Date(openingRaw);
+      const respDate = new Date(firstRespRaw);
+      if (isNaN(openDate.getTime()) || isNaN(respDate.getTime())){
+        w = 1.1;
+        result = 'Fail';
+      } else {
+        w = (respDate.getTime() - openDate.getTime()) / 60000; // phút
+        const threshold = priorityThreshold(priority);
+        result = (w < threshold) ? 'Pass' : 'Fail';
+      }
+    }
+    return {
+      name: t.name || t.ticket_id || t.id || '(no id)',
+      project: t.project || '',
+      priority: priority || '',
+      opening: openingRaw || '',
+      firstResp: firstRespRaw || '',
+      w, result,
+    };
+  });
+
+  renderResult(calcRows);
+  mapPanel.style.display = 'none';
+  setStatus(mapStatus, 'Đã tính xong.', 'ok');
+});
+
+function renderResult(rows){
+  const total = rows.length;
+  const passCount = rows.filter(r=>r.result==='Pass').length;
+  const failCount = total - passCount;
+  document.getElementById('kpiTotal').textContent = total;
+  document.getElementById('kpiPass').textContent = passCount;
+  document.getElementById('kpiFail').textContent = failCount;
+  document.getElementById('kpiRate').textContent = total ? ((passCount/total*100).toFixed(1) + '%') : '—';
+
+  // theo project
+  const byProject = {};
+  PROJECTS.forEach(p => byProject[p] = {total:0, pass:0});
+  rows.forEach(r => {
+    if (!byProject[r.project]) byProject[r.project] = {total:0, pass:0};
+    byProject[r.project].total++;
+    if (r.result==='Pass') byProject[r.project].pass++;
+  });
+  document.getElementById('byProjectBody').innerHTML = Object.keys(byProject).map(p => {
+    const d = byProject[p];
+    const rate = d.total ? (d.pass/d.total*100).toFixed(1) : '0.0';
+    return `<tr><td>${p}</td><td class="num">${d.total}</td><td class="num pass">${d.pass}</td><td class="num fail">${d.total-d.pass}</td><td class="num">${rate}%</td></tr>`;
+  }).join('');
+
+  // theo priority
+  const byPriority = {};
+  rows.forEach(r => {
+    const key = String(r.priority||'(trống)');
+    if (!byPriority[key]) byPriority[key] = {total:0, pass:0};
+    byPriority[key].total++;
+    if (r.result==='Pass') byPriority[key].pass++;
+  });
+  document.getElementById('byPriorityBody').innerHTML = Object.keys(byPriority).sort().map(p => {
+    const d = byPriority[p];
+    const rate = d.total ? (d.pass/d.total*100).toFixed(1) : '0.0';
+    return `<tr><td>${p}</td><td class="num">${priorityThreshold(p)}</td><td class="num">${d.total}</td><td class="num pass">${d.pass}</td><td class="num">${rate}%</td></tr>`;
+  }).join('');
+
+  // chi tiết fail
+  const failRows = rows.filter(r=>r.result==='Fail');
+  document.getElementById('failBody').innerHTML = failRows.map(r => `
+    <tr><td>${escapeHtml(String(r.name))}</td><td>${escapeHtml(String(r.project))}</td><td>${escapeHtml(String(r.priority))}</td>
+    <td>${escapeHtml(String(r.opening))}</td><td>${escapeHtml(String(r.firstResp||'— (chưa phản hồi)'))}</td>
+    <td class="num">${r.w===1.1?'—':Math.round(r.w)}</td></tr>`).join('') || '<tr><td colspan="6" style="color:var(--muted);">Không có ticket Fail nào 🎉</td></tr>';
+
+  resultBlock.style.display = 'block';
+}
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+exportBtn.addEventListener('click', () => {
+  if (!calcRows.length) return;
+  const aoa = [['Ticket','Project','Priority','Opening On','First Responded On','W (phút)','Kết quả']];
+  calcRows.forEach(r => aoa.push([r.name, r.project, r.priority, r.opening, r.firstResp, r.w===1.1?'':Math.round(r.w*100)/100, r.result]));
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:16},{wch:20},{wch:12},{wch:20},{wch:20},{wch:10},{wch:8}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'SLA First Response');
+  XLSX.writeFile(wb, 'SLA_First_Response.xlsx');
+});
+</script>
+</body>
+</html>

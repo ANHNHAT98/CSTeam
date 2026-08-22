@@ -106,12 +106,33 @@ Module hiện có:
   theo giờ làm thực tế, ra lợi nhuận, xuất Excel giữ nguyên định dạng gốc
   gửi sếp (`/crs/loi-nhuan-du-an`).
 - **Dự Án → ABI → Dashboard Ticket**: upload file Excel ticket, xem dashboard
-  tổng hợp + xuất PNG (`/abi/dashboard-ticket`).
+  tổng hợp (SLA theo Priority, xu hướng theo tuần, aging theo đội xử lý),
+  xuất PNG / PDF / file HTML độc lập hoặc gửi thẳng qua email
+  (`/abi/dashboard-ticket`).
 - **Dự Án → AnVy → Ticket Slide**: dán/nhập ticket, tự tạo slide + xuất
   PNG/PPTX (`/anvy/ticket-slide`).
 - **Ticket dự án → Tra cứu ERP**: gọi trực tiếp erp.hqsoft.vn lấy ticket theo
   nhiều project + nhiều trạng thái cùng lúc, xem trước, xuất Excel
   (`/tickets/tra-cuu-erp`).
+- **Ticket dự án → SLA Phản hồi đầu**: lấy toàn bộ ticket 4 dự án
+  (MerapLion_eSales, ABI_eSales_Support, ANVY_eSale_Support, Sabeco_PG) từ
+  ERP, tính Pass/Fail SLA phản hồi đầu theo Priority, xem theo dự
+  án/priority, xuất Excel (`/tickets/sla-first-response`).
+
+### Công thức SLA Phản hồi đầu
+
+```
+W = First Responded On − Opening On (phút)
+Nếu chưa có First Responded On → W = 1.1 → Fail
+Ngưỡng theo Priority (phút): Critical=60, Urgent=240, High=480, Medium=4320,
+  còn lại (vd Low)=7200
+Kết quả = Pass nếu W < ngưỡng, ngược lại Fail
+```
+
+Trang tự đoán field ERP tương ứng Priority/Opening On/First Responded On dựa
+theo tên field, nhưng luôn bắt xác nhận lại trước khi tính (bước 2 trên
+trang) — vì tên field thật trong `Ticket` doctype có thể khác giữa các lần
+export/cấu hình.
 
 ## Bật CSAT / First Response Time trên Dashboard
 
