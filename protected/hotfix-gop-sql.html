@@ -118,7 +118,8 @@ var state={
  merged:"",
  procs:[],
  backup:"",
- backupReady:false
+ backupReady:false,
+ autoFormatApplied:false
 };
 
 function $(id){return document.getElementById(id);}
@@ -202,11 +203,16 @@ $("mergeBtn").addEventListener("click",async function(){
     }
 
     state.merged=arr.join("\n");
-    $("merged").value=state.merged;
+    // KHÔNG hiển thị nội dung thật vào ô ngay — chỉ hiện placeholder khoá,
+    // để không có gì để copy thủ công (bôi đen/Ctrl+C/DevTools) trước khi
+    // backup xong. Nội dung thật chỉ được đổ vào ô này SAU khi backup xong
+    // (xem chỗ set state.backupReady=true bên dưới).
+    $("merged").value="🔒 Nội dung sẽ hiện ra sau khi Generate Backup PROC thành công (bước 4).";
 
     // Gộp lại (SQL nguồn thay đổi) → coi như backup cũ không còn hợp lệ,
     // khoá lại toàn bộ nút liên quan tới backup/copy cho tới khi backup lại.
     state.backupReady=false;
+    state.autoFormatApplied=false;
     $("downloadBackupBtn").disabled=true;
     $("copyBackupBtn").disabled=true;
     $("downloadMergedBtn").disabled=true;
@@ -234,6 +240,11 @@ $("mergeBtn").addEventListener("click",async function(){
  * SQL Server coi như dấu cách). Dùng khi definition bị dồn thành 1 dòng dài
  * (mất CR/LF lúc copy từ SSMS, hoặc bản thân definition trên DB vốn không
  * có xuống dòng).
+ *
+ * QUAN TRỌNG: quét theo trạng thái (code / line-comment / block-comment /
+ * string literal) — KHÔNG chèn xuống dòng khi đang ở trong comment hay
+ * chuỗi ký tự, để tránh phá vỡ những đoạn kiểu "--AND X=@Y" (comment tạm
+ * tắt 1 điều kiện) thành code thật, gây lỗi cú pháp khi chạy trên SQL Server.
  */
 function looksSquished(sql){
   var lines=sql.split("\n");
@@ -241,36 +252,104 @@ function looksSquished(sql){
   return longLines.length>0 && (lines.length<=2 || longLines.length/lines.length>0.3);
 }
 
+/* Từ khóa "cấu trúc" — hiếm khi xuất hiện như từ tiếng Anh/Việt bình thường
+   trong 1 câu comment, nên dùng an toàn để: (a) luôn tách dòng khi ở code,
+   và (b) coi là điểm "chắc chắn kết thúc comment" khi đang mất dấu xuống
+   dòng gốc (vd "--AND ...  --ghi chú ...  SELECT ..." → SELECT chắc chắn là
+   code thật, không phải tiếp tục ghi chú). */
+var STRUCTURAL_KEYWORDS=[
+  "CREATE OR ALTER PROCEDURE","CREATE OR ALTER PROC",
+  "CREATE PROCEDURE","CREATE PROC","ALTER PROCEDURE","ALTER PROC",
+  "BEGIN","END","SELECT","FROM","WHERE","GROUP BY","ORDER BY","HAVING",
+  "INSERT INTO","VALUES","UPDATE","DELETE FROM","DELETE",
+  "INNER JOIN","LEFT JOIN","RIGHT JOIN","FULL JOIN","JOIN",
+  "UNION ALL","UNION","DECLARE","PRINT","RETURN","GO"
+];
+/* Các từ khóa này CŨNG được tách dòng khi đang ở code bình thường, nhưng
+   KHÔNG dùng để đoán "kết thúc comment" — vì AND/OR/IF/SET/ELSE/WHILE là
+   từ ngữ rất phổ biến, dễ xuất hiện tình cờ trong nội dung ghi chú tiếng
+   Việt/Anh, dùng làm mốc kết thúc comment sẽ dễ đoán sai. */
+var CODE_ONLY_KEYWORDS=["IF NOT EXISTS","IF EXISTS","IF","ELSE","WHILE","SET","AND","OR"];
+
+var ALL_KEYWORDS=STRUCTURAL_KEYWORDS.concat(CODE_ONLY_KEYWORDS)
+  .slice().sort(function(a,b){ return b.length-a.length; });
+var STRUCTURAL_SET={};
+STRUCTURAL_KEYWORDS.forEach(function(k){ STRUCTURAL_SET[k]=true; });
+
+function matchKeywordAt(sql,pos,list){
+  for(var i=0;i<list.length;i++){
+    var kw=list[i];
+    var len=kw.length;
+    if(sql.substr(pos,len).toUpperCase()!==kw.toUpperCase()) continue;
+    var before=pos>0?sql[pos-1]:" ";
+    var after=sql[pos+len]||" ";
+    var isWordChar=function(c){ return /[A-Za-z0-9_]/.test(c); };
+    if(isWordChar(before)||isWordChar(after)) continue; // phải là ranh giới từ
+    return kw;
+  }
+  return null;
+}
+
 function autoFormatSqlIfSquished(sql){
   if(!looksSquished(sql)) return sql;
 
   var s=sql.replace(/[ \t]+/g," ");
+  var n=s.length;
+  var out=[];
+  var state="code"; // code | line_comment | block_comment | string
 
-  var keywords=[
-    "CREATE OR ALTER PROCEDURE","CREATE OR ALTER PROC",
-    "CREATE PROCEDURE","CREATE PROC","ALTER PROCEDURE","ALTER PROC",
-    "BEGIN","END","IF NOT EXISTS","IF EXISTS","IF","ELSE","WHILE",
-    "SELECT","FROM","WHERE","GROUP BY","ORDER BY","HAVING",
-    "INSERT INTO","VALUES","UPDATE","SET","DELETE FROM","DELETE",
-    "INNER JOIN","LEFT JOIN","RIGHT JOIN","FULL JOIN","JOIN",
-    "UNION ALL","UNION","DECLARE","PRINT","RETURN","GO",
-    "AND","OR"
-  ];
-  keywords.sort(function(a,b){ return b.length-a.length; });
+  function trimTrailingSpace(){
+    while(out.length && (out[out.length-1]===" "||out[out.length-1]==="\t")) out.pop();
+  }
+  function breakLine(){
+    if(out.length && out[out.length-1]!=="\n"){ trimTrailingSpace(); out.push("\n"); }
+  }
 
-  keywords.forEach(function(kw){
-    var pattern=kw.replace(/ /g,"\\s+");
-    var re=new RegExp("\\s+("+pattern+")\\b","gi");
-    s=s.replace(re,"\n$1");
-  });
+  var i=0;
+  while(i<n){
+    var ch=s[i];
 
-  /* Biến @ (vd @UserId, @@ROWCOUNT) cũng nên xuống dòng riêng để dễ đọc,
-     giống cách xử lý từ khóa ở trên — áp dụng SAU khi đã tách từ khóa.
-     Bắt cả trường hợp đứng sát dấu =, ,, ( ... chứ không chỉ sau dấu cách. */
-  s=s.replace(/[ \t]*(@{1,2}[A-Za-z_][A-Za-z0-9_]*)/g,"\n$1");
+    if(state==="code"){
+      if(ch==="\n"){ out.push(ch); i++; continue; }
+      if(ch==="-"&&s[i+1]==="-"){ state="line_comment"; out.push("--"); i+=2; continue; }
+      if(ch==="/"&&s[i+1]==="*"){ state="block_comment"; out.push("/*"); i+=2; continue; }
+      if(ch==="'"){ state="string"; out.push(ch); i++; continue; }
+      if(ch==="@"){
+        var vm=/^@{1,2}[A-Za-z_][A-Za-z0-9_]*/.exec(s.slice(i));
+        if(vm){ breakLine(); out.push(vm[0]); i+=vm[0].length; continue; }
+      }
+      var kw=matchKeywordAt(s,i,ALL_KEYWORDS);
+      if(kw){ breakLine(); out.push(s.substr(i,kw.length)); i+=kw.length; continue; }
+      out.push(ch); i++; continue;
+    }
 
-  s=s.replace(/\n{3,}/g,"\n\n");
-  return s.trim();
+    if(state==="line_comment"){
+      // Chỉ thoát comment khi gặp xuống dòng thật, hoặc 1 từ khóa "cấu trúc"
+      // an toàn (SELECT/FROM/BEGIN/END/GO...) — coi như điểm chắc chắn là
+      // code mới, để không nuốt luôn phần code thật còn lại phía sau.
+      if(ch==="\n"){ state="code"; out.push(ch); i++; continue; }
+      var kw2=matchKeywordAt(s,i,STRUCTURAL_KEYWORDS);
+      if(kw2){ state="code"; breakLine(); out.push(s.substr(i,kw2.length)); i+=kw2.length; continue; }
+      out.push(ch); i++; continue;
+    }
+
+    if(state==="block_comment"){
+      if(ch==="*"&&s[i+1]==="/"){ out.push("*/"); i+=2; state="code"; continue; }
+      out.push(ch); i++; continue;
+    }
+
+    if(state==="string"){
+      if(ch==="'"){
+        if(s[i+1]==="'"){ out.push("''"); i+=2; continue; } // '' escape trong chuỗi
+        out.push(ch); i++; state="code"; continue;
+      }
+      out.push(ch); i++; continue;
+    }
+  }
+
+  var result=out.join("");
+  result=result.replace(/\n{3,}/g,"\n\n");
+  return result.trim();
 }
 
 function detect(){
@@ -492,7 +571,14 @@ $("backupBtn").addEventListener("click",function(){
    /* Nếu definition gốc bị dồn thành 1 (hoặc vài) dòng cực dài (do SSMS mất
       CR/LF khi copy, hoặc bản thân definition trên DB vốn không có xuống
       dòng), tự động chèn xuống dòng trước các từ khóa chính cho dễ đọc.
-      Chỉ là whitespace nên không ảnh hưởng gì đến việc chạy SQL. */
+      LƯU Ý: khi dòng có comment "--", tool không biết chính xác comment gốc
+      kết thúc ở đâu (thông tin xuống dòng đã mất) — tool sẽ đoán an toàn
+      bằng cách giữ nguyên comment tới khi gặp 1 từ khóa "chắc chắn là code"
+      (SELECT/FROM/BEGIN/END/GO...), bỏ qua AND/OR/IF/SET vì dễ lẫn với chữ
+      thường trong ghi chú. Cách này tránh được lỗi cú pháp, nhưng có thể
+      khiến comment "nuốt" nhiều hơn dự định — LUÔN rà lại tay các dòng có
+      "--" sau khi tool tự format. */
+   if(looksSquished(block)) state.autoFormatApplied=true;
    block=autoFormatSqlIfSquished(block);
 
    var backupName=p.name+"_"+date;
@@ -556,6 +642,16 @@ $("backupBtn").addEventListener("click",function(){
    state.backupReady=false;
    $("backupStatus").className="status bad";
    $("backupStatus").textContent="Không nhận diện được PROC nào trong nội dung đã paste. Kiểm tra lại query Lookup / paste đúng ô AllProcDefinitions.";
+ }
+
+ if(state.backupReady){
+   $("merged").value=state.merged; // backup xong (thật sự) mới hiện nội dung thật để copy/download
+ }
+
+ if(state.backupReady && state.autoFormatApplied){
+   $("backupStatus").innerHTML += "<br><b>⚠ Lưu ý:</b> phát hiện definition bị dồn dòng, tool đã tự chèn xuống dòng để dễ đọc. "+
+     "Với các dòng có comment <code>--</code>, tool đoán điểm kết thúc comment theo từ khóa an toàn (SELECT/FROM/BEGIN/END/GO...) — "+
+     "<u>hãy rà lại tay các dòng có <code>--</code> trước khi chạy trên SQL Server</u>, vì không thể đoán chính xác 100% khi dấu xuống dòng gốc đã mất.";
  }
 
  /* Chuẩn hóa xuống dòng theo CRLF (\r\n) — đúng chuẩn Windows/SQL Server,
