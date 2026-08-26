@@ -432,20 +432,23 @@ function detect(){
     "/* Mã hoá xuống dòng thành chuỗi ~~SQLNL~~ trước khi xuất ra Results Grid — vì SSMS khi copy 1 ô */\r\n" +
     "/* text dài từ Results Grid sẽ TỰ Ý xoá/đổi CR-LF gốc thành dấu cách, làm mất định dạng definition. */\r\n" +
     "/* Chuỗi ~~SQLNL~~ là ký tự thường, không bị SSMS đụng vào khi copy — tool sẽ tự giải mã lại thành xuống dòng thật. */\r\n" +
-    "SELECT STUFF((\r\n" +
-    "  SELECT CHAR(13)+CHAR(10)+CHAR(13)+CHAR(10) +\r\n" +
-    "    N'/* ===== ' + s.name + N'.' + p.name + N' ===== */' + CHAR(13)+CHAR(10) +\r\n" +
-    "    REPLACE(REPLACE(REPLACE(m.definition,\r\n" +
-    "      CHAR(13)+CHAR(10), N'~~SQLNL~~'),\r\n" +
+    "/* Mã hoá TOÀN BỘ chuỗi kết quả (cả phần khung GO/comment header do query này */\r\n" +
+    "/* tự thêm vào, không chỉ riêng definition) — để không sót chỗ nào bị SSMS xoá */\r\n" +
+    "/* mất xuống dòng khi copy từ Results Grid. */\r\n" +
+    "SELECT (\r\n" +
+    "  SELECT REPLACE(REPLACE(REPLACE(\r\n" +
+    "      CHAR(13)+CHAR(10)+CHAR(13)+CHAR(10) +\r\n" +
+    "      N'/* ===== ' + s.name + N'.' + p.name + N' ===== */' + CHAR(13)+CHAR(10) +\r\n" +
+    "      m.definition + CHAR(13)+CHAR(10) + N'GO'\r\n" +
+    "    , CHAR(13)+CHAR(10), N'~~SQLNL~~'),\r\n" +
     "      CHAR(13), N'~~SQLNL~~'),\r\n" +
     "      CHAR(10), N'~~SQLNL~~')\r\n" +
-    "    + CHAR(13)+CHAR(10) + N'GO'\r\n" +
     "  FROM sys.procedures p\r\n" +
     "  JOIN sys.schemas s ON p.schema_id=s.schema_id\r\n" +
     "  JOIN sys.sql_modules m ON p.object_id=m.object_id\r\n" +
     "  WHERE p.name IN (\r\n    " + names + "\r\n  )\r\n" +
     "  FOR XML PATH(''), TYPE\r\n" +
-    ").value('.', 'nvarchar(max)'), 1, 4, '') AS AllProcDefinitions;";
+    ").value('.', 'nvarchar(max)') AS AllProcDefinitions;";
 
   $("copyLookupBtn").disabled=false;
   $("downloadLookupBtn").disabled=false;
@@ -526,7 +529,7 @@ $("backupBtn").addEventListener("click",function(){
     tiếp bình thường và dùng cơ chế "tự format nếu bị dồn dòng" bên dưới
     như cơ chế dự phòng. */
  var decodedCount=(input.match(/~~SQLNL~~/g)||[]).length;
- input=input.replace(/~~SQLNL~~/g,"\n");
+ input=input.replace(/~~SQLNL~~/g,"\n").trim();
 
  /* SSMS copy có thể đưa về CR/LF hoặc chỉ LF; chuẩn hóa trước khi detect. */
  input=input.replace(/\r\n/g,"\n").replace(/\r/g,"\n");
