@@ -118,10 +118,18 @@ Module hiện có:
   (MerapLion_eSales, ABI_eSales_Support, ANVY_eSale_Support, Sabeco_PG) từ
   ERP, tính Pass/Fail SLA phản hồi đầu theo Priority, xem theo dự
   án/priority, xuất Excel (`/tickets/sla-first-response`).
-- **Hotfix → Gộp SQL**: upload nhiều file .sql, gộp lại, tự nhận diện các
+- **Hotfix → Gom Sql và Back up SQL**: upload nhiều file .sql, gộp lại, tự nhận diện các
   PROC cần backup, tạo query lấy definition hiện tại, tạo SQL backup, xác
   nhận rồi mới cho tải `Deploy_All.sql` (`/hotfix/gop-sql`). Hoàn toàn xử lý
   ở trình duyệt, không gửi gì lên server.
+- **Hotfix → Gom build**: gom file build qua nhiều lần release (nhiều đợt
+  RLS), tự phân loại file theo loại (bin/view/script/sql), file trùng đường
+  dẫn giữa các đợt sẽ lấy bản mới nhất ghi đè, xuất ra 1 file ZIP tổng hợp
+  duy nhất (`/hotfix/gom-build`).
+- **Hotfix → Backup build**: nhận file ZIP đã gom (từ "Gom build") + thư mục
+  Prod hiện tại, so sánh đường dẫn, file nào sắp bị deploy ghi đè sẽ được
+  lấy đúng bản đang chạy trên Prod, đóng gói lại thành 1 ZIP backup riêng
+  trước khi deploy (`/hotfix/backup-build`).
 
 ### Công thức SLA Phản hồi đầu
 

@@ -90,6 +90,14 @@ app.get('/hotfix/gop-sql', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'hotfix-gop-sql.html'));
 });
 
+app.get('/hotfix/gom-build', requirePageAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'protected', 'hotfix-gom-build.html'));
+});
+
+app.get('/hotfix/backup-build', requirePageAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'protected', 'hotfix-backup-build.html'));
+});
+
 app.get('/crs/loi-nhuan-du-an', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'crs-loi-nhuan-du-an.html'));
 });
