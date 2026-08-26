@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hotfix — Gom build</title>
+<style>
+:root{
+  --accent:#2E6F95; --ink:#12233D; --sub:#5b6b7c; --line:#e5e7eb; --card:#fff;
+  --ok:#166534; --okbg:#dcfce7; --warn:#92400e; --warnbg:#fef3c7; --bad:#991b1b; --badbg:#fee2e2;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#F3F6F8;color:var(--ink);font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 20px 60px}
+h1{font-size:22px;margin:0 0 6px}
+.muted{color:var(--sub);font-size:13px;margin:0 0 4px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-top:16px}
+.card h2{font-size:15px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.3px}
+.filegroup-label{font-weight:700;font-size:13px;margin:4px 0 8px}
+input[type=file]{font-size:13px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button{font-family:inherit;font-size:13.5px;font-weight:700;padding:9px 18px;border-radius:8px;border:0;cursor:pointer;background:var(--accent);color:#fff}
+button.secondary{background:#fff;border:1.5px solid var(--accent);color:var(--accent)}
+button.success{background:#1a7f4a}
+button:disabled{opacity:.45;cursor:not-allowed}
+.status{padding:12px;border-radius:8px;font-size:13px;margin-top:10px}
+.status.info{background:#eef2f6;color:#334155}
+.status.ok{background:var(--okbg);color:var(--ok)}
+.status.warn{background:var(--warnbg);color:var(--warn)}
+.status.bad{background:var(--badbg);color:var(--bad)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)}
+th{background:#f8fafc;position:sticky;top:0}
+.tag{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;color:#fff;display:inline-block}
+.tag.bin{background:#7c3aed}.tag.view{background:#0891b2}.tag.script{background:#ca8a04}.tag.sql{background:#2563eb}.tag.unknown{background:#94a3b8}
+.round-badge{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;background:#e0e7ff;color:#3730a3}
+.overridden{background:#fff7ed}
+.scrollbox{max-height:380px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:10px}
+code{background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:12px}
+.ops-topbar{background:#172033;color:#fff;padding:12px 18px;display:flex;align-items:center;gap:14px;font-family:Arial,sans-serif;}
+.ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;opacity:.9;}
+.ops-topbar a:hover{opacity:1;text-decoration:underline;}
+.ops-topbar .crumb{font-size:12px;color:#94a3b8;font-family:monospace;}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+<div class="ops-topbar">
+  <a href="/">← Quay về</a>
+  <span class="crumb">Hotfix / Gom build</span>
+</div>
+<div class="wrap">
+  <h1>📦 Gom Build Release (nhiều lần Rls)</h1>
+  <p class="muted">Gom nhiều lần release (Rls lần 01, 02...) của dev — mỗi lần chỉ chứa phần thay đổi. Tool tự lấy <b>bản file mới nhất</b> theo từng đường dẫn (lần sau override lần trước, file nào lần sau không đổi thì giữ nguyên), rồi đóng gói lại thành 1 ZIP theo <code>bin/</code>, <code>Views/</code>, <code>Scripts/</code>, <code>SQL/</code>.</p>
+  <p class="muted">Công cụ này tách riêng, không liên quan tới tool Deploy/Backup SQL PROC.</p>
+
+  <div class="card">
+    <h2>1. Đưa dữ liệu vào</h2>
+
+    <div class="filegroup-label">📁 Cách A — Upload 1 file ZIP tổng (chứa các thư mục "Rls lần 01", "Rls lần 02"... mỗi thư mục có các file zip theo module)</div>
+    <input id="topZipInput" type="file" accept=".zip">
+
+    <div class="filegroup-label" style="margin-top:16px">📂 Cách B — Chọn trực tiếp thư mục gốc trên máy (không cần zip trước)</div>
+    <input id="folderInput" type="file" webkitdirectory multiple>
+
+    <div id="loadStatus" class="status info" style="margin-top:12px">Chưa có dữ liệu.</div>
+  </div>
+
+  <div class="card" id="auditCard" style="display:none">
+    <h2>2. Nguồn từng file (theo lần Rls mới nhất)</h2>
+    <div id="auditSummary" class="status ok"></div>
+    <div id="collisionWarning" class="status bad" style="display:none"></div>
+    <div id="unknownWarning" class="status warn" style="display:none"></div>
+    <p class="muted">Dòng có nền cam = file đã được lần Rls sau ghi đè (bấm để xem lịch sử các lần).</p>
+    <div id="auditList" class="scrollbox"></div>
+  </div>
+
+  <div class="card" id="procCard" style="display:none">
+    <h2>3. Danh sách Store (PROC) phát hiện được</h2>
+    <div id="procSummary" class="status ok"></div>
+    <div id="procList" class="scrollbox"></div>
+  </div>
+
+  <div class="card" id="outputCard" style="display:none">
+    <h2>4. Tải kết quả</h2>
+    <p class="muted">1 file ZIP duy nhất: <code>bin/</code>, <code>Views/</code>, <code>Scripts/</code> theo đúng cấu trúc gốc (bản mới nhất mỗi module) + <code>SQL/&lt;Module&gt;/...</code> (từng file gốc) + 1 file SQL đã gộp sẵn theo thứ tự <b>1xxx → 2xxx → 3xxx</b> + danh sách Store.</p>
+    <button id="buildZipBtn" class="success" type="button">📦 Tạo &amp; Download ZIP tổng hợp</button>
+    <div id="buildStatus" class="status info" style="margin-top:10px">Sẵn sàng.</div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+function $(id){ return document.getElementById(id); }
+function esc(s){
+  return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+  });
+}
+function pad(n){ return String(n).padStart(2,"0"); }
+function today(){ var d=new Date(); return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate()); }
+function nowStamp(){
+  var d=new Date();
+  return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+"_"+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds());
+}
+function fmtSize(bytes){
+  if(bytes<1024) return bytes+" B";
+  if(bytes<1024*1024) return (bytes/1024).toFixed(1)+" KB";
+  return (bytes/1024/1024).toFixed(2)+" MB";
+}
+
+var state = {
+  latestByKey: {},      // "module::innerPath" -> {module, innerPath, content(ArrayBuffer), round, roundFolder, sourceZip}
+  moduleRoundLog: {},   // module -> [{roundFolder, round, zipFileName, fileCount}]
+  history: {},          // "module::innerPath" -> [ {round, roundFolder, sourceZip} ... in order encountered ]
+  outputEntries: [],    // built after processing: {outPath, content, cat, module, innerPath, round}
+  unknownFiles: [],     // file không nhận diện được nhóm — không đưa vào ZIP
+  collisions: [],       // outPath bị trùng giữa 2+ module khác nhau
+  procList: [],
+  mergedSqlText: ""
+};
+
+/* ---------- Round / module name parsing ---------- */
+function extractRoundFromFolderName(name){
+  var m=/(\d+)\s*$/.exec(String(name).trim());
+  return m ? parseInt(m[1],10) : null;
+}
+function extractModuleAndRoundFromZipName(zipName){
+  var base=zipName.replace(/\.zip$/i,"");
+  var m=/^(.*)_(\d{8})_(\d+)$/.exec(base);
+  if(m) return { module:m[1], round: parseInt(m[3],10) };
+  var m2=/^(.*)_(\d+)$/.exec(base);
+  if(m2) return { module:m2[1], round: parseInt(m2[2],10) };
+  return { module: base, round: 0 };
+}
+
+/* ---------- Classification ---------- */
+var EXT_FALLBACK={dll:"bin",exe:"bin",pdb:"bin",
+  aspx:"view",ascx:"view",cshtml:"view",master:"view",html:"view",htm:"view",
+  js:"script",css:"script", sql:"sql"};
+var OUT_FOLDER={bin:"bin",view:"Views",script:"Scripts",sql:"SQL"};
+
+function classify(innerPath){
+  var parts=innerPath.split("/");
+  var top=(parts[0]||"").toLowerCase();
+  var cat=null;
+  if(top==="bin") cat="bin";
+  else if(top==="views") cat="view";
+  else if(top==="scripts") cat="script";
+  else if(top==="0.sql"||top==="sql") cat="sql";
+
+  if(cat) return { cat:cat, remainder: parts.slice(1).join("/") };
+
+  var ext=(innerPath.split(".").pop()||"").toLowerCase();
+  cat=EXT_FALLBACK[ext]||null;
+  return { cat:cat, remainder: innerPath };
+}
+
+/* ---------- Gather entries from the 2 input modes ---------- */
+async function topZipModeEntries(topZipFile){
+  var topZip=await JSZip.loadAsync(await topZipFile.arrayBuffer());
+  var out=[];
+  var promises=[];
+  topZip.forEach(function(relPath,entry){
+    if(entry.dir) return;
+    if(!/\.zip$/i.test(relPath)) return;
+    var segs=relPath.split("/");
+    var roundFolderName=segs.length>=2 ? segs[segs.length-2] : "(root)";
+    out.push({ roundFolderName:roundFolderName, zipFileName:segs[segs.length-1], entryRef:entry });
+  });
+  return out.map(function(o){
+    return {
+      roundFolderName:o.roundFolderName,
+      zipFileName:o.zipFileName,
+      getBuffer:function(){ return o.entryRef.async("arraybuffer"); }
+    };
+  });
+}
+
+function folderModeEntries(fileList){
+  var zipFiles=Array.from(fileList||[]).filter(function(f){ return /\.zip$/i.test(f.name); });
+  return zipFiles.map(function(f){
+    var relPath=f.webkitRelativePath||f.name;
+    var segs=relPath.split("/");
+    var roundFolderName=segs.length>=2 ? segs[segs.length-2] : "(root)";
+    return {
+      roundFolderName:roundFolderName,
+      zipFileName:f.name,
+      getBuffer:function(){ return f.arrayBuffer(); }
+    };
+  });
+}
+
+/* ---------- Core processing: build "latest file wins" map ---------- */
+async function processEntries(entries){
+  var byRound={};
+  entries.forEach(function(e){ (byRound[e.roundFolderName]=byRound[e.roundFolderName]||[]).push(e); });
+
+  var roundNames=Object.keys(byRound);
+  roundNames.sort(function(a,b){
+    var na=extractRoundFromFolderName(a), nb=extractRoundFromFolderName(b);
+    if(na===null&&nb===null) return a.localeCompare(b,undefined,{numeric:true});
+    if(na===null) return -1;
+    if(nb===null) return 1;
+    return na-nb;
+  });
+
+  var latestByKey={};
+  var moduleRoundLog={};
+  var history={};
+
+  for(var ri=0; ri<roundNames.length; ri++){
+    var rname=roundNames[ri];
+    var roundNum=extractRoundFromFolderName(rname);
+    if(roundNum===null) roundNum=ri+1;
+    var list=byRound[rname];
+
+    for(var li=0; li<list.length; li++){
+      var e=list[li];
+      var info=extractModuleAndRoundFromZipName(e.zipFileName);
+      var moduleName=info.module;
+
+      var buf;
+      try{ buf=await e.getBuffer(); }catch(err){ continue; }
+      var moduleZip;
+      try{ moduleZip=await JSZip.loadAsync(buf); }catch(err){ continue; }
+
+      var innerList=[];
+      moduleZip.forEach(function(innerPath,innerEntry){
+        if(!innerEntry.dir) innerList.push({ path:innerPath, entry:innerEntry });
+      });
+
+      for(var fi=0; fi<innerList.length; fi++){
+        var normPath=innerList[fi].path.replace(/\\/g,"/");
+        var key=moduleName+"::"+normPath;
+        var innerBuf=await innerList[fi].entry.async("arraybuffer");
+        var innerDate=innerList[fi].entry.date || null; // ngày build thật lưu trong zip
+
+        var prevEntry=latestByKey[key];
+        var warn=null;
+        if(prevEntry && innerDate && prevEntry.date && innerDate.getTime()<prevEntry.date.getTime()){
+          /* File ở round SAU (theo thứ tự thư mục) nhưng ngày build lại CŨ HƠN
+             bản round trước — khả năng dev gói nhầm file cũ. Vẫn ưu tiên theo
+             thứ tự round (đúng ý đồ release), nhưng CẢNH BÁO rõ cho người dùng
+             tự kiểm tra lại thay vì âm thầm bỏ qua. */
+          warn="Round "+roundNum+" ("+rname+") có file mới hơn về THỨ TỰ nhưng NGÀY BUILD ("+
+            innerDate.toISOString()+") lại cũ hơn bản trước đó ("+prevEntry.date.toISOString()+") — kiểm tra lại xem dev có gói nhầm file cũ không.";
+        }
+
+        (history[key]=history[key]||[]).push({ round:roundNum, roundFolder:rname, sourceZip:e.zipFileName, date:innerDate, warn:warn });
+
+        latestByKey[key]={
+          module:moduleName, innerPath:normPath, content:innerBuf,
+          round:roundNum, roundFolder:rname, sourceZip:e.zipFileName, date:innerDate, warn:warn
+        };
+      }
+
+      (moduleRoundLog[moduleName]=moduleRoundLog[moduleName]||[]).push({
+        roundFolder:rname, round:roundNum, zipFileName:e.zipFileName, fileCount:innerList.length
+      });
+    }
+  }
+
+  return { latestByKey:latestByKey, moduleRoundLog:moduleRoundLog, roundNames:roundNames, history:history };
+}
+
+/* ---------- Build final output entries (with classification + output path) ---------- */
+function buildOutputEntries(latestByKey){
+  var out=[];
+  var unknown=[]; // file không nhận diện được nhóm — không đưa vào ZIP, cần hiển thị cảnh báo
+
+  Object.keys(latestByKey).forEach(function(key){
+    var f=latestByKey[key];
+    var c=classify(f.innerPath);
+    if(!c.cat){
+      unknown.push({ module:f.module, innerPath:f.innerPath, round:f.round });
+      return;
+    }
+    var outPath = c.cat==="sql"
+      ? "SQL/"+f.module+"/"+c.remainder
+      : OUT_FOLDER[c.cat]+"/"+c.remainder;
+    out.push({ outPath:outPath, content:f.content, cat:c.cat, module:f.module, innerPath:f.innerPath, round:f.round, date:f.date, warn:f.warn });
+  });
+  out.sort(function(a,b){ return a.outPath.localeCompare(b.outPath); });
+
+  // Phát hiện trùng đường dẫn output giữa các module khác nhau (an toàn thêm,
+  // vì bin/Views/Scripts không tự gắn tên module vào outPath như SQL).
+  var byPath={};
+  out.forEach(function(e){ (byPath[e.outPath]=byPath[e.outPath]||[]).push(e); });
+  var collisions=Object.keys(byPath).filter(function(p){ return byPath[p].length>1; })
+    .map(function(p){ return { outPath:p, entries:byPath[p] }; });
+
+  return { entries: out, unknown: unknown, collisions: collisions };
+}
+
+/* ---------- Detect stored procedures ---------- */
+function detectProcs(outputEntries){
+  var sqlEntries=outputEntries.filter(function(e){ return e.cat==="sql"; });
+  var decoder=new TextDecoder("utf-8");
+  var seen={};
+  var list=[];
+  var re=/\b(?:ALTER|CREATE(?:\s+OR\s+ALTER)?)\s+PROC(?:EDURE)?\s+(?:\[?dbo\]?\s*\.\s*)?\[?([A-Za-z0-9_]+)\]?/gi;
+
+  sqlEntries.forEach(function(e){
+    var text=decoder.decode(e.content);
+    var m;
+    re.lastIndex=0;
+    while((m=re.exec(text))){
+      var name=m[1];
+      var key=name.toLowerCase();
+      if(seen[key]) continue;
+      seen[key]=true;
+      list.push({ name:name, module:e.module, file:e.innerPath.split("/").pop() });
+    }
+  });
+
+  list.sort(function(a,b){ return a.name.localeCompare(b.name); });
+  return list;
+}
+
+/* ---------- Merge all SQL files into one ordered deploy script ---------- */
+function buildMergedSql(outputEntries){
+  var sqlEntries=outputEntries.filter(function(e){
+    return e.cat==="sql" && !/_RUN_ALL\.sql$/i.test(e.innerPath);
+  });
+  var decoder=new TextDecoder("utf-8");
+
+  var withText=sqlEntries.map(function(e){
+    var text=decoder.decode(e.content);
+    var fname=e.innerPath.split("/").pop();
+    var m=/^(\d+)_/.exec(fname);
+    var prefixNum=m? parseInt(m[1],10) : 999999;
+    return { module:e.module, fname:fname, text:text, prefixNum:prefixNum };
+  });
+
+  withText.sort(function(a,b){
+    if(a.prefixNum!==b.prefixNum) return a.prefixNum-b.prefixNum;
+    if(a.module!==b.module) return a.module.localeCompare(b.module);
+    return a.fname.localeCompare(b.fname);
+  });
+
+  var out=["/* ===== DEPLOY ALL — gom từ nhiều module, đã lấy bản MỚI NHẤT — "+today()+" ===== */",""];
+  withText.forEach(function(w){
+    out.push("/* ===== ["+w.prefixNum+"] "+w.module+" / "+w.fname+" ===== */");
+    out.push(w.text.replace(/\r\n/g,"\n").trim());
+    out.push("");
+  });
+  return out.join("\n").replace(/\n/g,"\r\n");
+}
+
+/* ---------- UI rendering ---------- */
+function renderAll(){
+  var outputEntries=state.outputEntries;
+  var known=outputEntries.length;
+
+  var counts={bin:0,view:0,script:0,sql:0};
+  outputEntries.forEach(function(e){ counts[e.cat]++; });
+
+  var moduleCount=Object.keys(state.moduleRoundLog).length;
+  var roundCount=Object.keys(state.moduleRoundLog).reduce(function(max,m){
+    return Math.max(max, state.moduleRoundLog[m].length);
+  },0);
+
+  function fmtDate(d){
+    if(!d) return "—";
+    return pad(d.getDate())+"/"+pad(d.getMonth()+1)+"/"+d.getFullYear()+" "+pad(d.getHours())+":"+pad(d.getMinutes());
+  }
+
+  var warnCount=outputEntries.filter(function(e){ return e.warn; }).length;
+
+  $("auditCard").style.display="block";
+  $("auditSummary").className = warnCount ? "status warn" : "status ok";
+  $("auditSummary").textContent=
+    moduleCount+" module, tổng "+known+" file (bản mới nhất): bin "+counts.bin+
+    ", View "+counts.view+", Script "+counts.script+", SQL "+counts.sql+
+    (warnCount ? ". ⚠ "+warnCount+" file có ngày build NGƯỢC với thứ tự Rls — xem cột 'Ngày build' để kiểm tra." : ".");
+
+  if(state.collisions.length){
+    $("collisionWarning").style.display="block";
+    $("collisionWarning").innerHTML="🚫 <b>"+state.collisions.length+" đường dẫn output bị TRÙNG giữa các module khác nhau</b> — module sau sẽ âm thầm đè module trước trong ZIP nếu không xử lý. Kiểm tra lại: "+
+      state.collisions.map(function(c){
+        return "<br>&nbsp;&nbsp;<code>"+esc(c.outPath)+"</code> ← "+c.entries.map(function(e){ return esc(e.module); }).join(", ");
+      }).join("");
+  }else{
+    $("collisionWarning").style.display="none";
+  }
+
+  if(state.unknownFiles.length){
+    $("unknownWarning").style.display="block";
+    $("unknownWarning").innerHTML="⚠ <b>"+state.unknownFiles.length+" file không nhận diện được nhóm</b> (không thuộc bin/Views/Scripts/SQL và đuôi file lạ) — <b>sẽ KHÔNG được đưa vào ZIP</b>, kiểm tra xem có cần thêm thủ công không: "+
+      state.unknownFiles.map(function(u){ return "<br>&nbsp;&nbsp;<code>"+esc(u.module)+" / "+esc(u.innerPath)+"</code>"; }).join("");
+  }else{
+    $("unknownWarning").style.display="none";
+  }
+
+  var rows=outputEntries.map(function(e){
+    var key=e.module+"::"+e.innerPath;
+    var hist=state.history[key]||[];
+    var overridden=hist.length>1;
+    var histText=hist.map(function(h){ return h.roundFolder+" ("+h.sourceZip+", "+fmtDate(h.date)+")"; }).join(" → ");
+    return "<tr class='"+(overridden?"overridden":"")+"' title='"+esc(histText)+"'>"+
+      "<td><span class='tag "+e.cat+"'>"+e.cat.toUpperCase()+"</span></td>"+
+      "<td>"+esc(e.module)+"</td>"+
+      "<td>"+esc(e.outPath)+"</td>"+
+      "<td>"+fmtSize(e.content.byteLength)+"</td>"+
+      "<td>"+fmtDate(e.date)+"</td>"+
+      "<td><span class='round-badge'>"+esc(e.round)+(overridden?" (ghi đè "+hist.length+" lần)":"")+"</span>"+
+      (e.warn ? " <span class='tag' style='background:#dc2626' title='"+esc(e.warn)+"'>⚠ Kiểm tra lại</span>" : "")+
+      "</td>"+
+      "</tr>";
+  }).join("");
+
+  $("auditList").innerHTML=
+    "<table><thead><tr><th>Loại</th><th>Module</th><th>Đường dẫn output</th><th>Size</th><th>Ngày build</th><th>Lấy từ Rls</th></tr></thead><tbody>"+
+    rows+"</tbody></table>";
+
+  // Procs
+  state.procList=detectProcs(outputEntries);
+  $("procCard").style.display="block";
+  $("procSummary").className="status ok";
+  $("procSummary").textContent="Phát hiện "+state.procList.length+" PROC (đã loại trùng tên).";
+  $("procList").innerHTML = state.procList.length
+    ? "<table><thead><tr><th>#</th><th>Tên PROC</th><th>Module</th><th>File nguồn</th></tr></thead><tbody>"+
+      state.procList.map(function(p,i){
+        return "<tr><td>"+(i+1)+"</td><td><b>"+esc(p.name)+"</b></td><td>"+esc(p.module)+"</td><td>"+esc(p.file)+"</td></tr>";
+      }).join("")+"</tbody></table>"
+    : "<div style='padding:12px;color:#64748b'>Không phát hiện PROC nào trong các file SQL.</div>";
+
+  state.mergedSqlText=buildMergedSql(outputEntries);
+
+  $("outputCard").style.display="block";
+  $("buildZipBtn").disabled = known===0;
+}
+
+/* ---------- Load pipeline (shared by both input modes) ---------- */
+async function runPipeline(entries, sourceLabel){
+  $("loadStatus").className="status info";
+  $("loadStatus").textContent="⏳ Đang đọc và gộp dữ liệu từ "+sourceLabel+"...";
+
+  try{
+    if(typeof JSZip==="undefined"){
+      $("loadStatus").className="status bad";
+      $("loadStatus").textContent="Không tải được thư viện JSZip (cần internet để tải cdnjs.cloudflare.com lần đầu). Kiểm tra kết nối mạng rồi thử lại.";
+      return;
+    }
+    if(!entries.length){
+      $("loadStatus").className="status bad";
+      $("loadStatus").textContent="Không tìm thấy file .zip module nào bên trong "+sourceLabel+". Kiểm tra lại cấu trúc thư mục (mỗi lần Rls phải có các file .zip module bên trong).";
+      return;
+    }
+
+    var result=await processEntries(entries);
+    state.latestByKey=result.latestByKey;
+    state.moduleRoundLog=result.moduleRoundLog;
+    state.history=result.history;
+    var built=buildOutputEntries(result.latestByKey);
+    state.outputEntries=built.entries;
+    state.unknownFiles=built.unknown;
+    state.collisions=built.collisions;
+
+    $("loadStatus").className="status ok";
+    $("loadStatus").textContent=
+      "Đã gom xong từ "+sourceLabel+" — phát hiện "+result.roundNames.length+" lần Rls: "+
+      result.roundNames.join(", ")+".";
+
+    renderAll();
+  }catch(err){
+    console.error(err);
+    $("loadStatus").className="status bad";
+    $("loadStatus").textContent="Lỗi khi xử lý: "+err.message;
+  }
+}
+
+$("topZipInput").addEventListener("change",async function(e){
+  var f=e.target.files && e.target.files[0];
+  if(!f) return;
+  var entries=await topZipModeEntries(f);
+  runPipeline(entries, "file ZIP \""+f.name+"\"");
+});
+
+$("folderInput").addEventListener("change",async function(e){
+  var entries=folderModeEntries(e.target.files);
+  runPipeline(entries, "thư mục đã chọn");
+});
+
+/* ---------- Build & download final ZIP ---------- */
+$("buildZipBtn").addEventListener("click",function(){
+  if(!state.outputEntries.length){ alert("Chưa có dữ liệu để đóng gói."); return; }
+  if(typeof JSZip==="undefined"){ alert("Không tải được thư viện JSZip."); return; }
+
+  $("buildZipBtn").disabled=true;
+  $("buildZipBtn").textContent="⏳ Đang nén ZIP...";
+  $("buildStatus").className="status info";
+  $("buildStatus").textContent="Đang đóng gói...";
+
+  var stamp=nowStamp();
+  var rootFolder="Rls_build_"+stamp; // thư mục cha bọc ngoài, để khi extract ra bin/Views/Scripts/SQL đều nằm trong đây
+
+  var zip=new JSZip();
+  state.outputEntries.forEach(function(e){
+    /* Giữ nguyên ngày build gốc của file (đọc từ trong zip nguồn), không để
+       JSZip tự đóng dấu ngày hiện tại lên file trong ZIP tổng hợp. */
+    zip.file(rootFolder+"/"+e.outPath, e.content, e.date ? { date: e.date } : {});
+  });
+
+  var mergedName=rootFolder+"/SQL/_Merged_Deploy_All_"+stamp+".sql";
+  zip.file(mergedName, new TextEncoder().encode(state.mergedSqlText));
+
+  var procTxt="Danh sách Store (PROC) phát hiện — "+stamp+"\r\n"+
+    "Tổng: "+state.procList.length+" PROC\r\n\r\n"+
+    state.procList.map(function(p){ return p.name+"\t("+p.module+" / "+p.file+")"; }).join("\r\n");
+  zip.file(rootFolder+"/SQL/_Danh_sach_Store_"+stamp+".txt", new TextEncoder().encode(procTxt));
+
+  zip.generateAsync({type:"blob", compression:"DEFLATE", compressionOptions:{level:6}}).then(function(blob){
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement("a");
+    a.style.display="none";
+    a.href=url;
+    a.download=rootFolder+".zip";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },1200);
+    $("buildZipBtn").disabled=false;
+    $("buildZipBtn").textContent="📦 Tạo & Download ZIP tổng hợp";
+    $("buildStatus").className="status ok";
+    $("buildStatus").textContent="✅ Đã tải "+a.download+" — gồm "+state.outputEntries.length+" file + SQL đã gộp + danh sách Store.";
+  }).catch(function(err){
+    console.error(err);
+    $("buildZipBtn").disabled=false;
+    $("buildZipBtn").textContent="📦 Tạo & Download ZIP tổng hợp";
+    $("buildStatus").className="status bad";
+    $("buildStatus").textContent="Lỗi khi tạo ZIP: "+err.message;
+  });
+});
+
+})();
+</script>
+</body>
+</html>

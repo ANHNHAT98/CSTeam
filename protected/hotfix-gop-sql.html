@@ -76,7 +76,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px;borde
 
 <div class="card">
 <h2>4. Lấy SQL definition hiện tại</h2>
-<p class="muted">Chạy query trên SQL Server. Kết quả trả về <b>1 dòng / 1 ô duy nhất</b> chứa toàn bộ definition của các PROC, sau đó copy nguyên ô đó và paste vào phần Definition bên dưới.</p>
+<p class="muted">Chạy query trên SQL Server. Kết quả trả về <b>1 dòng / 1 ô duy nhất</b> chứa toàn bộ definition của các PROC, sau đó copy nguyên ô đó và paste vào phần Definition bên dưới. Query đã tự mã hoá xuống dòng thành <code>~~SQLNL~~</code> để không bị SSMS xoá mất khi copy từ Results Grid — tool sẽ tự giải mã lại, không cần làm gì thêm.</p>
 <textarea id="lookup" readonly style="font-family:Consolas,'Courier New',monospace;font-size:13px;line-height:1.45;white-space:pre;tab-size:4" placeholder="Query lấy definition PROC sẽ xuất hiện ở đây...">Hãy gộp SQL trước.</textarea>
 <div class="row">
 <button id="copyLookupBtn" type="button" class="secondary" disabled>Copy Query</button>
@@ -291,6 +291,19 @@ function matchKeywordAt(sql,pos,list){
 function autoFormatSqlIfSquished(sql){
   if(!looksSquished(sql)) return sql;
 
+  /* LƯU Ý: hàm này chỉ còn là CƠ CHẾ DỰ PHÒNG cho trường hợp nội dung paste
+     KHÔNG đi qua bước giải mã token ~~SQLNL~~ (vd paste tay từ nguồn khác,
+     hoặc dùng câu Lookup cũ). Với luồng chính (dùng đúng câu Lookup mới),
+     definition đã có xuống dòng thật 100% chính xác, hàm này sẽ không cần
+     chạy tới (looksSquished trả về false).
+     Đã bỏ MỌI suy đoán ranh giới comment theo từ khóa hay theo khoảng cách
+     kép — cả 2 cách đó đều từng gây lỗi cú pháp thật (từ khóa trùng với
+     chữ trong comment; khoảng cách kép trùng với canh cột trong khai báo
+     tham số). Giờ chỉ tin vào xuống dòng THẬT còn sót lại; nếu 1 comment
+     "--" không có xuống dòng thật để kết thúc, hàm KHÔNG đoán — giữ nguyên
+     phần còn lại trong comment (an toàn tuyệt đối, không tạo lỗi cú pháp
+     mới) và báo rõ để rà tay. */
+
   var s=sql;
   var n=s.length;
   var out=[];
@@ -303,17 +316,6 @@ function autoFormatSqlIfSquished(sql){
   function breakLine(){
     if(out.length && out[out.length-1]!=="\n"){ trimTrailingSpace(); out.push("\n"); }
   }
-  /* Đếm số dấu cách/tab liên tiếp tại vị trí p — dùng để đoán "chỗ này vốn
-     là 1 dấu xuống dòng thật đã bị mất": khi SSMS/trình duyệt dồn nhiều
-     dòng thành 1 dòng, mỗi CR/LF bị thay bằng 1 dấu cách; nếu dòng kế tiếp
-     trong bản gốc còn có thụt lề (indentation), sẽ dư ra ≥2 dấu cách liên
-     tiếp tại đúng điểm nối — đây là tín hiệu ĐÁNG TIN CẬY hơn nhiều so với
-     việc đoán theo từ khóa, kể cả khi đang ở trong comment "--". */
-  function spaceRunAt(p){
-    var j=p;
-    while(j<n && (s[j]===" "||s[j]==="\t")) j++;
-    return j-p;
-  }
 
   var i=0;
   while(i<n){
@@ -321,11 +323,6 @@ function autoFormatSqlIfSquished(sql){
 
     if(state==="code"){
       if(ch==="\n"){ breakLine(); i++; continue; }
-      if(ch===" "||ch==="\t"){
-        var run=spaceRunAt(i);
-        if(run>=2){ breakLine(); i+=run; continue; }
-        out.push(ch); i++; continue;
-      }
       if(ch==="-"&&s[i+1]==="-"){ state="line_comment"; out.push("--"); i+=2; continue; }
       if(ch==="/"&&s[i+1]==="*"){ state="block_comment"; out.push("/*"); i+=2; continue; }
       if(ch==="'"){ state="string"; out.push(ch); i++; continue; }
@@ -339,18 +336,8 @@ function autoFormatSqlIfSquished(sql){
     }
 
     if(state==="line_comment"){
-      /* CHỈ thoát comment khi gặp xuống dòng thật, hoặc ≥2 dấu cách liên
-         tiếp (tín hiệu "vốn có xuống dòng ở đây", xem spaceRunAt ở trên).
-         KHÔNG còn đoán theo từ khóa SELECT/FROM/BEGIN/END/GO... nữa — vì
-         những từ này hoàn toàn có thể xuất hiện tình cờ trong nội dung
-         comment tiếng Việt/Anh, cắt sai chỗ sẽ làm lệch cấu trúc
-         BEGIN/END/IF/ELSE và gây lỗi cú pháp khi chạy trên SQL Server. */
+      /* Chỉ thoát comment khi gặp xuống dòng THẬT — không đoán gì thêm. */
       if(ch==="\n"){ state="code"; breakLine(); i++; continue; }
-      if(ch===" "||ch==="\t"){
-        var run2=spaceRunAt(i);
-        if(run2>=2){ state="code"; breakLine(); i+=run2; continue; }
-        out.push(ch); i++; continue;
-      }
       out.push(ch); i++; continue;
     }
 
@@ -442,10 +429,17 @@ function detect(){
   $("lookup").value =
     "/* Lấy toàn bộ definition PROC vào 1 ô duy nhất */\r\n" +
     "/* Dùng FOR XML PATH thay STRING_AGG để tương thích SQL Server 2008/2012/2014/2016 (STRING_AGG chỉ có từ 2017 trở lên) */\r\n" +
+    "/* Mã hoá xuống dòng thành chuỗi ~~SQLNL~~ trước khi xuất ra Results Grid — vì SSMS khi copy 1 ô */\r\n" +
+    "/* text dài từ Results Grid sẽ TỰ Ý xoá/đổi CR-LF gốc thành dấu cách, làm mất định dạng definition. */\r\n" +
+    "/* Chuỗi ~~SQLNL~~ là ký tự thường, không bị SSMS đụng vào khi copy — tool sẽ tự giải mã lại thành xuống dòng thật. */\r\n" +
     "SELECT STUFF((\r\n" +
     "  SELECT CHAR(13)+CHAR(10)+CHAR(13)+CHAR(10) +\r\n" +
     "    N'/* ===== ' + s.name + N'.' + p.name + N' ===== */' + CHAR(13)+CHAR(10) +\r\n" +
-    "    m.definition + CHAR(13)+CHAR(10) + N'GO'\r\n" +
+    "    REPLACE(REPLACE(REPLACE(m.definition,\r\n" +
+    "      CHAR(13)+CHAR(10), N'~~SQLNL~~'),\r\n" +
+    "      CHAR(13), N'~~SQLNL~~'),\r\n" +
+    "      CHAR(10), N'~~SQLNL~~')\r\n" +
+    "    + CHAR(13)+CHAR(10) + N'GO'\r\n" +
     "  FROM sys.procedures p\r\n" +
     "  JOIN sys.schemas s ON p.schema_id=s.schema_id\r\n" +
     "  JOIN sys.sql_modules m ON p.object_id=m.object_id\r\n" +
@@ -524,6 +518,15 @@ $("backupBtn").addEventListener("click",function(){
    alert("Hãy paste SQL definition hiện tại của PROC.");
    return;
  }
+
+ /* Giải mã token ~~SQLNL~~ (do câu Lookup mới sinh ra) thành xuống dòng
+    thật — khôi phục ĐÚNG 100% định dạng gốc, không cần đoán mò gì cả.
+    Nếu nội dung paste vào không có token này (paste từ query Lookup cũ,
+    hoặc dán tay từ nguồn khác), coi như không có gì để giải mã, vẫn chạy
+    tiếp bình thường và dùng cơ chế "tự format nếu bị dồn dòng" bên dưới
+    như cơ chế dự phòng. */
+ var decodedCount=(input.match(/~~SQLNL~~/g)||[]).length;
+ input=input.replace(/~~SQLNL~~/g,"\n");
 
  /* SSMS copy có thể đưa về CR/LF hoặc chỉ LF; chuẩn hóa trước khi detect. */
  input=input.replace(/\r\n/g,"\n").replace(/\r/g,"\n");

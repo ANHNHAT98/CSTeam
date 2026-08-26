@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hotfix — Backup build</title>
+<style>
+:root{
+  --accent:#2E6F95; --ink:#12233D; --sub:#5b6b7c; --line:#e5e7eb; --card:#fff;
+  --ok:#166534; --okbg:#dcfce7; --warn:#92400e; --warnbg:#fef3c7; --bad:#991b1b; --badbg:#fee2e2;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#F3F6F8;color:var(--ink);font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 20px 60px}
+h1{font-size:22px;margin:0 0 6px}
+.muted{color:var(--sub);font-size:13px;margin:0 0 4px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-top:16px}
+.card h2{font-size:15px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.3px}
+.filegroup-label{font-weight:700;font-size:13px;margin:4px 0 8px}
+input[type=file]{font-size:13px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button{font-family:inherit;font-size:13.5px;font-weight:700;padding:9px 18px;border-radius:8px;border:0;cursor:pointer;background:var(--accent);color:#fff}
+button.secondary{background:#fff;border:1.5px solid var(--accent);color:var(--accent)}
+button.success{background:#1a7f4a}
+button:disabled{opacity:.45;cursor:not-allowed}
+.status{padding:12px;border-radius:8px;font-size:13px;margin-top:10px}
+.status.info{background:#eef2f6;color:#334155}
+.status.ok{background:var(--okbg);color:var(--ok)}
+.status.warn{background:var(--warnbg);color:var(--warn)}
+.status.bad{background:var(--badbg);color:var(--bad)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)}
+th{background:#f8fafc;position:sticky;top:0}
+.tag{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;color:#fff;display:inline-block}
+.scrollbox{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:10px}
+code{background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:12px}
+.ops-topbar{background:#172033;color:#fff;padding:12px 18px;display:flex;align-items:center;gap:14px;font-family:Arial,sans-serif;}
+.ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;opacity:.9;}
+.ops-topbar a:hover{opacity:1;text-decoration:underline;}
+.ops-topbar .crumb{font-size:12px;color:#94a3b8;font-family:monospace;}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+<div class="ops-topbar">
+  <a href="/">← Quay về</a>
+  <span class="crumb">Hotfix / Backup build</span>
+</div>
+<div class="wrap">
+  <h1>🛟 Backup Prod trước khi Deploy</h1>
+  <p class="muted">Nhận <b>file ZIP tổng hợp đã gom</b> (tải từ tool "Gom Build Release") và <b>thư mục Prod hiện tại</b> — so sánh theo đường dẫn, file nào trùng (sắp bị ghi đè khi deploy) sẽ được lấy bản đang chạy trên Prod, đóng gói lại thành 1 ZIP backup riêng.</p>
+  <p class="muted">Công cụ này tách riêng — vì thư mục Prod thường cần tài khoản/quyền truy cập server công ty, khác với người/máy thực hiện bước gom build.</p>
+
+  <div class="card">
+    <h2>1. File ZIP tổng hợp đã gom (output của tool Gom Build Release)</h2>
+    <input id="releaseZipInput" type="file" accept=".zip">
+    <div id="releaseStatus" class="status info" style="margin-top:12px">Chưa có dữ liệu.</div>
+    <div id="neededList" class="scrollbox" style="display:none;margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <h2>2. Thư mục Prod hiện tại</h2>
+
+    <div class="filegroup-label">📂 Cách A — Chọn riêng từng thư mục con (khuyên dùng — nhẹ, nhanh, không bị treo như chọn nguyên thư mục gốc)</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:6px">
+      <div>
+        <div class="filegroup-label" style="font-weight:600;font-size:12px">📦 Thư mục bin</div>
+        <input id="prodBinInput" type="file" webkitdirectory multiple>
+      </div>
+      <div>
+        <div class="filegroup-label" style="font-weight:600;font-size:12px">🖼️ Thư mục Views</div>
+        <input id="prodViewsInput" type="file" webkitdirectory multiple>
+      </div>
+      <div>
+        <div class="filegroup-label" style="font-weight:600;font-size:12px">📜 Thư mục Scripts</div>
+        <input id="prodScriptsInput" type="file" webkitdirectory multiple>
+      </div>
+    </div>
+
+    <div class="filegroup-label" style="margin-top:16px">📂 Cách B — Chọn nguyên thư mục gốc (App) — chỉ dùng nếu thư mục không quá nhiều file</div>
+    <input id="prodFolderInput" type="file" webkitdirectory multiple>
+
+    <div class="filegroup-label" style="margin-top:14px">📁 Cách C — Upload 1 file ZIP của thư mục Prod</div>
+    <input id="prodZipInput" type="file" accept=".zip">
+
+    <div class="filegroup-label" style="margin-top:14px">⚡ Cách D — Chọn nhanh từng file cụ thể (Ctrl+click nhiều file), không quét cả thư mục — nhẹ nhất</div>
+    <p class="muted" style="margin:2px 0 8px">Chỉ dùng cho <b>bin</b> và <b>Scripts</b> (tên file đã có tên module riêng, ví dụ AR20600.dll). <b>Không dùng cho Views</b> vì nhiều module dùng chung tên file như Index.cshtml, Body.cshtml — dễ nhận nhầm. Với Views, dùng Cách A, chỉ cần vào đúng các thư mục con nhỏ theo danh sách ở khung "Cần tìm trên Prod" phía trên.</p>
+    <input id="prodQuickPickInput" type="file" multiple>
+
+    <div id="prodStatus" class="status info" style="margin-top:12px">Chưa có dữ liệu.</div>
+    <div class="row" style="margin-top:8px">
+      <button id="prodClearBtn" type="button" class="secondary">Xóa hết dữ liệu Prod đã chọn</button>
+    </div>
+  </div>
+
+  <div class="card" id="compareCard" style="display:none">
+    <h2>3. Kết quả so sánh</h2>
+    <div id="compareSummary" class="status ok"></div>
+    <div id="compareList" class="scrollbox"></div>
+  </div>
+
+  <div class="card" id="outputCard" style="display:none">
+    <h2>4. Tải Backup</h2>
+    <p class="muted">1 file ZIP chứa đúng những file <b>đang chạy trên Prod</b> mà bộ release sắp ghi đè — lỡ deploy lỗi thì copy ngược lại là khôi phục được.</p>
+    <button id="backupZipBtn" class="success" type="button" disabled>🛟 Tạo &amp; Download ZIP Backup</button>
+    <div id="backupStatus" class="status info" style="margin-top:10px">Sẵn sàng.</div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+function $(id){ return document.getElementById(id); }
+function esc(s){
+  return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+  });
+}
+function pad(n){ return String(n).padStart(2,"0"); }
+function nowStamp(){
+  var d=new Date();
+  return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+"_"+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds());
+}
+function fmtSize(bytes){
+  if(bytes<1024) return bytes+" B";
+  if(bytes<1024*1024) return (bytes/1024).toFixed(1)+" KB";
+  return (bytes/1024/1024).toFixed(2)+" MB";
+}
+function normMatch(p){ return String(p).replace(/\\/g,"/").toLowerCase(); }
+
+var state = {
+  releaseFiles: [],  // [{path, content, date}] — path đã bỏ segment thư mục cha "Rls_build_..."
+  prodFiles: [],     // [{path, content, date}]
+  matched: [],       // [{outPath, prodFile}]
+  newOnly: []        // [outPath]
+};
+
+/* ---------- Đọc file ZIP tổng hợp đã gom (output tool Gom Build Release) ---------- */
+async function readReleaseZip(zipFile){
+  var zip=await JSZip.loadAsync(await zipFile.arrayBuffer());
+  var entries=[];
+  zip.forEach(function(relPath,entry){ if(!entry.dir) entries.push({ path:relPath, entry:entry }); });
+
+  // Bỏ segment đầu tiên nếu đó là thư mục cha kiểu "Rls_build_..." bọc ngoài
+  var out=[];
+  for(var i=0;i<entries.length;i++){
+    var p=entries[i].path.replace(/\\/g,"/");
+    var segs=p.split("/");
+    var relPath = (segs.length>1 && /^Rls_build_/i.test(segs[0])) ? segs.slice(1).join("/") : p;
+    var buf=await entries[i].entry.async("arraybuffer");
+    out.push({ path: relPath, content: buf, date: entries[i].entry.date||null });
+  }
+  return out;
+}
+
+/* ---------- Đọc thư mục / zip Prod ---------- */
+async function readFilesFromList(fileList, stripFirstSegment, progressLabel){
+  var files=Array.from(fileList||[]);
+  var out=[];
+  for(var i=0;i<files.length;i++){
+    var f=files[i];
+    var rel=f.webkitRelativePath||f.name;
+    var relFromRoot;
+    if(stripFirstSegment){
+      var segs=rel.split("/");
+      relFromRoot = segs.length>1 ? segs.slice(1).join("/") : rel; // bỏ tên thư mục gốc user chọn
+    }else{
+      relFromRoot = rel; // giữ nguyên — vì tên thư mục gốc chính là bin/Views/Scripts, cần giữ lại
+    }
+    var buf=await f.arrayBuffer();
+    out.push({ path: relFromRoot, content: buf, date: new Date(f.lastModified) });
+    if((i+1)%15===0 || i===files.length-1){
+      $("prodStatus").textContent="⏳ Đang đọc "+progressLabel+"... "+(i+1)+"/"+files.length+" file";
+    }
+  }
+  return out;
+}
+
+async function readProdZip(zipFile){
+  var zip=await JSZip.loadAsync(await zipFile.arrayBuffer());
+  var entries=[];
+  zip.forEach(function(relPath,entry){ if(!entry.dir) entries.push({ path:relPath, entry:entry }); });
+  var out=[];
+  for(var i=0;i<entries.length;i++){
+    var buf=await entries[i].entry.async("arraybuffer");
+    out.push({ path: entries[i].path.replace(/\\/g,"/"), content: buf, date: entries[i].entry.date||null });
+    if((i+1)%15===0 || i===entries.length-1){
+      $("prodStatus").textContent="⏳ Đang đọc ZIP Prod... "+(i+1)+"/"+entries.length+" file";
+    }
+  }
+  return out;
+}
+
+function reportProdLoaded(addedCount, label){
+  $("prodStatus").className="status ok";
+  $("prodStatus").textContent="Đã đọc thêm "+addedCount+" file ("+label+"). Tổng cộng đang có: "+state.prodFiles.length+" file Prod.";
+}
+
+/* ---------- So khớp theo đường dẫn (chấp nhận lệch prefix thư mục gốc) ---------- */
+function findMatchingProdFile(releasePath, prodFiles){
+  var target=normMatch(releasePath);
+  return prodFiles.find(function(p){
+    var np=normMatch(p.path);
+    if(np===target) return true;
+    // Prod path dài hơn (có prefix thư mục gốc thừa, kiểu chọn cả folder) → so hậu tố
+    if(np.length>target.length) return np.endsWith("/"+target);
+    // Prod path ngắn hơn (chỉ có tên file, kiểu Ctrl+click chọn lẻ) → so hậu tố ngược lại
+    return target.endsWith("/"+np);
+  }) || null;
+}
+
+/* ---------- Input handlers ---------- */
+$("releaseZipInput").addEventListener("change",async function(e){
+  var f=e.target.files && e.target.files[0];
+  if(!f) return;
+  if(typeof JSZip==="undefined"){ alert("Không tải được thư viện JSZip."); return; }
+  $("releaseStatus").className="status info";
+  $("releaseStatus").textContent="⏳ Đang đọc file ZIP tổng hợp...";
+  try{
+    state.releaseFiles=await readReleaseZip(f);
+    $("releaseStatus").className="status ok";
+    $("releaseStatus").textContent="Đã đọc "+state.releaseFiles.length+" file từ \""+f.name+"\".";
+    renderNeededList();
+  }catch(err){
+    console.error(err);
+    $("releaseStatus").className="status bad";
+    $("releaseStatus").textContent="Lỗi khi đọc ZIP: "+err.message;
+  }
+  compareIfReady();
+});
+
+function renderNeededList(){
+  var files=state.releaseFiles.filter(function(f){
+    return !/^SQL\/_Merged_Deploy_All|^SQL\/_Danh_sach_Store/i.test(f.path);
+  });
+  var byTop={};
+  files.forEach(function(f){
+    var top=f.path.split("/")[0];
+    (byTop[top]=byTop[top]||[]).push(f.path);
+  });
+
+  // Với Views: gom thêm theo từng thư mục module con (Views/<Module>/...) để biết đúng
+  // thư mục nhỏ cần vào, khỏi phải quét cả Views.
+  var viewsSubfolders={};
+  (byTop["Views"]||[]).forEach(function(p){
+    var parts=p.split("/"); // Views/<Module>/...
+    if(parts.length>=2) viewsSubfolders[parts[0]+"/"+parts[1]]=true;
+  });
+
+  var html="<b>Danh sách file cần tìm trên Prod (chỉ "+files.length+" file, không cần quét hết):</b><br><br>";
+  Object.keys(byTop).sort().forEach(function(top){
+    html+="<b>"+esc(top)+"/</b> ("+byTop[top].length+" file)<br>";
+    if(top==="Views"){
+      html+="&nbsp;&nbsp;→ Chỉ cần vào đúng "+Object.keys(viewsSubfolders).length+" thư mục con này (không cần quét cả Views):<br>";
+      Object.keys(viewsSubfolders).sort().forEach(function(sf){
+        html+="&nbsp;&nbsp;&nbsp;&nbsp;• <code>"+esc(sf)+"</code><br>";
+      });
+    }else{
+      byTop[top].forEach(function(p){
+        html+="&nbsp;&nbsp;• <code>"+esc(p)+"</code><br>";
+      });
+    }
+    html+="<br>";
+  });
+
+  $("neededList").style.display="block";
+  $("neededList").innerHTML=html;
+}
+
+$("prodBinInput").addEventListener("change",async function(e){
+  $("prodStatus").className="status info";
+  $("prodStatus").textContent="⏳ Đang đọc thư mục bin...";
+  var added=await readFilesFromList(e.target.files, false, "bin");
+  state.prodFiles=state.prodFiles.concat(added);
+  reportProdLoaded(added.length, "bin");
+  compareIfReady();
+});
+
+$("prodViewsInput").addEventListener("change",async function(e){
+  $("prodStatus").className="status info";
+  $("prodStatus").textContent="⏳ Đang đọc thư mục Views...";
+  var added=await readFilesFromList(e.target.files, false, "Views");
+  state.prodFiles=state.prodFiles.concat(added);
+  reportProdLoaded(added.length, "Views");
+  compareIfReady();
+});
+
+$("prodScriptsInput").addEventListener("change",async function(e){
+  $("prodStatus").className="status info";
+  $("prodStatus").textContent="⏳ Đang đọc thư mục Scripts...";
+  var added=await readFilesFromList(e.target.files, false, "Scripts");
+  state.prodFiles=state.prodFiles.concat(added);
+  reportProdLoaded(added.length, "Scripts");
+  compareIfReady();
+});
+
+$("prodFolderInput").addEventListener("change",async function(e){
+  $("prodStatus").className="status info";
+  $("prodStatus").textContent="⏳ Đang đọc thư mục gốc Prod...";
+  var added=await readFilesFromList(e.target.files, true, "thư mục gốc");
+  state.prodFiles=state.prodFiles.concat(added);
+  reportProdLoaded(added.length, "thư mục gốc");
+  compareIfReady();
+});
+
+$("prodZipInput").addEventListener("change",async function(e){
+  var f=e.target.files && e.target.files[0];
+  if(!f) return;
+  if(typeof JSZip==="undefined"){ alert("Không tải được thư viện JSZip."); return; }
+  $("prodStatus").className="status info";
+  $("prodStatus").textContent="⏳ Đang đọc ZIP Prod...";
+  var added=await readProdZip(f);
+  state.prodFiles=state.prodFiles.concat(added);
+  reportProdLoaded(added.length, "ZIP");
+  compareIfReady();
+});
+
+$("prodQuickPickInput").addEventListener("change",async function(e){
+  $("prodStatus").className="status info";
+  $("prodStatus").textContent="⏳ Đang đọc file đã chọn...";
+  // Không có webkitRelativePath (chọn lẻ, không phải chọn thư mục) → chỉ có tên file,
+  // findMatchingProdFile() đã hỗ trợ so khớp theo tên file lẻ này.
+  var added=await readFilesFromList(e.target.files, false, "chọn nhanh");
+  state.prodFiles=state.prodFiles.concat(added);
+  reportProdLoaded(added.length, "chọn nhanh");
+  compareIfReady();
+});
+
+$("prodClearBtn").addEventListener("click",function(){
+  state.prodFiles=[];
+  $("prodStatus").className="status info";
+  $("prodStatus").textContent="Đã xóa hết dữ liệu Prod. Chọn lại từ đầu.";
+  $("compareCard").style.display="none";
+  $("outputCard").style.display="none";
+  ["prodBinInput","prodViewsInput","prodScriptsInput","prodFolderInput","prodZipInput","prodQuickPickInput"].forEach(function(id){ $(id).value=""; });
+});
+
+/* ---------- So sánh khi đã có đủ 2 nguồn ---------- */
+function compareIfReady(){
+  if(!state.releaseFiles.length || !state.prodFiles.length) return;
+
+  var matched=[], newOnly=[];
+  state.releaseFiles.forEach(function(r){
+    var found=findMatchingProdFile(r.path, state.prodFiles);
+    if(found) matched.push({ outPath:r.path, prodFile:found });
+    else newOnly.push(r.path);
+  });
+  state.matched=matched;
+  state.newOnly=newOnly;
+
+  $("compareCard").style.display="block";
+  $("compareSummary").className="status ok";
+  $("compareSummary").textContent=
+    "Release có "+state.releaseFiles.length+" file, Prod có "+state.prodFiles.length+" file. "+
+    "Trùng đường dẫn (sắp bị ghi đè, sẽ backup): "+matched.length+". "+
+    "Mới hoàn toàn (Prod chưa có, không cần backup): "+newOnly.length+".";
+
+  $("compareList").innerHTML=
+    "<table><thead><tr><th>Trạng thái</th><th>Đường dẫn</th><th>Size trên Prod</th></tr></thead><tbody>"+
+    matched.map(function(m){
+      return "<tr><td><span class='tag' style='background:#dc2626'>SẼ GHI ĐÈ</span></td><td>"+esc(m.outPath)+"</td><td>"+fmtSize(m.prodFile.content.byteLength)+"</td></tr>";
+    }).join("")+
+    newOnly.map(function(p){
+      return "<tr><td><span class='tag' style='background:#16a34a'>MỚI</span></td><td>"+esc(p)+"</td><td>—</td></tr>";
+    }).join("")+
+    "</tbody></table>";
+
+  $("outputCard").style.display="block";
+  $("backupZipBtn").disabled = matched.length===0;
+}
+
+/* ---------- Tạo & tải ZIP backup ---------- */
+$("backupZipBtn").addEventListener("click",function(){
+  if(!state.matched.length){ alert("Không có file nào cần backup."); return; }
+  if(typeof JSZip==="undefined"){ alert("Không tải được thư viện JSZip."); return; }
+
+  $("backupZipBtn").disabled=true;
+  $("backupZipBtn").textContent="⏳ Đang nén Backup...";
+  $("backupStatus").className="status info";
+  $("backupStatus").textContent="Đang đóng gói...";
+
+  var stamp=nowStamp();
+  var rootFolder="Backup_before_Rls_"+stamp;
+  var zip=new JSZip();
+  state.matched.forEach(function(m){
+    zip.file(rootFolder+"/"+m.outPath, m.prodFile.content, m.prodFile.date ? { date: m.prodFile.date } : {});
+  });
+
+  zip.generateAsync({type:"blob", compression:"DEFLATE", compressionOptions:{level:6}}).then(function(blob){
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement("a");
+    a.style.display="none";
+    a.href=url;
+    a.download=rootFolder+".zip";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },1200);
+    $("backupZipBtn").disabled=false;
+    $("backupZipBtn").textContent="🛟 Tạo & Download ZIP Backup";
+    $("backupStatus").className="status ok";
+    $("backupStatus").textContent="✅ Đã tải "+a.download+" — backup "+state.matched.length+" file sắp bị ghi đè.";
+  }).catch(function(err){
+    console.error(err);
+    $("backupZipBtn").disabled=false;
+    $("backupZipBtn").textContent="🛟 Tạo & Download ZIP Backup";
+    $("backupStatus").className="status bad";
+    $("backupStatus").textContent="Lỗi khi tạo ZIP Backup: "+err.message;
+  });
+});
+
+})();
+</script>
+</body>
+</html>
