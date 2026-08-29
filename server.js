@@ -6,6 +6,7 @@ const express = require('express');
 const session = require('express-session');
 const multer = require('multer');
 const erp = require('./erpClient');
+const { hqEncrypt, hqDecrypt } = require('./hqPasswordCrypto');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -96,6 +97,30 @@ app.get('/hotfix/gom-build', requirePageAuth, (req, res) => {
 
 app.get('/hotfix/backup-build', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'hotfix-backup-build.html'));
+});
+
+app.get('/khac/ma-hoa-password-window', requirePageAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'protected', 'khac-ma-hoa-password.html'));
+});
+
+/* ---------- API: mã hóa/giải mã password Windows (key hệ thống giữ ở server) ---------- */
+app.post('/api/khac/mahoa-password', requireAuth, (req, res) => {
+  try {
+    const { mode, text } = req.body || {};
+    if (!text || typeof text !== 'string') {
+      return res.status(400).json({ error: 'Thiếu nội dung cần xử lý.' });
+    }
+    let result;
+    if (mode === 'decrypt') {
+      result = hqDecrypt(text);
+    } else {
+      result = hqEncrypt(text);
+    }
+    res.json({ ok: true, result });
+  } catch (e) {
+    console.error('[khac/mahoa-password] lỗi:', e.message);
+    res.status(400).json({ error: 'Không xử lý được — kiểm tra lại nội dung (đúng chuỗi Base64 nếu đang Giải mã).' });
+  }
 });
 
 app.get('/crs/loi-nhuan-du-an', requirePageAuth, (req, res) => {

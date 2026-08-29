@@ -130,6 +130,28 @@ Module hiện có:
   Prod hiện tại, so sánh đường dẫn, file nào sắp bị deploy ghi đè sẽ được
   lấy đúng bản đang chạy trên Prod, đóng gói lại thành 1 ZIP backup riêng
   trước khi deploy (`/hotfix/backup-build`).
+- **Khác → Mã hóa Password Window**: mã hóa/giải mã password tương thích
+  100% với công cụ Windows `DecryptPassHQsoft.exe` đang dùng nội bộ
+  (`/khac/ma-hoa-password-window`). Xử lý ở server, key hệ thống không lộ
+  ra trình duyệt.
+
+## Mã hóa Password Window — chi tiết kỹ thuật
+
+Thuật toán và key hệ thống được **reverse-engineer trực tiếp từ file gốc**
+(`HQ.eSkyFramework.dll` + `DecryptPassHQsoft.exe`) bằng cách decompile IL rồi
+chạy thử chính DLL đó qua Mono để đối chiếu kết quả — không đoán mò.
+
+- AES-256-CBC, PKCS7 padding
+- Key (32 byte) + IV (16 byte) suy ra từ key hệ thống qua PBKDF2
+  (`Rfc2898DeriveBytes` mặc định .NET Framework = HMAC-SHA1, 1000 vòng lặp),
+  salt = chính key hệ thống
+- Input UTF8 → mã hóa → Base64 (encrypt); Base64 → giải mã → UTF8 (decrypt)
+- Key hệ thống lấy đúng từ code gốc (`Form1.GetPassword()` trong file EXE),
+  không phải do người dùng tự đặt — nằm trong `hqPasswordCrypto.js`, chỉ ở
+  phía server, không xuất hiện trong bất kỳ file JS nào gửi ra trình duyệt.
+- Đã kiểm tra khớp byte-for-byte với DLL gốc (chạy qua Mono) cho nhiều test
+  case trước khi đưa vào code — cùng input + cùng key luôn ra đúng cùng
+  chuỗi mã hóa như file EXE gốc.
 
 ### Công thức SLA Phản hồi đầu
 
