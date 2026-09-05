@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KPI Team — Lợi nhuận tháng</title>
+<style>
+:root{
+  --accent:#2E6F95; --ink:#12233D; --sub:#5b6b7c; --line:#e5e7eb; --card:#fff;
+  --ok:#166534; --okbg:#dcfce7; --warn:#92400e; --warnbg:#fef3c7; --bad:#991b1b; --badbg:#fee2e2;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#F3F6F8;color:var(--ink);font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:1280px;margin:0 auto;padding:28px 20px 60px}
+h1{font-size:22px;margin:0 0 6px}
+.muted{color:var(--sub);font-size:13px;margin:0 0 4px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-top:16px}
+.card h2{font-size:15px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.3px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button{font-family:inherit;font-size:13.5px;font-weight:700;padding:9px 18px;border-radius:8px;border:0;cursor:pointer;background:var(--accent);color:#fff}
+button.secondary{background:#fff;border:1.5px solid var(--accent);color:var(--accent)}
+button.success{background:#1a7f4a}
+button:disabled{opacity:.45;cursor:not-allowed}
+.status{padding:12px;border-radius:8px;font-size:13px;margin-top:10px}
+.status.info{background:#eef2f6;color:#334155}
+.status.ok{background:var(--okbg);color:var(--ok)}
+.status.warn{background:var(--warnbg);color:var(--warn)}
+.status.bad{background:var(--badbg);color:var(--bad)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{background:#f8fafc;position:sticky;top:0}
+input[type=text],input[type=number]{width:100%;padding:5px 7px;border:1px solid var(--line);border-radius:5px;font-size:12.5px;font-family:inherit}
+select{padding:5px 7px;border:1px solid var(--line);border-radius:5px;font-size:12.5px;font-family:inherit}
+.scrollbox{max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:10px}
+.tag{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;color:#fff;display:inline-block}
+.tag.pos{background:#16a34a}.tag.neg{background:#dc2626}.tag.mid{background:#ca8a04}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+@media (max-width:900px){.grid2,.grid3{grid-template-columns:1fr}}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:14px}
+.kpi .num{font-size:22px;font-weight:800}
+.kpi .label{font-size:11.5px;color:var(--sub);text-transform:uppercase}
+canvas{max-width:100%}
+.ops-topbar{background:#172033;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
+.ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;opacity:.9;}
+.ops-topbar a:hover{opacity:1;text-decoration:underline;}
+.ops-topbar .crumb{font-size:12px;color:#94a3b8;font-family:monospace;}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="ops-topbar">
+  <a href="/">← Quay về</a>
+  <span class="crumb">KPI Team / Lợi nhuận tháng</span>
+</div>
+<div class="wrap">
+  <h1>📊 Project Profit Dashboard</h1>
+  <p class="muted">Import file "Detail Timesheet Report" xuất từ ERP → tự tính chi phí, lợi nhuận theo tuần/tháng cho từng dự án đang quản lý, có biểu đồ theo dõi. Dùng đúng công thức từ file "Profit Calculation" hiện có (đơn giá theo Level, tuần W01-W05, % lợi nhuận, Profit Runrate).</p>
+
+  <div class="card">
+    <h2>1. Import file Timesheet</h2>
+    <input id="fileInput" type="file" accept=".xlsx,.xls">
+    <div id="importStatus" class="status info" style="margin-top:12px">Chưa import file nào.</div>
+  </div>
+
+  <div class="card" id="rateCardCard" style="display:none">
+    <h2>2. Bảng đơn giá theo Level (đã lưu, sửa được, tự nhớ lần sau)</h2>
+    <div class="scrollbox" id="rateCardTable"></div>
+  </div>
+
+  <div class="card" id="projectFilterCard" style="display:none">
+    <h2>3. Chọn dự án cần theo dõi (tự nhớ cho lần sau)</h2>
+    <p class="muted">File Timesheet có thể chứa nhiều dự án ngoài phạm vi bạn quản lý — chọn đúng dự án cần tính, các bước sau chỉ tính trên các dự án đã chọn.</p>
+    <div class="row" style="margin-bottom:8px">
+      <input type="text" id="projectSearchInput" placeholder="Tìm nhanh theo tên dự án..." style="max-width:280px">
+      <button class="secondary" id="selectAllBtn" type="button">Chọn tất cả</button>
+      <button class="secondary" id="deselectAllBtn" type="button">Bỏ chọn tất cả</button>
+    </div>
+    <div id="projectFilterStatus" class="status info"></div>
+    <div class="scrollbox" id="projectFilterList"></div>
+  </div>
+
+  <div class="card" id="designationCard" style="display:none">
+    <h2>4. Gán Level theo Designation (tự đoán, sửa lại nếu sai)</h2>
+    <div id="designationStatus" class="status info"></div>
+    <div class="scrollbox" id="designationTable"></div>
+  </div>
+
+  <div class="card" id="projectCard" style="display:none">
+    <h2>5. Doanh thu &amp; Team theo dự án</h2>
+    <div class="muted">Tháng đang tính: <b id="monthLabel"></b> — dữ liệu Doanh thu/Team được lưu riêng theo từng tháng.</div>
+
+    <div class="row" style="margin:10px 0">
+      <button class="secondary" id="downloadTemplateBtn" type="button">📤 Tải template Doanh thu (dự án đã chọn)</button>
+      <label class="secondary" style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;border:1.5px solid var(--accent);color:var(--accent);cursor:pointer;font-weight:700;font-size:13px">
+        📥 Import từ template / file Profit Calculation
+        <input type="file" id="profitFileInput" accept=".xlsx,.xls" style="display:none">
+      </label>
+    </div>
+    <div id="profitImportStatus" class="status info" style="display:none"></div>
+
+    <div class="scrollbox" id="projectMetaTable"></div>
+  </div>
+
+  <div id="alertCard" style="display:none"></div>
+
+  <div class="card" id="levelDetailCard" style="display:none">
+    <h2>Chi tiết giờ theo Level — theo từng dự án</h2>
+    <p class="muted">Tổng hợp trên toàn bộ dự án đã tick chọn (cả đạt lẫn chưa đạt 70%), sắp xếp từ % lợi nhuận thấp đến cao. Biểu đồ cho thấy Level nào đang chiếm nhiều giờ nhất ở từng dự án; chọn 1 dự án bên dưới để xem chi tiết giờ | chi phí | %.</p>
+    <canvas id="levelBreakdownChart" height="240"></canvas>
+    <div class="row" style="margin-top:14px">
+      <label style="font-size:13px;font-weight:700">Xem chi tiết dự án:</label>
+      <select id="levelDetailProjectSelect"></select>
+    </div>
+    <div class="scrollbox" id="levelDetailTable" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none">
+    <h2>6. Kết quả tính toán</h2>
+
+    <div class="grid3" id="kpiRow" style="margin-bottom:16px"></div>
+
+    <div class="row" style="margin-bottom:10px">
+      <button id="recalcBtn" class="success" type="button">🔄 Tính lại</button>
+      <button id="exportBtn" class="secondary" type="button">⬇️ Xuất Excel kết quả</button>
+    </div>
+
+    <div class="scrollbox" id="resultTable"></div>
+
+    <div class="grid2" style="margin-top:20px">
+      <div>
+        <h3 style="font-size:13px">Chi phí theo tuần (toàn bộ dự án)</h3>
+        <canvas id="costChart" height="260"></canvas>
+      </div>
+      <div>
+        <h3 style="font-size:13px">% Lợi nhuận theo tuần (toàn bộ dự án)</h3>
+        <canvas id="profitChart" height="260"></canvas>
+      </div>
+    </div>
+
+    <div style="margin-top:20px">
+      <h3 style="font-size:13px">Chi phí theo tuần theo Team/PM (tổng dự án mỗi Team làm owner)</h3>
+      <canvas id="teamCostChart" height="220"></canvas>
+    </div>
+
+    <div style="margin-top:20px">
+      <h3 style="font-size:13px">Effort theo Designation — bộ phận nào đang bỏ nhiều effort nhất</h3>
+      <div class="row" style="margin-bottom:8px">
+        <label style="font-size:13px;font-weight:700">Xem theo:</label>
+        <select id="designationEffortProjectSelect"></select>
+      </div>
+      <canvas id="designationEffortChart" height="240"></canvas>
+    </div>
+
+    <div style="margin-top:20px">
+      <h3 style="font-size:13px">Lợi nhuận tháng theo từng dự án</h3>
+      <canvas id="projectProfitChart" height="120"></canvas>
+    </div>
+
+    <div class="grid2" style="margin-top:20px">
+      <div>
+        <h3 style="font-size:13px">Đánh giá theo Team — dự án đạt/chưa đạt 70% lợi nhuận</h3>
+        <canvas id="teamChart" height="220"></canvas>
+      </div>
+      <div>
+        <h3 style="font-size:13px">Chi tiết theo Team</h3>
+        <div class="scrollbox" id="teamTable"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+function $(id){ return document.getElementById(id); }
+function esc(s){
+  return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+  });
+}
+function fmtVND(n){
+  if(n==null || isNaN(n)) return "0";
+  return Math.round(n).toLocaleString("vi-VN");
+}
+function fmtPct(n){
+  if(n==null || isNaN(n)) return "—";
+  return (n*100).toFixed(1)+"%";
+}
+
+/* ============================================================
+   RATE CARD mặc định — lấy đúng từ file Profit Calculation gốc
+   ============================================================ */
+var DEFAULT_RATES = {
+  "Intern": 15000, "Apprentice (Học Việc)": 30000,
+  "Collaborator - Parttime": 45000, "Collaborator - Fulltime": 80000,
+  "Fresher": 100000, "Junior": 150000, "Middle": 180000, "Senior": 200000,
+  "PM": 250000, "Leader": 250000, "Deputy": 400000, "Manager": 400000,
+  "Fresher (TV)": 85000, "Junior (TV)": 127500, "Middle (TV)": 153000,
+  "Senior (TV)": 170000, "PM (TV)": 212500, "Leader (TV)": 212500,
+  "Deputy (TV)": 340000, "Manager (TV)": 340000
+};
+var LEVEL_LIST = Object.keys(DEFAULT_RATES);
+/* Doanh thu & Team mặc định — lấy từ file Profit Calculation bạn đã có sẵn.
+   Dùng làm giá trị khởi tạo ban đầu, vẫn sửa/ghi đè được bình thường. */
+var DEFAULT_PROJECT_META = {
+  "KenvueVN_eSales": { revenue: 95402400, team: "ThinhC" },
+  "Zoetis_VN_eSales": { revenue: 6480000, team: "SuongTC" },
+  "Hằng Thuần_DMS": { revenue: 12500000, team: "SuongTC" },
+  "FES_eSales": { revenue: 209750000, team: "SuongTC" },
+  "HaiHa_eSales_Support": { revenue: 42300000, team: "SuongTC" },
+  "Sabeco_PG": { revenue: 78489745, team: "NhutTM" },
+  "ANVY_eSale_Support": { revenue: 68760000, team: "PhucTM" },
+  "ThaiDongHung_eSales": { revenue: 833333, team: "SuongTC" },
+  "Chevron_VN_eSales": { revenue: 55567333, team: "SuongTC" },
+  "WantWant_VN_eSales": { revenue: 89550000, team: "SuongTC" },
+  "Mayora_eSales_Support": { revenue: 126588000, team: "SuongTC" },
+  "QuiPhuc_eSales": { revenue: 47800000, team: "ThinhC" },
+  "Kao_VN_eSales": { revenue: 31800000, team: "ThinhC" },
+  "ThanhDanh_eSales": { revenue: 833333, team: "ThinhC" },
+  "Oishi_VN_eSales": { revenue: 14040000, team: "HieuHT" },
+  "Genex_VN_eSales_Support": { revenue: 10200000, team: "ThinhC" },
+  "Vianco_eSales": { revenue: 15358400, team: "ThinhC" },
+  "HuongThuy_eSales": { revenue: 164125000, team: "ThinhC" },
+  "KenvuePHP_eSales": { revenue: 106941400, team: "NghiNTN" },
+  "KONTUM_eBiz": { revenue: 2083333, team: "TuanPM" },
+  "4Oranges_VN_4D": { revenue: 7210000, team: "TuanPM" },
+  "TNCM_eBiz4E": { revenue: 10416667, team: "TuanPM" },
+  "NYK_eBiz": { revenue: 5137500, team: "TuanPM" },
+  "ONE_eBiz": { revenue: 9030450, team: "TuanPM" },
+  "HuynhGia_4E": { revenue: 1000000, team: "TuanPM" },
+  "MerapLion_eSales": { revenue: 32187500, team: "PhucTM" },
+  "Nabati_eSales_Support": { revenue: 64200000, team: "HieuHT" },
+  "EPLUS_eSales": { revenue: 7500000, team: "" },
+  "ABI_eSales_Support": { revenue: 32680000, team: "LamLT" },
+  "APC_eSales": { revenue: 3750000, team: "ThinhC" },
+  "HopTri_eSales": { revenue: 10910625, team: "ThinhC" },
+  "AVN_eSales": { revenue: 78030000, team: "ThinhC" },
+  "AVN_PBI_Support": { revenue: 10833333, team: "ThinhC" },
+  "KemNghia_eSales": { revenue: 42350000, team: "SuongTC" },
+  "CJFoods_eSales_Support": { revenue: 69200000, team: "SuongTC" },
+  "Vidan_eSales": { revenue: 4550000, team: "ThinhC" },
+  "GiaHuyPhat_eSales": { revenue: 833333, team: "SuongTC" },
+  "MinhPhatThanh_eSales": { revenue: 833333, team: "SuongTC" },
+  "Vedan_VN_eSales": { revenue: 114125000, team: "NhatNM" },
+  "Poly_eBiz4D + eBiz4E": { revenue: 1888333, team: "TuanPM" },
+  "IPD_PH_eSales": { revenue: 2758901, team: "SuongTC" },
+  "VPMILK_eSales": { revenue: 13594533, team: "ThinhC" },
+  "MLV_eSales_Support": { revenue: 14915000, team: "SuongTC" },
+  "PVM_DWH_Support": { revenue: 47553250, team: "SuongTC" },
+  "Siam_VN_eSales": { revenue: 6027425, team: "SuongTC" },
+  "Chau_Gia_Viet": { revenue: 10000000, team: "SuongTC" },
+  "ThienY_eSales": { revenue: 10000000, team: "SuongTC" },
+  "PhuongUyen_eSales": { revenue: 4893000, team: "SuongTC" },
+  "Jotun_VN_eSales": { revenue: 1668071, team: "SuongTC" },
+  "PVM_VN_eSales": { revenue: 58625000, team: "SuongTC" },
+  "LCFoods_eSales": { revenue: 81530000, team: "SuongTC" },
+  "ANKO_eSales_Support": { revenue: 36750000, team: "SuongTC" },
+  "PVM_MDM_Support": { revenue: 8000000, team: "SuongTC" },
+  "NguyetAn_4D": { revenue: 833333, team: "SuongTC" },
+  "NamThanh_4D": { revenue: 833333, team: "SuongTC" },
+  "PhuThuan_4D": { revenue: 600000, team: "SuongTC" },
+  "HoangPhong_4D": { revenue: 833333, team: "SuongTC" },
+  "xuân Hương": { revenue: 1700000, team: "SuongTC" },
+  "Omicare_eSales_Support": { revenue: 5891667, team: "SuongTC" },
+  "NhatHA": { revenue: 137876209, team: "212117245" },
+  "Sabeco_PG + ABI_eSales_Support": { revenue: 72260334, team: "111169745" },
+  "ANVY_eSale_Support + MerapLion_eSales + ECO": { revenue: 8199000, team: "100947500" }
+};
+
+
+/* ============================================================
+   Local storage helpers — tự nhớ Rate Card / Designation map /
+   Doanh thu-Team theo từng tháng, giữa các lần dùng tool
+   ============================================================ */
+var LS_RATE = "profitTool_rateCard_v1";
+var LS_DESIG = "profitTool_designationMap_v1";
+var LS_SELECTED_PROJECTS = "profitTool_selectedProjects_v1";
+function lsProjectKey(monthKey){ return "profitTool_projectMeta_"+monthKey+"_v1"; }
+
+function loadJSON(key, fallback){
+  try{ var v=localStorage.getItem(key); return v? JSON.parse(v) : fallback; }
+  catch(e){ return fallback; }
+}
+function saveJSON(key, val){
+  try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
+}
+
+var state = {
+  rows: [],            // parsed timesheet rows: {employee, name, designation, project, hours, date}
+  allProjects: [],      // tất cả dự án phát hiện được trong file import (chưa lọc)
+  selectedProjects: loadJSON(LS_SELECTED_PROJECTS, null), // null = chưa từng chọn lần nào
+  rates: loadJSON(LS_RATE, Object.assign({}, DEFAULT_RATES)),
+  designationMap: loadJSON(LS_DESIG, {}),
+  monthKey: null,       // "2026-08"
+  weeksInMonth: 5,
+  projectMeta: {},      // {project: {revenue, team}}
+  computed: null        // final per-project weekly/monthly results
+};
+
+function selectedRows(){
+  if(!state.selectedProjects || !state.selectedProjects.length) return state.rows;
+  var sel={}; state.selectedProjects.forEach(function(p){ sel[p]=true; });
+  return state.rows.filter(function(r){ return sel[r.project]; });
+}
+
+/* ============================================================
+   1) PARSE FILE — nhận diện cột theo tên (không phụ thuộc thứ tự cột)
+   ============================================================ */
+function findCol(headerRow, candidates){
+  for(var i=0;i<headerRow.length;i++){
+    var h=String(headerRow[i]||"").trim().toLowerCase();
+    for(var c=0;c<candidates.length;c++){
+      if(h===candidates[c].toLowerCase()) return i;
+    }
+  }
+  return -1;
+}
+
+function parseWorkbook(wb){
+  var sheetName = wb.SheetNames.find(function(n){ return /query report/i.test(n); }) || wb.SheetNames[0];
+  var ws = wb.Sheets[sheetName];
+  var data = XLSX.utils.sheet_to_json(ws, { header:1, raw:false, defval:null });
+  if(!data.length) throw new Error("File rỗng hoặc sai định dạng.");
+
+  var header = data[0];
+  var colEmployee = findCol(header, ["Employee"]);
+  var colName = findCol(header, ["Employee Name"]);
+  var colDesignation = findCol(header, ["Designation"]);
+  var colProject = findCol(header, ["Project"]);
+  var colHours = findCol(header, ["Hours"]);
+  var colFromTime = findCol(header, ["From Time"]);
+
+  if(colProject<0 || colHours<0 || colFromTime<0 || colDesignation<0){
+    throw new Error("Không tìm thấy đủ cột cần thiết (Project/Hours/From Time/Designation). Kiểm tra lại file đúng định dạng Detail Timesheet Report.");
+  }
+
+  var rows=[];
+  for(var i=1;i<data.length;i++){
+    var r=data[i];
+    if(!r || r[colProject]==null) continue;
+    var hours=parseFloat(r[colHours]);
+    if(isNaN(hours)) continue;
+    var dateRaw=r[colFromTime];
+    var date=parseAnyDate(dateRaw);
+    if(!date) continue;
+    rows.push({
+      employee: colEmployee>=0? String(r[colEmployee]||"") : "",
+      name: colName>=0? String(r[colName]||"") : "",
+      designation: String(r[colDesignation]||"").trim(),
+      project: String(r[colProject]||"").trim(),
+      hours: hours,
+      date: date
+    });
+  }
+  return rows;
+}
+
+function parseAnyDate(v){
+  if(v==null || v==="") return null;
+  if(v instanceof Date) return v;
+  if(typeof v === "number"){
+    // Excel serial date
+    var epoch = new Date(Date.UTC(1899,11,30));
+    return new Date(epoch.getTime() + v*86400000);
+  }
+  var s=String(v).trim();
+  var d=new Date(s);
+  if(!isNaN(d.getTime())) return d;
+  // dd/mm/yyyy fallback
+  var m=/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/.exec(s);
+  if(m) return new Date(+m[3], +m[2]-1, +m[1]);
+  return null;
+}
+
+/* ============================================================
+   2) WEEK-OF-MONTH — tương đương WEEKNUM(date)-WEEKNUM(đầu tháng)+1
+      của Excel (tuần bắt đầu Chủ Nhật), tổng quát cho mọi tháng
+   ============================================================ */
+function excelWeekNum(date){
+  var year=date.getFullYear();
+  var jan1=new Date(year,0,1);
+  var jan1Day=jan1.getDay();
+  var daysSinceJan1=Math.floor((new Date(date.getFullYear(),date.getMonth(),date.getDate()) - jan1)/86400000);
+  return Math.floor((daysSinceJan1+jan1Day)/7)+1;
+}
+function weekOfMonth(date){
+  var firstOfMonth=new Date(date.getFullYear(), date.getMonth(), 1);
+  return excelWeekNum(date) - excelWeekNum(firstOfMonth) + 1;
+}
+function weeksInMonth(year, month0){
+  var last=new Date(year, month0+1, 0);
+  // Giới hạn tối đa 5 tuần đúng theo cấu trúc file gốc (chỉ có 5 sheet W01-W05 cố định) —
+  // tháng nào rơi vào tuần thứ 6 (ví dụ tháng bắt đầu bằng Thứ Bảy) sẽ gộp phần dư vào W05.
+  return Math.min(weekOfMonth(last), 5);
+}
+
+/* ============================================================
+   3) AUTO-DETECT LEVEL từ Designation
+   ============================================================ */
+function autoDetectLevel(designation){
+  var d=(designation||"").toLowerCase();
+  if(d.indexOf("internship")>=0 || d.indexOf("intern")===0) return "Intern";
+  if(d.indexOf("apprentice")>=0 || d.indexOf("học việc")>=0) return "Apprentice (Học Việc)";
+  if(d.indexOf("collaborator")>=0) return "Collaborator - Fulltime";
+  if(d.indexOf("fresher")===0) return "Fresher";
+  if(d.indexOf("junior")===0) return "Junior";
+  if(d.indexOf("middle")===0) return "Middle";
+  if(d.indexOf("senior")===0) return "Senior";
+  if(d==="project manager" || d.indexOf("pm ")===0) return "PM";
+  if(d.indexOf("lead")>=0) return "Leader";
+  if(d.indexOf("deputy")>=0) return "Deputy";
+  if(d.indexOf("manager")>=0) return "Manager";
+  return null; // không đoán được -> để trống, người dùng tự chọn
+}
+
+/* ============================================================
+   4) RENDER: Rate Card table
+   ============================================================ */
+function renderRateCard(){
+  $("rateCardCard").style.display="block";
+  $("rateCardTable").innerHTML =
+    "<table><thead><tr><th>Level</th><th>Đơn giá / giờ (VNĐ)</th></tr></thead><tbody>"+
+    LEVEL_LIST.map(function(lv){
+      return "<tr><td>"+esc(lv)+"</td><td><input type='number' class='rate-input' data-level='"+esc(lv)+"' value='"+(state.rates[lv]||0)+"'></td></tr>";
+    }).join("")+
+    "</tbody></table>";
+
+  Array.from(document.querySelectorAll(".rate-input")).forEach(function(inp){
+    inp.addEventListener("change",function(){
+      state.rates[inp.getAttribute("data-level")] = parseFloat(inp.value)||0;
+      saveJSON(LS_RATE, state.rates);
+      recompute();
+    });
+  });
+}
+
+/* ============================================================
+   4b) RENDER: Project filter checklist — chọn dự án cần theo dõi,
+       tự nhớ lựa chọn cho lần import sau
+   ============================================================ */
+var DEFAULT_FIRST_TIME_KEYWORDS = ["merap","sabeco","abi","anvy"];
+
+function renderProjectFilter(searchTerm){
+  $("projectFilterCard").style.display="block";
+
+  // Lần đầu chưa từng chọn gì -> tự gợi ý theo các từ khóa đã trao đổi
+  if(state.selectedProjects===null){
+    var guess=state.allProjects.filter(function(p){
+      var lower=p.toLowerCase();
+      return DEFAULT_FIRST_TIME_KEYWORDS.some(function(k){ return lower.indexOf(k)>=0; });
+    });
+    state.selectedProjects = guess.length? guess : state.allProjects.slice();
+    saveJSON(LS_SELECTED_PROJECTS, state.selectedProjects);
+  }
+
+  var selSet={}; state.selectedProjects.forEach(function(p){ selSet[p]=true; });
+
+  var term=(searchTerm||"").trim().toLowerCase();
+  var visibleProjects = term
+    ? state.allProjects.filter(function(p){ return p.toLowerCase().indexOf(term)>=0; })
+    : state.allProjects;
+
+  $("projectFilterStatus").className="status ok";
+  $("projectFilterStatus").textContent =
+    "Đang chọn "+state.selectedProjects.length+" / "+state.allProjects.length+" dự án trong file.";
+
+  $("projectFilterList").innerHTML =
+    "<table><thead><tr><th style='width:36px'></th><th>Dự án</th></tr></thead><tbody>"+
+    visibleProjects.map(function(p){
+      return "<tr><td><input type='checkbox' class='project-check' data-project='"+esc(p)+"'"+(selSet[p]?" checked":"")+"></td><td>"+esc(p)+"</td></tr>";
+    }).join("")+
+    "</tbody></table>";
+
+  function persistAndRefresh(){
+    saveJSON(LS_SELECTED_PROJECTS, state.selectedProjects);
+    renderDesignationTable();
+    renderProjectMetaTable();
+    recompute();
+  }
+
+  Array.from(document.querySelectorAll(".project-check")).forEach(function(cb){
+    cb.addEventListener("change",function(){
+      var p=cb.getAttribute("data-project");
+      if(cb.checked){
+        if(state.selectedProjects.indexOf(p)<0) state.selectedProjects.push(p);
+      }else{
+        state.selectedProjects=state.selectedProjects.filter(function(x){ return x!==p; });
+      }
+      $("projectFilterStatus").textContent =
+        "Đang chọn "+state.selectedProjects.length+" / "+state.allProjects.length+" dự án trong file.";
+      persistAndRefresh();
+    });
+  });
+
+  $("projectSearchInput").oninput=function(){ renderProjectFilter(this.value); };
+  $("selectAllBtn").onclick=function(){
+    state.selectedProjects = visibleProjects.length===state.allProjects.length
+      ? state.allProjects.slice()
+      : Array.from(new Set(state.selectedProjects.concat(visibleProjects)));
+    persistAndRefresh();
+    renderProjectFilter($("projectSearchInput").value);
+  };
+  $("deselectAllBtn").onclick=function(){
+    var visSet={}; visibleProjects.forEach(function(p){ visSet[p]=true; });
+    state.selectedProjects = state.selectedProjects.filter(function(p){ return !visSet[p]; });
+    persistAndRefresh();
+    renderProjectFilter($("projectSearchInput").value);
+  };
+}
+
+/* ============================================================
+   5) RENDER: Designation -> Level mapping table
+   ============================================================ */
+function renderDesignationTable(){
+  var distinct=Array.from(new Set(selectedRows().map(function(r){ return r.designation; }))).sort();
+  var unresolved=0;
+
+  distinct.forEach(function(d){
+    if(!(d in state.designationMap)){
+      var guess=autoDetectLevel(d);
+      state.designationMap[d]=guess; // có thể null
+    }
+    if(!state.designationMap[d]) unresolved++;
+  });
+  saveJSON(LS_DESIG, state.designationMap);
+
+  $("designationCard").style.display="block";
+  $("designationStatus").className = unresolved? "status warn" : "status ok";
+  $("designationStatus").textContent = unresolved
+    ? "Có "+unresolved+" Designation chưa đoán được Level — chọn tay bên dưới (ô còn trống)."
+    : "Đã gán Level đầy đủ cho "+distinct.length+" Designation.";
+
+  $("designationTable").innerHTML =
+    "<table><thead><tr><th>Designation (từ Timesheet)</th><th>Level</th></tr></thead><tbody>"+
+    distinct.map(function(d){
+      var cur=state.designationMap[d];
+      return "<tr><td>"+esc(d)+"</td><td><select class='desig-select' data-desig='"+esc(d)+"'>"+
+        "<option value=''"+(!cur?" selected":"")+">— chọn Level —</option>"+
+        LEVEL_LIST.map(function(lv){
+          return "<option value='"+esc(lv)+"'"+(cur===lv?" selected":"")+">"+esc(lv)+"</option>";
+        }).join("")+
+        "</select></td></tr>";
+    }).join("")+
+    "</tbody></table>";
+
+  Array.from(document.querySelectorAll(".desig-select")).forEach(function(sel){
+    sel.addEventListener("change",function(){
+      state.designationMap[sel.getAttribute("data-desig")] = sel.value || null;
+      saveJSON(LS_DESIG, state.designationMap);
+      renderDesignationTable();
+      recompute();
+    });
+  });
+}
+
+/* ============================================================
+   6) RENDER: Project meta (Revenue + Team) table
+   ============================================================ */
+var TEAM_LIST = ["NhatHA", "PhucTM", "LamLT", "NhutTM"];
+
+function renderProjectMetaTable(){
+  var distinct=Array.from(new Set(selectedRows().map(function(r){ return r.project; }))).sort();
+  $("monthLabel").textContent = state.monthKey;
+
+  var saved = loadJSON(lsProjectKey(state.monthKey), {});
+  distinct.forEach(function(p){
+    if(!state.projectMeta[p]){
+      // Ưu tiên: dữ liệu tháng đã lưu > mặc định nhúng sẵn (từ file Profit Calculation) > rỗng
+      state.projectMeta[p] = saved[p] || DEFAULT_PROJECT_META[p] || { revenue:0, team:"" };
+    }
+  });
+
+  $("projectCard").style.display="block";
+  $("projectMetaTable").innerHTML =
+    "<table><thead><tr><th>Dự án</th><th>Doanh thu tháng (VNĐ)</th><th>Team / PM</th></tr></thead><tbody>"+
+    distinct.map(function(p){
+      var m=state.projectMeta[p];
+      return "<tr><td>"+esc(p)+"</td>"+
+        "<td><input type='number' class='rev-input' data-project='"+esc(p)+"' value='"+(m.revenue||0)+"'></td>"+
+        "<td><select class='team-input' data-project='"+esc(p)+"'>"+
+          "<option value=''"+(!m.team?" selected":"")+">— chọn Team —</option>"+
+          TEAM_LIST.map(function(t){ return "<option value='"+esc(t)+"'"+(m.team===t?" selected":"")+">"+esc(t)+"</option>"; }).join("")+
+        "</select></td>"+
+        "</tr>";
+    }).join("")+
+    "</tbody></table>";
+
+  function persistProjectMeta(){
+    var toSave={};
+    distinct.forEach(function(p){ toSave[p]=state.projectMeta[p]; });
+    saveJSON(lsProjectKey(state.monthKey), toSave);
+  }
+
+  Array.from(document.querySelectorAll(".rev-input")).forEach(function(inp){
+    inp.addEventListener("change",function(){
+      state.projectMeta[inp.getAttribute("data-project")].revenue = parseFloat(inp.value)||0;
+      persistProjectMeta();
+      recompute();
+    });
+  });
+  Array.from(document.querySelectorAll(".team-input")).forEach(function(inp){
+    inp.addEventListener("change",function(){
+      state.projectMeta[inp.getAttribute("data-project")].team = inp.value||"";
+      persistProjectMeta();
+      recompute();
+    });
+  });
+}
+
+/* ============================================================
+   7) COMPUTE — đúng công thức file gốc
+   ============================================================ */
+/* ============================================================
+   6b) IMPORT Doanh thu & Team từ file Profit Calculation có sẵn
+   ============================================================ */
+function parseProfitCalculationSheet(wb){
+  var sheetName = wb.SheetNames.find(function(n){ return /profit calculation/i.test(n); }) || wb.SheetNames[0];
+  var ws = wb.Sheets[sheetName];
+  var data = XLSX.utils.sheet_to_json(ws, { header:1, raw:true, defval:null });
+
+  // Tìm dòng header thật (chứa "Doanh thu") vì sheet có thể có dòng trống ở đầu
+  var headerRowIdx = data.findIndex(function(row){
+    return row.some(function(c){ return String(c||"").toLowerCase().indexOf("doanh thu")>=0; });
+  });
+  if(headerRowIdx<0) throw new Error("Không tìm thấy cột 'Doanh thu' trong sheet Profit Calculation.");
+
+  var header = data[headerRowIdx];
+  var colProject=0, colTeam=1, colRevenue=2; // theo đúng cấu trúc file gốc: Project | Team | Doanh thu
+  header.forEach(function(h,i){
+    var hl=String(h||"").toLowerCase();
+    if(hl.indexOf("doanh thu")>=0) colRevenue=i;
+    else if(hl==="team") colTeam=i;
+  });
+
+  var out={};
+  for(var i=headerRowIdx+1;i<data.length;i++){
+    var r=data[i];
+    if(!r || !r[colProject]) continue;
+    var proj=String(r[colProject]).trim();
+    var revenue=parseFloat(r[colRevenue]);
+    var team=r[colTeam]!=null? String(r[colTeam]).trim() : "";
+    if(isNaN(revenue)) continue;
+    out[proj]={ revenue:revenue, team:team };
+  }
+  return out;
+}
+
+$("downloadTemplateBtn").addEventListener("click",function(){
+  if(!state.selectedProjects || !state.selectedProjects.length){
+    alert("Chưa có dự án nào được chọn ở bước 3.");
+    return;
+  }
+  var aoa=[["Project","Team","Doanh thu"]];
+  state.selectedProjects.slice().sort().forEach(function(p){
+    var m=state.projectMeta[p] || DEFAULT_PROJECT_META[p] || { revenue:0, team:"" };
+    aoa.push([p, m.team||"", m.revenue||0]);
+  });
+  var ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"]=[{wch:28},{wch:12},{wch:16}];
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Profit Calculation");
+  XLSX.writeFile(wb, "Doanh_thu_template_"+(state.monthKey||"")+".xlsx");
+});
+
+$("profitFileInput").addEventListener("change",function(e){
+  var f=e.target.files && e.target.files[0];
+  if(!f) return;
+  $("profitImportStatus").style.display="block";
+  $("profitImportStatus").className="status info";
+  $("profitImportStatus").textContent="⏳ Đang đọc file...";
+
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      var wb=XLSX.read(ev.target.result, { type:"array" });
+      var revenueByProject=parseProfitCalculationSheet(wb);
+
+      var matched=0, unmatched=[];
+      Object.keys(state.projectMeta).forEach(function(p){
+        if(revenueByProject[p]){
+          state.projectMeta[p].revenue = revenueByProject[p].revenue;
+          if(revenueByProject[p].team) state.projectMeta[p].team = revenueByProject[p].team;
+          matched++;
+        }else{
+          unmatched.push(p);
+        }
+      });
+
+      var toSave={};
+      Object.keys(state.projectMeta).forEach(function(p){ toSave[p]=state.projectMeta[p]; });
+      saveJSON(lsProjectKey(state.monthKey), toSave);
+
+      $("profitImportStatus").className = unmatched.length? "status warn" : "status ok";
+      $("profitImportStatus").textContent = "✅ Đã điền Doanh thu/Team cho "+matched+" dự án."+
+        (unmatched.length? " Không tìm thấy trong file cho: "+unmatched.join(", ")+" — nhập tay các dự án này." : "");
+
+      renderProjectMetaTable();
+      recompute();
+    }catch(err){
+      console.error(err);
+      $("profitImportStatus").className="status bad";
+      $("profitImportStatus").textContent="Lỗi: "+err.message;
+    }
+  };
+  reader.readAsArrayBuffer(f);
+  e.target.value="";
+});
+
+function recompute(){
+  if(!state.rows.length) return;
+  var rows=selectedRows();
+  if(!rows.length) return;
+
+  var projects=Array.from(new Set(rows.map(function(r){ return r.project; }))).sort();
+  var W=state.weeksInMonth;
+  var weekLabels=[]; for(var w=1;w<=W;w++) weekLabels.push("W"+String(w).padStart(2,"0"));
+
+  var result = projects.map(function(p){
+    var weekCost=weekLabels.map(function(){ return 0; });
+    var levelBreakdown={}; // {Level: {hours, cost}} — để phân tích Level nào chiếm nhiều giờ/chi phí nhất
+    var designationBreakdown={}; // {Designation: {hours, cost}} — để phân tích bộ phận nào bỏ effort nhiều nhất, theo từng dự án
+    rows.filter(function(r){ return r.project===p; }).forEach(function(r){
+      var level=state.designationMap[r.designation];
+      if(!level) return; // chưa gán level -> bỏ qua (không tính được chi phí dòng này)
+      var rate=state.rates[level]||0;
+      var wIdx=weekOfMonth(r.date)-1;
+      if(wIdx<0) return;
+      if(wIdx>=W) wIdx=W-1; // gộp mọi ngày rơi vào tuần thứ 6 trở đi vào bucket cuối cùng (W05)
+      weekCost[wIdx]+= r.hours*rate;
+
+      if(!levelBreakdown[level]) levelBreakdown[level]={hours:0, cost:0};
+      levelBreakdown[level].hours += r.hours;
+      levelBreakdown[level].cost += r.hours*rate;
+
+      if(!designationBreakdown[r.designation]) designationBreakdown[r.designation]={hours:0, cost:0};
+      designationBreakdown[r.designation].hours += r.hours;
+      designationBreakdown[r.designation].cost += r.hours*rate;
+    });
+
+    var meta=state.projectMeta[p] || {revenue:0, team:""};
+    var revenue=meta.revenue||0;
+    var revenuePerWeek = W? revenue/W : 0;
+    var weekProfitPct = weekCost.map(function(c){ return revenuePerWeek? (1-c/revenuePerWeek) : 1; });
+    var actual = weekCost.reduce(function(a,b){ return a+b; }, 0);
+    var profitPct = revenue? (1-actual/revenue) : null;
+
+    // Profit Runrate: giống file gốc — loại bỏ TUẦN CUỐI CÙNG (thường chưa đầy đủ)
+    var runrateCost = weekCost.slice(0, W-1).reduce(function(a,b){ return a+b; }, 0);
+    var runratePct = revenue? (1-runrateCost/(revenuePerWeek*(W-1))) : null;
+
+    return {
+      project:p, team:meta.team||"", revenue:revenue,
+      weekCost:weekCost, weekProfitPct:weekProfitPct, levelBreakdown:levelBreakdown, designationBreakdown:designationBreakdown,
+      actual:actual, profitPct:profitPct, runratePct:runratePct
+    };
+  });
+
+  // Effort theo Designation — gộp toàn bộ dự án đã chọn, để biết bộ phận nào đang bỏ nhiều effort nhất
+  var designationBreakdown={};
+  rows.forEach(function(r){
+    var level=state.designationMap[r.designation];
+    if(!level) return;
+    var rate=state.rates[level]||0;
+    if(!designationBreakdown[r.designation]) designationBreakdown[r.designation]={designation:r.designation, hours:0, cost:0, projects:{}};
+    var d=designationBreakdown[r.designation];
+    d.hours += r.hours;
+    d.cost += r.hours*rate;
+    d.projects[r.project]=true;
+  });
+  var designationList = Object.keys(designationBreakdown).map(function(k){
+    var d=designationBreakdown[k];
+    return { designation:d.designation, hours:d.hours, cost:d.cost, projectCount:Object.keys(d.projects).length };
+  }).sort(function(a,b){ return b.hours-a.hours; });
+
+  state.computed = { projects:result, weekLabels:weekLabels, designationList:designationList };
+  renderResults();
+}
+
+/* ============================================================
+   8) RENDER: Result table + KPI + Charts
+   ============================================================ */
+var PROFIT_THRESHOLD = 0.70; // ngưỡng đánh giá: tuần/tháng phải đạt >=70% lợi nhuận
+
+function renderResults(){
+  if(!state.computed) return;
+  var c=state.computed;
+  $("resultCard").style.display="block";
+
+  var totalRevenue=c.projects.reduce(function(a,p){ return a+p.revenue; },0);
+  var totalCost=c.projects.reduce(function(a,p){ return a+p.actual; },0);
+  var portfolioProfitPct = totalRevenue? (1-totalCost/totalRevenue) : null;
+
+  var belowThreshold = c.projects.filter(function(p){ return p.profitPct!=null && p.profitPct < PROFIT_THRESHOLD; });
+  var achievedCount = c.projects.filter(function(p){ return p.profitPct!=null && p.profitPct >= PROFIT_THRESHOLD; }).length;
+  var evaluableCount = c.projects.filter(function(p){ return p.profitPct!=null; }).length;
+
+  $("kpiRow").innerHTML =
+    "<div class='kpi'><div class='num'>"+fmtVND(totalRevenue)+"</div><div class='label'>Tổng doanh thu</div></div>"+
+    "<div class='kpi'><div class='num'>"+fmtVND(totalCost)+"</div><div class='label'>Tổng chi phí effort</div></div>"+
+    "<div class='kpi'><div class='num'>"+fmtPct(portfolioProfitPct)+"</div><div class='label'>% Lợi nhuận toàn portfolio</div></div>"+
+    "<div class='kpi' style='border-color:"+(achievedCount===evaluableCount&&evaluableCount>0?'#16a34a':'#dc2626')+"'><div class='num' style='color:"+(achievedCount===evaluableCount&&evaluableCount>0?'#16a34a':'#dc2626')+"'>"+achievedCount+" / "+evaluableCount+"</div><div class='label'>Dự án đạt ≥ 70% lợi nhuận tháng</div></div>";
+
+  renderAlertCard(belowThreshold);
+
+  var levelDetailProjects = c.projects.slice().sort(function(a,b){
+    var pa = a.profitPct==null ? Infinity : a.profitPct;
+    var pb = b.profitPct==null ? Infinity : b.profitPct;
+    return pa-pb;
+  });
+  renderLevelDetailSection(levelDetailProjects);
+
+  var head = "<tr><th>Dự án</th><th>Team</th><th>Doanh thu</th>"+
+    c.weekLabels.map(function(w){ return "<th>"+w+" Cost</th><th>"+w+" %</th>"; }).join("")+
+    "<th>Actual</th><th>Profit</th><th>Profit Runrate</th></tr>";
+
+  function pctTag(p){
+    if(p==null) return "—";
+    var cls = p>=PROFIT_THRESHOLD ? "pos" : "neg";
+    var icon = p>=PROFIT_THRESHOLD ? "✅ " : "⚠️ ";
+    return "<span class='tag "+cls+"'>"+icon+fmtPct(p)+"</span>";
+  }
+
+  var body = c.projects.map(function(p){
+    var rowBelow = p.profitPct!=null && p.profitPct<PROFIT_THRESHOLD;
+    return "<tr"+(rowBelow?" style='background:#fef2f2'":"")+"><td>"+esc(p.project)+"</td><td>"+esc(p.team)+"</td><td>"+fmtVND(p.revenue)+"</td>"+
+      p.weekCost.map(function(cost,i){
+        return "<td>"+fmtVND(cost)+"</td><td>"+pctTag(p.weekProfitPct[i])+"</td>";
+      }).join("")+
+      "<td>"+fmtVND(p.actual)+"</td><td>"+pctTag(p.profitPct)+"</td><td>"+pctTag(p.runratePct)+"</td>"+
+      "</tr>";
+  }).join("");
+
+  $("resultTable").innerHTML = "<table><thead>"+head+"</thead><tbody>"+body+"</tbody></table>";
+
+  renderCharts();
+}
+
+function renderAlertCard(belowThreshold){
+  var el=$("alertCard");
+  if(!belowThreshold.length){
+    el.style.display="block";
+    el.className="card status ok";
+    el.innerHTML="<h2 style='margin:0'>✅ Tất cả dự án đều đạt ≥ 70% lợi nhuận tháng này.</h2>";
+    return;
+  }
+  belowThreshold.sort(function(a,b){ return a.profitPct-b.profitPct; });
+  el.style.display="block";
+  el.className="card";
+  el.innerHTML =
+    "<h2 style='color:#991b1b'>⚠️ "+belowThreshold.length+" dự án CHƯA đạt 70% lợi nhuận tháng</h2>"+
+    "<p class='muted'>Xem nguyên nhân theo Level (giờ log Level nào đang kéo chi phí lên) ở khối \"Chi tiết giờ theo Level\" bên dưới.</p>"+
+    "<table><thead><tr><th>Dự án</th><th>Team</th><th>% Lợi nhuận</th><th>Còn thiếu</th></tr></thead><tbody>"+
+    belowThreshold.map(function(p){
+      var gap = PROFIT_THRESHOLD - p.profitPct;
+      return "<tr><td>"+esc(p.project)+"</td><td>"+esc(p.team)+"</td>"+
+        "<td><span class='tag neg'>"+fmtPct(p.profitPct)+"</span></td>"+
+        "<td>"+fmtPct(gap)+"</td></tr>";
+    }).join("")+
+    "</tbody></table>";
+}
+
+var levelBreakdownChartInst=null;
+
+function renderLevelDetailSection(projects){
+  var card=$("levelDetailCard");
+  if(!projects.length){
+    card.style.display="none";
+    return;
+  }
+  card.style.display="block";
+
+  var palette=["#7c3aed","#2E6F95","#5FA778","#E3A857","#B5533C","#0891b2","#ca8a04","#dc2626","#16a34a","#5B4B8A"];
+
+  // Thu thập danh sách Level xuất hiện trên toàn bộ dự án đã chọn
+  var levelSet=[];
+  projects.forEach(function(p){
+    Object.keys(p.levelBreakdown).forEach(function(lv){
+      if(levelSet.indexOf(lv)===-1) levelSet.push(lv);
+    });
+  });
+
+  if(levelBreakdownChartInst) levelBreakdownChartInst.destroy();
+  levelBreakdownChartInst = new Chart($("levelBreakdownChart"), {
+    type:"bar",
+    data:{
+      labels: projects.map(function(p){
+        var status = p.profitPct==null ? "" : (p.profitPct>=PROFIT_THRESHOLD ? "✅ " : "⚠️ ");
+        return status+p.project;
+      }),
+      datasets: levelSet.map(function(lv,i){
+        return {
+          label: lv,
+          data: projects.map(function(p){ return p.levelBreakdown[lv]? +p.levelBreakdown[lv].hours.toFixed(1) : 0; }),
+          backgroundColor: palette[i%palette.length],
+          stack:"s"
+        };
+      })
+    },
+    options:{
+      responsive:true,
+      scales:{ x:{ stacked:true }, y:{ stacked:true, title:{ display:true, text:"Giờ" } } },
+      plugins:{ tooltip:{ callbacks:{ label:function(ctx){ return ctx.dataset.label+": "+ctx.parsed.y+"h"; } } } }
+    }
+  });
+
+  var sel=$("levelDetailProjectSelect");
+  sel.innerHTML = projects.map(function(p,i){
+    var status = p.profitPct==null ? "" : (p.profitPct>=PROFIT_THRESHOLD ? "✅ " : "⚠️ ");
+    return "<option value='"+i+"'>"+status+esc(p.project)+"</option>";
+  }).join("");
+  sel.onchange=function(){ renderLevelDetailTable(projects[+sel.value]); };
+  renderLevelDetailTable(projects[0]);
+}
+
+function renderLevelDetailTable(p){
+  if(!p){ $("levelDetailTable").innerHTML=""; return; }
+  var levels = Object.keys(p.levelBreakdown).map(function(lv){
+    return { level:lv, hours:p.levelBreakdown[lv].hours, cost:p.levelBreakdown[lv].cost };
+  }).sort(function(a,b){ return b.hours-a.hours; });
+  var totalHours = levels.reduce(function(a,l){ return a+l.hours; },0);
+  var totalCost = levels.reduce(function(a,l){ return a+l.cost; },0);
+
+  $("levelDetailTable").innerHTML =
+    "<table><thead><tr><th>Level</th><th>Giờ</th><th>Chi phí</th><th>% giờ</th></tr></thead><tbody>"+
+    levels.map(function(l){
+      var pct = totalHours? (l.hours/totalHours*100).toFixed(0) : 0;
+      return "<tr><td>"+esc(l.level)+"</td><td>"+l.hours.toFixed(1)+"h</td><td>"+fmtVND(l.cost)+"đ</td><td>"+pct+"%</td></tr>";
+    }).join("")+
+    "<tr style='font-weight:700'><td>Tổng</td><td>"+totalHours.toFixed(1)+"h</td><td>"+fmtVND(totalCost)+"đ</td><td>100%</td></tr>"+
+    "</tbody></table>";
+}
+
+
+var costChartInst=null, profitChartInst=null, projectProfitChartInst=null, teamChartInst=null, teamCostChartInst=null, designationEffortChartInst=null;
+
+function renderDesignationEffortChart(c){
+  var sel=$("designationEffortProjectSelect");
+  var options = ["<option value='__ALL__'>Tất cả dự án đã chọn (tổng hợp)</option>"]
+    .concat(c.projects.map(function(p){ return "<option value='"+esc(p.project)+"'>"+esc(p.project)+"</option>"; }));
+  var prevValue = sel.value;
+  sel.innerHTML = options.join("");
+  // giữ lại lựa chọn cũ nếu vẫn còn hợp lệ (ví dụ sau khi bấm "Tính lại")
+  if(prevValue && (prevValue==="__ALL__" || c.projects.some(function(p){ return p.project===prevValue; }))){
+    sel.value = prevValue;
+  }
+  sel.onchange = function(){ drawDesignationEffortChart(c, sel.value); };
+  drawDesignationEffortChart(c, sel.value || "__ALL__");
+}
+
+function drawDesignationEffortChart(c, selection){
+  var list;
+  if(selection==="__ALL__" || !selection){
+    list = c.designationList || [];
+  } else {
+    var proj = c.projects.filter(function(p){ return p.project===selection; })[0];
+    var bd = proj ? proj.designationBreakdown : {};
+    list = Object.keys(bd).map(function(k){
+      return { designation:k, hours:bd[k].hours, cost:bd[k].cost, projectCount:1 };
+    }).sort(function(a,b){ return b.hours-a.hours; });
+  }
+
+  if(designationEffortChartInst) designationEffortChartInst.destroy();
+  designationEffortChartInst = new Chart($("designationEffortChart"), {
+    type:"bar",
+    data:{
+      labels: list.map(function(d){ return d.designation; }),
+      datasets:[{
+        label:"Tổng giờ",
+        data: list.map(function(d){ return +d.hours.toFixed(1); }),
+        backgroundColor:"#2E6F95"
+      }]
+    },
+    options:{
+      indexAxis:"y",
+      responsive:true,
+      plugins:{
+        legend:{ display:false },
+        tooltip:{ callbacks:{ footer:function(items){
+          var d=list[items[0].dataIndex];
+          return selection==="__ALL__"
+            ? "Chi phí: "+fmtVND(d.cost)+"đ — góp mặt ở "+d.projectCount+" dự án"
+            : "Chi phí: "+fmtVND(d.cost)+"đ";
+        } } }
+      },
+      scales:{ x:{ title:{ display:true, text:"Giờ" } } }
+    }
+  });
+}
+
+function renderTeamCostChart(c){
+  var palette=["#2E6F95","#5B4B8A","#5FA778","#E3A857","#B5533C","#0891b2","#ca8a04","#7c3aed"];
+  var byTeam={};
+  c.projects.forEach(function(p){
+    var team = p.team || "(Chưa gán team)";
+    if(!byTeam[team]) byTeam[team] = c.weekLabels.map(function(){ return 0; });
+    p.weekCost.forEach(function(cost,i){ byTeam[team][i]+=cost; });
+  });
+  var teamNames = Object.keys(byTeam).sort();
+
+  if(teamCostChartInst) teamCostChartInst.destroy();
+  teamCostChartInst = new Chart($("teamCostChart"), {
+    type:"bar",
+    data:{
+      labels: c.weekLabels,
+      datasets: teamNames.map(function(team,i){
+        return { label:team, data:byTeam[team], backgroundColor:palette[i%palette.length] };
+      })
+    },
+    options:{ responsive:true, scales:{ y:{ ticks:{ callback:function(v){return fmtVND(v);} } } } }
+  });
+}
+
+function computeTeamSummary(projects){
+  var byTeam={};
+  projects.forEach(function(p){
+    var team = p.team || "(Chưa gán team)";
+    if(!byTeam[team]) byTeam[team] = { team:team, achieved:0, notAchieved:0, unevaluated:0, totalRevenue:0, totalCost:0, projects:[] };
+    var t=byTeam[team];
+    t.projects.push(p.project);
+    t.totalRevenue += p.revenue;
+    t.totalCost += p.actual;
+    if(p.profitPct==null){ t.unevaluated++; return; }
+    if(p.profitPct >= PROFIT_THRESHOLD) t.achieved++;
+    else t.notAchieved++;
+  });
+  var list = Object.keys(byTeam).map(function(k){ return byTeam[k]; });
+  list.forEach(function(t){
+    t.aggregateProfitPct = t.totalRevenue ? (1 - t.totalCost/t.totalRevenue) : null;
+  });
+  list.sort(function(a,b){ return a.team.localeCompare(b.team); });
+  return list;
+}
+
+function renderTeamSection(projects){
+  var teams = computeTeamSummary(projects);
+
+  if(teamChartInst) teamChartInst.destroy();
+  teamChartInst = new Chart($("teamChart"), {
+    type:"bar",
+    data:{
+      labels: teams.map(function(t){ return t.team; }),
+      datasets:[
+        { label:"Đạt ≥70%", data: teams.map(function(t){ return t.achieved; }), backgroundColor:"#16a34a", stack:"s" },
+        { label:"Chưa đạt", data: teams.map(function(t){ return t.notAchieved; }), backgroundColor:"#dc2626", stack:"s" },
+        { label:"Chưa có Doanh thu", data: teams.map(function(t){ return t.unevaluated; }), backgroundColor:"#94a3b8", stack:"s" }
+      ]
+    },
+    options:{
+      responsive:true,
+      scales:{ x:{ stacked:true }, y:{ stacked:true, ticks:{ stepSize:1 } } },
+      plugins:{ tooltip:{ callbacks:{ footer:function(items){
+        var t=teams[items[0].dataIndex];
+        return "Tổng "+t.projects.length+" dự án — % lợi nhuận gộp team: "+fmtPct(t.aggregateProfitPct);
+      } } } }
+    }
+  });
+
+  $("teamTable").innerHTML =
+    "<table><thead><tr><th>Team</th><th>Số dự án</th><th>Đạt ≥70%</th><th>Chưa đạt</th><th>% Lợi nhuận gộp Team</th></tr></thead><tbody>"+
+    teams.map(function(t){
+      var pctCls = t.aggregateProfitPct==null ? "" : (t.aggregateProfitPct>=PROFIT_THRESHOLD ? "pos" : "neg");
+      var pctHtml = t.aggregateProfitPct==null ? "—" : "<span class='tag "+pctCls+"'>"+fmtPct(t.aggregateProfitPct)+"</span>";
+      return "<tr><td>"+esc(t.team)+"</td><td>"+t.projects.length+"</td>"+
+        "<td><span class='tag pos'>"+t.achieved+"</span></td>"+
+        "<td>"+(t.notAchieved? "<span class='tag neg'>"+t.notAchieved+"</span>" : "0")+"</td>"+
+        "<td>"+pctHtml+"</td></tr>";
+    }).join("")+
+    "</tbody></table>";
+}
+function renderCharts(){
+  var c=state.computed;
+  var palette=["#2E6F95","#5B4B8A","#5FA778","#E3A857","#B5533C","#0891b2","#ca8a04","#7c3aed","#dc2626","#16a34a"];
+
+  renderTeamSection(c.projects);
+  renderTeamCostChart(c);
+  renderDesignationEffortChart(c);
+
+  // Chart 1: weekly cost — tổng tất cả dự án theo tuần
+  var totalCostPerWeek = c.weekLabels.map(function(_,i){
+    return c.projects.reduce(function(a,p){ return a+p.weekCost[i]; },0);
+  });
+  if(costChartInst) costChartInst.destroy();
+  costChartInst = new Chart($("costChart"), {
+    type:"bar",
+    data:{ labels:c.weekLabels, datasets:[{ label:"Chi phí effort (VNĐ)", data:totalCostPerWeek, backgroundColor:"#2E6F95" }] },
+    options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ y:{ ticks:{ callback:function(v){return fmtVND(v);} } } } }
+  });
+
+  // Chart 2: weekly profit% per project (line, multi-series, top 8 by revenue to keep readable)
+  var topProjects = c.projects.slice().sort(function(a,b){ return b.revenue-a.revenue; }).slice(0,8);
+  if(profitChartInst) profitChartInst.destroy();
+  profitChartInst = new Chart($("profitChart"), {
+    type:"line",
+    data:{
+      labels:c.weekLabels,
+      datasets: topProjects.map(function(p,i){
+        return { label:p.project, data:p.weekProfitPct.map(function(v){return v*100;}), borderColor:palette[i%palette.length], backgroundColor:palette[i%palette.length], fill:false, tension:0.25 };
+      }).concat([{
+        label:"Ngưỡng 70%", data: c.weekLabels.map(function(){ return PROFIT_THRESHOLD*100; }),
+        borderColor:"#dc2626", borderDash:[6,4], borderWidth:2, pointRadius:0, fill:false, tension:0
+      }])
+    },
+    options:{ responsive:true, scales:{ y:{ ticks:{ callback:function(v){return v+"%";} } } } }
+  });
+
+  // Chart 3: monthly profit% per project (horizontal bar, all projects)
+  var sorted = c.projects.slice().filter(function(p){return p.profitPct!=null;}).sort(function(a,b){ return a.profitPct-b.profitPct; });
+  if(projectProfitChartInst) projectProfitChartInst.destroy();
+  projectProfitChartInst = new Chart($("projectProfitChart"), {
+    type:"bar",
+    data:{
+      labels: sorted.map(function(p){ return p.project; }),
+      datasets:[{ label:"% Lợi nhuận tháng", data: sorted.map(function(p){ return (p.profitPct*100).toFixed(1); }),
+        backgroundColor: sorted.map(function(p){ return p.profitPct>=PROFIT_THRESHOLD?"#16a34a":"#dc2626"; }) }]
+    },
+    options:{ indexAxis:"y", responsive:true, plugins:{legend:{display:false}}, scales:{ x:{ ticks:{ callback:function(v){return v+"%";} } } } }
+  });
+}
+
+/* ============================================================
+   9) EXPORT kết quả ra Excel
+   ============================================================ */
+$("exportBtn").addEventListener("click",function(){
+  if(!state.computed) return;
+  var c=state.computed;
+  var aoa=[["Dự án","Team","Doanh thu"]
+    .concat(c.weekLabels.reduce(function(a,w){ return a.concat([w+" Cost", w+" %"]); },[]))
+    .concat(["Actual","Profit %","Profit Runrate %"])];
+  c.projects.forEach(function(p){
+    var row=[p.project, p.team, p.revenue];
+    p.weekCost.forEach(function(cost,i){ row.push(Math.round(cost)); row.push(p.weekProfitPct[i]!=null? (p.weekProfitPct[i]*100).toFixed(1)+"%":""); });
+    row.push(Math.round(p.actual));
+    row.push(p.profitPct!=null? (p.profitPct*100).toFixed(1)+"%":"");
+    row.push(p.runratePct!=null? (p.runratePct*100).toFixed(1)+"%":"");
+    aoa.push(row);
+  });
+  var ws=XLSX.utils.aoa_to_sheet(aoa);
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Profit Calculation");
+  XLSX.writeFile(wb, "Profit_Calculation_"+state.monthKey+"_export.xlsx");
+});
+
+/* ============================================================
+   10) FILE INPUT
+   ============================================================ */
+$("fileInput").addEventListener("change",function(e){
+  var f=e.target.files && e.target.files[0];
+  if(!f) return;
+  $("importStatus").className="status info";
+  $("importStatus").textContent="⏳ Đang đọc file...";
+
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      var wb=XLSX.read(ev.target.result, { type:"array", cellDates:true });
+      var rows=parseWorkbook(wb);
+      if(!rows.length) throw new Error("Không đọc được dòng dữ liệu nào hợp lệ.");
+      state.rows=rows;
+      state.allProjects=Array.from(new Set(rows.map(function(r){ return r.project; }))).sort();
+
+      // Xác định tháng đang tính (tháng xuất hiện nhiều nhất trong dữ liệu)
+      var monthCount={};
+      rows.forEach(function(r){
+        var k=r.date.getFullYear()+"-"+String(r.date.getMonth()+1).padStart(2,"0");
+        monthCount[k]=(monthCount[k]||0)+1;
+      });
+      var bestMonth=Object.keys(monthCount).sort(function(a,b){ return monthCount[b]-monthCount[a]; })[0];
+      state.monthKey=bestMonth;
+      var parts=bestMonth.split("-");
+      state.weeksInMonth=weeksInMonth(+parts[0], +parts[1]-1);
+      state.projectMeta={};
+
+      $("importStatus").className="status ok";
+      $("importStatus").textContent="✅ Đã import "+rows.length+" dòng timesheet — tháng "+bestMonth+" ("+state.weeksInMonth+" tuần: W01-W"+String(state.weeksInMonth).padStart(2,"0")+").";
+
+      renderRateCard();
+      renderProjectFilter();
+      renderDesignationTable();
+      renderProjectMetaTable();
+      recompute();
+    }catch(err){
+      console.error(err);
+      $("importStatus").className="status bad";
+      $("importStatus").textContent="Lỗi: "+err.message;
+    }
+  };
+  reader.readAsArrayBuffer(f);
+});
+
+$("recalcBtn").addEventListener("click", recompute);
+
+})();
+</script>
+</body>
+</html>

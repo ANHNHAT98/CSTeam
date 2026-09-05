@@ -134,6 +134,18 @@ Module hiện có:
   100% với công cụ Windows `DecryptPassHQsoft.exe` đang dùng nội bộ
   (`/khac/ma-hoa-password-window`). Xử lý ở server, key hệ thống không lộ
   ra trình duyệt.
+- **Khác → Mã hóa Password MacOS**: cùng thuật toán, nhưng chạy hoàn toàn
+  ở trình duyệt qua Web Crypto API (`/khac/ma-hoa-password-macos`), cho
+  phép chọn dùng key mặc định hoặc nhập key tùy ý — phù hợp khi cần đổi
+  key khác với key hệ thống chuẩn. **Lưu ý:** khác với bản Window (key giữ
+  kín ở server), bản này lộ key mặc định ra JS trình duyệt (xem được qua
+  View Source) — chấp nhận được vì có tùy chọn tự nhập key khác.
+- **KPI Team → Lợi nhuận tháng**: dashboard tính lợi nhuận dự án nâng cao —
+  import timesheet, cấu hình bảng đơn giá theo Designation, map thông tin
+  dự án (doanh thu, chi phí khác), tự tính lợi nhuận theo tháng kèm biểu đồ
+  + cảnh báo (`/kpiteam/loi-nhuan-thang`). Cấu hình bảng giá/dự án lưu ở
+  `localStorage` của trình duyệt (không đồng bộ giữa các máy — mỗi người
+  dùng tự cấu hình 1 lần trên máy mình).
 
 ## Mã hóa Password Window — chi tiết kỹ thuật
 
@@ -168,13 +180,36 @@ theo tên field, nhưng luôn bắt xác nhận lại trước khi tính (bướ
 trang) — vì tên field thật trong `Ticket` doctype có thể khác giữa các lần
 export/cấu hình.
 
-## Bật CSAT / First Response Time trên Dashboard
+## First Response Time (SLA) trên Dashboard
 
-Trang chủ (`/`) đã có sẵn 2 ô KPI cho CSAT và First Response Time nhưng đang
-hiện "chưa cấu hình" — vì cần đúng tên field ERPNext lưu điểm hài lòng và
-thời điểm phản hồi đầu tiên. Cách xác nhận tên field: vào **Ticket dự án →
-Tra cứu ERP**, bấm "Lấy dữ liệu từ ERP", xem tên cột trong bảng kết quả thô
-(đó là tên field thật) — báo lại tên field để hoàn thiện 2 chỉ số này.
+Trang chủ (`/`) đã tính sẵn **First Response Time (SLA)** thật, dùng đúng
+công thức ở mục trên, tự đoán field ERP theo tên (Priority/Opening
+On/First Responded On/người phụ trách — không có bước xác nhận tay như
+trang SLA Phản hồi đầu, vì Dashboard cần hiện ngay không cần thao tác gì).
+
+Có 3 bảng, cùng chung 1 logic tính (tách hàm dùng lại, đảm bảo luôn khớp
+số liệu giữa 3 bảng):
+- **So sánh 3 tháng gần nhất** — gộp theo tháng (không theo dự án/người phụ
+  trách, để bảng gọn), lọc theo `Opening On` trong vòng 3 tháng gần nhất
+  (tháng hiện tại + 2 tháng trước) — thay cho "toàn bộ thời gian" vì dữ
+  liệu all-time sẽ quá nhiều, không còn ý nghĩa so sánh
+- **Tháng hiện tại** — lọc theo `Opening On` rơi vào tháng hiện tại, gộp
+  theo dự án + người phụ trách
+- **Xu hướng theo tuần (tháng hiện tại)** — mỗi tuần tính từ Thứ 2 → Chủ
+  Nhật, chỉ tính ticket có `Opening On` trong tháng hiện tại
+
+Nếu field ERP không tự đoán được (báo "Không tự nhận diện được đủ field"),
+qua **Ticket dự án → SLA Phản hồi đầu** để xác nhận tay field đúng, việc đó
+không tự động đồng bộ ngược về Dashboard — báo lại tên field chính xác để
+sửa cứng vào code cho Dashboard luôn đoán đúng.
+
+## Bật CSAT trên Dashboard
+
+Trang chủ (`/`) còn 1 ô KPI cho CSAT đang hiện "chưa cấu hình" — vì cần
+đúng tên field ERPNext lưu điểm hài lòng khách hàng. Cách xác nhận tên
+field: vào **Ticket dự án → Tra cứu ERP**, bấm "Lấy dữ liệu từ ERP", xem
+tên cột trong bảng kết quả thô (đó là tên field thật) — báo lại tên field
+để hoàn thiện chỉ số này.
 
 ## Gửi báo cáo Dashboard Ticket ABI tự động qua email (cron)
 

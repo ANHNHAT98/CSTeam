@@ -300,6 +300,12 @@
     <div class="side-group">
       <div class="side-group-label">Khác</div>
       <a class="side-leaf" href="/khac/ma-hoa-password-window" data-path="/khac/ma-hoa-password-window">Mã hóa Password Window</a>
+      <a class="side-leaf" href="/khac/ma-hoa-password-macos" data-path="/khac/ma-hoa-password-macos">Mã hóa Password MacOS</a>
+    </div>
+
+    <div class="side-group">
+      <div class="side-group-label">KPI Team</div>
+      <a class="side-leaf" href="/kpiteam/loi-nhuan-thang" data-path="/kpiteam/loi-nhuan-thang">Lợi nhuận tháng</a>
     </div>
   </div>
 
@@ -342,9 +348,9 @@
       <div class="note" id="kpiCsatNote">Chưa cấu hình tên field điểm hài lòng từ ERP</div>
     </div>
     <div class="panel dash-kpi">
-      <div class="label">First Response Time</div>
-      <div class="value muted" id="kpiFrt">—</div>
-      <div class="note" id="kpiFrtNote">Chưa cấu hình tên field thời gian phản hồi đầu</div>
+      <div class="label">First Response Time (SLA)</div>
+      <div class="value" id="kpiFrt">—</div>
+      <div class="note" id="kpiFrtNote">% Pass — toàn bộ ticket, mọi trạng thái</div>
     </div>
   </div>
 
@@ -361,9 +367,27 @@
     </div>
   </div>
 
+  <div class="panel">
+    <div class="panel-title">First Response Time (SLA) — So sánh 3 tháng gần nhất</div>
+    <div class="panel-sub" id="frtSub">Pass/Fail theo công thức: W = First Responded On − Opening On (phút); Fail nếu chưa phản hồi (W=1.1) hoặc W ≥ ngưỡng theo Priority (Critical 60 / Urgent 240 / High 480 / Medium 4320 / khác 7200 phút). Lọc theo Opening On.</div>
+    <table id="frtTable"><thead><tr><th>Tháng</th><th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">Fail</th><th style="text-align:right;">% Pass</th></tr></thead><tbody id="frtBody"></tbody></table>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">First Response Time (SLA) — Tháng hiện tại</div>
+    <div class="panel-sub" id="frtMonthSub">Lọc theo Opening On rơi vào tháng hiện tại, gộp theo dự án &amp; người phụ trách.</div>
+    <table id="frtMonthTable"><thead><tr><th>Project</th><th>Owner</th><th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">Fail</th><th style="text-align:right;">% Pass</th></tr></thead><tbody id="frtMonthBody"></tbody></table>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">First Response Time (SLA) — Xu hướng theo tuần (tháng hiện tại)</div>
+    <div class="panel-sub" id="frtWeekSub">Mỗi tuần tính từ Thứ 2 → Chủ Nhật, chỉ tính ticket có Opening On trong tháng hiện tại.</div>
+    <table id="frtWeekTable"><thead><tr><th>Tuần</th><th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">Fail</th><th style="text-align:right;">% Pass</th></tr></thead><tbody id="frtWeekBody"></tbody></table>
+  </div>
+
   <div class="panel csat-help">
-    <div class="panel-title">Cách bật CSAT &amp; First Response Time</div>
-    <p>Hai chỉ số này cần đúng tên field trong doctype <code class="tag">Ticket</code> của ERP (ví dụ field điểm hài lòng, field thời điểm phản hồi đầu tiên). Cách lấy tên field nhanh nhất: vào <a href="/tickets/tra-cuu-erp">Ticket dự án → Tra cứu ERP</a>, bấm "Lấy dữ liệu", xem tên cột trong bảng kết quả (đó chính là tên field thật trong ERP) rồi báo lại — sẽ bật 2 chỉ số này ngay trên dashboard.</p>
+    <div class="panel-title">Cách bật CSAT</div>
+    <p>Chỉ số này cần đúng tên field điểm hài lòng trong doctype <code class="tag">Ticket</code> của ERP. Cách lấy tên field nhanh nhất: vào <a href="/tickets/tra-cuu-erp">Ticket dự án → Tra cứu ERP</a>, bấm "Lấy dữ liệu", xem tên cột trong bảng kết quả (đó chính là tên field thật trong ERP) rồi báo lại — sẽ bật chỉ số này ngay trên dashboard.</p>
   </div>
 
   <footer>
@@ -465,6 +489,11 @@ document.querySelectorAll('.side-leaf[data-path]').forEach(a=>{
 const ALL_PROJECTS = ['MerapLion_eSales', 'ABI_eSales_Support', 'ANVY_eSale_Support', 'Sabeco_PG'];
 const OPEN_STATUSES = ['Open','Assign','Working','Reviewing','Waiting','Pending','Re-open'];
 
+// Ngưỡng SLA phản hồi đầu (phút) theo Priority — đúng công thức đã xác nhận,
+// giống hệt module "Ticket dự án > SLA Phản hồi đầu".
+const SLA_THRESHOLD = { critical: 60, urgent: 240, high: 480, medium: 4320 };
+const SLA_DEFAULT_THRESHOLD = 7200;
+
 const loadDashBtn = document.getElementById('loadDashBtn');
 const dashStatus = document.getElementById('dashStatus');
 
@@ -473,19 +502,27 @@ function setDashStatus(msg, cls){
   dashStatus.className = 'status ' + (cls||'');
 }
 
+async function fetchTickets(projects, statuses){
+  const qs = new URLSearchParams();
+  qs.set('projects', JSON.stringify(projects));
+  qs.set('statuses', JSON.stringify(statuses));
+  const res = await fetch('/api/erp/tickets?' + qs.toString(), {credentials:'same-origin'});
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || ('Lỗi HTTP ' + res.status));
+  return Array.isArray(data.data) ? data.data : [];
+}
+
 async function loadDashboard(){
   loadDashBtn.disabled = true;
   setDashStatus('Đang tải dữ liệu từ ERP…','');
   try{
-    const qs = new URLSearchParams();
-    qs.set('projects', JSON.stringify(ALL_PROJECTS));
-    qs.set('statuses', JSON.stringify(OPEN_STATUSES));
-    const res = await fetch('/api/erp/tickets?' + qs.toString(), {credentials:'same-origin'});
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || ('Lỗi HTTP ' + res.status));
-    const rows = Array.isArray(data.data) ? data.data : [];
-    renderDashboard(rows);
-    setDashStatus(`Xong — ${rows.length} ticket đang mở (cập nhật ${new Date().toLocaleTimeString('vi-VN')}).`, 'ok');
+    const [openRows, allRows] = await Promise.all([
+      fetchTickets(ALL_PROJECTS, OPEN_STATUSES),
+      fetchTickets(ALL_PROJECTS, []), // toàn bộ trạng thái — cần đủ để tính SLA phản hồi đầu
+    ]);
+    renderDashboard(openRows);
+    renderFrt(allRows);
+    setDashStatus(`Xong — ${openRows.length} ticket đang mở / ${allRows.length} ticket tổng (cập nhật ${new Date().toLocaleTimeString('vi-VN')}).`, 'ok');
   }catch(err){
     console.error(err);
     setDashStatus('Lỗi: ' + err.message, 'err');
@@ -510,6 +547,176 @@ function renderDashboard(rows){
   const statusRows = Object.keys(byStatus).sort((a,b)=>byStatus[b]-byStatus[a]);
   document.getElementById('byStatusBody').innerHTML = statusRows.map(s => `
     <tr><td>${s}</td><td>${byStatus[s]}</td></tr>`).join('') || '<tr><td colspan="2" style="color:var(--muted);">Không có dữ liệu</td></tr>';
+}
+
+/* ---------- First Response Time (SLA) — tự đoán field theo tên ---------- */
+function guessField(fields, keywords){
+  const lower = fields.map(f => f.toLowerCase());
+  for (const kw of keywords){
+    const idx = lower.findIndex(f => f.includes(kw));
+    if (idx >= 0) return fields[idx];
+  }
+  return null;
+}
+function priorityThreshold(priorityRaw){
+  const p = String(priorityRaw||'').trim().toLowerCase();
+  if (p in SLA_THRESHOLD) return SLA_THRESHOLD[p];
+  return SLA_DEFAULT_THRESHOLD;
+}
+
+/* Tính Pass/Fail cho từng ticket 1 lần duy nhất, dùng chung cho cả 3 bảng
+   (toàn thời gian / tháng hiện tại / theo tuần) — tránh lặp code + đảm bảo
+   3 bảng luôn nhất quán cùng 1 công thức, cùng field. */
+function computeFrtRows(rows){
+  if (!rows.length) return { items: [], fields: null };
+  const fields = Object.keys(rows[0]);
+  const priorityField = guessField(fields, ['priority']);
+  const openingField = guessField(fields, ['opening_date','opening_on','creation','opening']);
+  const firstRespField = guessField(fields, ['first_responded_on','first_response','first_respond']);
+  const ownerField = guessField(fields, ['_assign','assign','owner']);
+
+  if (!priorityField || !openingField || !firstRespField){
+    return { items: [], fields: { priorityField, openingField, firstRespField, ownerField }, missing: true };
+  }
+
+  const items = rows.map(t => {
+    const project = t.project || '(không có project)';
+    let owner = ownerField ? t[ownerField] : null;
+    if (Array.isArray(owner)) owner = owner.join(', ');
+    if (owner && typeof owner === 'string'){
+      try{ const parsed = JSON.parse(owner); if (Array.isArray(parsed)) owner = parsed.join(', '); }catch(e){}
+    }
+    if (!owner) owner = '(chưa gán)';
+
+    const priority = t[priorityField];
+    const openingRaw = t[openingField];
+    const firstRespRaw = t[firstRespField];
+    const openDate = openingRaw ? new Date(openingRaw) : null;
+
+    let w, result;
+    if (!firstRespRaw){
+      w = 1.1; result = 'Fail';
+    } else {
+      const respDate = new Date(firstRespRaw);
+      if (!openDate || isNaN(openDate.getTime()) || isNaN(respDate.getTime())){ w = 1.1; result = 'Fail'; }
+      else {
+        w = (respDate.getTime() - openDate.getTime()) / 60000;
+        result = (w < priorityThreshold(priority)) ? 'Pass' : 'Fail';
+      }
+    }
+    return { project, owner, priority, openDate, w, result };
+  });
+
+  return { items, fields: { priorityField, openingField, firstRespField, ownerField }, missing: false };
+}
+
+function groupByProjectOwner(items){
+  const groups = {};
+  items.forEach(it => {
+    const key = it.project + '||' + it.owner;
+    if (!groups[key]) groups[key] = { project: it.project, owner: it.owner, total:0, pass:0 };
+    groups[key].total++;
+    if (it.result === 'Pass') groups[key].pass++;
+  });
+  return Object.values(groups).sort((a,b) => {
+    if (a.project !== b.project) return a.project.localeCompare(b.project);
+    return b.total - a.total;
+  });
+}
+function renderGroupTable(bodyId, groupRows, emptyColspan){
+  document.getElementById(bodyId).innerHTML = groupRows.length ? groupRows.map(g => {
+    const rate = g.total ? (g.pass/g.total*100).toFixed(1) : '0.0';
+    return `<tr><td>${g.project}</td><td>${g.owner}</td><td style="text-align:right;">${g.total}</td><td style="text-align:right;color:var(--success);">${g.pass}</td><td style="text-align:right;color:var(--danger);">${g.total-g.pass}</td><td style="text-align:right;">${rate}%</td></tr>`;
+  }).join('') : `<tr><td colspan="${emptyColspan}" style="color:var(--muted);">Không có ticket nào trong khoảng này</td></tr>`;
+}
+
+function getCurrentMonthRange(){
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1, 0,0,0,0);
+  const end = new Date(now.getFullYear(), now.getMonth()+1, 0, 23,59,59,999);
+  return { start, end };
+}
+function fmtDdMm(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'); }
+function mondayOf(d){
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dow = (x.getDay()+6)%7; // Mon=0..Sun=6
+  x.setDate(x.getDate()-dow);
+  x.setHours(0,0,0,0);
+  return x;
+}
+
+function getLast3MonthsRange(){
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth()-2, 1, 0,0,0,0); // đầu tháng, cách nay 2 tháng
+  const end = new Date(now.getFullYear(), now.getMonth()+1, 0, 23,59,59,999); // cuối tháng hiện tại
+  return { start, end };
+}
+function monthKeyLabel(d){
+  return { key: d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'), label: 'Tháng '+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear() };
+}
+
+function renderFrt(rows){
+  const frtSub = document.getElementById('frtSub');
+  const { items, fields, missing } = computeFrtRows(rows);
+
+  if (!rows.length || missing || !items.length){
+    document.getElementById('kpiFrt').textContent = '—';
+    frtSub.textContent = (missing)
+      ? 'Không tự nhận diện được đủ field (Priority/Opening On/First Responded On) từ ERP — xem chi tiết & xác nhận field tại Ticket dự án → SLA Phản hồi đầu.'
+      : 'Không có dữ liệu.';
+    document.getElementById('frtBody').innerHTML = '';
+    document.getElementById('frtMonthBody').innerHTML = '';
+    document.getElementById('frtWeekBody').innerHTML = '';
+    return;
+  }
+
+  const { priorityField, openingField, firstRespField, ownerField } = fields;
+
+  /* ---- So sánh 3 tháng gần nhất (theo Opening On), thay cho "toàn bộ thời gian" ---- */
+  const { start: last3Start, end: last3End } = getLast3MonthsRange();
+  const last3Items = items.filter(it => it.openDate && it.openDate >= last3Start && it.openDate <= last3End);
+
+  const totalPass = last3Items.filter(it => it.result === 'Pass').length;
+  const overallRate = last3Items.length ? (totalPass / last3Items.length * 100).toFixed(1) : '0.0';
+  document.getElementById('kpiFrt').textContent = overallRate + '%';
+  frtSub.textContent = `W = First Responded On − Opening On (phút); Fail nếu chưa phản hồi hoặc vượt ngưỡng theo Priority (Critical 60 / Urgent 240 / High 480 / Medium 4320 / khác 7200 phút). Field dùng: ${priorityField} / ${openingField} / ${firstRespField}${ownerField ? ' / ' + ownerField : ''}. Phạm vi: 3 tháng gần nhất (theo Opening On).`;
+
+  const monthGroups = {};
+  last3Items.forEach(it => {
+    const { key, label } = monthKeyLabel(it.openDate);
+    if (!monthGroups[key]) monthGroups[key] = { key, label, total:0, pass:0 };
+    monthGroups[key].total++;
+    if (it.result === 'Pass') monthGroups[key].pass++;
+  });
+  const monthRows = Object.values(monthGroups).sort((a,b) => a.key.localeCompare(b.key));
+  document.getElementById('frtBody').innerHTML = monthRows.length ? monthRows.map(m => {
+    const rate = m.total ? (m.pass/m.total*100).toFixed(1) : '0.0';
+    return `<tr><td>${m.label}</td><td style="text-align:right;">${m.total}</td><td style="text-align:right;color:var(--success);">${m.pass}</td><td style="text-align:right;color:var(--danger);">${m.total-m.pass}</td><td style="text-align:right;">${rate}%</td></tr>`;
+  }).join('') : '<tr><td colspan="5" style="color:var(--muted);">Không có ticket nào trong 3 tháng gần nhất</td></tr>';
+
+  /* ---- Tháng hiện tại (lọc theo Opening On) ---- */
+  const { start, end } = getCurrentMonthRange();
+  const monthItems = items.filter(it => it.openDate && it.openDate >= start && it.openDate <= end);
+  document.getElementById('frtMonthSub').textContent =
+    `Từ ${fmtDdMm(start)} đến ${fmtDdMm(end)}/${end.getFullYear()} (theo Opening On) — ${monthItems.length} ticket.`;
+  renderGroupTable('frtMonthBody', groupByProjectOwner(monthItems), 6);
+
+  /* ---- Theo tuần trong tháng hiện tại (Thứ 2 -> Chủ Nhật) ---- */
+  const weekGroups = {};
+  monthItems.forEach(it => {
+    const mon = mondayOf(it.openDate);
+    const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+    const key = mon.toISOString().slice(0,10);
+    const label = fmtDdMm(mon) + '–' + fmtDdMm(sun);
+    if (!weekGroups[key]) weekGroups[key] = { key, label, total:0, pass:0 };
+    weekGroups[key].total++;
+    if (it.result === 'Pass') weekGroups[key].pass++;
+  });
+  const weekRows = Object.values(weekGroups).sort((a,b) => a.key.localeCompare(b.key));
+  document.getElementById('frtWeekBody').innerHTML = weekRows.length ? weekRows.map(w => {
+    const rate = w.total ? (w.pass/w.total*100).toFixed(1) : '0.0';
+    return `<tr><td>${w.label}</td><td style="text-align:right;">${w.total}</td><td style="text-align:right;color:var(--success);">${w.pass}</td><td style="text-align:right;color:var(--danger);">${w.total-w.pass}</td><td style="text-align:right;">${rate}%</td></tr>`;
+  }).join('') : '<tr><td colspan="5" style="color:var(--muted);">Không có ticket nào trong tháng này</td></tr>';
 }
 
 loadDashBtn.addEventListener('click', loadDashboard);

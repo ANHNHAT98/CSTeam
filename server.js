@@ -103,6 +103,14 @@ app.get('/khac/ma-hoa-password-window', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'khac-ma-hoa-password.html'));
 });
 
+app.get('/khac/ma-hoa-password-macos', requirePageAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'protected', 'khac-ma-hoa-password-macos.html'));
+});
+
+app.get('/kpiteam/loi-nhuan-thang', requirePageAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'protected', 'kpiteam-loi-nhuan-thang.html'));
+});
+
 /* ---------- API: mã hóa/giải mã password Windows (key hệ thống giữ ở server) ---------- */
 app.post('/api/khac/mahoa-password', requireAuth, (req, res) => {
   try {
