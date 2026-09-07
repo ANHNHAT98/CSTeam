@@ -322,6 +322,9 @@ function inRange(d, from, to){
 }
 
 /* ---------- tìm cột giờ trong Detail Timesheet Report ---------- */
+/* Cộng tổng field "hours" trong Detail Timesheet Report. Ưu tiên khớp đúng tên field
+   "hours"; nếu report có kèm dòng Tổng (chỉ có cột hours, các cột khác rỗng) thì bỏ qua
+   dòng đó để không bị cộng dư (double count). */
 function extractTotalHours(reportJson){
   const payload = reportJson && reportJson.message ? reportJson.message : reportJson;
   if (!payload) return null;
@@ -330,16 +333,27 @@ function extractTotalHours(reportJson){
 
   if (!Array.isArray(result[0])){
     const keys = Object.keys(result[0]);
-    const hourKey = keys.find(k => /hour/i.test(k)) || keys.find(k => /time/i.test(k));
+    const hourKey = keys.find(k => k.toLowerCase() === 'hours')
+      || keys.find(k => /hour/i.test(k))
+      || keys.find(k => /time/i.test(k));
     if (!hourKey) return null;
-    return result.reduce((sum, r) => sum + (parseFloat(r[hourKey]) || 0), 0);
+    return result.reduce((sum, r) => {
+      const hasOtherData = keys.some(k => k !== hourKey && r[k] !== null && r[k] !== undefined && r[k] !== '');
+      if (!hasOtherData) return sum; // có thể là dòng Tổng cộng do ERP tự thêm — bỏ qua
+      return sum + (parseFloat(r[hourKey]) || 0);
+    }, 0);
   }
 
   const cols = Array.isArray(payload.columns) ? payload.columns : [];
-  let idx = cols.findIndex(c => /hour/i.test(c.fieldname || c.label || ''));
+  let idx = cols.findIndex(c => (c.fieldname || '').toLowerCase() === 'hours');
+  if (idx === -1) idx = cols.findIndex(c => /hour/i.test(c.fieldname || c.label || ''));
   if (idx === -1) idx = cols.findIndex(c => /time/i.test(c.fieldname || c.label || ''));
   if (idx === -1) return null;
-  return result.reduce((sum, r) => sum + (parseFloat(r[idx]) || 0), 0);
+  return result.reduce((sum, r) => {
+    const hasOtherData = r.some((val, i) => i !== idx && val !== null && val !== undefined && val !== '');
+    if (!hasOtherData) return sum;
+    return sum + (parseFloat(r[idx]) || 0);
+  }, 0);
 }
 
 fetchBtn.addEventListener('click', async () => {
@@ -515,9 +529,10 @@ document.getElementById('copyTableBtn').addEventListener('click', async () => {
   const html = `
     <p><b>Tuần báo cáo:</b> ${esc(v('weekLabel'))}</p>
     <p><b>1. Báo cáo số lượng ticket trong tuần</b></p>
-    <table style="${tableStyle}"><tr><th style="${thtd}">Trạng thái</th><th style="${thtd}">Số lượng</th></tr>${statusRows}</table>
-    <br>
-    <table style="${tableStyle}"><tr><th style="${thtd}">Chỉ số</th><th style="${thtd}">Giá trị</th></tr>${summaryRows}</table>
+    <table style="${tableStyle}"><tr><th style="${thtd}">Trạng thái</th><th style="${thtd}">Số lượng</th></tr>${statusRows}
+    <tr><td style="${thtd}" colspan="2">&nbsp;</td></tr>
+    <tr><th style="${thtd}">Chỉ số</th><th style="${thtd}">Giá trị</th></tr>${summaryRows}</table>
+    <p>&nbsp;</p>
     <p><b>2. Nhận xét/Vấn đề</b></p>
     <p><i>Nhận xét chung về tình hình support tuần/tháng báo cáo so với tuần trước:</i><br>${esc(v('txt_nhanxet') || '(chưa nhập)')}</p>
     <p><i>Thực hiện trong tuần: ${esc(document.getElementById('doneWeekRange').textContent)}</i></p>
