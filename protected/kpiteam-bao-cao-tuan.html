@@ -145,16 +145,6 @@
       <button class="btn btn-primary" id="fetchBtn">⇩ Lấy dữ liệu &amp; tính báo cáo</button>
     </div>
     <div class="status" id="statusText"></div>
-    <div class="hint">
-      Cách tính (theo <code class="tag">opening_date</code> của ticket, không dùng ngày tạo record):<br>
-      Ticket mục 1, 2, 4, 6 được lọc <b>trực tiếp trên ERP</b> theo <code class="tag">opening_date</code> nằm trong khoảng Từ ngày–Đến ngày (không tải hết rồi lọc ở trình duyệt), nên không bị thiếu ticket dù dự án có rất nhiều lịch sử.<br>
-      <b>Mục 1, 2</b> (breakdown theo status) = ticket mở trong tuần, nhóm theo trạng thái hiện tại (riêng <b>Closed</b> = số ticket mở &amp; đóng ngay trong tuần, giống mục 6).<br>
-      <b>Mục 4</b> (nhận trong tuần) = tổng số ticket mở trong tuần, mọi trạng thái.<br>
-      <b>Mục 5</b> (tồn đọng trước tuần lọc) = ticket đang ở trạng thái chưa Closed, có <code class="tag">opening_date</code> &lt; "Từ ngày" (không giới hạn tháng).<br>
-      <b>Mục 6</b> (xử lý trong tuần) = ticket mở trong tuần VÀ trạng thái hiện tại là Closed.<br>
-      <b>Mục 7</b> (tồn đọng tuần) = tổng breakdown mục 1,2 (trừ Closed) + mục 5.<br>
-      Tất cả số liệu bên dưới đều <b>sửa tay được</b> — kiểm tra lại trước khi gửi báo cáo.
-    </div>
   </div>
 
   <div class="panel print-report report">
@@ -212,6 +202,7 @@ Hỗ trợ thanh toán công cho MDS và kế toán</textarea>
     <button class="btn btn-ghost" id="copyBtn">⧉ Sao chép nội dung báo cáo (text)</button>
     <button class="btn btn-ghost" id="printBtn">🖨 In / Xuất PDF</button>
   </div>
+  <div class="status no-print" id="bottomStatusText"></div>
 </div>
 
 <script>
@@ -231,6 +222,9 @@ const prevWeekBtn = document.getElementById('prevWeekBtn');
 const statusText = document.getElementById('statusText');
 
 function setStatus(msg, cls){ statusText.textContent = msg; statusText.className = 'status ' + (cls || ''); }
+
+const bottomStatusText = document.getElementById('bottomStatusText');
+function setBottomStatus(msg, cls){ bottomStatusText.textContent = msg; bottomStatusText.className = 'status no-print ' + (cls || ''); }
 
 /* Fetch JSON có kiểm tra kỹ: nếu server trả về HTML (route sai / hết phiên đăng
    nhập / lỗi 500 dạng trang lỗi) thì báo rõ thay vì để lỗi JSON.parse mù mờ. */
@@ -483,9 +477,9 @@ ${listify(v('txt_tuansau'))}
 4. Báo cáo thông tin khác: ${v('txt_khac')}`;
 
   navigator.clipboard.writeText(text).then(() => {
-    setStatus('Đã sao chép nội dung báo cáo vào clipboard.', 'ok');
+    setBottomStatus('Đã sao chép nội dung báo cáo vào clipboard.', 'ok');
   }).catch(() => {
-    setStatus('Không sao chép được tự động — vui lòng bôi đen & copy thủ công.', 'err');
+    setBottomStatus('Không sao chép được tự động — vui lòng bôi đen & copy thủ công.', 'err');
   });
 });
 
