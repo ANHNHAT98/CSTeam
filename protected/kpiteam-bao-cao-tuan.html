@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Báo cáo Ticket theo tuần — ERP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#12233D; --blueprint:#1F4E79; --blueprint-deep:#0F2138;
+    --paper:#EEF2F6; --panel:#FFFFFF;
+    --grid-line:rgba(31,78,121,.14); --grid-line-strong:rgba(31,78,121,.28);
+    --amber:#E8A33D; --amber-deep:#C9821F;
+    --success:#3F7D58; --danger:#B23A48; --muted:#5B7089; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans',sans-serif;
+    background-image:linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size:32px 32px; min-height:100vh;
+  }
+  .ops-topbar{ background:#12233D; color:#fff; padding:12px 24px; display:flex; align-items:center; gap:14px; }
+  .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;opacity:.9;}
+  .ops-topbar a:hover{opacity:1;text-decoration:underline;}
+  .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
+
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 24px 90px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 6px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 26px;line-height:1.6;}
+
+  .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:22px;margin-bottom:20px;}
+  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0 0 14px;display:flex;align-items:center;gap:10px;}
+  .panel h2 .n{background:var(--blueprint);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-family:'IBM Plex Mono',monospace;}
+
+  .filter-row{display:flex;gap:18px;flex-wrap:wrap;align-items:end;}
+  .field{display:flex;flex-direction:column;gap:6px;min-width:180px;}
+  .field.grow{flex:1 1 260px;}
+  .field label{font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.05em;}
+  select, input[type=date], input[type=text], input[type=number]{
+    font-family:'IBM Plex Sans',sans-serif; font-size:13.5px; padding:9px 10px; border-radius:7px;
+    border:1px solid var(--grid-line-strong); background:#fff; color:var(--ink);
+  }
+  input[type=number]{width:100%;}
+
+  .actions{display:flex;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap;}
+  .btn{ appearance:none;border:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-weight:600;
+    font-size:14px;padding:11px 18px;border-radius:8px;display:inline-flex;align-items:center;gap:8px; }
+  .btn-primary{background:var(--amber);color:#3A2405;box-shadow:0 2px 0 var(--amber-deep);}
+  .btn-primary:disabled{background:#D8DEE6;color:#8B98A6;box-shadow:none;cursor:not-allowed;}
+  .btn-ghost{background:transparent;color:var(--blueprint);border:1px solid var(--grid-line-strong);}
+  .btn-ghost:disabled{opacity:.45;cursor:not-allowed;}
+
+  .status{font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);margin-top:12px;}
+  .status.ok{color:var(--success);}
+  .status.err{color:var(--danger);white-space:pre-wrap;}
+  .status.busy{color:var(--blueprint);}
+
+  .hint{margin-top:14px;padding-top:14px;border-top:1px dashed var(--grid-line-strong);font-size:12px;color:var(--muted);line-height:1.6;}
+  code.tag{font-family:'IBM Plex Mono',monospace;background:rgba(31,78,121,.08);color:var(--blueprint);padding:1px 6px;border-radius:4px;font-size:11.5px;}
+
+  /* ---------- report ---------- */
+  .report{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:30px 34px;}
+  .report-title{font-family:'Space Grotesk',sans-serif;font-size:19px;margin:0 0 4px;}
+  .report-week{font-size:13.5px;color:var(--muted);margin:0 0 22px;}
+  .report-week input{font-size:13.5px;border:none;border-bottom:1px dashed var(--grid-line-strong);background:transparent;padding:2px 4px;width:260px;color:var(--ink);}
+
+  .rep-section-h{font-family:'Space Grotesk',sans-serif;font-size:14.5px;font-weight:700;margin:26px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--grid-line-strong);}
+  .rep-section-h:first-of-type{margin-top:0;}
+
+  .metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:6px;}
+  @media(max-width:820px){.metric-grid{grid-template-columns:repeat(2,1fr);}}
+  .metric{border:1px solid var(--grid-line-strong);border-radius:8px;padding:10px 12px;background:#FAFCFE;}
+  .metric label{display:block;font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;}
+  .metric input{width:100%;border:none;background:transparent;font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--ink);padding:0;}
+  .metric input:focus{outline:none;color:var(--blueprint);}
+
+  .metric-line{display:flex;flex-wrap:wrap;gap:8px 22px;margin:14px 0 4px;font-size:13.5px;}
+  .metric-line b{font-family:'IBM Plex Mono',monospace;font-size:13px;}
+
+  .checklist-numbered{counter-reset:item;padding:0;margin:6px 0 0;list-style:none;}
+  .checklist-numbered li{counter-increment:item;position:relative;padding-left:26px;margin-bottom:6px;font-size:13.5px;line-height:1.6;}
+  .checklist-numbered li::before{content:counter(item) ".";position:absolute;left:0;color:var(--blueprint);font-weight:700;font-family:'IBM Plex Mono',monospace;font-size:12.5px;}
+
+  textarea.freeform{width:100%;min-height:64px;border:1px solid var(--grid-line-strong);border-radius:7px;padding:10px 12px;font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;color:var(--ink);resize:vertical;background:#FAFCFE;}
+  textarea.list-input{width:100%;min-height:96px;border:1px solid var(--grid-line-strong);border-radius:7px;padding:10px 12px;font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;color:var(--ink);resize:vertical;background:#FAFCFE;}
+  .list-hint{font-size:11px;color:var(--muted);margin:4px 0 10px;}
+  .sub-h{font-size:13px;font-weight:600;margin:16px 0 6px;color:var(--ink);}
+  .sub-h .range{font-weight:400;color:var(--muted);}
+
+  .report-preview{margin-top:10px;}
+  .report-preview .rep-section-h{margin-top:22px;}
+  .report-preview ol{margin:6px 0 0;padding-left:22px;}
+  .report-preview ol li{margin-bottom:5px;font-size:13.5px;line-height:1.6;}
+  .report-preview p{font-size:13.5px;line-height:1.7;margin:6px 0;}
+
+  .tabs{display:flex;gap:4px;margin-bottom:16px;}
+  .tab-btn{background:transparent;border:1px solid var(--grid-line-strong);border-bottom:none;padding:8px 16px;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border-radius:8px 8px 0 0;}
+  .tab-btn.active{background:var(--panel);color:var(--blueprint);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  @media print{
+    .ops-topbar, .panel:not(.print-report), .tabs, .actions, .no-print{display:none !important;}
+    body{background:#fff;}
+    .wrap{padding:0;max-width:none;}
+    .report{border:none;padding:0;}
+    input, textarea{border:none !important;background:transparent !important;}
+  }
+</style>
+</head>
+<body>
+<div class="ops-topbar">
+  <a href="/">← Quay về</a>
+  <span class="crumb">KPI Team / Báo Cáo Tuần</span>
+</div>
+
+<div class="wrap">
+  <h1>Báo cáo Ticket theo tuần</h1>
+  <p class="sub">Lấy dữ liệu ticket &amp; timesheet trực tiếp từ ERPNext theo dự án, tự tính các chỉ số theo mẫu báo cáo tuần, có thể chỉnh tay trước khi gửi.</p>
+
+  <div class="panel no-print">
+    <h2><span class="n">1</span> Bộ lọc</h2>
+    <div class="filter-row">
+      <div class="field grow">
+        <label for="projectSelect">Dự án</label>
+        <select id="projectSelect"><option value="">— đang tải danh sách dự án —</option></select>
+      </div>
+      <div class="field">
+        <label for="fromDate">Từ ngày</label>
+        <input type="date" id="fromDate">
+      </div>
+      <div class="field">
+        <label for="toDate">Đến ngày</label>
+        <input type="date" id="toDate">
+      </div>
+      <div class="field">
+        <label for="prevWeekBtn">&nbsp;</label>
+        <button class="btn btn-ghost" id="prevWeekBtn" type="button">◀ Tuần trước</button>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="fetchBtn">⇩ Lấy dữ liệu &amp; tính báo cáo</button>
+    </div>
+    <div class="status" id="statusText"></div>
+    <div class="hint">
+      Cách tính: <code class="tag">Tồn đọng cuối tuần</code> = tất cả ticket của dự án đang ở trạng thái khác Closed (snapshot hiện tại).
+      <code class="tag">Nhận trong tuần</code> = ticket có ngày tạo (creation) rơi vào khoảng đã chọn.
+      <code class="tag">Xử lý trong tuần</code> = ticket Closed có ngày cập nhật gần nhất rơi vào khoảng đã chọn (xấp xỉ theo field <code class="tag">modified</code> — sửa tay nếu ERP có field ngày đóng riêng).
+      <code class="tag">Tồn đọng tuần trước</code> = Tồn đọng cuối tuần − Nhận trong tuần + Xử lý trong tuần.
+      Tất cả số liệu bên dưới đều <b>sửa tay được</b> — kiểm tra lại trước khi gửi báo cáo.
+    </div>
+  </div>
+
+  <div class="panel print-report report">
+    <h1 class="report-title">Báo cáo tình hình Support / Ticket</h1>
+    <p class="report-week">Tuần báo cáo: <input type="text" id="weekLabel" value="(chọn khoảng ngày rồi bấm Lấy dữ liệu)"></p>
+
+    <div class="rep-section-h">1. Báo cáo số lượng ticket trong tuần</div>
+    <div class="metric-grid">
+      <div class="metric"><label>Closed</label><input type="number" id="m_closed" value="0"></div>
+      <div class="metric"><label>Open</label><input type="number" id="m_open" value="0"></div>
+      <div class="metric"><label>Assign</label><input type="number" id="m_assign" value="0"></div>
+      <div class="metric"><label>Working</label><input type="number" id="m_working" value="0"></div>
+    </div>
+    <div class="metric-grid">
+      <div class="metric"><label>Reviewing</label><input type="number" id="m_reviewing" value="0"></div>
+      <div class="metric"><label>Waiting</label><input type="number" id="m_waiting" value="0"></div>
+      <div class="metric"><label>Pending</label><input type="number" id="m_pending" value="0"></div>
+      <div class="metric"><label>Re-open</label><input type="number" id="m_reopen" value="0"></div>
+    </div>
+
+    <ol class="checklist-numbered" style="margin-top:14px;">
+      <li>Time hỗ trợ: <input type="text" id="m_hours" value="0H" style="border:none;background:transparent;font-weight:700;width:80px;font-family:'IBM Plex Mono',monospace;"></li>
+      <li>Ticket nhận trong tuần/tháng: <input type="number" id="m_received" value="0" style="border:none;background:transparent;font-weight:700;width:70px;"></li>
+      <li>Ticket tồn đọng tuần/tháng trước: <input type="number" id="m_backlogPrev" value="0" style="border:none;background:transparent;font-weight:700;width:70px;"></li>
+      <li>Ticket xử lý trong tuần/tháng: <input type="number" id="m_processed" value="0" style="border:none;background:transparent;font-weight:700;width:70px;"></li>
+      <li>Ticket tồn đọng tuần/tháng: <input type="number" id="m_backlogNow" value="0" style="border:none;background:transparent;font-weight:700;width:70px;"></li>
+    </ol>
+
+    <div class="rep-section-h">2. Nhận xét / Vấn đề</div>
+    <div class="sub-h">Nhận xét chung về tình hình support tuần/tháng báo cáo so với tuần trước:</div>
+    <textarea class="freeform" id="txt_nhanxet" placeholder="Ví dụ: khối lượng ticket ổn định so với tuần trước, không phát sinh sự cố nghiêm trọng…"></textarea>
+
+    <div class="sub-h">Thực hiện trong tuần: <span class="range" id="doneWeekRange">(…)</span></div>
+    <textarea class="list-input" id="txt_thuchien">Review rls app và các rls BO
+Hỗ trợ người dùng chốt số đơn hàng, hoá đơn, sổ xuất hàng
+Hỗ trợ liên quan đến tồn kho
+Hỗ trợ thanh toán công cho MDS và kế toán</textarea>
+    <div class="list-hint">Mỗi dòng = 1 mục, sẽ tự đánh số khi xuất báo cáo.</div>
+
+    <div class="sub-h">Xử lý tuần sau: <span class="range" id="nextWeekRange">(…)</span></div>
+    <textarea class="list-input" id="txt_tuansau">Review rls app và các rls BO
+Hỗ trợ người dùng chốt số đơn hàng, hoá đơn, sổ xuất hàng
+Hỗ trợ liên quan đến tồn kho
+Hỗ trợ thanh toán công cho MDS và kế toán</textarea>
+    <div class="list-hint">Mỗi dòng = 1 mục.</div>
+
+    <div class="rep-section-h">3. Báo cáo tình hình thực hiện CRs</div>
+    <textarea class="freeform" id="txt_crs" style="min-height:44px;">không có</textarea>
+
+    <div class="rep-section-h">4. Báo cáo thông tin khác</div>
+    <textarea class="freeform" id="txt_khac" style="min-height:44px;">không có</textarea>
+  </div>
+
+  <div class="actions no-print">
+    <button class="btn btn-ghost" id="copyBtn">⧉ Sao chép nội dung báo cáo (text)</button>
+    <button class="btn btn-ghost" id="printBtn">🖨 In / Xuất PDF</button>
+  </div>
+</div>
+
+<script>
+/* ---------- cấu hình trạng thái ---------- */
+const BACKLOG_STATUSES = ['Open','Assign','Working','Reviewing','Waiting','Pending','Re-open'];
+const CLOSED_STATUS = 'Closed';
+const STATUS_TO_FIELD = {
+  Open:'m_open', Assign:'m_assign', Working:'m_working', Reviewing:'m_reviewing',
+  Waiting:'m_waiting', Pending:'m_pending', 'Re-open':'m_reopen',
+};
+
+const projectSelect = document.getElementById('projectSelect');
+const fromDate = document.getElementById('fromDate');
+const toDate = document.getElementById('toDate');
+const fetchBtn = document.getElementById('fetchBtn');
+const prevWeekBtn = document.getElementById('prevWeekBtn');
+const statusText = document.getElementById('statusText');
+
+function setStatus(msg, cls){ statusText.textContent = msg; statusText.className = 'status ' + (cls || ''); }
+
+/* Fetch JSON có kiểm tra kỹ: nếu server trả về HTML (route sai / hết phiên đăng
+   nhập / lỗi 500 dạng trang lỗi) thì báo rõ thay vì để lỗi JSON.parse mù mờ. */
+async function fetchJson(url){
+  const res = await fetch(url, { credentials:'same-origin' });
+  const raw = await res.text();
+  let data;
+  try{
+    data = raw ? JSON.parse(raw) : {};
+  }catch(e){
+    if (res.status === 401 || /loginGate|id="loginForm"/.test(raw)){
+      throw new Error('Phiên đăng nhập đã hết — vui lòng bấm "Quay về", đăng nhập lại rồi vào lại trang này.');
+    }
+    throw new Error(`Server trả về không phải JSON (HTTP ${res.status}). Có thể route API chưa đúng hoặc lỗi server. Nội dung nhận được: ${raw.slice(0,150)}`);
+  }
+  if (!res.ok) throw new Error(data.error || `Lỗi HTTP ${res.status}`);
+  return data;
+}
+function pad(n){ return String(n).padStart(2,'0'); }
+function toISO(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function fromISO(s){ const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); }
+
+/* ---------- mặc định: tuần gần nhất đã kết thúc (Thứ 2 -> Chủ nhật) ---------- */
+(function initDefaultWeek(){
+  const today = new Date();
+  const day = today.getDay(); // 0 = CN
+  const diffToMonday = (day === 0 ? -6 : 1) - day;
+  const thisMonday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + diffToMonday);
+  const lastMonday = new Date(thisMonday); lastMonday.setDate(lastMonday.getDate() - 7);
+  const lastSunday = new Date(lastMonday); lastSunday.setDate(lastSunday.getDate() + 6);
+  fromDate.value = toISO(lastMonday);
+  toDate.value = toISO(lastSunday);
+  updateWeekLabel();
+})();
+
+prevWeekBtn.addEventListener('click', () => {
+  const f = fromISO(fromDate.value); const t = fromISO(toDate.value);
+  f.setDate(f.getDate() - 7); t.setDate(t.getDate() - 7);
+  fromDate.value = toISO(f); toDate.value = toISO(t);
+  updateWeekLabel();
+});
+fromDate.addEventListener('change', updateWeekLabel);
+toDate.addEventListener('change', updateWeekLabel);
+
+function updateWeekLabel(){
+  if (!fromDate.value || !toDate.value) return;
+  const f = fromISO(fromDate.value), t = fromISO(toDate.value);
+  const label = (f.getMonth() === t.getMonth())
+    ? `(${f.getDate()} → ${t.getDate()} tháng ${t.getMonth()+1})`
+    : `(${f.getDate()}/${f.getMonth()+1} → ${t.getDate()} tháng ${t.getMonth()+1})`;
+  document.getElementById('weekLabel').value = label;
+
+  const nf = new Date(t); nf.setDate(nf.getDate() + 1);
+  const nt = new Date(t); nt.setDate(nt.getDate() + 7);
+  const nextLabel = (nf.getMonth() === nt.getMonth())
+    ? `(${nf.getDate()} → ${nt.getDate()} tháng ${nt.getMonth()+1})`
+    : `(${nf.getDate()}/${nf.getMonth()+1} → ${nt.getDate()} tháng ${nt.getMonth()+1})`;
+  document.getElementById('doneWeekRange').textContent = label;
+  document.getElementById('nextWeekRange').textContent = nextLabel;
+}
+
+/* ---------- nạp danh sách dự án ---------- */
+async function loadProjects(){
+  projectSelect.innerHTML = '<option value="">— đang tải danh sách dự án —</option>';
+  try{
+    const data = await fetchJson('/api/erp/projects');
+    const list = Array.isArray(data.data) ? data.data : [];
+    if (!list.length){
+      projectSelect.innerHTML = '<option value="">— không có dự án nào —</option>';
+      setStatus('ERP trả về danh sách dự án rỗng (kiểm tra lại tài khoản ERP_USER có quyền xem Project không).', 'err');
+      return;
+    }
+    projectSelect.innerHTML = list.map(p =>
+      `<option value="${escapeAttr(p.name)}">${escapeHtml(p.project_name || p.name)}</option>`
+    ).join('');
+  }catch(err){
+    projectSelect.innerHTML = '<option value="">— lỗi tải dự án, xem bên dưới —</option>';
+    setStatus('Không tải được danh sách dự án: ' + err.message, 'err');
+  }
+}
+loadProjects();
+
+/* ---------- parse ngày kiểu Frappe ("YYYY-MM-DD HH:MM:SS" hoặc "YYYY-MM-DD") ---------- */
+function parseFrappeDate(raw){
+  if (!raw) return null;
+  const s = String(raw).trim();
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  return new Date(+m[1], +m[2]-1, +m[3]);
+}
+function inRange(d, from, to){
+  if (!d) return false;
+  return d >= from && d <= to;
+}
+
+/* ---------- tìm cột giờ trong Detail Timesheet Report ---------- */
+function extractTotalHours(reportJson){
+  const payload = reportJson && reportJson.message ? reportJson.message : reportJson;
+  if (!payload) return null;
+  const result = payload.result;
+  if (!Array.isArray(result) || !result.length) return 0;
+
+  if (!Array.isArray(result[0])){
+    const keys = Object.keys(result[0]);
+    const hourKey = keys.find(k => /hour/i.test(k)) || keys.find(k => /time/i.test(k));
+    if (!hourKey) return null;
+    return result.reduce((sum, r) => sum + (parseFloat(r[hourKey]) || 0), 0);
+  }
+
+  const cols = Array.isArray(payload.columns) ? payload.columns : [];
+  let idx = cols.findIndex(c => /hour/i.test(c.fieldname || c.label || ''));
+  if (idx === -1) idx = cols.findIndex(c => /time/i.test(c.fieldname || c.label || ''));
+  if (idx === -1) return null;
+  return result.reduce((sum, r) => sum + (parseFloat(r[idx]) || 0), 0);
+}
+
+fetchBtn.addEventListener('click', async () => {
+  const project = projectSelect.value;
+  if (!project){ setStatus('Chưa chọn dự án.', 'err'); return; }
+  if (!fromDate.value || !toDate.value){ setStatus('Chưa chọn khoảng ngày.', 'err'); return; }
+  const from = fromISO(fromDate.value);
+  const to = fromISO(toDate.value);
+
+  fetchBtn.disabled = true;
+  setStatus('Đang đăng nhập & lấy dữ liệu từ ERP…', 'busy');
+
+  try{
+    const qs = new URLSearchParams();
+    qs.set('projects', JSON.stringify([project]));
+    qs.set('statuses', JSON.stringify([]));
+    const ticketData = await fetchJson('/api/erp/tickets?' + qs.toString());
+    const rows = Array.isArray(ticketData.data) ? ticketData.data : [];
+
+    const backlogBreakdown = {};
+    BACKLOG_STATUSES.forEach(s => backlogBreakdown[s] = 0);
+    let backlogNow = 0, receivedInWeek = 0, closedInWeek = 0;
+
+    rows.forEach(r => {
+      const status = (r.status || '').trim();
+      const created = parseFrappeDate(r.creation);
+      if (inRange(created, from, to)) receivedInWeek++;
+
+      if (status === CLOSED_STATUS){
+        const closedDate = parseFrappeDate(r.resolution_date || r.closed_on || r.modified);
+        if (inRange(closedDate, from, to)) closedInWeek++;
+      } else if (BACKLOG_STATUSES.includes(status)){
+        backlogBreakdown[status]++;
+        backlogNow++;
+      }
+    });
+
+    const backlogPrev = backlogNow - receivedInWeek + closedInWeek;
+
+    document.getElementById('m_closed').value = closedInWeek;
+    BACKLOG_STATUSES.forEach(s => {
+      document.getElementById(STATUS_TO_FIELD[s]).value = backlogBreakdown[s];
+    });
+    document.getElementById('m_received').value = receivedInWeek;
+    document.getElementById('m_backlogPrev').value = backlogPrev;
+    document.getElementById('m_processed').value = closedInWeek;
+    document.getElementById('m_backlogNow').value = backlogNow;
+
+    /* ---------- timesheet (giờ hỗ trợ) ---------- */
+    setStatus('Đang lấy Timesheet…', 'busy');
+    let hoursNote = '';
+    try{
+      const tsQs = new URLSearchParams();
+      tsQs.set('project', project);
+      tsQs.set('from_date', fromDate.value);
+      tsQs.set('to_date', toDate.value);
+      const tsData = await fetchJson('/api/erp/timesheet?' + tsQs.toString());
+      const hours = extractTotalHours(tsData);
+      if (hours === null){
+        document.getElementById('m_hours').value = '0H';
+        hoursNote = ' (không tìm được cột giờ trong report — nhập tay)';
+      } else {
+        document.getElementById('m_hours').value = hours.toFixed(2) + 'H';
+      }
+    }catch(tsErr){
+      document.getElementById('m_hours').value = '0H';
+      hoursNote = ' (lỗi lấy timesheet: ' + tsErr.message + ' — nhập tay)';
+    }
+
+    setStatus(`Xong — ${rows.length} ticket, tồn đọng hiện tại ${backlogNow}.${hoursNote}`, hoursNote ? 'err' : 'ok');
+  }catch(err){
+    console.error(err);
+    setStatus('Lỗi: ' + err.message, 'err');
+  }finally{
+    fetchBtn.disabled = false;
+  }
+});
+
+/* ---------- copy nội dung báo cáo dạng text ---------- */
+document.getElementById('copyBtn').addEventListener('click', () => {
+  const v = id => document.getElementById(id).value;
+  const listify = raw => raw.split('\n').map(s => s.trim()).filter(Boolean)
+    .map((s,i) => `${i+1}. ${s}`).join('\n');
+
+  const text = `Tuần báo cáo: ${v('weekLabel')}
+Báo cáo số lượng ticket trong tuần:
+
+1. Closed: ${v('m_closed')}, open: ${v('m_open')}, assign: ${v('m_assign')}, working: ${v('m_working')}
+2. Reviewing: ${v('m_reviewing')}, waiting: ${v('m_waiting')}, pending: ${v('m_pending')}, re-open: ${v('m_reopen')}
+3. Time hỗ trợ: ${v('m_hours')}
+4. Ticket nhận trong tuần/tháng: ${v('m_received')}
+5. Ticket tồn động tuần/tháng trước: ${v('m_backlogPrev')}
+6. Ticket xử lý trong tuần/tháng : ${v('m_processed')}
+7. Ticket tồn động tuần/tháng: ${v('m_backlogNow')}
+
+2. Nhận xét/Vấn đề
+Nhận xét chung về tình hình support tuần/tháng báo cáo so với tuần trước:
+${v('txt_nhanxet') || '(chưa nhập)'}
+
+Thực hiện trong tuần: ${document.getElementById('doneWeekRange').textContent}
+
+${listify(v('txt_thuchien'))}
+
+Xử lý tuần sau: ${document.getElementById('nextWeekRange').textContent}
+
+${listify(v('txt_tuansau'))}
+
+3. Báo cáo tình hình thực hiện CRs: ${v('txt_crs')}
+4. Báo cáo thông tin khác: ${v('txt_khac')}`;
+
+  navigator.clipboard.writeText(text).then(() => {
+    setStatus('Đã sao chép nội dung báo cáo vào clipboard.', 'ok');
+  }).catch(() => {
+    setStatus('Không sao chép được tự động — vui lòng bôi đen & copy thủ công.', 'err');
+  });
+});
+
+document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;'); }
+</script>
+</body>
+</html>

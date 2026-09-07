@@ -79,6 +79,10 @@ app.get('/anvy/ticket-slide', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'anvy-ticket-slide.html'));
 });
 
+app.get('/anvy/uat-runbook', requirePageAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'protected', 'anvy-uat-runbook.html'));
+});
+
 app.get('/tickets/tra-cuu-erp', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'tickets-tra-cuu-erp.html'));
 });
@@ -109,6 +113,10 @@ app.get('/khac/ma-hoa-password-macos', requirePageAuth, (req, res) => {
 
 app.get('/kpiteam/loi-nhuan-thang', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'kpiteam-loi-nhuan-thang.html'));
+});
+
+app.get('/kpiteam/bao-cao-tuan', requirePageAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'protected', 'kpiteam-bao-cao-tuan.html'));
 });
 
 /* ---------- API: mã hóa/giải mã password Windows (key hệ thống giữ ở server) ---------- */

@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ANVY — Runbook cấu hình PROD → UAT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F7F8FA; --panel:#FFFFFF; --panel-2:#F1F4F7; --border:#DFE5EB;
+    --text:#1A2530; --text-dim:#5C6B7A; --text-faint:#94A2AF;
+    --accent:#0F766E; --accent-dim:#99D8CF;
+    --amber:#B45309; --amber-dim:#FDE68A;
+    --red:#DC2626; --red-dim:#FCA5A5;
+    --green:#16A34A;
+    --radius:6px;
+    --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'IBM Plex Sans', -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  body{min-height:100vh;}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px;}
+
+  header.top{border-bottom:1px solid var(--border);padding-bottom:20px;margin-bottom:24px;}
+  header.top .eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.02em;margin-bottom:6px;}
+  header.top h1{font-size:22px;font-weight:600;margin:0 0 6px;letter-spacing:-.01em;}
+  header.top p{margin:0;color:var(--text-dim);font-size:14px;max-width:640px;line-height:1.55;}
+
+  .env-banner{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--border);
+    border-left:3px solid var(--amber);border-radius:var(--radius);padding:12px 14px;margin-top:16px;font-size:13px;color:var(--text-dim);}
+  .env-banner strong{color:var(--amber);font-weight:600;}
+
+  .params{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:18px 20px;margin-bottom:26px;}
+  .params summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--text);list-style:none;display:flex;align-items:center;gap:8px;}
+  .params summary::-webkit-details-marker{display:none;}
+  .params summary::before{content:"▸";color:var(--accent);font-size:12px;transition:transform .15s;}
+  .params[open] summary::before{transform:rotate(90deg);}
+  .params-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px 18px;margin-top:18px;}
+  .field label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:5px;font-family:var(--mono);}
+  .field input{width:100%;background:var(--panel-2);border:1px solid var(--border);border-radius:5px;color:var(--text);
+    padding:8px 10px;font-family:var(--mono);font-size:13px;}
+  .field input:focus{outline:none;border-color:var(--accent);}
+  .field .hint{font-size:11px;color:var(--text-faint);margin-top:4px;}
+
+  .layout{display:grid;grid-template-columns:270px 1fr;gap:24px;align-items:start;}
+  @media (max-width:820px){.layout{grid-template-columns:1fr;}}
+
+  .timeline{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px;position:sticky;top:20px;}
+  .tl-item{display:flex;gap:10px;align-items:flex-start;padding:10px 10px;border-radius:6px;cursor:pointer;border:1px solid transparent;}
+  .tl-item:hover{background:var(--panel-2);}
+  .tl-item.active{background:var(--panel-2);border-color:var(--accent-dim);}
+  .tl-item.disabled{cursor:not-allowed;opacity:.4;}
+  .tl-num{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:11px;color:var(--text-dim);flex-shrink:0;margin-top:1px;}
+  .tl-item.done .tl-num{background:var(--accent);border-color:var(--accent);color:#FFFFFF;}
+  .tl-item.active .tl-num{border-color:var(--accent);color:var(--accent);}
+  .tl-item.skipped .tl-num{border-color:var(--text-faint);color:var(--text-faint);}
+  .tl-label{font-size:13px;line-height:1.4;color:var(--text);}
+  .tl-item.disabled .tl-label{color:var(--text-faint);}
+  .tl-status{font-size:10.5px;font-family:var(--mono);color:var(--text-faint);margin-top:2px;}
+  .tl-item.done .tl-status{color:var(--accent);}
+  .tl-item.skipped .tl-status{color:var(--text-faint);}
+
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:24px 26px 26px;min-height:420px;}
+  .panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:6px;}
+  .panel-head h2{font-size:17px;margin:0;font-weight:600;}
+  .step-tag{font-family:var(--mono);font-size:11px;color:var(--text-faint);}
+  .panel-desc{color:var(--text-dim);font-size:13.5px;line-height:1.6;margin:8px 0 20px;max-width:640px;}
+  .panel-desc code{background:var(--panel-2);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:12.5px;color:var(--accent);}
+
+  .warn-box{display:flex;gap:8px;background:rgba(240,180,41,.08);border:1px solid var(--amber-dim);border-radius:6px;
+    padding:10px 12px;font-size:12.5px;color:var(--amber);margin-bottom:18px;line-height:1.5;}
+
+  .skip-row{display:flex;align-items:center;gap:8px;margin-bottom:18px;font-size:13px;color:var(--text-dim);}
+  .skip-row input{accent-color:var(--accent);width:15px;height:15px;}
+
+  .sql-block{margin-bottom:18px;}
+  .sql-block .sql-label{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+  .sql-block .sql-label span{font-family:var(--mono);font-size:11.5px;color:var(--text-dim);text-transform:none;}
+  .copy-btn{font-family:var(--mono);font-size:11.5px;background:var(--panel-2);border:1px solid var(--border);color:var(--text-dim);
+    padding:5px 10px;border-radius:5px;cursor:pointer;transition:border-color .12s,color .12s;}
+  .copy-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .copy-btn.copied{border-color:var(--accent);color:var(--accent);}
+  pre.sql{background:#F1F5F9;border:1px solid var(--border);border-radius:6px;padding:14px 16px;overflow-x:auto;
+    font-family:var(--mono);font-size:12.5px;line-height:1.65;color:#1E293B;margin:0;white-space:pre;}
+  pre.sql .kw{color:#1D4ED8;font-weight:600;}
+  pre.sql .cm{color:#94A3B8;font-style:italic;}
+  pre.sql .str{color:#047857;}
+
+  .action-row{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:22px;padding-top:20px;border-top:1px solid var(--border);}
+  .confirm{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--text-dim);}
+  .confirm input{accent-color:var(--accent);width:16px;height:16px;}
+  .btn-next{font-family:var(--sans);font-weight:600;font-size:13.5px;background:var(--accent);color:#FFFFFF;border:none;
+    padding:10px 20px;border-radius:6px;cursor:pointer;}
+  .btn-next:disabled{background:var(--panel-2);color:var(--text-faint);cursor:not-allowed;}
+  .btn-secondary{font-family:var(--sans);font-size:12.5px;background:transparent;color:var(--text-dim);border:1px solid var(--border);
+    padding:9px 14px;border-radius:6px;cursor:pointer;}
+  .btn-secondary:hover{border-color:var(--text-dim);color:var(--text);}
+
+  .done-screen{text-align:center;padding:60px 20px;}
+  .done-screen .check{font-size:38px;color:var(--accent);margin-bottom:14px;}
+  .done-screen h2{font-size:19px;margin:0 0 8px;}
+  .done-screen p{color:var(--text-dim);font-size:13.5px;max-width:420px;margin:0 auto;line-height:1.6;}
+
+  footer.notes{margin-top:30px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:18px 20px;}
+  footer.notes h3{font-size:13px;margin:0 0 10px;color:var(--text-dim);font-family:var(--mono);font-weight:600;}
+  footer.notes ul{margin:0;padding-left:18px;color:var(--text-faint);font-size:12.5px;line-height:1.8;}
+  footer.notes li strong{color:var(--text-dim);}
+
+  .reset-link{font-size:11.5px;color:var(--text-faint);text-decoration:underline;cursor:pointer;background:none;border:none;padding:0;font-family:var(--sans);}
+  .reset-link:hover{color:var(--red);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="eyebrow">RUNBOOK — DB MIGRATION</div>
+    <h1>ANVY — Cấu hình DB sau khi restore PROD → UAT</h1>
+    <p>Chạy từng bước theo thứ tự. Mỗi bước hiện SQL để copy và chạy tay trong SSMS — xem trước bằng SELECT, rồi mới chạy UPDATE/INSERT. Đánh dấu "đã chạy xong" để mở khoá bước tiếp theo.</p>
+    <div class="env-banner">
+      <span>⚠️</span>
+      <span><strong>Trước khi bắt đầu:</strong> file backup PROD đã được restore vào đúng DB UAT (ngoài phạm vi tool này). Không chạy các lệnh bên dưới nhắm vào DB PROD.</span>
+    </div>
+  </header>
+
+  <details class="params" id="paramsBox">
+    <summary>Tham số cấu hình cho UAT — sửa trước khi copy SQL</summary>
+    <div class="params-grid" id="paramsGrid"></div>
+  </details>
+
+  <div class="layout">
+    <nav class="timeline" id="timeline"></nav>
+    <main class="panel" id="panel"></main>
+  </div>
+
+  <footer class="notes">
+    <button class="reset-link" id="resetBtn">Xoá tiến trình đã lưu, làm lại từ đầu</button>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+
+/* ---------------------------------------------------------------------
+   1) THAM SỐ — field definitions
+--------------------------------------------------------------------- */
+var PARAM_DEFS = [
+  {key:"envSubstring", label:"Chuỗi nhận diện DB UAT", def:"UAT", hint:"Tên DB hiện tại phải chứa chuỗi này"},
+  {key:"publicMediaUrl", label:"URL ảnh public (S3/CDN)", def:"https://s3.hcm-1.cloud.cmctelecom.vn/pictures/anvy-uat/sfaimage/MediaFiles/"},
+  {key:"serverMediaPath", label:"Đường dẫn upload trên server", def:"\\\\10.10.62.6\\PicturesUAT\\anvy\\sfaimage\\MediaFiles"},
+  {key:"ppcImageBaseUrl", label:"URL ảnh trong PPC_Setting", def:"http://uat.esales.vn/Anvy_SFAImage/MediaFiles/"},
+  {key:"kelmKey", label:"KELM_KEY (license key)", def:"KLM06-DANUN-HU7FM-DLYZC-SQ1SE-T2X9H"},
+  {key:"googleMapsKey", label:"Google Maps API key", def:"9Rc8feDVnazOewY0oSS3oO3AD4Qzfcsd1GPfrxW+JdcFF0Hm5P+OBzwncXnobQzW"},
+  {key:"versionSFA", label:"LAST_VERSION_SFA", def:"20260420_01"},
+  {key:"versionManager", label:"LAST_VERSION_MANAGER", def:"20260420_01"},
+  {key:"anonEmail", label:"Giá trị Email sau ẩn danh", def:""},
+  {key:"anonTaxReg", label:"Giá trị TaxRegNbr sau ẩn danh", def:""}
+];
+
+/* ---------------------------------------------------------------------
+   2) STEPS — mỗi step: title, desc, warn(optional), defaultSkip,
+      preview(params)->sql, action(params)->sql (null nếu không có)
+--------------------------------------------------------------------- */
+function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+var STEPS = [
+  {
+    id:"env", title:"Kiểm tra môi trường",
+    desc:'Chạy trước tiên trên connection đang mở trong SSMS, để chắc chắn bạn đang đứng đúng trên DB UAT — tránh chạy nhầm các bước phía sau lên PROD.',
+    noAction:true,
+    preview:function(p){ return "SELECT DB_NAME() AS CurrentDatabase;\n-- Kiểm tra: tên DB phải chứa \""+p.envSubstring+"\". Nếu không đúng, DỪNG LẠI ngay."; }
+  },
+  {
+    id:"anonymize", title:"Ẩn danh Email / TaxRegNbr",
+    desc:"Xoá thông tin liên hệ thật của khách hàng & user trước khi bàn giao DB cho môi trường test. Mặc định BỎ QUA — chỉ bật nếu chắc chắn UAT cần ẩn danh.",
+    defaultSkip:true,
+    warn:"Đây là thao tác không thể hoàn tác dễ dàng (ghi đè dữ liệu gốc). Chỉ bật khi chắc chắn.",
+    preview:function(){ return "SELECT TOP 20 CustomerID, Email, TaxRegNbr FROM AR_InvoiceCustomer;\nSELECT TOP 20 Id, Email FROM Users;"; },
+    action:function(p){ return "UPDATE AR_InvoiceCustomer SET Email = '"+p.anonEmail+"', TaxRegNbr = '"+p.anonTaxReg+"';\nUPDATE Users SET Email = '"+p.anonEmail+"';"; }
+  },
+  {
+    id:"publicMedia", title:"SYS_Configurations — URL ảnh public",
+    desc:"Trỏ các Code cấu hình ảnh public sang domain/CDN của UAT.",
+    preview:function(){ return "SELECT Code, TextVal AS CurrentValue\nFROM SYS_Configurations\nWHERE Code IN ('ImagePublic','IN10200ShowFromSite','MediaUrl','PublicAR30300','PublicIN20500');"; },
+    action:function(p){ return "UPDATE SYS_Configurations SET TextVal = '"+p.publicMediaUrl+"'\nWHERE Code IN ('ImagePublic','IN10200ShowFromSite','MediaUrl','PublicAR30300','PublicIN20500');"; }
+  },
+  {
+    id:"serverMedia", title:"SYS_Configurations — đường dẫn upload server",
+    desc:"Trỏ các Code đường dẫn lưu file upload trên server sang thư mục của UAT.",
+    preview:function(){ return "SELECT Code, TextVal AS CurrentValue\nFROM SYS_Configurations\nWHERE Code IN (\n    'MediaServerPath','OM20650UPLOAD','OM21100ProfilePath','OM21800ImgConfig','OM22001Upload',\n    'PG20600PROFILEPATH','PublicOM20500','PublicPG20400','SI24400ImgConfig','SUPImage',\n    'UploadAR20200','UploadAR20400','UploadAR20500','uploadImageUsers','UploadIN20500',\n    'UploadOM21800','UploadOM22003','UploadOM28700','UploadSA00300'\n);"; },
+    action:function(p){ return "UPDATE SYS_Configurations SET TextVal = '"+p.serverMediaPath+"'\nWHERE Code IN (\n    'MediaServerPath','OM20650UPLOAD','OM21100ProfilePath','OM21800ImgConfig','OM22001Upload',\n    'PG20600PROFILEPATH','PublicOM20500','PublicPG20400','SI24400ImgConfig','SUPImage',\n    'UploadAR20200','UploadAR20400','UploadAR20500','uploadImageUsers','UploadIN20500',\n    'UploadOM21800','UploadOM22003','UploadOM28700','UploadSA00300'\n);"; }
+  },
+  {
+    id:"ppcImage", title:"PPC_Setting — URL ảnh",
+    desc:"Cập nhật 4 Key URL ảnh dùng trong app/web sang domain UAT.",
+    preview:function(){ return "SELECT [Key], Value AS CurrentValue\nFROM PPC_Setting\nWHERE [Key] IN ('CUSTOMER_IMAGE_URL','NEWCUSTOMER_IMAGE_SAMPLE_URL','PROGRAM_IMAGE_URL','SFA_MEDIA_URL');"; },
+    action:function(p){ return "UPDATE PPC_Setting SET Value = '"+p.ppcImageBaseUrl+"' WHERE [Key] = 'CUSTOMER_IMAGE_URL';\nUPDATE PPC_Setting SET Value = '"+p.ppcImageBaseUrl+"' WHERE [Key] = 'NEWCUSTOMER_IMAGE_SAMPLE_URL';\nUPDATE PPC_Setting SET Value = '"+p.ppcImageBaseUrl+"' WHERE [Key] = 'PROGRAM_IMAGE_URL';\nUPDATE PPC_Setting SET Value = '"+p.ppcImageBaseUrl+"' WHERE [Key] = 'SFA_MEDIA_URL';"; }
+  },
+  {
+    id:"ppcKeys", title:"PPC_Setting — API key / license key",
+    desc:"Đổi KELM_KEY và Google Maps API key. Giá trị mặc định đang lấy nguyên từ file backup — sửa lại ở khối tham số phía trên nếu UAT cần dùng key riêng.",
+    preview:function(){ return "SELECT [Key], Value AS CurrentValue\nFROM PPC_Setting\nWHERE [Key] IN ('KELM_KEY','KEY_API_GG_MAPS_FLUTTER_V3');"; },
+    action:function(p){ return "UPDATE PPC_Setting SET Value = '"+p.kelmKey+"' WHERE [Key] = 'KELM_KEY';\nUPDATE PPC_Setting SET Value = '"+p.googleMapsKey+"' WHERE [Key] = 'KEY_API_GG_MAPS_FLUTTER_V3';"; }
+  },
+  {
+    id:"apiUsers", title:"ApiUsers — seed admin / admin1",
+    desc:"Tạo 2 tài khoản quản trị mặc định nếu UAT chưa có (giữ nguyên hash lấy từ PROD). Có kiểm tra tồn tại để chạy lại không lỗi trùng khoá.",
+    warn:"Đổi mật khẩu 2 tài khoản này ngay sau khi seed — hash/salt hiện đang lấy nguyên từ PROD.",
+    preview:function(){ return "SELECT Id, Username FROM ApiUsers WHERE Username IN ('admin','admin1');"; },
+    action:function(){ return "IF NOT EXISTS (SELECT 1 FROM ApiUsers WHERE Username = 'admin')\n    INSERT INTO ApiUsers (FirstName, LastName, Username, PasswordHash, PasswordSalt, Token)\n    VALUES ('Admin', 'HQSOFT', 'admin',\n        0x0E99816316BFB43C2D1E6F068CDAD55A299376F00424726DFA4CE3E4E75FA8539CFEC014A96EF7AC29D5F17D600E94D660F7528328B80B91DB180ACFECA24F50,\n        0xDBDA3490F910619B05394FBB5153E6A020FE6C4FBB92867F47D864E33FD7AD0D42D5275FC62161366FBE2AB3AF10C312480A49170DBBEFE2487730E662D1583E1BDEA952A7FD154CE7ADBF435368FD4A6220B5A40462D93D68E55CCE511E6D99A76177DB3956AE47CC6987DA8500D4FDFB7280CB34A1F7C4D32174F8A9F64E51,\n        NULL);\n\nIF NOT EXISTS (SELECT 1 FROM ApiUsers WHERE Username = 'admin1')\n    INSERT INTO ApiUsers (FirstName, LastName, Username, PasswordHash, PasswordSalt, Token)\n    VALUES ('admin1', 'admin1', 'admin1',\n        0x098024C2553B4B98309045D95CA9232ED929EAE54CD5A89CFEE70CFF75CE10313A4F4533910698AE0ABC5332F26EB12D5EDF86CFEA9277A4988287C3C1228ECB,\n        0x5DF50191070A386D23690BC5BBAE2D0FF6BE2F0C93506A8D258D85700D29671E6DDE2E6FAF6E9EF958BEDFC1CDF8B8068159866AB5ED26BFFB842B934030E388B91A1981A6A63D137C9237D2DDF12E0209BA814D63DD5FB7277D0C23B831237032AA38FAF07BD33ED386054D2050F1119E7CD8A1372066257BB50089E99ED7D1,\n        NULL);"; }
+  },
+  {
+    id:"companyMapping", title:"SA_APICompanyMapping",
+    desc:"Insert thông tin công ty (AMH / AVH / AVM) nếu UAT chưa có — dùng cho API hoá đơn điện tử.",
+    preview:function(){ return "SELECT ID, Name FROM SA_APICompanyMapping WHERE ID IN ('AMH','AVH','AVM');"; },
+    action:function(){ return "IF NOT EXISTS (SELECT 1 FROM SA_APICompanyMapping WHERE ID = 'AMH')\n    INSERT INTO SA_APICompanyMapping (ID, Name, Addr1, Addr2, Ward, District, State, Country, PhoneNumber, TaxRegNbr, Email, Crtd_DateTime, Crtd_Prog, Crtd_User, LUpd_DateTime, LUpd_Prog, LUpd_User)\n    VALUES ('AMH',N'CÔNG TY CỔ PHẦN ANVY',N'',N'Thôn Bá Khê',N'',N'HYN073',N'HYN',N'VN',N'1800234558',N'0101651777',N'','2024-08-30 10:46:48.203',N'SA00002',N'MDCNV00005','2025-08-15 13:16:47.020',N'SA00002',N'MDCNV00005');\n\nIF NOT EXISTS (SELECT 1 FROM SA_APICompanyMapping WHERE ID = 'AVH')\n    INSERT INTO SA_APICompanyMapping (ID, Name, Addr1, Addr2, Ward, District, State, Country, PhoneNumber, TaxRegNbr, Email, Crtd_DateTime, Crtd_Prog, Crtd_User, LUpd_DateTime, LUpd_Prog, LUpd_User)\n    VALUES ('AVH',N'CÔNG TY CỔ PHẦN ANVYHERB',N'',N'Lô A5/D21 Khu đô thị mới Cầu Giấy',N'',N'HNI035',N'HNI',N'VN',N'0888936866',N'0108690905',N'vitruehealth@gmail.com','2024-08-30 10:46:48.203',N'SA00002',N'MDCNV00005','2025-08-15 13:16:47.023',N'SA00002',N'MDCNV00005');\n\nIF NOT EXISTS (SELECT 1 FROM SA_APICompanyMapping WHERE ID = 'AVM')\n    INSERT INTO SA_APICompanyMapping (ID, Name, Addr1, Addr2, Ward, District, State, Country, PhoneNumber, TaxRegNbr, Email, Crtd_DateTime, Crtd_Prog, Crtd_User, LUpd_DateTime, LUpd_Prog, LUpd_User)\n    VALUES ('AVM',N'CÔNG TY CỔ PHẦN ANVY',N'',N'Thôn Bá Khê',N'',N'HYN073',N'HYN',N'VN',N'1800234558',N'0101651777',N'info@anvy.vn','2024-08-30 10:46:48.203',N'SA00002',N'MDCNV00005','2025-08-15 13:16:47.023',N'SA00002',N'MDCNV00005');"; }
+  },
+  {
+    id:"invoiceNotation", title:"SA_InvoiceNotation + Detail",
+    desc:"Insert cấu hình API hoá đơn điện tử Viettel và số hoá đơn hiện tại cho từng công ty, nếu UAT chưa có.",
+    warn:"AccountPassword đang dùng chung tài khoản Viettel của PROD — xác nhận với nghiệp vụ xem UAT có nên trỏ sang tài khoản test riêng không.",
+    preview:function(){ return "SELECT CpnyID, Invoice, APILink FROM SA_InvoiceNotation;\nSELECT Id, CpnyID, LastOrderNbr FROM SA_InvoiceNotationDetail;"; },
+    action:function(){ return "IF NOT EXISTS (SELECT 1 FROM SA_InvoiceNotation WHERE CpnyID = 'AVH')\n    INSERT INTO SA_InvoiceNotation (CpnyID, Invoice, APILink, LUpd_DateTime, LUpd_Prog, LUpd_User, Crtd_DateTime, Crtd_Prog, Crtd_User, AccountUsername, AccountPassword)\n    VALUES ('AVH','AVH','https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/','2024-06-27 17:18:32.310','ADMIN','ADMIN','2024-06-27 17:18:32.310','ADMIN','ADMIN','0100109106-899','ee6GyuL8Gy+7dUnE9X5Kjw==');\n\nIF NOT EXISTS (SELECT 1 FROM SA_InvoiceNotation WHERE CpnyID = 'HCM')\n    INSERT INTO SA_InvoiceNotation (CpnyID, Invoice, APILink, LUpd_DateTime, LUpd_Prog, LUpd_User, Crtd_DateTime, Crtd_Prog, Crtd_User, AccountUsername, AccountPassword)\n    VALUES ('HCM','HCM','https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/','2024-05-29 16:15:25.407','ADMIN','ADMIN','2024-05-29 16:15:25.407','ADMIN','ADMIN','0100109106-899','ee6GyuL8Gy+7dUnE9X5Kjw==');\n\nIF NOT EXISTS (SELECT 1 FROM SA_InvoiceNotation WHERE CpnyID = 'HNI')\n    INSERT INTO SA_InvoiceNotation (CpnyID, Invoice, APILink, LUpd_DateTime, LUpd_Prog, LUpd_User, Crtd_DateTime, Crtd_Prog, Crtd_User, AccountUsername, AccountPassword)\n    VALUES ('HNI','HNI','https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/','2024-05-29 14:40:03.583','ADMIN','ADMIN','2024-05-29 14:40:03.583','ADMIN','ADMIN','0100109106-899','ee6GyuL8Gy+7dUnE9X5Kjw==');\n\nIF NOT EXISTS (SELECT 1 FROM SA_InvoiceNotation WHERE CpnyID = 'HYN')\n    INSERT INTO SA_InvoiceNotation (CpnyID, Invoice, APILink, LUpd_DateTime, LUpd_Prog, LUpd_User, Crtd_DateTime, Crtd_Prog, Crtd_User, AccountUsername, AccountPassword)\n    VALUES ('HYN','HYN','https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/','2025-07-03 11:33:15.720','ADMIN','ADMIN','2025-07-03 11:33:15.720','ADMIN','ADMIN','0100109106-899','ee6GyuL8Gy+7dUnE9X5Kjw==');\n\nIF NOT EXISTS (SELECT 1 FROM SA_InvoiceNotation WHERE CpnyID = 'NPPABC')\n    INSERT INTO SA_InvoiceNotation (CpnyID, Invoice, APILink, LUpd_DateTime, LUpd_Prog, LUpd_User, Crtd_DateTime, Crtd_Prog, Crtd_User, AccountUsername, AccountPassword)\n    VALUES ('NPPABC','NPPABC','https://api-vinvoice.viettel.vn/services/einvoiceapplication/api/','2024-05-29 16:43:46.883','ADMIN','ADMIN','2024-05-29 16:43:46.883','ADMIN','ADMIN','0100109106-899','ee6GyuL8Gy+7dUnE9X5Kjw==');\n\nIF NOT EXISTS (SELECT 1 FROM SA_InvoiceNotation WHERE CpnyID = 'QT_TESTNPP')\n    INSERT INTO SA_InvoiceNotation (CpnyID, Invoice, APILink, LUpd_DateTime, LUpd_Prog, LUpd_User, Crtd_DateTime, Crtd_Prog, Crtd_User, AccountUsername, AccountPassword)\n    VALUES ('QT_TESTNPP','QT_TESTNPP',NULL,'2025-08-27 10:56:24.377','ADMIN','ADMIN','2025-08-27 10:56:24.377','ADMIN','ADMIN',NULL,NULL);\n\nIF NOT EXISTS (SELECT 1 FROM SA_InvoiceNotationDetail WHERE Id = 1)\n    INSERT INTO SA_InvoiceNotationDetail (Id, CpnyID, InvcNumber, Pattern, Serial, FromNum, ToNum, StartDate, UsedNumber, UpdateDateOrd, TotalReleaseInvc, LastOrderNbr, PreFixOrderNbr, LUpd_DateTime, LUpd_Prog, LUpd_User, Crtd_DateTime, Crtd_Prog, Crtd_User)\n    VALUES (1,'HNI','HNI','HNI','HNI','00000001','90000000','2024-05-29 14:40:03.587','00005235','2024-05-29 14:40:03.587',4228,'00005235','VT','2026-08-18 11:05:27.293','ADMIN','ADMIN','2024-05-29 14:40:03.587','ADMIN','ADMIN');\n\nIF NOT EXISTS (SELECT 1 FROM SA_InvoiceNotationDetail WHERE Id = 2)\n    INSERT INTO SA_InvoiceNotationDetail (Id, CpnyID, InvcNumber, Pattern, Serial, FromNum, ToNum, StartDate, UsedNumber, UpdateDateOrd, TotalReleaseInvc, LastOrderNbr, PreFixOrderNbr, LUpd_DateTime, LUpd_Prog, LUpd_User, Crtd_DateTime, Crtd_Prog, Crtd_User)\n    VALUES (2,'HCM','HCM','HCM','HCM','00000001','90000000','2024-05-29 16:15:25.410','00000656','2024-05-29 16:15:25.410',654,'00000656','VT','2026-08-17 09:46:51.390','ADMIN','ADMIN','2024-05-29 16:15:25.410','ADMIN','ADMIN');\n\nIF NOT EXISTS (SELECT 1 FROM SA_InvoiceNotationDetail WHERE Id = 3)\n    INSERT INTO SA_InvoiceNotationDetail (Id, CpnyID, InvcNumber, Pattern, Serial, FromNum, ToNum, StartDate, UsedNumber, UpdateDateOrd, TotalReleaseInvc, LastOrderNbr, PreFixOrderNbr, LUpd_DateTime, LUpd_Prog, LUpd_User, Crtd_DateTime, Crtd_Prog, Crtd_User)\n    VALUES (3,'NPPABC','NPPABC','NPPABC','NPPABC','00000001','90000000','2024-05-29 16:43:46.883','00000001','2024-05-29 16:43:46.883',0,'00000001','VT','2024-05-29 18:17:38.960','ADMIN','ADMIN','2024-05-29 16:43:46.883','ADMIN','ADMIN');\n\nIF NOT EXISTS (SELECT 1 FROM SA_InvoiceNotationDetail WHERE Id = 4)\n    INSERT INTO SA_InvoiceNotationDetail (Id, CpnyID, InvcNumber, Pattern, Serial, FromNum, ToNum, StartDate, UsedNumber, UpdateDateOrd, TotalReleaseInvc, LastOrderNbr, PreFixOrderNbr, LUpd_DateTime, LUpd_Prog, LUpd_User, Crtd_DateTime, Crtd_Prog, Crtd_User)\n    VALUES (4,'AVH','AVH','AVH','AVH','00000001','90000000','2024-06-27 17:18:32.310','00000346','2024-06-27 17:18:32.310',329,'00000346','VT','2025-09-16 10:30:55.977','ADMIN','ADMIN','2024-06-27 17:18:32.310','ADMIN','ADMIN');\n\nIF NOT EXISTS (SELECT 1 FROM SA_InvoiceNotationDetail WHERE Id = 5)\n    INSERT INTO SA_InvoiceNotationDetail (Id, CpnyID, InvcNumber, Pattern, Serial, FromNum, ToNum, StartDate, UsedNumber, UpdateDateOrd, TotalReleaseInvc, LastOrderNbr, PreFixOrderNbr, LUpd_DateTime, LUpd_Prog, LUpd_User, Crtd_DateTime, Crtd_Prog, Crtd_User)\n    VALUES (5,'HYN','HDT','HYN','HYN','00000001','90000000','2025-07-03 11:33:15.720','00000124','2025-07-03 11:33:15.720',112,'00000124','VT','2026-07-29 17:49:12.190','ADMIN','ADMIN','2025-07-03 11:33:15.720','ADMIN','ADMIN');\n\nIF NOT EXISTS (SELECT 1 FROM SA_InvoiceNotationDetail WHERE Id = 6)\n    INSERT INTO SA_InvoiceNotationDetail (Id, CpnyID, InvcNumber, Pattern, Serial, FromNum, ToNum, StartDate, UsedNumber, UpdateDateOrd, TotalReleaseInvc, LastOrderNbr, PreFixOrderNbr, LUpd_DateTime, LUpd_Prog, LUpd_User, Crtd_DateTime, Crtd_Prog, Crtd_User)\n    VALUES (6,'QT_TESTNPP','HDT','QT_TESTNPP','QT_TESTNPP','00000001','90000000','2025-08-27 10:56:24.377','00000007','2025-08-27 10:56:24.377',6,'00000007','VT','2026-07-30 10:56:50.217','ADMIN','ADMIN','2025-08-27 10:56:24.377','ADMIN','ADMIN');"; }
+  },
+  {
+    id:"version", title:"PPC_Setting — Version hiển thị",
+    desc:"Cập nhật số version SFA/Manager hiển thị trên UAT theo build đang test.",
+    preview:function(){ return "SELECT [Key], Value AS CurrentValue\nFROM PPC_Setting\nWHERE [Key] IN ('LAST_VERSION_SFA','LAST_VERSION_MANAGER');"; },
+    action:function(p){ return "UPDATE PPC_Setting SET Value = '"+p.versionSFA+"' WHERE [Key] = 'LAST_VERSION_SFA';\nUPDATE PPC_Setting SET Value = '"+p.versionManager+"' WHERE [Key] = 'LAST_VERSION_MANAGER';"; }
+  }
+];
+
+/* ---------------------------------------------------------------------
+   3) STATE + PERSISTENCE
+--------------------------------------------------------------------- */
+var STORAGE_KEY_PARAMS = "anvy-uat-runbook:params";
+var STORAGE_KEY_PROGRESS = "anvy-uat-runbook:progress";
+
+var params = {};
+PARAM_DEFS.forEach(function(f){ params[f.key] = f.def; });
+
+var progress = { current:0, status:{} }; // status[stepId] = 'done' | 'skipped'
+STEPS.forEach(function(s){ if(s.defaultSkip) progress.status[s.id] = null; });
+
+var hasStorage = (typeof window!=="undefined" && window.storage);
+
+async function loadState(){
+  if(!hasStorage) return;
+  try{
+    var r1 = await window.storage.get("params-anvy-uat");
+    if(r1 && r1.value) params = Object.assign(params, JSON.parse(r1.value));
+  }catch(e){}
+  try{
+    var r2 = await window.storage.get("progress-anvy-uat");
+    if(r2 && r2.value) progress = Object.assign(progress, JSON.parse(r2.value));
+  }catch(e){}
+}
+async function saveParams(){
+  if(!hasStorage) return;
+  try{ await window.storage.set("params-anvy-uat", JSON.stringify(params)); }catch(e){}
+}
+async function saveProgress(){
+  if(!hasStorage) return;
+  try{ await window.storage.set("progress-anvy-uat", JSON.stringify(progress)); }catch(e){}
+}
+async function clearAll(){
+  if(hasStorage){
+    try{ await window.storage.delete("params-anvy-uat"); }catch(e){}
+    try{ await window.storage.delete("progress-anvy-uat"); }catch(e){}
+  }
+  PARAM_DEFS.forEach(function(f){ params[f.key] = f.def; });
+  progress = { current:0, status:{} };
+  STEPS.forEach(function(s){ if(s.defaultSkip) progress.status[s.id] = null; });
+  renderAll();
+}
+
+/* ---------------------------------------------------------------------
+   4) RENDER — params form
+--------------------------------------------------------------------- */
+function renderParamsForm(){
+  var grid = document.getElementById("paramsGrid");
+  grid.innerHTML = PARAM_DEFS.map(function(f){
+    return "<div class='field'>"+
+      "<label for='p_"+f.key+"'>"+esc(f.label)+"</label>"+
+      "<input type='text' id='p_"+f.key+"' value=\""+esc(params[f.key])+"\" data-key='"+f.key+"'>"+
+      (f.hint? "<div class='hint'>"+esc(f.hint)+"</div>" : "")+
+      "</div>";
+  }).join("");
+  grid.querySelectorAll("input").forEach(function(inp){
+    inp.addEventListener("input", function(){
+      params[inp.dataset.key] = inp.value;
+      saveParams();
+      renderPanel(); // SQL cần cập nhật theo tham số mới ngay
+    });
+  });
+}
+
+/* ---------------------------------------------------------------------
+   5) RENDER — timeline (sidebar)
+--------------------------------------------------------------------- */
+function stepUnlocked(idx){
+  if(idx===0) return true;
+  var prev = STEPS[idx-1];
+  var st = progress.status[prev.id];
+  return st==="done" || st==="skipped";
+}
+function renderTimeline(){
+  var el = document.getElementById("timeline");
+  el.innerHTML = STEPS.map(function(s,i){
+    var st = progress.status[s.id];
+    var unlocked = stepUnlocked(i);
+    var active = (i===progress.current);
+    var cls = ["tl-item"];
+    if(active) cls.push("active");
+    if(st==="done") cls.push("done");
+    if(st==="skipped") cls.push("skipped");
+    if(!unlocked) cls.push("disabled");
+    var statusText = st==="done" ? "Đã chạy xong" : st==="skipped" ? "Đã bỏ qua" : (unlocked ? "Sẵn sàng" : "Đang khoá");
+    return "<div class='"+cls.join(" ")+"' data-idx='"+i+"'>"+
+      "<div class='tl-num'>"+(st==="done"?"✓":(i+1))+"</div>"+
+      "<div><div class='tl-label'>"+esc(s.title)+"</div><div class='tl-status'>"+statusText+"</div></div>"+
+      "</div>";
+  }).join("");
+  el.querySelectorAll(".tl-item").forEach(function(node){
+    node.addEventListener("click", function(){
+      var idx = +node.dataset.idx;
+      if(!stepUnlocked(idx)) return;
+      progress.current = idx;
+      saveProgress();
+      renderAll();
+    });
+  });
+}
+
+/* ---------------------------------------------------------------------
+   6) RENDER — main panel (current step)
+--------------------------------------------------------------------- */
+function highlightSql(sql){
+  var esc1 = esc(sql);
+  esc1 = esc1.replace(/(--.*$)/gm, "<span class='cm'>$1</span>");
+  esc1 = esc1.replace(/\b(SELECT|FROM|WHERE|UPDATE|SET|INSERT INTO|VALUES|IF NOT EXISTS|IN|TOP|AS|NULL)\b/g, "<span class='kw'>$1</span>");
+  return esc1;
+}
+
+function copyText(btn, text){
+  function done(){
+    var orig = btn.textContent;
+    btn.textContent = "Đã sao chép ✓";
+    btn.classList.add("copied");
+    setTimeout(function(){ btn.textContent = orig; btn.classList.remove("copied"); }, 1400);
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(function(){ fallbackCopy(text); done(); });
+  } else {
+    fallbackCopy(text); done();
+  }
+}
+function fallbackCopy(text){
+  var ta=document.createElement("textarea");
+  ta.value=text; ta.style.position="fixed"; ta.style.opacity="0";
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand("copy"); }catch(e){}
+  document.body.removeChild(ta);
+}
+
+function renderPanel(){
+  var panel = document.getElementById("panel");
+  var idx = progress.current;
+
+  if(idx >= STEPS.length){
+    panel.innerHTML =
+      "<div class='done-screen'><div class='check'>✓</div>"+
+      "<h2>Hoàn Tất Toàn Bộ BackUp UAT AnVy</h2>"+
+      "<p>Tất cả các bước đã được đánh dấu chạy xong hoặc bỏ qua. Kiểm tra lại ứng dụng UAT (đăng nhập, xem ảnh sản phẩm, tạo hoá đơn thử) để xác nhận cấu hình đã đúng.</p>"+
+      "</div>";
+    return;
+  }
+
+  var s = STEPS[idx];
+  var st = progress.status[s.id];
+  var checked = (st==="done") ? "checked" : "";
+
+  var html = "";
+  html += "<div class='panel-head'><h2>"+esc(s.title)+"</h2><span class='step-tag'>Bước "+(idx+1)+" / "+STEPS.length+"</span></div>";
+  html += "<p class='panel-desc'>"+s.desc+"</p>";
+  if(s.warn) html += "<div class='warn-box'>⚠️ "+esc(s.warn)+"</div>";
+
+  if(s.defaultSkip !== undefined || true){
+    // skip toggle luôn có sẵn cho mọi bước có action, trừ bước env
+    if(!s.noAction){
+      var skipChecked = (st==="skipped") || (st===null && s.defaultSkip) ? "checked" : "";
+      html += "<div class='skip-row'><input type='checkbox' id='skipToggle' "+skipChecked+"> "+
+        "<label for='skipToggle'>Bỏ qua bước này (UAT không cần áp dụng thay đổi này)</label></div>";
+    }
+  }
+
+  var isSkipped = (st==="skipped");
+
+  html += "<div class='sql-block'><div class='sql-label'><span>1. Xem trước — chạy SELECT này trước để kiểm tra giá trị hiện tại</span>"+
+    "<button class='copy-btn' id='copyPreview'>Copy SQL</button></div>"+
+    "<pre class='sql'>"+highlightSql(s.preview(params))+"</pre></div>";
+
+  if(!s.noAction){
+    html += "<div class='sql-block' style='"+(isSkipped?"opacity:.35":"")+"'><div class='sql-label'><span>2. Thực thi — chạy sau khi đã xem trước và xác nhận đúng</span>"+
+      "<button class='copy-btn' id='copyAction' "+(isSkipped?"disabled":"")+">Copy SQL</button></div>"+
+      "<pre class='sql'>"+highlightSql(s.action(params))+"</pre></div>";
+  }
+
+  html += "<div class='action-row'>";
+  if(s.noAction){
+    html += "<label class='confirm'><input type='checkbox' id='confirmDone' "+checked+"> Tôi đã xác nhận đang kết nối đúng DB UAT</label>";
+  } else {
+    html += "<label class='confirm'><input type='checkbox' id='confirmDone' "+checked+" "+(isSkipped?"disabled":"")+"> Đã chạy xong bước này trong SSMS</label>";
+  }
+  html += "<div style='display:flex;gap:10px'>";
+  if(idx>0) html += "<button class='btn-secondary' id='backBtn'>← Bước trước</button>";
+  html += "<button class='btn-next' id='nextBtn' "+(st==="done"||st==="skipped"?"":"disabled")+">Sang bước tiếp theo →</button>";
+  html += "</div></div>";
+
+  panel.innerHTML = html;
+
+  // wire events
+  var copyPrev = document.getElementById("copyPreview");
+  if(copyPrev) copyPrev.addEventListener("click", function(){ copyText(copyPrev, s.preview(params)); });
+  var copyAct = document.getElementById("copyAction");
+  if(copyAct) copyAct.addEventListener("click", function(){ copyText(copyAct, s.action(params)); });
+
+  var skipToggle = document.getElementById("skipToggle");
+  if(skipToggle){
+    skipToggle.addEventListener("change", function(){
+      if(skipToggle.checked){
+        progress.status[s.id] = "skipped";
+        document.getElementById("confirmDone").checked = false;
+        document.getElementById("confirmDone").disabled = true;
+      } else {
+        progress.status[s.id] = null;
+        document.getElementById("confirmDone").disabled = false;
+      }
+      saveProgress();
+      renderAll();
+    });
+  }
+
+  var confirmDone = document.getElementById("confirmDone");
+  if(confirmDone){
+    confirmDone.addEventListener("change", function(){
+      if(confirmDone.checked){
+        progress.status[s.id] = "done";
+      } else {
+        progress.status[s.id] = (s.defaultSkip && !s.noAction) ? null : null;
+      }
+      saveProgress();
+      renderAll();
+    });
+  }
+
+  var nextBtn = document.getElementById("nextBtn");
+  if(nextBtn) nextBtn.addEventListener("click", function(){
+    if(nextBtn.disabled) return;
+    progress.current = idx+1;
+    saveProgress();
+    renderAll();
+  });
+  var backBtn = document.getElementById("backBtn");
+  if(backBtn) backBtn.addEventListener("click", function(){
+    progress.current = idx-1;
+    saveProgress();
+    renderAll();
+  });
+}
+
+function renderAll(){
+  renderParamsForm();
+  renderTimeline();
+  renderPanel();
+}
+
+document.getElementById("resetBtn").addEventListener("click", function(){
+  if(confirm("Xoá toàn bộ tham số và tiến trình đã lưu, làm lại từ đầu?")) clearAll();
+});
+
+loadState().then(renderAll);
+renderAll(); // render ngay với giá trị mặc định trong lúc chờ storage load xong
+
+})();
+</script>
+</body>
+</html>
