@@ -146,10 +146,12 @@
     </div>
     <div class="status" id="statusText"></div>
     <div class="hint">
-      Cách tính: <code class="tag">Tồn đọng cuối tuần</code> = tất cả ticket của dự án đang ở trạng thái khác Closed (snapshot hiện tại).
-      <code class="tag">Nhận trong tuần</code> = ticket có ngày tạo (creation) rơi vào khoảng đã chọn.
-      <code class="tag">Xử lý trong tuần</code> = ticket Closed có ngày cập nhật gần nhất rơi vào khoảng đã chọn (xấp xỉ theo field <code class="tag">modified</code> — sửa tay nếu ERP có field ngày đóng riêng).
-      <code class="tag">Tồn đọng tuần trước</code> = Tồn đọng cuối tuần − Nhận trong tuần + Xử lý trong tuần.
+      Cách tính (theo <code class="tag">opening_date</code> của ticket, không dùng ngày tạo record):<br>
+      <b>Mục 1, 2</b> (breakdown theo status) = ticket có <code class="tag">opening_date</code> trong khoảng Từ ngày–Đến ngày, nhóm theo trạng thái hiện tại (riêng <b>Closed</b> = số ticket mở &amp; đóng ngay trong tuần, giống mục 6).<br>
+      <b>Mục 4</b> (nhận trong tuần) = ticket có <code class="tag">opening_date</code> nằm trong khoảng Từ ngày–Đến ngày, mọi trạng thái.<br>
+      <b>Mục 5</b> (tồn đọng trước tuần lọc) = ticket có <code class="tag">opening_date</code> &lt; "Từ ngày" (không giới hạn tháng), và hiện chưa Closed.<br>
+      <b>Mục 6</b> (xử lý trong tuần) = ticket có <code class="tag">opening_date</code> trong tuần lọc VÀ trạng thái hiện tại là Closed.<br>
+      <b>Mục 7</b> (tồn đọng tuần) = tổng breakdown mục 1,2 (trừ Closed) + mục 5 (vì mục 1,2 chỉ tính ticket mở trong tuần, còn tồn đọng từ trước tuần nằm ở mục 5).<br>
       Tất cả số liệu bên dưới đều <b>sửa tay được</b> — kiểm tra lại trước khi gửi báo cáo.
     </div>
   </div>
@@ -363,30 +365,42 @@ fetchBtn.addEventListener('click', async () => {
 
     const backlogBreakdown = {};
     BACKLOG_STATUSES.forEach(s => backlogBreakdown[s] = 0);
-    let backlogNow = 0, receivedInWeek = 0, closedInWeek = 0;
+    let receivedInWeek = 0, closedInWeek = 0, backlogPrevAll = 0;
 
     rows.forEach(r => {
       const status = (r.status || '').trim();
-      const created = parseFrappeDate(r.creation);
-      if (inRange(created, from, to)) receivedInWeek++;
+      const opened = parseFrappeDate(r.opening_date || r.creation);
+      if (!opened) return;
 
-      if (status === CLOSED_STATUS){
-        const closedDate = parseFrappeDate(r.resolution_date || r.closed_on || r.modified);
-        if (inRange(closedDate, from, to)) closedInWeek++;
-      } else if (BACKLOG_STATUSES.includes(status)){
+      // mục 1, 2: breakdown theo status, tính trên các ticket có opening_date nằm TRONG
+      // khoảng tuần lọc (Từ ngày ≤ opening_date ≤ Đến ngày).
+      if (inRange(opened, from, to) && BACKLOG_STATUSES.includes(status)){
         backlogBreakdown[status]++;
-        backlogNow++;
       }
+
+      // mục 4: ticket nhận trong tuần — opening_date rơi vào đúng khoảng lọc, mọi trạng thái.
+      if (inRange(opened, from, to)) receivedInWeek++;
+
+      // mục 6: ticket xử lý trong tuần — opening_date rơi vào khoảng lọc VÀ trạng thái hiện tại là Closed
+      // (tức ticket mở và đóng luôn trong tuần này).
+      if (inRange(opened, from, to) && status === CLOSED_STATUS) closedInWeek++;
+
+      // mục 5: ticket tồn đọng trước tuần lọc — mở TRƯỚC ngày "từ ngày" (không giới hạn tháng),
+      // và hiện chưa Closed.
+      if (opened < from && status !== CLOSED_STATUS) backlogPrevAll++;
     });
 
-    const backlogPrev = backlogNow - receivedInWeek + closedInWeek;
+    // mục 7: tồn đọng tuần = ticket còn mở trong tuần (theo breakdown mục 1,2) cộng với
+    // ticket tồn đọng mở từ trước tuần lọc (mục 5) — vì mục 1,2 chỉ tính ticket mở trong tuần.
+    const openedThisWeek = BACKLOG_STATUSES.reduce((sum, s) => sum + backlogBreakdown[s], 0);
+    const backlogNow = openedThisWeek + backlogPrevAll;
 
     document.getElementById('m_closed').value = closedInWeek;
     BACKLOG_STATUSES.forEach(s => {
       document.getElementById(STATUS_TO_FIELD[s]).value = backlogBreakdown[s];
     });
     document.getElementById('m_received').value = receivedInWeek;
-    document.getElementById('m_backlogPrev').value = backlogPrev;
+    document.getElementById('m_backlogPrev').value = backlogPrevAll;
     document.getElementById('m_processed').value = closedInWeek;
     document.getElementById('m_backlogNow').value = backlogNow;
 
