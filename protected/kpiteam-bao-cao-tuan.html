@@ -200,6 +200,7 @@ Hỗ trợ thanh toán công cho MDS và kế toán</textarea>
 
   <div class="actions no-print">
     <button class="btn btn-ghost" id="copyBtn">⧉ Sao chép nội dung báo cáo (text)</button>
+    <button class="btn btn-ghost" id="copyTableBtn">⊞ Sao chép dạng bảng (dán vào ERP)</button>
     <button class="btn btn-ghost" id="printBtn">🖨 In / Xuất PDF</button>
   </div>
   <div class="status no-print" id="bottomStatusText"></div>
@@ -481,6 +482,102 @@ ${listify(v('txt_tuansau'))}
   }).catch(() => {
     setBottomStatus('Không sao chép được tự động — vui lòng bôi đen & copy thủ công.', 'err');
   });
+});
+
+/* ---------- copy dạng bảng (HTML thật) để dán vào ERP / rich-text editor ---------- */
+document.getElementById('copyTableBtn').addEventListener('click', async () => {
+  const v = id => document.getElementById(id).value;
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const listifyHtml = raw => {
+    const items = raw.split('\n').map(s => s.trim()).filter(Boolean);
+    if (!items.length) return '<p>(chưa nhập)</p>';
+    return '<ol>' + items.map(s => `<li>${esc(s)}</li>`).join('') + '</ol>';
+  };
+  const listifyText = raw => raw.split('\n').map(s => s.trim()).filter(Boolean)
+    .map((s,i) => `${i+1}. ${s}`).join('\n');
+
+  const tableStyle = 'border-collapse:collapse;';
+  const thtd = 'border:1px solid #999;padding:5px 10px;text-align:left;';
+
+  const statusRows = [
+    ['Closed', v('m_closed')], ['Open', v('m_open')], ['Assign', v('m_assign')], ['Working', v('m_working')],
+    ['Reviewing', v('m_reviewing')], ['Waiting', v('m_waiting')], ['Pending', v('m_pending')], ['Re-open', v('m_reopen')],
+  ].map(([k,val]) => `<tr><td style="${thtd}">${esc(k)}</td><td style="${thtd}">${esc(val)}</td></tr>`).join('');
+
+  const summaryRows = [
+    ['Time hỗ trợ', v('m_hours')],
+    ['Ticket nhận trong tuần/tháng', v('m_received')],
+    ['Ticket tồn động tuần/tháng trước', v('m_backlogPrev')],
+    ['Ticket xử lý trong tuần/tháng', v('m_processed')],
+    ['Ticket tồn động tuần/tháng', v('m_backlogNow')],
+  ].map(([k,val]) => `<tr><td style="${thtd}">${esc(k)}</td><td style="${thtd}">${esc(val)}</td></tr>`).join('');
+
+  const html = `
+    <p><b>Tuần báo cáo:</b> ${esc(v('weekLabel'))}</p>
+    <p><b>1. Báo cáo số lượng ticket trong tuần</b></p>
+    <table style="${tableStyle}"><tr><th style="${thtd}">Trạng thái</th><th style="${thtd}">Số lượng</th></tr>${statusRows}</table>
+    <br>
+    <table style="${tableStyle}"><tr><th style="${thtd}">Chỉ số</th><th style="${thtd}">Giá trị</th></tr>${summaryRows}</table>
+    <p><b>2. Nhận xét/Vấn đề</b></p>
+    <p><i>Nhận xét chung về tình hình support tuần/tháng báo cáo so với tuần trước:</i><br>${esc(v('txt_nhanxet') || '(chưa nhập)')}</p>
+    <p><i>Thực hiện trong tuần: ${esc(document.getElementById('doneWeekRange').textContent)}</i></p>
+    ${listifyHtml(v('txt_thuchien'))}
+    <p><i>Xử lý tuần sau: ${esc(document.getElementById('nextWeekRange').textContent)}</i></p>
+    ${listifyHtml(v('txt_tuansau'))}
+    <p><b>3. Báo cáo tình hình thực hiện CRs:</b> ${esc(v('txt_crs'))}</p>
+    <p><b>4. Báo cáo thông tin khác:</b> ${esc(v('txt_khac'))}</p>
+  `.trim();
+
+  const plain = `Tuần báo cáo: ${v('weekLabel')}
+Báo cáo số lượng ticket trong tuần:
+
+Trạng thái\tSố lượng
+Closed\t${v('m_closed')}
+Open\t${v('m_open')}
+Assign\t${v('m_assign')}
+Working\t${v('m_working')}
+Reviewing\t${v('m_reviewing')}
+Waiting\t${v('m_waiting')}
+Pending\t${v('m_pending')}
+Re-open\t${v('m_reopen')}
+
+Chỉ số\tGiá trị
+Time hỗ trợ\t${v('m_hours')}
+Ticket nhận trong tuần/tháng\t${v('m_received')}
+Ticket tồn động tuần/tháng trước\t${v('m_backlogPrev')}
+Ticket xử lý trong tuần/tháng\t${v('m_processed')}
+Ticket tồn động tuần/tháng\t${v('m_backlogNow')}
+
+2. Nhận xét/Vấn đề
+Nhận xét chung về tình hình support tuần/tháng báo cáo so với tuần trước:
+${v('txt_nhanxet') || '(chưa nhập)'}
+
+Thực hiện trong tuần: ${document.getElementById('doneWeekRange').textContent}
+
+${listifyText(v('txt_thuchien'))}
+
+Xử lý tuần sau: ${document.getElementById('nextWeekRange').textContent}
+
+${listifyText(v('txt_tuansau'))}
+
+3. Báo cáo tình hình thực hiện CRs: ${v('txt_crs')}
+4. Báo cáo thông tin khác: ${v('txt_khac')}`;
+
+  try{
+    if (window.ClipboardItem){
+      const item = new ClipboardItem({
+        'text/html': new Blob([html], { type: 'text/html' }),
+        'text/plain': new Blob([plain], { type: 'text/plain' }),
+      });
+      await navigator.clipboard.write([item]);
+      setBottomStatus('Đã sao chép dạng bảng — dán (Ctrl+V) trực tiếp vào ô mô tả/comment trên ERP sẽ ra bảng.', 'ok');
+    } else {
+      await navigator.clipboard.writeText(plain);
+      setBottomStatus('Trình duyệt không hỗ trợ copy HTML — đã sao chép dạng text (cách nhau bằng Tab, dán vào Excel sẽ tự tách cột).', 'ok');
+    }
+  }catch(err){
+    setBottomStatus('Không sao chép được tự động: ' + err.message, 'err');
+  }
 });
 
 document.getElementById('printBtn').addEventListener('click', () => window.print());
