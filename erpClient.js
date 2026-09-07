@@ -88,8 +88,10 @@ async function erpFetch(pathWithQuery, { retry = true } = {}) {
  * Lay danh sach ticket theo doctype "Ticket".
  * projects: string | string[] -> loc theo project (operator "=" neu 1 gia tri, "in" neu nhieu)
  * statuses: string | (string|null)[] -> loc theo status, ho tro ca gia tri null (chua co status)
+ * openingFrom/openingTo: 'YYYY-MM-DD' -> loc theo opening_date ngay tren ERP (tranh bi cat bot
+ *   du lieu khi project co qua limit_page_length ticket va API khong sap xep theo ngay).
  */
-async function fetchTickets({ projects, statuses, limit = 500 } = {}) {
+async function fetchTickets({ projects, statuses, limit = 2000, openingFrom, openingTo } = {}) {
   const filters = [];
 
   const projList = normalizeList(projects);
@@ -100,10 +102,14 @@ async function fetchTickets({ projects, statuses, limit = 500 } = {}) {
   if (statusList.length === 1 && statusList[0] !== null) filters.push(['status', '=', statusList[0]]);
   else if (statusList.length > 1) filters.push(['status', 'in', statusList]);
 
+  if (openingFrom) filters.push(['opening_date', '>=', `${openingFrom} 00:00:00`]);
+  if (openingTo) filters.push(['opening_date', '<=', `${openingTo} 23:59:59`]);
+
   const qs = new URLSearchParams();
   qs.set('filters', JSON.stringify(filters));
   qs.set('fields', JSON.stringify(['*']));
   qs.set('limit_page_length', String(limit));
+  qs.set('order_by', 'opening_date desc');
 
   return erpFetch(`/api/resource/Ticket?${qs.toString()}`);
 }

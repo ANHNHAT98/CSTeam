@@ -43,6 +43,11 @@
     font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;
     text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:block;
   }
+  .date-row{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:22px;}
+  .date-field{display:flex;flex-direction:column;gap:6px;}
+  .date-field label{font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.05em;}
+  .date-field input[type=date]{font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;padding:8px 10px;border-radius:7px;border:1px solid var(--grid-line-strong);background:#fff;color:var(--ink);}
+  .date-field.clear{justify-content:end;}
   .check-list{display:flex;flex-direction:column;gap:2px;}
   .check-item{
     display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:6px;font-size:13px;cursor:pointer;
@@ -96,6 +101,20 @@
 
   <div class="panel">
     <h2>Bộ lọc</h2>
+    <div class="date-row">
+      <div class="date-field">
+        <label for="openingFrom">Opening date — từ ngày</label>
+        <input type="date" id="openingFrom">
+      </div>
+      <div class="date-field">
+        <label for="openingTo">Opening date — đến ngày</label>
+        <input type="date" id="openingTo">
+      </div>
+      <div class="date-field clear">
+        <label>&nbsp;</label>
+        <button class="btn btn-ghost" id="clearDatesBtn" type="button">Xoá lọc ngày</button>
+      </div>
+    </div>
     <div class="filter-cols">
       <div>
         <span class="filter-col-label">Project (chọn nhiều) <button class="btn-mini" id="allProjectsBtn" type="button">chọn hết</button></span>
@@ -121,6 +140,7 @@
     <div class="hint">
       Đây là <b>toàn bộ field thô</b> ERPNext trả về (chưa map vào đúng cột Hạng mục/Nội dung/Chi tiết/Trạng thái/Hạn/Ghi chú) —
       xuất Excel rồi báo lại tên cột nào tương ứng với gì để hoàn thiện mapping tự động cho lần sau.
+      Nếu chọn "Opening date", dữ liệu được lọc <b>trực tiếp trên ERP</b> theo field <code class="tag">opening_date</code> nên không bị thiếu ticket dù dự án có rất nhiều lịch sử (không lọc theo ngày tạo record <code class="tag">creation</code>).
     </div>
   </div>
 </div>
@@ -163,6 +183,10 @@ document.getElementById('allStatusBtn').addEventListener('click', () => {
   const allChecked = [...boxes].every(b => b.checked);
   boxes.forEach(b => b.checked = !allChecked);
 });
+document.getElementById('clearDatesBtn').addEventListener('click', () => {
+  document.getElementById('openingFrom').value = '';
+  document.getElementById('openingTo').value = '';
+});
 
 function setStatus(msg, cls){
   statusText.textContent = msg;
@@ -178,9 +202,13 @@ fetchBtn.addEventListener('click', async () => {
   resultPanel.style.display = 'none';
 
   try{
+    const openingFrom = document.getElementById('openingFrom').value;
+    const openingTo = document.getElementById('openingTo').value;
     const qs = new URLSearchParams();
     qs.set('projects', JSON.stringify(projects));
     qs.set('statuses', JSON.stringify(statuses));
+    if (openingFrom) qs.set('opening_from', openingFrom);
+    if (openingTo) qs.set('opening_to', openingTo);
     const res = await fetch('/api/erp/tickets?' + qs.toString(), { credentials:'same-origin' });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || ('Lỗi HTTP ' + res.status));

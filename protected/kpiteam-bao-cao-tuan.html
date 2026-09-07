@@ -147,11 +147,12 @@
     <div class="status" id="statusText"></div>
     <div class="hint">
       Cách tính (theo <code class="tag">opening_date</code> của ticket, không dùng ngày tạo record):<br>
-      <b>Mục 1, 2</b> (breakdown theo status) = ticket có <code class="tag">opening_date</code> trong khoảng Từ ngày–Đến ngày, nhóm theo trạng thái hiện tại (riêng <b>Closed</b> = số ticket mở &amp; đóng ngay trong tuần, giống mục 6).<br>
-      <b>Mục 4</b> (nhận trong tuần) = ticket có <code class="tag">opening_date</code> nằm trong khoảng Từ ngày–Đến ngày, mọi trạng thái.<br>
-      <b>Mục 5</b> (tồn đọng trước tuần lọc) = ticket có <code class="tag">opening_date</code> &lt; "Từ ngày" (không giới hạn tháng), và hiện chưa Closed.<br>
-      <b>Mục 6</b> (xử lý trong tuần) = ticket có <code class="tag">opening_date</code> trong tuần lọc VÀ trạng thái hiện tại là Closed.<br>
-      <b>Mục 7</b> (tồn đọng tuần) = tổng breakdown mục 1,2 (trừ Closed) + mục 5 (vì mục 1,2 chỉ tính ticket mở trong tuần, còn tồn đọng từ trước tuần nằm ở mục 5).<br>
+      Ticket mục 1, 2, 4, 6 được lọc <b>trực tiếp trên ERP</b> theo <code class="tag">opening_date</code> nằm trong khoảng Từ ngày–Đến ngày (không tải hết rồi lọc ở trình duyệt), nên không bị thiếu ticket dù dự án có rất nhiều lịch sử.<br>
+      <b>Mục 1, 2</b> (breakdown theo status) = ticket mở trong tuần, nhóm theo trạng thái hiện tại (riêng <b>Closed</b> = số ticket mở &amp; đóng ngay trong tuần, giống mục 6).<br>
+      <b>Mục 4</b> (nhận trong tuần) = tổng số ticket mở trong tuần, mọi trạng thái.<br>
+      <b>Mục 5</b> (tồn đọng trước tuần lọc) = ticket đang ở trạng thái chưa Closed, có <code class="tag">opening_date</code> &lt; "Từ ngày" (không giới hạn tháng).<br>
+      <b>Mục 6</b> (xử lý trong tuần) = ticket mở trong tuần VÀ trạng thái hiện tại là Closed.<br>
+      <b>Mục 7</b> (tồn đọng tuần) = tổng breakdown mục 1,2 (trừ Closed) + mục 5.<br>
       Tất cả số liệu bên dưới đều <b>sửa tay được</b> — kiểm tra lại trước khi gửi báo cáo.
     </div>
   </div>
@@ -357,37 +358,52 @@ fetchBtn.addEventListener('click', async () => {
   setStatus('Đang đăng nhập & lấy dữ liệu từ ERP…', 'busy');
 
   try{
-    const qs = new URLSearchParams();
-    qs.set('projects', JSON.stringify([project]));
-    qs.set('statuses', JSON.stringify([]));
-    const ticketData = await fetchJson('/api/erp/tickets?' + qs.toString());
-    const rows = Array.isArray(ticketData.data) ? ticketData.data : [];
+    // Fetch A: ticket mở TRONG tuần lọc — lọc opening_date ngay trên ERP để không bao giờ
+    // bị cắt bớt bởi limit_page_length dù project có hàng ngàn ticket lịch sử.
+    const qsWeek = new URLSearchParams();
+    qsWeek.set('projects', JSON.stringify([project]));
+    qsWeek.set('statuses', JSON.stringify([]));
+    qsWeek.set('opening_from', fromDate.value);
+    qsWeek.set('opening_to', toDate.value);
+    const weekData = await fetchJson('/api/erp/tickets?' + qsWeek.toString());
+    const weekRows = Array.isArray(weekData.data) ? weekData.data : [];
+
+    // Fetch B: TOÀN BỘ ticket đang ở trạng thái chưa Closed (không giới hạn ngày) — dùng để
+    // tính mục 5 (tồn đọng mở TRƯỚC tuần lọc). Số lượng backlog thường nhỏ nên an toàn với limit.
+    const qsBacklog = new URLSearchParams();
+    qsBacklog.set('projects', JSON.stringify([project]));
+    qsBacklog.set('statuses', JSON.stringify(BACKLOG_STATUSES));
+    const backlogData = await fetchJson('/api/erp/tickets?' + qsBacklog.toString());
+    const backlogRows = Array.isArray(backlogData.data) ? backlogData.data : [];
 
     const backlogBreakdown = {};
     BACKLOG_STATUSES.forEach(s => backlogBreakdown[s] = 0);
     let receivedInWeek = 0, closedInWeek = 0, backlogPrevAll = 0;
 
-    rows.forEach(r => {
+    weekRows.forEach(r => {
       const status = (r.status || '').trim();
       const opened = parseFrappeDate(r.opening_date || r.creation);
       if (!opened) return;
 
       // mục 1, 2: breakdown theo status, tính trên các ticket có opening_date nằm TRONG
       // khoảng tuần lọc (Từ ngày ≤ opening_date ≤ Đến ngày).
-      if (inRange(opened, from, to) && BACKLOG_STATUSES.includes(status)){
+      if (BACKLOG_STATUSES.includes(status)){
         backlogBreakdown[status]++;
       }
 
       // mục 4: ticket nhận trong tuần — opening_date rơi vào đúng khoảng lọc, mọi trạng thái.
-      if (inRange(opened, from, to)) receivedInWeek++;
+      receivedInWeek++;
 
       // mục 6: ticket xử lý trong tuần — opening_date rơi vào khoảng lọc VÀ trạng thái hiện tại là Closed
       // (tức ticket mở và đóng luôn trong tuần này).
-      if (inRange(opened, from, to) && status === CLOSED_STATUS) closedInWeek++;
+      if (status === CLOSED_STATUS) closedInWeek++;
+    });
 
+    backlogRows.forEach(r => {
+      const opened = parseFrappeDate(r.opening_date || r.creation);
       // mục 5: ticket tồn đọng trước tuần lọc — mở TRƯỚC ngày "từ ngày" (không giới hạn tháng),
-      // và hiện chưa Closed.
-      if (opened < from && status !== CLOSED_STATUS) backlogPrevAll++;
+      // đang ở trạng thái chưa Closed (đã lọc sẵn ở fetch B).
+      if (opened && opened < from) backlogPrevAll++;
     });
 
     // mục 7: tồn đọng tuần = ticket còn mở trong tuần (theo breakdown mục 1,2) cộng với
@@ -425,7 +441,7 @@ fetchBtn.addEventListener('click', async () => {
       hoursNote = ' (lỗi lấy timesheet: ' + tsErr.message + ' — nhập tay)';
     }
 
-    setStatus(`Xong — ${rows.length} ticket, tồn đọng hiện tại ${backlogNow}.${hoursNote}`, hoursNote ? 'err' : 'ok');
+    setStatus(`Xong — ${weekRows.length} ticket mở trong tuần, ${backlogRows.length} ticket đang tồn đọng (mọi thời điểm).${hoursNote}`, hoursNote ? 'err' : 'ok');
   }catch(err){
     console.error(err);
     setStatus('Lỗi: ' + err.message, 'err');
