@@ -56,12 +56,37 @@ canvas{max-width:100%}
 </div>
 <div class="wrap">
   <h1>📊 Project Profit Dashboard</h1>
-  <p class="muted">Import file "Detail Timesheet Report" xuất từ ERP → tự tính chi phí, lợi nhuận theo tuần/tháng cho từng dự án đang quản lý, có biểu đồ theo dõi. Dùng đúng công thức từ file "Profit Calculation" hiện có (đơn giá theo Level, tuần W01-W05, % lợi nhuận, Profit Runrate).</p>
+  <p class="muted">Lấy trực tiếp từ ERP (Detail Timesheet Report) hoặc import file Excel xuất từ ERP → tự tính chi phí, lợi nhuận theo tuần/tháng cho từng dự án đang quản lý, có biểu đồ theo dõi. Dùng đúng công thức từ file "Profit Calculation" hiện có (đơn giá theo Level, tuần W01-W05, % lợi nhuận, Profit Runrate).</p>
 
   <div class="card">
-    <h2>1. Import file Timesheet</h2>
-    <input id="fileInput" type="file" accept=".xlsx,.xls">
-    <div id="importStatus" class="status info" style="margin-top:12px">Chưa import file nào.</div>
+    <h2>1. Lấy dữ liệu Timesheet</h2>
+    <p class="muted">Chọn 1 trong 2 cách — kết quả nạp vào đều dùng chung các bước tính bên dưới (đơn giá, dự án, level…).</p>
+
+    <div style="border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:14px;">
+      <div style="font-weight:700;font-size:13.5px;margin-bottom:10px;">Cách 1 — Lấy trực tiếp từ ERP (Detail Timesheet Report)</div>
+      <div class="row" style="margin-bottom:10px;">
+        <div>
+          <label style="font-size:11.5px;color:var(--sub);display:block;margin-bottom:4px;">Từ ngày</label>
+          <input type="date" id="erpFromDate">
+        </div>
+        <div>
+          <label style="font-size:11.5px;color:var(--sub);display:block;margin-bottom:4px;">Đến ngày</label>
+          <input type="date" id="erpToDate">
+        </div>
+        <div style="align-self:flex-end;">
+          <button class="secondary" id="erpAllProjectsBtn" type="button">Chọn tất cả dự án</button>
+        </div>
+      </div>
+      <div id="erpProjectList" class="row" style="margin-bottom:10px;"></div>
+      <button id="erpFetchBtn" type="button">⇩ Lấy dữ liệu từ ERP &amp; tính toán</button>
+      <div id="erpFetchStatus" class="status info" style="margin-top:10px;">Chưa lấy dữ liệu từ ERP.</div>
+    </div>
+
+    <div style="border:1px solid var(--line);border-radius:8px;padding:14px;">
+      <div style="font-weight:700;font-size:13.5px;margin-bottom:10px;">Cách 2 — Import file Excel "Detail Timesheet Report" xuất từ ERP</div>
+      <input id="fileInput" type="file" accept=".xlsx,.xls">
+      <div id="importStatus" class="status info" style="margin-top:12px">Chưa import file nào.</div>
+    </div>
   </div>
 
   <div class="card" id="rateCardCard" style="display:none">
@@ -1144,6 +1169,173 @@ $("exportBtn").addEventListener("click",function(){
 });
 
 /* ============================================================
+   0b) LẤY DỮ LIỆU TỪ ERP (Detail Timesheet Report) — thay thế/song song với import Excel
+   ============================================================ */
+var ERP_PROJECTS = ["MerapLion_eSales", "ABI_eSales_Support", "ANVY_eSale_Support", "Sabeco_PG"];
+
+(function initErpDateDefaults(){
+  var today = new Date();
+  var firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  var lastOfMonth = new Date(today.getFullYear(), today.getMonth()+1, 0);
+  var toISO = function(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+  $("erpFromDate").value = toISO(firstOfMonth);
+  $("erpToDate").value = toISO(lastOfMonth);
+
+  $("erpProjectList").innerHTML = ERP_PROJECTS.map(function(p){
+    return "<label style='display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--line);border-radius:20px;font-size:12.5px;cursor:pointer;'>"+
+      "<input type='checkbox' class='erpProjChk' value='"+esc(p)+"' checked style='accent-color:var(--accent);cursor:pointer;'> "+esc(p)+"</label>";
+  }).join("");
+})();
+
+$("erpAllProjectsBtn").addEventListener("click", function(){
+  var boxes = document.querySelectorAll(".erpProjChk");
+  var allChecked = Array.from(boxes).every(function(b){ return b.checked; });
+  boxes.forEach(function(b){ b.checked = !allChecked; });
+});
+
+function setErpStatus(msg, cls){
+  $("erpFetchStatus").className = "status " + cls;
+  $("erpFetchStatus").textContent = msg;
+}
+
+/* Dò field trong 1 dòng report (object) theo tên field ứng viên, khớp chính xác trước,
+   khớp mờ (contains) sau — vì report có thể trả field dạng snake_case hoặc label gốc. */
+function findReportField(rowObj, candidates){
+  var keys = Object.keys(rowObj);
+  for(var i=0;i<candidates.length;i++){
+    var cand = candidates[i].toLowerCase();
+    var exact = keys.find(function(k){ return k.toLowerCase()===cand; });
+    if(exact) return exact;
+  }
+  for(var j=0;j<candidates.length;j++){
+    var cand2 = candidates[j].toLowerCase().replace(/\s+/g,"_");
+    var fuzzy = keys.find(function(k){ return k.toLowerCase().indexOf(cand2)>=0; });
+    if(fuzzy) return fuzzy;
+  }
+  return null;
+}
+
+/* Chuẩn hoá result trả về từ frappe.desk.query_report.run (có thể là mảng object hoặc mảng
+   mảng khớp theo thứ tự "columns") thành mảng object đồng nhất. */
+function reportResultToObjects(payload){
+  var result = payload && payload.result;
+  if(!Array.isArray(result) || !result.length) return [];
+  if(!Array.isArray(result[0])) return result;
+  var cols = Array.isArray(payload.columns) ? payload.columns : [];
+  return result.map(function(arr){
+    var obj = {};
+    cols.forEach(function(c,i){ obj[c.fieldname || c.label || ("col"+i)] = arr[i]; });
+    return obj;
+  });
+}
+
+/* Map các dòng report thô -> đúng schema rows đang dùng trong toàn bộ tool
+   {employee, name, designation, project, hours, date} */
+function mapReportRowsToTimesheetRows(objRows, fallbackProject){
+  var rows = [];
+  objRows.forEach(function(r){
+    var hoursKey = findReportField(r, ["hours"]);
+    var timeKey = findReportField(r, ["from_time","from time"]);
+    if(!hoursKey || !timeKey) return;
+    var hours = parseFloat(r[hoursKey]);
+    if(isNaN(hours)) return;
+    var date = parseAnyDate(r[timeKey]);
+    if(!date) return;
+
+    // Bỏ dòng "Tổng cộng" mà report tự thêm (chỉ có cột hours, các cột khác đều rỗng)
+    var hasOtherData = Object.keys(r).some(function(k){ return k!==hoursKey && r[k]!==null && r[k]!==undefined && r[k]!==""; });
+    if(!hasOtherData) return;
+
+    var empKey = findReportField(r, ["employee"]);
+    var nameKey = findReportField(r, ["employee_name","employee name"]);
+    var desigKey = findReportField(r, ["designation"]);
+    var projKey = findReportField(r, ["project"]);
+    var project = (projKey && r[projKey]) ? String(r[projKey]).trim() : fallbackProject;
+    if(!project) return;
+
+    rows.push({
+      employee: empKey ? String(r[empKey]||"") : "",
+      name: nameKey ? String(r[nameKey]||"") : "",
+      designation: desigKey ? String(r[desigKey]||"").trim() : "",
+      project: project,
+      hours: hours,
+      date: date
+    });
+  });
+  return rows;
+}
+
+/* Nhận rows (từ ERP hoặc từ file Excel) -> set state + chạy toàn bộ pipeline hiện có,
+   dùng chung cho cả 2 nguồn dữ liệu. */
+function onRowsLoaded(rows, statusElId, successPrefix){
+  state.rows = rows;
+  state.allProjects = Array.from(new Set(rows.map(function(r){ return r.project; }))).sort();
+
+  var monthCount = {};
+  rows.forEach(function(r){
+    var k = r.date.getFullYear()+"-"+String(r.date.getMonth()+1).padStart(2,"0");
+    monthCount[k] = (monthCount[k]||0)+1;
+  });
+  var bestMonth = Object.keys(monthCount).sort(function(a,b){ return monthCount[b]-monthCount[a]; })[0];
+  state.monthKey = bestMonth;
+  var parts = bestMonth.split("-");
+  state.weeksInMonth = weeksInMonth(+parts[0], +parts[1]-1);
+  state.projectMeta = {};
+
+  $(statusElId).className = "status ok";
+  $(statusElId).textContent = successPrefix+" — "+rows.length+" dòng timesheet — tháng "+bestMonth+
+    " ("+state.weeksInMonth+" tuần: W01-W"+String(state.weeksInMonth).padStart(2,"0")+").";
+
+  renderRateCard();
+  renderProjectFilter();
+  renderDesignationTable();
+  renderProjectMetaTable();
+  recompute();
+}
+
+$("erpFetchBtn").addEventListener("click", async function(){
+  var fromDate = $("erpFromDate").value;
+  var toDate = $("erpToDate").value;
+  var projects = Array.from(document.querySelectorAll(".erpProjChk:checked")).map(function(b){ return b.value; });
+
+  if(!fromDate || !toDate){ setErpStatus("Chọn đủ Từ ngày và Đến ngày.", "bad"); return; }
+  if(!projects.length){ setErpStatus("Chọn ít nhất 1 dự án.", "bad"); return; }
+
+  $("erpFetchBtn").disabled = true;
+  setErpStatus("⏳ Đang lấy dữ liệu từ ERP cho "+projects.length+" dự án…", "info");
+
+  try{
+    var allRows = [];
+    for(var i=0;i<projects.length;i++){
+      var proj = projects[i];
+      setErpStatus("⏳ Đang lấy dữ liệu dự án "+(i+1)+"/"+projects.length+": "+proj+"…", "info");
+      var qs = new URLSearchParams();
+      qs.set("from_date", fromDate);
+      qs.set("to_date", toDate);
+      qs.set("project", proj);
+      var res = await fetch("/api/erp/timesheet?"+qs.toString(), { credentials:"same-origin" });
+      var raw = await res.text();
+      var data;
+      try{ data = raw ? JSON.parse(raw) : {}; }
+      catch(e){ throw new Error("Server trả về không phải JSON (dự án "+proj+", HTTP "+res.status+") — có thể phiên đăng nhập đã hết."); }
+      if(!res.ok) throw new Error((data && data.error) || ("Lỗi HTTP "+res.status+" (dự án "+proj+")"));
+
+      var payload = data && data.message ? data.message : data;
+      var objRows = reportResultToObjects(payload);
+      var parsed = mapReportRowsToTimesheetRows(objRows, proj);
+      allRows = allRows.concat(parsed);
+    }
+    if(!allRows.length) throw new Error("Không có dòng timesheet nào trong khoảng ngày/dự án đã chọn.");
+    onRowsLoaded(allRows, "erpFetchStatus", "✅ Đã lấy từ ERP");
+  }catch(err){
+    console.error(err);
+    setErpStatus("Lỗi: "+err.message, "bad");
+  }finally{
+    $("erpFetchBtn").disabled = false;
+  }
+});
+
+/* ============================================================
    10) FILE INPUT
    ============================================================ */
 $("fileInput").addEventListener("change",function(e){
@@ -1158,29 +1350,7 @@ $("fileInput").addEventListener("change",function(e){
       var wb=XLSX.read(ev.target.result, { type:"array", cellDates:true });
       var rows=parseWorkbook(wb);
       if(!rows.length) throw new Error("Không đọc được dòng dữ liệu nào hợp lệ.");
-      state.rows=rows;
-      state.allProjects=Array.from(new Set(rows.map(function(r){ return r.project; }))).sort();
-
-      // Xác định tháng đang tính (tháng xuất hiện nhiều nhất trong dữ liệu)
-      var monthCount={};
-      rows.forEach(function(r){
-        var k=r.date.getFullYear()+"-"+String(r.date.getMonth()+1).padStart(2,"0");
-        monthCount[k]=(monthCount[k]||0)+1;
-      });
-      var bestMonth=Object.keys(monthCount).sort(function(a,b){ return monthCount[b]-monthCount[a]; })[0];
-      state.monthKey=bestMonth;
-      var parts=bestMonth.split("-");
-      state.weeksInMonth=weeksInMonth(+parts[0], +parts[1]-1);
-      state.projectMeta={};
-
-      $("importStatus").className="status ok";
-      $("importStatus").textContent="✅ Đã import "+rows.length+" dòng timesheet — tháng "+bestMonth+" ("+state.weeksInMonth+" tuần: W01-W"+String(state.weeksInMonth).padStart(2,"0")+").";
-
-      renderRateCard();
-      renderProjectFilter();
-      renderDesignationTable();
-      renderProjectMetaTable();
-      recompute();
+      onRowsLoaded(rows, "importStatus", "✅ Đã import file");
     }catch(err){
       console.error(err);
       $("importStatus").className="status bad";
