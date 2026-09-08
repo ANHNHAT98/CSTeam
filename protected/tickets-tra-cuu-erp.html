@@ -30,7 +30,7 @@
   .ops-topbar a:hover{opacity:1;text-decoration:underline;}
   .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
 
-  .wrap{max-width:1160px;margin:0 auto;padding:32px 24px 70px;}
+  .wrap{max-width:none; margin:0; padding:32px 28px 70px;}
   h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 6px;}
   .sub{color:var(--muted);font-size:13.5px;margin:0 0 26px;line-height:1.6;}
 
@@ -79,7 +79,7 @@
     font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:10.5px;white-space:nowrap;
     border-right:1px solid rgba(255,255,255,.12);
   }
-  tbody td{padding:7px 9px;border-bottom:1px solid var(--grid-line);border-right:1px solid var(--grid-line);white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis;}
+  tbody td{padding:7px 9px;border-bottom:1px solid var(--grid-line);border-right:1px solid var(--grid-line);white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis;}
   tbody tr:nth-child(even){background:rgba(31,78,121,.025);}
 
   .hint{
@@ -141,6 +141,8 @@
       Đây là <b>toàn bộ field thô</b> ERPNext trả về (chưa map vào đúng cột Hạng mục/Nội dung/Chi tiết/Trạng thái/Hạn/Ghi chú) —
       xuất Excel rồi báo lại tên cột nào tương ứng với gì để hoàn thiện mapping tự động cho lần sau.
       Nếu chọn "Opening date", dữ liệu được lọc <b>trực tiếp trên ERP</b> theo field <code class="tag">opening_date</code> nên không bị thiếu ticket dù dự án có rất nhiều lịch sử (không lọc theo ngày tạo record <code class="tag">creation</code>).
+      Đã ẩn bớt các field kỹ thuật không cần thiết (<code class="tag">docstatus</code>, <code class="tag">idx</code>, <code class="tag">naming_series</code>, <code class="tag">email_account</code>, <code class="tag">company</code>, <code class="tag">via_customer_portal</code>, <code class="tag">attachment</code>, <code class="tag">content_type</code>, <code class="tag">amended_from</code>).
+      Các field rich-text như <code class="tag">description</code>, <code class="tag">resolution_details</code> đã được bóc tách khỏi HTML gốc thành text thuần (ảnh đính kèm hiển thị dạng <code class="tag">[Hình: tên_file]</code>) — rê chuột vào ô để xem đầy đủ nội dung.
     </div>
   </div>
 </div>
@@ -150,6 +152,12 @@ const PROJECTS = ['MerapLion_eSales', 'ABI_eSales_Support', 'ANVY_eSale_Support'
 const STATUSES = ['Open', 'Assign', 'Working', 'Reviewing', 'Waiting', 'Pending', 'Re-open', 'Closed', 'null'];
 const STATUS_LABELS = { null: 'Chưa có trạng thái (null)' };
 const DEFAULT_STATUS_CHECKED = ['Open', 'Assign', 'Working', 'Reviewing', 'Waiting', 'Pending', 'Re-open'];
+
+// Các field kỹ thuật của Frappe không có giá trị đọc-hiểu với người dùng — ẩn khỏi bảng & Excel.
+const HIDDEN_COLUMNS = [
+  'docstatus', 'idx', 'naming_series', 'email_account', 'company',
+  'via_customer_portal', 'attachment', 'content_type', 'amended_from',
+];
 
 const projectList = document.getElementById('projectList');
 const statusList = document.getElementById('statusList');
@@ -215,7 +223,7 @@ fetchBtn.addEventListener('click', async () => {
 
     const rows = Array.isArray(data.data) ? data.data : [];
     lastRows = rows;
-    renderTable(rows);
+    renderTable(buildDisplayRows(rows));
     resultPanel.style.display = rows.length ? 'block' : 'none';
     setStatus(rows.length
       ? `Xong — lấy được ${rows.length} ticket.`
@@ -228,18 +236,58 @@ fetchBtn.addEventListener('click', async () => {
   }
 });
 
+/* Field rich-text của ERPNext (description, resolution_details…) trả về nguyên khối HTML
+   dạng <div class="ql-editor">...<p>...</p>...</div>. Chuyển về text thuần, dễ đọc:
+   - mỗi <p> thành 1 dòng
+   - <br> thành xuống dòng
+   - <img> thành nhãn [Hình: tên_file] thay vì in nguyên thẻ */
+function htmlFieldToText(html){
+  if (typeof html !== 'string' || !/<[a-z][\s\S]*>/i.test(html)) return html;
+  try{
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+    doc.querySelectorAll('img').forEach(img => {
+      const src = img.getAttribute('src') || '';
+      const name = decodeURIComponent(src.split('/').pop().split('?')[0]) || 'hình ảnh';
+      img.replaceWith(doc.createTextNode(`[Hình: ${name}]`));
+    });
+    const paragraphs = [...doc.body.querySelectorAll('p')];
+    const text = paragraphs.length
+      ? paragraphs.map(p => p.textContent.replace(/\u00a0/g, ' ').trim()).filter(Boolean).join('\n')
+      : doc.body.textContent.replace(/\u00a0/g, ' ');
+    return text.trim();
+  }catch(e){
+    return html;
+  }
+}
+
+/* Bỏ các field kỹ thuật + làm sạch field rich-text, dùng chung cho bảng xem trước và Excel. */
+function buildDisplayRows(rows){
+  return rows.map(r => {
+    const out = {};
+    Object.keys(r).forEach(k => {
+      if (HIDDEN_COLUMNS.includes(k)) return;
+      out[k] = htmlFieldToText(r[k]);
+    });
+    return out;
+  });
+}
+
 function renderTable(rows){
   if (!rows.length){ resultHead.innerHTML=''; resultBody.innerHTML=''; rowCount.textContent='0'; return; }
   const cols = Object.keys(rows[0]);
   resultHead.innerHTML = cols.map(c => `<th>${escapeHtml(c)}</th>`).join('');
-  resultBody.innerHTML = rows.map(r => `<tr>${cols.map(c => `<td title="${escapeHtml(String(r[c] ?? ''))}">${escapeHtml(String(r[c] ?? ''))}</td>`).join('')}</tr>`).join('');
+  resultBody.innerHTML = rows.map(r => `<tr>${cols.map(c => {
+    const val = String(r[c] ?? '');
+    return `<td title="${escapeHtml(val)}">${escapeHtml(val)}</td>`;
+  }).join('')}</tr>`).join('');
   rowCount.textContent = String(rows.length);
 }
 function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 exportBtn.addEventListener('click', () => {
   if (!lastRows.length) return;
-  const ws = XLSX.utils.json_to_sheet(lastRows);
+  const ws = XLSX.utils.json_to_sheet(buildDisplayRows(lastRows));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'ERP Tickets');
   XLSX.writeFile(wb, 'Ticket_Du_An_ERP.xlsx');
