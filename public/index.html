@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
   :root{
     --ink:#12233D;
@@ -208,9 +209,6 @@
   .dash-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   @media(max-width:800px){.dash-cols{grid-template-columns:1fr;}}
 
-  .csat-help p{font-size:12.5px;color:var(--muted);line-height:1.7;margin:0;}
-  .csat-help a{color:var(--blueprint);font-weight:600;}
-
   footer{margin-top:20px;padding-top:20px;border-top:1px solid var(--grid-line-strong);color:var(--muted);font-size:11.5px;font-family:'IBM Plex Mono',monospace;display:flex;justify-content:space-between;}
 </style>
 </head>
@@ -331,7 +329,7 @@
   <div class="hero">
     <div class="eyebrow">Tổng quan</div>
     <h1>Dashboard hoạt động Ticket &amp; Dự án</h1>
-    <p>Tổng hợp trực tiếp từ ERP (erp.hqsoft.vn) — số ticket đang mở theo dự án/trạng thái, cùng các chỉ số CSAT / First Response Time (đang chờ cấu hình tên field).</p>
+    <p>Tổng hợp trực tiếp từ ERP (erp.hqsoft.vn) — số ticket đang mở theo dự án/trạng thái, cùng SLA First Response &amp; Resolution theo Priority.</p>
   </div>
 
   <div class="dash-actions">
@@ -346,14 +344,14 @@
       <div class="note">4 dự án · trạng thái chưa Closed</div>
     </div>
     <div class="panel dash-kpi">
-      <div class="label">CSAT</div>
-      <div class="value muted" id="kpiCsat">—</div>
-      <div class="note" id="kpiCsatNote">Chưa cấu hình tên field điểm hài lòng từ ERP</div>
+      <div class="label">First Response Time (SLA) — trọng số tháng này</div>
+      <div class="value" id="kpiFrt">—</div>
+      <div class="note" id="kpiFrtNote">Actual 1 (P1&amp;P2) × 70% + Actual 2 (P3-P5) × 30%</div>
     </div>
     <div class="panel dash-kpi">
-      <div class="label">First Response Time (SLA)</div>
-      <div class="value" id="kpiFrt">—</div>
-      <div class="note" id="kpiFrtNote">% Pass — toàn bộ ticket, mọi trạng thái</div>
+      <div class="label">Resolution Time (SLA) — trọng số tháng này</div>
+      <div class="value" id="kpiRes">—</div>
+      <div class="note" id="kpiResNote">Actual 1 (P1&amp;P2) × 70% + Actual 2 (P3-P5) × 30%</div>
     </div>
   </div>
 
@@ -371,26 +369,49 @@
   </div>
 
   <div class="panel">
-    <div class="panel-title">First Response Time (SLA) — So sánh 3 tháng gần nhất</div>
-    <div class="panel-sub" id="frtSub">Pass/Fail theo công thức: W = First Responded On − Opening On (phút); Fail nếu chưa phản hồi (W=1.1) hoặc W ≥ ngưỡng theo Priority (Critical 60 / Urgent 240 / High 480 / Medium 4320 / khác 7200 phút). Lọc theo Opening On.</div>
-    <table id="frtTable"><thead><tr><th>Tháng</th><th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">Fail</th><th style="text-align:right;">% Pass</th></tr></thead><tbody id="frtBody"></tbody></table>
+    <div class="panel-title">SLA — So sánh 3 tháng gần nhất (First Response &amp; Resolution)</div>
+    <div class="panel-sub" id="slaTrendSub">Pass/Fail theo công thức: W = (First Responded On hoặc Resolution Date) − Opening On (phút); Fail nếu chưa có mốc thời gian đó (W=1.1) hoặc W ≥ ngưỡng theo Priority (Critical 60 / Urgent 240 / High 480 / Medium 4320 / khác 7200 phút). Trọng số = Actual 1 (P1&amp;P2, &lt;95%→0) × 70% + Actual 2 (P3-P5, &lt;80%→0) × 30%. Lọc theo Opening On.</div>
+    <canvas id="slaTrendChart" height="90"></canvas>
+    <table id="slaTrendTable" style="margin-top:14px;">
+      <thead>
+        <tr>
+          <th rowspan="2">Tháng</th>
+          <th colspan="4" style="text-align:center;">First Response</th>
+          <th colspan="4" style="text-align:center;">Resolution</th>
+        </tr>
+        <tr>
+          <th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Pass</th><th style="text-align:right;">Trọng số</th>
+          <th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Pass</th><th style="text-align:right;">Trọng số</th>
+        </tr>
+      </thead>
+      <tbody id="slaTrendBody"></tbody>
+    </table>
   </div>
 
   <div class="panel">
-    <div class="panel-title">First Response Time (SLA) — Tháng hiện tại</div>
-    <div class="panel-sub" id="frtMonthSub">Lọc theo Opening On rơi vào tháng hiện tại, gộp theo dự án &amp; người phụ trách.</div>
-    <table id="frtMonthTable"><thead><tr><th>Project</th><th>Owner</th><th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">Fail</th><th style="text-align:right;">% Pass</th></tr></thead><tbody id="frtMonthBody"></tbody></table>
+    <div class="panel-title">SLA — Tháng hiện tại theo dự án (First Response &amp; Resolution)</div>
+    <div class="panel-sub" id="slaMonthSub">Lọc theo Opening On rơi vào tháng hiện tại, gộp theo dự án.</div>
+    <canvas id="slaMonthChart" height="90"></canvas>
+    <table id="slaMonthTable" style="margin-top:14px;">
+      <thead>
+        <tr>
+          <th rowspan="2">Project</th>
+          <th colspan="4" style="text-align:center;">First Response</th>
+          <th colspan="4" style="text-align:center;">Resolution</th>
+        </tr>
+        <tr>
+          <th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Pass</th><th style="text-align:right;">Trọng số</th>
+          <th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Pass</th><th style="text-align:right;">Trọng số</th>
+        </tr>
+      </thead>
+      <tbody id="slaMonthBody"></tbody>
+    </table>
   </div>
 
   <div class="panel">
     <div class="panel-title">First Response Time (SLA) — Xu hướng theo tuần (tháng hiện tại)</div>
     <div class="panel-sub" id="frtWeekSub">Mỗi tuần tính từ Thứ 2 → Chủ Nhật, chỉ tính ticket có Opening On trong tháng hiện tại.</div>
     <table id="frtWeekTable"><thead><tr><th>Tuần</th><th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">Fail</th><th style="text-align:right;">% Pass</th></tr></thead><tbody id="frtWeekBody"></tbody></table>
-  </div>
-
-  <div class="panel csat-help">
-    <div class="panel-title">Cách bật CSAT</div>
-    <p>Chỉ số này cần đúng tên field điểm hài lòng trong doctype <code class="tag">Ticket</code> của ERP. Cách lấy tên field nhanh nhất: vào <a href="/tickets/tra-cuu-erp">Ticket dự án → Tra cứu ERP</a>, bấm "Lấy dữ liệu", xem tên cột trong bảng kết quả (đó chính là tên field thật trong ERP) rồi báo lại — sẽ bật chỉ số này ngay trên dashboard.</p>
   </div>
 
   <footer>
@@ -505,27 +526,35 @@ function setDashStatus(msg, cls){
   dashStatus.className = 'status ' + (cls||'');
 }
 
-async function fetchTickets(projects, statuses){
+async function fetchTickets(projects, statuses, openingFrom, openingTo){
   const qs = new URLSearchParams();
   qs.set('projects', JSON.stringify(projects));
   qs.set('statuses', JSON.stringify(statuses));
+  if (openingFrom) qs.set('opening_from', openingFrom);
+  if (openingTo) qs.set('opening_to', openingTo);
   const res = await fetch('/api/erp/tickets?' + qs.toString(), {credentials:'same-origin'});
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || ('Lỗi HTTP ' + res.status));
   return Array.isArray(data.data) ? data.data : [];
 }
 
+function toIsoDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
 async function loadDashboard(){
   loadDashBtn.disabled = true;
   setDashStatus('Đang tải dữ liệu từ ERP…','');
   try{
-    const [openRows, allRows] = await Promise.all([
+    const { start: last3Start, end: last3End } = getLast3MonthsRange();
+    const [openRows, slaRows] = await Promise.all([
       fetchTickets(ALL_PROJECTS, OPEN_STATUSES),
-      fetchTickets(ALL_PROJECTS, []), // toàn bộ trạng thái — cần đủ để tính SLA phản hồi đầu
+      // Chỉ cần đúng 3 tháng gần nhất cho toàn bộ tính SLA (First Response & Resolution) —
+      // lọc theo opening_date ngay trên ERP để không bao giờ bị cắt bớt dữ liệu (limit_page_length)
+      // dù các dự án có rất nhiều lịch sử ticket từ trước.
+      fetchTickets(ALL_PROJECTS, [], toIsoDate(last3Start), toIsoDate(last3End)),
     ]);
     renderDashboard(openRows);
-    renderFrt(allRows);
-    setDashStatus(`Xong — ${openRows.length} ticket đang mở / ${allRows.length} ticket tổng (cập nhật ${new Date().toLocaleTimeString('vi-VN')}).`, 'ok');
+    renderSla(slaRows);
+    setDashStatus(`Xong — ${openRows.length} ticket đang mở / ${slaRows.length} ticket trong 3 tháng gần nhất (cập nhật ${new Date().toLocaleTimeString('vi-VN')}).`, 'ok');
   }catch(err){
     console.error(err);
     setDashStatus('Lỗi: ' + err.message, 'err');
@@ -552,7 +581,7 @@ function renderDashboard(rows){
     <tr><td>${s}</td><td>${byStatus[s]}</td></tr>`).join('') || '<tr><td colspan="2" style="color:var(--muted);">Không có dữ liệu</td></tr>';
 }
 
-/* ---------- First Response Time (SLA) — tự đoán field theo tên ---------- */
+/* ---------- SLA (First Response & Resolution) — tự đoán field theo tên ---------- */
 function guessField(fields, keywords){
   const lower = fields.map(f => f.toLowerCase());
   for (const kw of keywords){
@@ -566,70 +595,70 @@ function priorityThreshold(priorityRaw){
   if (p in SLA_THRESHOLD) return SLA_THRESHOLD[p];
   return SLA_DEFAULT_THRESHOLD;
 }
+function priorityGroup(priorityRaw){
+  const p = String(priorityRaw||'').trim().toLowerCase();
+  return (p === 'critical' || p === 'urgent') ? 1 : 2; // Nhóm 1 = P1&P2, Nhóm 2 = P3-P5
+}
 
-/* Tính Pass/Fail cho từng ticket 1 lần duy nhất, dùng chung cho cả 3 bảng
-   (toàn thời gian / tháng hiện tại / theo tuần) — tránh lặp code + đảm bảo
-   3 bảng luôn nhất quán cùng 1 công thức, cùng field. */
-function computeFrtRows(rows){
-  if (!rows.length) return { items: [], fields: null };
+const FRT_KEYWORDS = ['first_responded_on','first_response','first_respond'];
+const RES_KEYWORDS = ['resolution_date','resolution','resolved_on'];
+
+/* Tính Pass/Fail cho từng ticket theo 1 mốc thời gian đích (First Responded On hoặc
+   Resolution Date) so với Opening On — dùng chung 1 hàm cho cả 2 chỉ số SLA. */
+function computeSlaItems(rows, targetKeywords){
+  if (!rows.length) return { items: [], fields: null, missing: true };
   const fields = Object.keys(rows[0]);
   const priorityField = guessField(fields, ['priority']);
   const openingField = guessField(fields, ['opening_date','opening_on','creation','opening']);
-  const firstRespField = guessField(fields, ['first_responded_on','first_response','first_respond']);
-  const ownerField = guessField(fields, ['_assign','assign','owner']);
+  const targetField = guessField(fields, targetKeywords);
 
-  if (!priorityField || !openingField || !firstRespField){
-    return { items: [], fields: { priorityField, openingField, firstRespField, ownerField }, missing: true };
+  if (!priorityField || !openingField || !targetField){
+    return { items: [], fields: { priorityField, openingField, targetField }, missing: true };
   }
 
   const items = rows.map(t => {
     const project = t.project || '(không có project)';
-    let owner = ownerField ? t[ownerField] : null;
-    if (Array.isArray(owner)) owner = owner.join(', ');
-    if (owner && typeof owner === 'string'){
-      try{ const parsed = JSON.parse(owner); if (Array.isArray(parsed)) owner = parsed.join(', '); }catch(e){}
-    }
-    if (!owner) owner = '(chưa gán)';
-
     const priority = t[priorityField];
     const openingRaw = t[openingField];
-    const firstRespRaw = t[firstRespField];
+    const targetRaw = t[targetField];
     const openDate = openingRaw ? new Date(openingRaw) : null;
 
     let w, result;
-    if (!firstRespRaw){
+    if (!targetRaw){
       w = 1.1; result = 'Fail';
     } else {
-      const respDate = new Date(firstRespRaw);
-      if (!openDate || isNaN(openDate.getTime()) || isNaN(respDate.getTime())){ w = 1.1; result = 'Fail'; }
+      const targetDate = new Date(targetRaw);
+      if (!openDate || isNaN(openDate.getTime()) || isNaN(targetDate.getTime())){ w = 1.1; result = 'Fail'; }
       else {
-        w = (respDate.getTime() - openDate.getTime()) / 60000;
+        w = (targetDate.getTime() - openDate.getTime()) / 60000;
         result = (w < priorityThreshold(priority)) ? 'Pass' : 'Fail';
       }
     }
-    return { project, owner, priority, openDate, w, result };
+    return { project, priority, openDate, w, result };
   });
 
-  return { items, fields: { priorityField, openingField, firstRespField, ownerField }, missing: false };
+  return { items, fields: { priorityField, openingField, targetField }, missing: false };
 }
 
-function groupByProjectOwner(items){
-  const groups = {};
-  items.forEach(it => {
-    const key = it.project + '||' + it.owner;
-    if (!groups[key]) groups[key] = { project: it.project, owner: it.owner, total:0, pass:0 };
-    groups[key].total++;
-    if (it.result === 'Pass') groups[key].pass++;
-  });
-  return Object.values(groups).sort((a,b) => {
-    if (a.project !== b.project) return a.project.localeCompare(b.project);
-    return b.total - a.total;
-  });
+/* Trọng số KPI 70/30: Nhóm 1 (P1&P2) chiếm tối đa 70%, Nhóm 2 (P3-P5) chiếm tối đa 30%.
+   Không có ticket nào thuộc 1 nhóm -> coi nhóm đó đạt 100%. Actual1 <95%→0, Actual2 <80%→0. */
+function weightedSlaScore(items){
+  const g1 = items.filter(it => priorityGroup(it.priority) === 1);
+  const g2 = items.filter(it => priorityGroup(it.priority) === 2);
+  const actual1 = g1.length ? (g1.filter(it => it.result === 'Pass').length / g1.length * 100) : 100;
+  const actual2 = g2.length ? (g2.filter(it => it.result === 'Pass').length / g2.length * 100) : 100;
+  const applied1 = (actual1 < 95 ? 0 : actual1) * 0.7;
+  const applied2 = (actual2 < 80 ? 0 : actual2) * 0.3;
+  return { total: items.length, pass: items.filter(it => it.result === 'Pass').length, weighted: applied1 + applied2 };
 }
+function passRate(items){
+  return items.length ? (items.filter(it => it.result === 'Pass').length / items.length * 100) : 0;
+}
+
 function renderGroupTable(bodyId, groupRows, emptyColspan){
   document.getElementById(bodyId).innerHTML = groupRows.length ? groupRows.map(g => {
     const rate = g.total ? (g.pass/g.total*100).toFixed(1) : '0.0';
-    return `<tr><td>${g.project}</td><td>${g.owner}</td><td style="text-align:right;">${g.total}</td><td style="text-align:right;color:var(--success);">${g.pass}</td><td style="text-align:right;color:var(--danger);">${g.total-g.pass}</td><td style="text-align:right;">${rate}%</td></tr>`;
+    return `<tr><td>${g.project}</td><td style="text-align:right;">${g.total}</td><td style="text-align:right;color:var(--success);">${g.pass}</td><td style="text-align:right;color:var(--danger);">${g.total-g.pass}</td><td style="text-align:right;">${rate}%</td></tr>`;
   }).join('') : `<tr><td colspan="${emptyColspan}" style="color:var(--muted);">Không có ticket nào trong khoảng này</td></tr>`;
 }
 
@@ -658,55 +687,115 @@ function monthKeyLabel(d){
   return { key: d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'), label: 'Tháng '+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear() };
 }
 
-function renderFrt(rows){
-  const frtSub = document.getElementById('frtSub');
-  const { items, fields, missing } = computeFrtRows(rows);
+let slaTrendChartInst = null;
+let slaMonthChartInst = null;
 
-  if (!rows.length || missing || !items.length){
+function renderSla(rows){
+  const { items: frtItems, fields: frtFields, missing: frtMissing } = computeSlaItems(rows, FRT_KEYWORDS);
+  const { items: resItems, fields: resFields, missing: resMissing } = computeSlaItems(rows, RES_KEYWORDS);
+
+  if (!rows.length || frtMissing || resMissing){
     document.getElementById('kpiFrt').textContent = '—';
-    frtSub.textContent = (missing)
-      ? 'Không tự nhận diện được đủ field (Priority/Opening On/First Responded On) từ ERP — xem chi tiết & xác nhận field tại Ticket dự án → SLA Phản Hồi Đầu Tiên.'
+    document.getElementById('kpiRes').textContent = '—';
+    const msg = (frtMissing || resMissing)
+      ? 'Không tự nhận diện được đủ field (Priority/Opening On/First Responded On/Resolution Date) từ ERP — xem chi tiết & xác nhận field tại Ticket dự án → SLA Phản Hồi Đầu Tiên / SLA Xử Lý Hoàn Tất.'
       : 'Không có dữ liệu.';
-    document.getElementById('frtBody').innerHTML = '';
-    document.getElementById('frtMonthBody').innerHTML = '';
+    document.getElementById('slaTrendSub').textContent = msg;
+    document.getElementById('slaMonthSub').textContent = msg;
+    document.getElementById('slaTrendBody').innerHTML = '';
+    document.getElementById('slaMonthBody').innerHTML = '';
     document.getElementById('frtWeekBody').innerHTML = '';
+    if (slaTrendChartInst){ slaTrendChartInst.destroy(); slaTrendChartInst = null; }
+    if (slaMonthChartInst){ slaMonthChartInst.destroy(); slaMonthChartInst = null; }
     return;
   }
 
-  const { priorityField, openingField, firstRespField, ownerField } = fields;
-
-  /* ---- So sánh 3 tháng gần nhất (theo Opening On), thay cho "toàn bộ thời gian" ---- */
-  const { start: last3Start, end: last3End } = getLast3MonthsRange();
-  const last3Items = items.filter(it => it.openDate && it.openDate >= last3Start && it.openDate <= last3End);
-
-  const totalPass = last3Items.filter(it => it.result === 'Pass').length;
-  const overallRate = last3Items.length ? (totalPass / last3Items.length * 100).toFixed(1) : '0.0';
-  document.getElementById('kpiFrt').textContent = overallRate + '%';
-  frtSub.textContent = `W = First Responded On − Opening On (phút); Fail nếu chưa phản hồi hoặc vượt ngưỡng theo Priority (Critical 60 / Urgent 240 / High 480 / Medium 4320 / khác 7200 phút). Field dùng: ${priorityField} / ${openingField} / ${firstRespField}${ownerField ? ' / ' + ownerField : ''}. Phạm vi: 3 tháng gần nhất (theo Opening On).`;
-
-  const monthGroups = {};
-  last3Items.forEach(it => {
+  /* ---- So sánh 3 tháng gần nhất (theo Opening On) — cả First Response & Resolution ---- */
+  const monthGroups = {}; // key -> { key, label, frt:{items[]}, res:{items[]} }
+  frtItems.forEach(it => {
+    if (!it.openDate) return;
     const { key, label } = monthKeyLabel(it.openDate);
-    if (!monthGroups[key]) monthGroups[key] = { key, label, total:0, pass:0 };
-    monthGroups[key].total++;
-    if (it.result === 'Pass') monthGroups[key].pass++;
+    if (!monthGroups[key]) monthGroups[key] = { key, label, frt: [], res: [] };
+    monthGroups[key].frt.push(it);
+  });
+  resItems.forEach(it => {
+    if (!it.openDate) return;
+    const { key, label } = monthKeyLabel(it.openDate);
+    if (!monthGroups[key]) monthGroups[key] = { key, label, frt: [], res: [] };
+    monthGroups[key].res.push(it);
   });
   const monthRows = Object.values(monthGroups).sort((a,b) => a.key.localeCompare(b.key));
-  document.getElementById('frtBody').innerHTML = monthRows.length ? monthRows.map(m => {
-    const rate = m.total ? (m.pass/m.total*100).toFixed(1) : '0.0';
-    return `<tr><td>${m.label}</td><td style="text-align:right;">${m.total}</td><td style="text-align:right;color:var(--success);">${m.pass}</td><td style="text-align:right;color:var(--danger);">${m.total-m.pass}</td><td style="text-align:right;">${rate}%</td></tr>`;
-  }).join('') : '<tr><td colspan="5" style="color:var(--muted);">Không có ticket nào trong 3 tháng gần nhất</td></tr>';
 
-  /* ---- Tháng hiện tại (lọc theo Opening On) ---- */
+  document.getElementById('slaTrendSub').textContent =
+    `W = mốc thời gian đích − Opening On (phút); Fail nếu chưa có mốc đó hoặc vượt ngưỡng theo Priority. Field dùng: Priority=${frtFields.priorityField}, Opening=${frtFields.openingField}, First Responded=${frtFields.targetField}, Resolution=${resFields.targetField}. Phạm vi: 3 tháng gần nhất (theo Opening On).`;
+
+  document.getElementById('slaTrendBody').innerHTML = monthRows.length ? monthRows.map(m => {
+    const f = weightedSlaScore(m.frt);
+    const r = weightedSlaScore(m.res);
+    const fRate = m.frt.length ? (f.pass/f.total*100).toFixed(1) : '0.0';
+    const rRate = m.res.length ? (r.pass/r.total*100).toFixed(1) : '0.0';
+    return `<tr><td>${m.label}</td>
+      <td style="text-align:right;">${f.total}</td><td style="text-align:right;color:var(--success);">${f.pass}</td><td style="text-align:right;">${fRate}%</td><td style="text-align:right;font-weight:700;">${f.weighted.toFixed(1)}%</td>
+      <td style="text-align:right;">${r.total}</td><td style="text-align:right;color:var(--success);">${r.pass}</td><td style="text-align:right;">${rRate}%</td><td style="text-align:right;font-weight:700;">${r.weighted.toFixed(1)}%</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="9" style="color:var(--muted);">Không có ticket nào trong 3 tháng gần nhất</td></tr>';
+
+  if (slaTrendChartInst) slaTrendChartInst.destroy();
+  slaTrendChartInst = new Chart(document.getElementById('slaTrendChart'), {
+    type: 'line',
+    data: {
+      labels: monthRows.map(m => m.label),
+      datasets: [
+        { label: 'First Response — Trọng số', data: monthRows.map(m => weightedSlaScore(m.frt).weighted.toFixed(1)), borderColor:'#2E6F95', backgroundColor:'#2E6F95', tension:0.25 },
+        { label: 'Resolution — Trọng số', data: monthRows.map(m => weightedSlaScore(m.res).weighted.toFixed(1)), borderColor:'#B5533C', backgroundColor:'#B5533C', tension:0.25 },
+        { label: 'Ngưỡng 90%', data: monthRows.map(()=>90), borderColor:'#dc2626', borderDash:[6,4], borderWidth:2, pointRadius:0 },
+      ],
+    },
+    options: { responsive:true, scales:{ y:{ ticks:{ callback:v => v+'%' } } } },
+  });
+
+  /* ---- Tháng hiện tại (lọc theo Opening On), gộp theo dự án — cả First Response & Resolution ---- */
   const { start, end } = getCurrentMonthRange();
-  const monthItems = items.filter(it => it.openDate && it.openDate >= start && it.openDate <= end);
-  document.getElementById('frtMonthSub').textContent =
-    `Từ ${fmtDdMm(start)} đến ${fmtDdMm(end)}/${end.getFullYear()} (theo Opening On) — ${monthItems.length} ticket.`;
-  renderGroupTable('frtMonthBody', groupByProjectOwner(monthItems), 6);
+  const frtMonthItems = frtItems.filter(it => it.openDate && it.openDate >= start && it.openDate <= end);
+  const resMonthItems = resItems.filter(it => it.openDate && it.openDate >= start && it.openDate <= end);
+  document.getElementById('slaMonthSub').textContent =
+    `Từ ${fmtDdMm(start)} đến ${fmtDdMm(end)}/${end.getFullYear()} (theo Opening On) — ${frtMonthItems.length} ticket.`;
 
-  /* ---- Theo tuần trong tháng hiện tại (Thứ 2 -> Chủ Nhật) ---- */
+  const byProject = ALL_PROJECTS.map(p => {
+    const f = weightedSlaScore(frtMonthItems.filter(it => it.project === p));
+    const r = weightedSlaScore(resMonthItems.filter(it => it.project === p));
+    return { project: p, frt: f, res: r };
+  });
+
+  document.getElementById('slaMonthBody').innerHTML = byProject.map(g => {
+    const fRate = g.frt.total ? (g.frt.pass/g.frt.total*100).toFixed(1) : '0.0';
+    const rRate = g.res.total ? (g.res.pass/g.res.total*100).toFixed(1) : '0.0';
+    return `<tr><td>${g.project}</td>
+      <td style="text-align:right;">${g.frt.total}</td><td style="text-align:right;color:var(--success);">${g.frt.pass}</td><td style="text-align:right;">${fRate}%</td><td style="text-align:right;font-weight:700;">${g.frt.weighted.toFixed(1)}%</td>
+      <td style="text-align:right;">${g.res.total}</td><td style="text-align:right;color:var(--success);">${g.res.pass}</td><td style="text-align:right;">${rRate}%</td><td style="text-align:right;font-weight:700;">${g.res.weighted.toFixed(1)}%</td>
+    </tr>`;
+  }).join('');
+
+  if (slaMonthChartInst) slaMonthChartInst.destroy();
+  slaMonthChartInst = new Chart(document.getElementById('slaMonthChart'), {
+    type: 'bar',
+    data: {
+      labels: byProject.map(g => g.project),
+      datasets: [
+        { label: 'First Response — Trọng số', data: byProject.map(g => g.frt.weighted.toFixed(1)), backgroundColor:'#2E6F95' },
+        { label: 'Resolution — Trọng số', data: byProject.map(g => g.res.weighted.toFixed(1)), backgroundColor:'#B5533C' },
+      ],
+    },
+    options: { responsive:true, scales:{ y:{ ticks:{ callback:v => v+'%' } } } },
+  });
+
+  /* ---- KPI đầu trang: trọng số toàn bộ 4 dự án, tháng hiện tại ---- */
+  document.getElementById('kpiFrt').textContent = weightedSlaScore(frtMonthItems).weighted.toFixed(1) + '%';
+  document.getElementById('kpiRes').textContent = weightedSlaScore(resMonthItems).weighted.toFixed(1) + '%';
+
+  /* ---- Theo tuần trong tháng hiện tại (Thứ 2 -> Chủ Nhật) — First Response ---- */
   const weekGroups = {};
-  monthItems.forEach(it => {
+  frtMonthItems.forEach(it => {
     const mon = mondayOf(it.openDate);
     const sun = new Date(mon); sun.setDate(mon.getDate()+6);
     const key = mon.toISOString().slice(0,10);
