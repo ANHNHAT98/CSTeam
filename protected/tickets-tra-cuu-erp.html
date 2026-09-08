@@ -37,23 +37,24 @@
   .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:22px;margin-bottom:20px;}
   .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0 0 14px;}
 
-  .filter-cols{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
-  @media(max-width:760px){.filter-cols{grid-template-columns:1fr;}}
+  .filter-row-main{display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap;}
+  .filter-block{display:flex;flex-direction:column;gap:8px;}
+  .filter-block.dates{flex:0 0 auto;flex-direction:row;gap:14px;align-items:flex-end;}
+  .filter-block.chips{flex:1 1 260px;min-width:220px;}
   .filter-col-label{
     font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;
-    text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:block;
+    text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:8px;
   }
-  .date-row{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:22px;}
   .date-field{display:flex;flex-direction:column;gap:6px;}
   .date-field label{font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.05em;}
   .date-field input[type=date]{font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;padding:8px 10px;border-radius:7px;border:1px solid var(--grid-line-strong);background:#fff;color:var(--ink);}
-  .date-field.clear{justify-content:end;}
-  .check-list{display:flex;flex-direction:column;gap:2px;}
+  .check-list{display:flex;flex-direction:row;flex-wrap:wrap;gap:6px;}
   .check-item{
-    display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:6px;font-size:13px;cursor:pointer;
+    display:flex;align-items:center;gap:6px;padding:5px 10px 5px 8px;border-radius:20px;font-size:12.5px;
+    cursor:pointer;border:1px solid var(--grid-line-strong);white-space:nowrap;
   }
   .check-item:hover{background:rgba(31,78,121,.05);}
-  .check-item input{width:16px;height:16px;accent-color:var(--blueprint);cursor:pointer;}
+  .check-item input{width:14px;height:14px;accent-color:var(--blueprint);cursor:pointer;}
 
   .actions{display:flex;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap;}
   .btn{
@@ -97,30 +98,26 @@
 
 <div class="wrap">
   <h1>Tra cứu Ticket từ ERP</h1>
-  <p class="sub">Lấy trực tiếp danh sách ticket từ erp.hqsoft.vn (doctype <code class="tag">Ticket</code>) theo project &amp; trạng thái, xem trước rồi xuất Excel.</p>
 
   <div class="panel">
     <h2>Bộ lọc</h2>
-    <div class="date-row">
-      <div class="date-field">
-        <label for="openingFrom">Opening date — từ ngày</label>
-        <input type="date" id="openingFrom">
-      </div>
-      <div class="date-field">
-        <label for="openingTo">Opening date — đến ngày</label>
-        <input type="date" id="openingTo">
-      </div>
-      <div class="date-field clear">
-        <label>&nbsp;</label>
+    <div class="filter-row-main">
+      <div class="filter-block dates">
+        <div class="date-field">
+          <label for="openingFrom">Opening date — từ ngày</label>
+          <input type="date" id="openingFrom">
+        </div>
+        <div class="date-field">
+          <label for="openingTo">Opening date — đến ngày</label>
+          <input type="date" id="openingTo">
+        </div>
         <button class="btn btn-ghost" id="clearDatesBtn" type="button">Xoá lọc ngày</button>
       </div>
-    </div>
-    <div class="filter-cols">
-      <div>
+      <div class="filter-block chips">
         <span class="filter-col-label">Project (chọn nhiều) <button class="btn-mini" id="allProjectsBtn" type="button">chọn hết</button></span>
         <div class="check-list" id="projectList"></div>
       </div>
-      <div>
+      <div class="filter-block chips">
         <span class="filter-col-label">Trạng thái (chọn nhiều) <button class="btn-mini" id="allStatusBtn" type="button">chọn hết</button></span>
         <div class="check-list" id="statusList"></div>
       </div>
@@ -137,20 +134,12 @@
     <div class="actions">
       <button class="btn btn-ghost" id="exportBtn">⬇ Xuất Excel</button>
     </div>
-    <div class="hint">
-      Đây là <b>toàn bộ field thô</b> ERPNext trả về (chưa map vào đúng cột Hạng mục/Nội dung/Chi tiết/Trạng thái/Hạn/Ghi chú) —
-      xuất Excel rồi báo lại tên cột nào tương ứng với gì để hoàn thiện mapping tự động cho lần sau.
-      Nếu chọn "Opening date", dữ liệu được lọc <b>trực tiếp trên ERP</b> theo field <code class="tag">opening_date</code> nên không bị thiếu ticket dù dự án có rất nhiều lịch sử (không lọc theo ngày tạo record <code class="tag">creation</code>).
-      Đã ẩn bớt các field kỹ thuật không cần thiết (<code class="tag">docstatus</code>, <code class="tag">idx</code>, <code class="tag">naming_series</code>, <code class="tag">email_account</code>, <code class="tag">company</code>, <code class="tag">via_customer_portal</code>, <code class="tag">attachment</code>, <code class="tag">content_type</code>, <code class="tag">amended_from</code>).
-      Các field rich-text như <code class="tag">description</code>, <code class="tag">resolution_details</code> đã được bóc tách khỏi HTML gốc thành text thuần (ảnh đính kèm hiển thị dạng <code class="tag">[Hình: tên_file]</code>) — rê chuột vào ô để xem đầy đủ nội dung.
-    </div>
   </div>
 </div>
 
 <script>
 const PROJECTS = ['MerapLion_eSales', 'ABI_eSales_Support', 'ANVY_eSale_Support', 'Sabeco_PG'];
-const STATUSES = ['Open', 'Assign', 'Working', 'Reviewing', 'Waiting', 'Pending', 'Re-open', 'Closed', 'null'];
-const STATUS_LABELS = { null: 'Chưa có trạng thái (null)' };
+const STATUSES = ['Open', 'Assign', 'Working', 'Reviewing', 'Waiting', 'Pending', 'Re-open', 'Closed'];
 const DEFAULT_STATUS_CHECKED = ['Open', 'Assign', 'Working', 'Reviewing', 'Waiting', 'Pending', 'Re-open'];
 
 // Các field kỹ thuật của Frappe không có giá trị đọc-hiểu với người dùng — ẩn khỏi bảng & Excel.
@@ -176,9 +165,8 @@ projectList.innerHTML = PROJECTS.map((p) => `
 `).join('');
 
 statusList.innerHTML = STATUSES.map((s) => {
-  const label = STATUS_LABELS[s] || s;
   const checked = DEFAULT_STATUS_CHECKED.includes(s) ? 'checked' : '';
-  return `<label class="check-item"><input type="checkbox" class="statusChk" value="${s}" ${checked}> ${label}</label>`;
+  return `<label class="check-item"><input type="checkbox" class="statusChk" value="${s}" ${checked}> ${s}</label>`;
 }).join('');
 
 document.getElementById('allProjectsBtn').addEventListener('click', () => {
@@ -203,7 +191,7 @@ function setStatus(msg, cls){
 
 fetchBtn.addEventListener('click', async () => {
   const projects = [...document.querySelectorAll('.projChk:checked')].map(b => b.value);
-  const statuses = [...document.querySelectorAll('.statusChk:checked')].map(b => b.value === 'null' ? null : b.value);
+  const statuses = [...document.querySelectorAll('.statusChk:checked')].map(b => b.value);
 
   fetchBtn.disabled = true;
   setStatus('Đang đăng nhập & lấy dữ liệu từ ERP…', '');
@@ -261,14 +249,32 @@ function htmlFieldToText(html){
   }
 }
 
-/* Bỏ các field kỹ thuật + làm sạch field rich-text, dùng chung cho bảng xem trước và Excel. */
+/* Sắp xếp lại thứ tự cột: opening_date, first_responded_on lên ngay sau creation;
+   modified, modified_by chuyển ra cuối cùng. Các cột còn lại giữ nguyên thứ tự ERP trả về. */
+function reorderColumns(keys){
+  const cols = keys.slice();
+  const has = k => keys.includes(k);
+  const removeIfPresent = (arr, name) => { const i = arr.indexOf(name); if (i > -1) arr.splice(i, 1); };
+  ['opening_date', 'first_responded_on', 'modified', 'modified_by'].forEach(f => removeIfPresent(cols, f));
+
+  const afterCreation = ['opening_date', 'first_responded_on'].filter(has);
+  const creationIdx = cols.indexOf('creation');
+  if (creationIdx > -1) cols.splice(creationIdx + 1, 0, ...afterCreation);
+  else cols.unshift(...afterCreation);
+
+  cols.push(...['modified', 'modified_by'].filter(has));
+  return cols;
+}
+
+/* Bỏ các field kỹ thuật + làm sạch field rich-text + sắp lại thứ tự cột,
+   dùng chung cho bảng xem trước và Excel. */
 function buildDisplayRows(rows){
+  if (!rows.length) return [];
+  const visibleKeys = Object.keys(rows[0]).filter(k => !HIDDEN_COLUMNS.includes(k));
+  const orderedKeys = reorderColumns(visibleKeys);
   return rows.map(r => {
     const out = {};
-    Object.keys(r).forEach(k => {
-      if (HIDDEN_COLUMNS.includes(k)) return;
-      out[k] = htmlFieldToText(r[k]);
-    });
+    orderedKeys.forEach(k => { out[k] = htmlFieldToText(r[k]); });
     return out;
   });
 }
