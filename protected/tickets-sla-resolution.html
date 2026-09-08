@@ -164,9 +164,9 @@
     <div class="panel">
       <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Tỷ lệ đạt SLA theo Nhóm Priority (KPI 70/30) — theo dự án</div>
       <div class="panel-sub">
-        Nhóm 1 = Critical &amp; Urgent (P1, P2), trọng số 70% — Actual 1 &lt; 95% thì tính = 0, ngược lại giữ nguyên.<br>
-        Nhóm 2 = High, Medium, Low… (P3, P4, P5), trọng số 30% — Actual 2 &lt; 80% thì tính = 0, ngược lại giữ nguyên.<br>
-        Điểm KPI = Actual 1 × 70% + Actual 2 × 30%. "Đạt điều kiện" = cả 2 nhóm đều đạt ngưỡng tối thiểu (Actual 1 ≥ 95% và Actual 2 ≥ 80%).
+        Nhóm 1 = Critical &amp; Urgent (P1, P2), chiếm tối đa 70% điểm KPI — % Actual &lt; 95% thì Actual 1 (áp dụng) = 0, ngược lại Actual 1 (áp dụng) = % Actual × 70%.<br>
+        Nhóm 2 = High, Medium, Low… (P3, P4, P5), chiếm tối đa 30% điểm KPI — % Actual &lt; 80% thì Actual 2 (áp dụng) = 0, ngược lại Actual 2 (áp dụng) = % Actual × 30%.<br>
+        Điểm KPI = Actual 1 (áp dụng) + Actual 2 (áp dụng). "Đạt điều kiện" = Điểm KPI ≥ 90% → Đạt SLA, ngược lại Không đạt SLA.
       </div>
       <div class="table-scroll">
         <table>
@@ -175,12 +175,12 @@
               <th rowspan="2">Project</th>
               <th colspan="4" style="text-align:center;">Nhóm 1 — P1 &amp; P2 (Critical, Urgent) — 70%</th>
               <th colspan="4" style="text-align:center;">Nhóm 2 — P3, P4, P5 — 30%</th>
-              <th rowspan="2" style="text-align:right;">Điểm KPI (70/30)</th>
+              <th rowspan="2" style="text-align:right;">Điểm KPI (Actual1+Actual2)</th>
               <th rowspan="2" style="text-align:center;">Đạt điều kiện</th>
             </tr>
             <tr>
-              <th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Actual</th><th style="text-align:right;">Actual 1 (áp dụng)</th>
-              <th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Actual</th><th style="text-align:right;">Actual 2 (áp dụng)</th>
+              <th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Actual</th><th style="text-align:right;">Actual 1 (áp dụng, ×70%)</th>
+              <th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Actual</th><th style="text-align:right;">Actual 2 (áp dụng, ×30%)</th>
             </tr>
           </thead>
           <tbody id="kpiGroupBody"></tbody>
@@ -440,13 +440,17 @@ function renderKpiGroupTable(rows){
     // Không có ticket nào thuộc nhóm đó (P1&P2 hoặc P3-P5) trong bộ lọc hiện tại -> coi như đạt 100%.
     const actual1Raw = d.g1total ? (d.g1pass / d.g1total * 100) : 100;
     const actual2Raw = d.g2total ? (d.g2pass / d.g2total * 100) : 100;
-    const actual1Applied = actual1Raw < 95 ? 0 : actual1Raw;
-    const actual2Applied = actual2Raw < 80 ? 0 : actual2Raw;
-    const kpiScore = actual1Applied * 0.7 + actual2Applied * 0.3;
-    const meetsCondition = actual1Raw >= 95 && actual2Raw >= 80;
+    const actual1Floor = actual1Raw < 95 ? 0 : actual1Raw;
+    const actual2Floor = actual2Raw < 80 ? 0 : actual2Raw;
+    // Nhóm 1 chỉ chiếm 70% và Nhóm 2 chỉ chiếm 30% trong điểm KPI tổng — nên "Actual áp dụng"
+    // hiển thị đúng phần đóng góp thực tế của từng nhóm (đã nhân trọng số), không phải % thô của riêng nhóm đó.
+    const actual1Applied = actual1Floor * 0.7;
+    const actual2Applied = actual2Floor * 0.3;
+    const kpiScore = actual1Applied + actual2Applied;
+    const meetsCondition = kpiScore >= 90;
     const fmt = v => v.toFixed(1) + '%';
     const appliedClass = v => v === 0 ? 'fail' : 'pass';
-    const conditionLabel = meetsCondition ? 'Đạt' : 'Không đạt';
+    const conditionLabel = meetsCondition ? 'Đạt SLA' : 'Không đạt SLA';
     const conditionClass = meetsCondition ? 'pass' : 'fail';
 
     return `<tr>
