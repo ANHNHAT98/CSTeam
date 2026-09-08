@@ -91,6 +91,10 @@ app.get('/tickets/sla-first-response', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'tickets-sla-first-response.html'));
 });
 
+app.get('/tickets/sla-resolution', requirePageAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'protected', 'tickets-sla-resolution.html'));
+});
+
 app.get('/hotfix/gop-sql', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'hotfix-gop-sql.html'));
 });

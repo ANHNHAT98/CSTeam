@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ticket dự án — SLA Phản Hồi Đầu Tiên</title>
+<title>Ticket dự án — SLA Xử Lý Hoàn Tất</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -107,16 +107,16 @@
 <body>
 <div class="ops-topbar">
   <a href="/">← Quay về</a>
-  <span class="crumb">Ticket dự án / SLA Phản Hồi Đầu Tiên</span>
+  <span class="crumb">Ticket dự án / SLA Xử Lý Hoàn Tất</span>
 </div>
 
 <div class="wrap">
-  <h1>SLA First Response — 4 dự án</h1>
-  <p class="sub">Tính Pass/Fail thời gian phản hồi đầu tiên (First Responded On − Opening On) theo ngưỡng SLA từng Priority, lấy trực tiếp từ ERP cho MerapLion_eSales, ABI_eSales_Support, ANVY_eSale_Support, Sabeco_PG.</p>
+  <h1>SLA Xử Lý Hoàn Tất — 4 dự án</h1>
+  <p class="sub">Tính Pass/Fail thời gian xử lý hoàn tất (Resolution Date − Opening Date) theo ngưỡng SLA từng Priority, lấy trực tiếp từ ERP cho MerapLion_eSales, ABI_eSales_Support, ANVY_eSale_Support, Sabeco_PG.</p>
 
   <div class="panel">
     <h2>Bộ lọc &amp; tính SLA</h2>
-    <div class="panel-sub">Lọc theo <code class="tag">opening_date</code> (để trống = lấy toàn bộ lịch sử) và chọn dự án, rồi tính Pass/Fail SLA phản hồi đầu (First Responded On − Opening On) theo ngưỡng từng Priority.</div>
+    <div class="panel-sub">Lọc theo <code class="tag">opening_date</code> (để trống = lấy toàn bộ lịch sử) và chọn dự án, rồi tính Pass/Fail SLA xử lý hoàn tất (Resolution Date − Opening Date) theo ngưỡng từng Priority.</div>
     <div class="filter-row-main">
       <div class="filter-block dates">
         <div class="date-field">
@@ -163,12 +163,12 @@
 
     <div class="panel">
       <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Chi tiết ticket Fail</div>
-      <div class="panel-sub">Danh sách ticket không đạt SLA phản hồi đầu, để rà soát/follow-up. Bấm ⧉ ở từng dòng hoặc nút bên dưới để copy Ticket + Project gửi cho các thành viên.</div>
+      <div class="panel-sub">Danh sách ticket không đạt SLA xử lý hoàn tất, để rà soát/follow-up. Bấm ⧉ ở từng dòng hoặc nút bên dưới để copy Ticket + Project gửi cho các thành viên.</div>
       <div class="actions" style="margin-top:0;margin-bottom:12px;">
         <button class="btn btn-ghost" id="copyAllFailBtn">⧉ Copy toàn bộ danh sách Fail (Ticket + Project)</button>
       </div>
       <div class="table-scroll">
-        <table><thead><tr><th></th><th>Ticket</th><th>Project</th><th>Priority</th><th>Opening On</th><th>First Responded On</th><th style="text-align:right;">W (phút)</th></tr></thead>
+        <table><thead><tr><th></th><th>Ticket</th><th>Project</th><th>Priority</th><th>Opening Date</th><th>Resolution Date</th><th style="text-align:right;">W (phút)</th></tr></thead>
           <tbody id="failBody"></tbody></table>
       </div>
     </div>
@@ -184,8 +184,9 @@ const PROJECTS = ['MerapLion_eSales', 'ABI_eSales_Support', 'ANVY_eSale_Support'
 // Field ERP đã xác nhận trước đó — không cần bước dò/xác nhận field thủ công nữa.
 const PRIORITY_FIELD = 'priority';
 const OPENING_FIELD = 'opening_date';
-const FIRST_RESP_FIELD = 'first_responded_on';
-// Ngưỡng SLA phản hồi đầu (phút) theo Priority — đúng công thức đã xác nhận.
+const RESOLUTION_FIELD = 'resolution_date';
+// Ngưỡng SLA xử lý hoàn tất (phút) theo Priority — đúng công thức đã xác nhận
+// (=IF(W=1.1,"Fail", IF(W<ngưỡng,"Pass","Fail")) — giống hệt công thức SLA phản hồi đầu).
 const SLA_THRESHOLD = { critical: 60, urgent: 240, high: 480, medium: 4320 };
 const SLA_DEFAULT_THRESHOLD = 7200; // Priority khác (vd Low) hoặc không khớp danh sách trên
 
@@ -272,20 +273,20 @@ function calcSla(rows){
   calcRows = rows.map(t => {
     const priority = t[PRIORITY_FIELD];
     const openingRaw = t[OPENING_FIELD];
-    const firstRespRaw = t[FIRST_RESP_FIELD];
+    const resolutionRaw = t[RESOLUTION_FIELD];
 
     let w, result;
-    if (!firstRespRaw){
-      w = 1.1; // sentinel: chưa có ai phản hồi
+    if (!resolutionRaw){
+      w = 1.1; // sentinel: ticket chưa xử lý xong (chưa có resolution_date)
       result = 'Fail';
     } else {
       const openDate = new Date(openingRaw);
-      const respDate = new Date(firstRespRaw);
-      if (isNaN(openDate.getTime()) || isNaN(respDate.getTime())){
+      const resDate = new Date(resolutionRaw);
+      if (isNaN(openDate.getTime()) || isNaN(resDate.getTime())){
         w = 1.1;
         result = 'Fail';
       } else {
-        w = (respDate.getTime() - openDate.getTime()) / 60000; // phút
+        w = (resDate.getTime() - openDate.getTime()) / 60000; // phút
         const threshold = priorityThreshold(priority);
         result = (w < threshold) ? 'Pass' : 'Fail';
       }
@@ -295,7 +296,7 @@ function calcSla(rows){
       project: t.project || '',
       priority: priority || '',
       opening: openingRaw || '',
-      firstResp: firstRespRaw || '',
+      resolution: resolutionRaw || '',
       w, result,
     };
   });
@@ -345,7 +346,7 @@ function renderResult(rows){
   document.getElementById('failBody').innerHTML = failRows.map((r,i) => `
     <tr><td><button class="btn-copy" data-fail-idx="${i}" title="Copy Ticket + Project">⧉</button></td>
     <td>${escapeHtml(String(r.name))}</td><td>${escapeHtml(String(r.project))}</td><td>${escapeHtml(String(r.priority))}</td>
-    <td>${escapeHtml(String(r.opening))}</td><td>${escapeHtml(String(r.firstResp||'— (chưa phản hồi)'))}</td>
+    <td>${escapeHtml(String(r.opening))}</td><td>${escapeHtml(String(r.resolution||'— (chưa xử lý xong)'))}</td>
     <td class="num">${r.w===1.1?'—':Math.round(r.w)}</td></tr>`).join('') || '<tr><td colspan="7" style="color:var(--muted);">Không có ticket Fail nào 🎉</td></tr>';
 
   document.querySelectorAll('[data-fail-idx]').forEach(btn => {
@@ -376,13 +377,13 @@ function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 
 exportBtn.addEventListener('click', () => {
   if (!calcRows.length) return;
-  const aoa = [['Ticket','Project','Priority','Opening On','First Responded On','W (phút)','Kết quả']];
-  calcRows.forEach(r => aoa.push([r.name, r.project, r.priority, r.opening, r.firstResp, r.w===1.1?'':Math.round(r.w*100)/100, r.result]));
+  const aoa = [['Ticket','Project','Priority','Opening Date','Resolution Date','W (phút)','Kết quả']];
+  calcRows.forEach(r => aoa.push([r.name, r.project, r.priority, r.opening, r.resolution, r.w===1.1?'':Math.round(r.w*100)/100, r.result]));
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!cols'] = [{wch:16},{wch:20},{wch:12},{wch:20},{wch:20},{wch:10},{wch:8}];
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'SLA First Response');
-  XLSX.writeFile(wb, 'SLA_First_Response.xlsx');
+  XLSX.utils.book_append_sheet(wb, ws, 'SLA Xu Ly Hoan Tat');
+  XLSX.writeFile(wb, 'SLA_Xu_Ly_Hoan_Tat.xlsx');
 });
 </script>
 </body>

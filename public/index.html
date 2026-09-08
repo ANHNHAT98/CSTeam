@@ -288,7 +288,8 @@
     <div class="side-group">
       <div class="side-group-label">Ticket dự án</div>
       <a class="side-leaf" href="/tickets/tra-cuu-erp" data-path="/tickets/tra-cuu-erp">Tra cứu ERP</a>
-      <a class="side-leaf" href="/tickets/sla-first-response" data-path="/tickets/sla-first-response">SLA Phản hồi đầu</a>
+      <a class="side-leaf" href="/tickets/sla-first-response" data-path="/tickets/sla-first-response">SLA Phản Hồi Đầu Tiên</a>
+      <a class="side-leaf" href="/tickets/sla-resolution" data-path="/tickets/sla-resolution">SLA Xử Lý Hoàn Tất</a>
     </div>
 
     <div class="side-group">
@@ -492,7 +493,7 @@ const ALL_PROJECTS = ['MerapLion_eSales', 'ABI_eSales_Support', 'ANVY_eSale_Supp
 const OPEN_STATUSES = ['Open','Assign','Working','Reviewing','Waiting','Pending','Re-open'];
 
 // Ngưỡng SLA phản hồi đầu (phút) theo Priority — đúng công thức đã xác nhận,
-// giống hệt module "Ticket dự án > SLA Phản hồi đầu".
+// giống hệt module "Ticket dự án > SLA Phản Hồi Đầu Tiên".
 const SLA_THRESHOLD = { critical: 60, urgent: 240, high: 480, medium: 4320 };
 const SLA_DEFAULT_THRESHOLD = 7200;
 
@@ -664,7 +665,7 @@ function renderFrt(rows){
   if (!rows.length || missing || !items.length){
     document.getElementById('kpiFrt').textContent = '—';
     frtSub.textContent = (missing)
-      ? 'Không tự nhận diện được đủ field (Priority/Opening On/First Responded On) từ ERP — xem chi tiết & xác nhận field tại Ticket dự án → SLA Phản hồi đầu.'
+      ? 'Không tự nhận diện được đủ field (Priority/Opening On/First Responded On) từ ERP — xem chi tiết & xác nhận field tại Ticket dự án → SLA Phản Hồi Đầu Tiên.'
       : 'Không có dữ liệu.';
     document.getElementById('frtBody').innerHTML = '';
     document.getElementById('frtMonthBody').innerHTML = '';
