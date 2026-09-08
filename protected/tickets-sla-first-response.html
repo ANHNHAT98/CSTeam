@@ -289,6 +289,13 @@ calcBtn.addEventListener('click', async () => {
   }
 });
 
+const PRIORITY_ORDER = ['critical','urgent','high','medium','low'];
+function priorityRank(priorityRaw){
+  const p = String(priorityRaw||'').trim().toLowerCase();
+  const idx = PRIORITY_ORDER.indexOf(p);
+  return idx === -1 ? PRIORITY_ORDER.length : idx;
+}
+
 function priorityThreshold(priorityRaw){
   const p = String(priorityRaw||'').trim().toLowerCase();
   if (p in SLA_THRESHOLD) return SLA_THRESHOLD[p];
@@ -361,7 +368,7 @@ function renderResult(rows){
     byPriority[key].total++;
     if (r.result==='Pass') byPriority[key].pass++;
   });
-  document.getElementById('byPriorityBody').innerHTML = Object.keys(byPriority).sort().map(p => {
+  document.getElementById('byPriorityBody').innerHTML = Object.keys(byPriority).sort((a,b) => priorityRank(a) - priorityRank(b) || a.localeCompare(b)).map(p => {
     const d = byPriority[p];
     const rate = d.total ? (d.pass/d.total*100).toFixed(1) : '0.0';
     return `<tr><td>${p}</td><td class="num">${priorityThreshold(p)}</td><td class="num">${d.total}</td><td class="num pass">${d.pass}</td><td class="num">${rate}%</td></tr>`;
@@ -370,7 +377,9 @@ function renderResult(rows){
   renderKpiGroupTable(rows);
 
   // chi tiết fail
-  const failRows = rows.filter(r=>r.result==='Fail');
+  const failRows = rows.filter(r=>r.result==='Fail').slice().sort((a,b) =>
+    String(a.project||'').localeCompare(String(b.project||'')) || priorityRank(a.priority) - priorityRank(b.priority)
+  );
   document.getElementById('failBody').innerHTML = failRows.map((r,i) => `
     <tr><td><button class="btn-copy" data-fail-idx="${i}" title="Copy Ticket + Project">⧉</button></td>
     <td>${escapeHtml(String(r.name))}</td><td>${escapeHtml(String(r.project))}</td><td>${escapeHtml(String(r.priority))}</td>
@@ -427,17 +436,17 @@ function renderKpiGroupTable(rows){
 
   document.getElementById('kpiGroupBody').innerHTML = Object.keys(byProjectAll).map(p => {
     const d = byProjectAll[p];
-    const actual1Raw = d.g1total ? (d.g1pass / d.g1total * 100) : null;
-    const actual2Raw = d.g2total ? (d.g2pass / d.g2total * 100) : null;
-    const actual1Applied = actual1Raw === null ? null : (actual1Raw < 95 ? 0 : actual1Raw);
-    const actual2Applied = actual2Raw === null ? null : (actual2Raw < 80 ? 0 : actual2Raw);
-    const kpiScore = (actual1Applied || 0) * 0.7 + (actual2Applied || 0) * 0.3;
-    const hasBothGroups = actual1Raw !== null && actual2Raw !== null;
-    const meetsCondition = hasBothGroups && actual1Raw >= 95 && actual2Raw >= 80;
-    const fmt = v => v === null ? '—' : v.toFixed(1) + '%';
-    const appliedClass = v => v === null ? '' : (v === 0 ? 'fail' : 'pass');
-    const conditionLabel = !hasBothGroups ? 'Chưa đủ dữ liệu' : (meetsCondition ? 'Đạt' : 'Không đạt');
-    const conditionClass = !hasBothGroups ? '' : (meetsCondition ? 'pass' : 'fail');
+    // Không có ticket nào thuộc nhóm đó (P1&P2 hoặc P3-P5) trong bộ lọc hiện tại -> coi như đạt 100%.
+    const actual1Raw = d.g1total ? (d.g1pass / d.g1total * 100) : 100;
+    const actual2Raw = d.g2total ? (d.g2pass / d.g2total * 100) : 100;
+    const actual1Applied = actual1Raw < 95 ? 0 : actual1Raw;
+    const actual2Applied = actual2Raw < 80 ? 0 : actual2Raw;
+    const kpiScore = actual1Applied * 0.7 + actual2Applied * 0.3;
+    const meetsCondition = actual1Raw >= 95 && actual2Raw >= 80;
+    const fmt = v => v.toFixed(1) + '%';
+    const appliedClass = v => v === 0 ? 'fail' : 'pass';
+    const conditionLabel = meetsCondition ? 'Đạt' : 'Không đạt';
+    const conditionClass = meetsCondition ? 'pass' : 'fail';
 
     return `<tr>
       <td>${escapeHtml(p)}</td>
