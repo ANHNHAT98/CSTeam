@@ -28,7 +28,7 @@
   .ops-topbar a:hover{opacity:1;text-decoration:underline;}
   .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
 
-  .wrap{max-width:1200px;margin:0 auto;padding:32px 24px 80px;}
+  .wrap{max-width:1500px;margin:0 auto;padding:32px 24px 80px;}
   h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 6px;}
   .sub{color:var(--muted);font-size:13.5px;margin:0 0 26px;line-height:1.6;}
 
@@ -158,6 +158,33 @@
         <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Theo Priority</div>
         <table><thead><tr><th>Priority</th><th style="text-align:right;">Ngưỡng (phút)</th><th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Pass</th></tr></thead>
           <tbody id="byPriorityBody"></tbody></table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Tỷ lệ đạt SLA theo Nhóm Priority (KPI 70/30) — theo dự án</div>
+      <div class="panel-sub">
+        Nhóm 1 = Critical &amp; Urgent (P1, P2), trọng số 70% — Actual 1 &lt; 95% thì tính = 0, ngược lại giữ nguyên.<br>
+        Nhóm 2 = High, Medium, Low… (P3, P4, P5), trọng số 30% — Actual 2 &lt; 80% thì tính = 0, ngược lại giữ nguyên.<br>
+        Điểm KPI = Actual 1 × 70% + Actual 2 × 30%. "Đạt điều kiện" = cả 2 nhóm đều đạt ngưỡng tối thiểu (Actual 1 ≥ 95% và Actual 2 ≥ 80%).
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th rowspan="2">Project</th>
+              <th colspan="4" style="text-align:center;">Nhóm 1 — P1 &amp; P2 (Critical, Urgent) — 70%</th>
+              <th colspan="4" style="text-align:center;">Nhóm 2 — P3, P4, P5 — 30%</th>
+              <th rowspan="2" style="text-align:right;">Điểm KPI (70/30)</th>
+              <th rowspan="2" style="text-align:center;">Đạt điều kiện</th>
+            </tr>
+            <tr>
+              <th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Actual</th><th style="text-align:right;">Actual 1 (áp dụng)</th>
+              <th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Actual</th><th style="text-align:right;">Actual 2 (áp dụng)</th>
+            </tr>
+          </thead>
+          <tbody id="kpiGroupBody"></tbody>
+        </table>
       </div>
     </div>
 
@@ -341,6 +368,8 @@ function renderResult(rows){
     return `<tr><td>${p}</td><td class="num">${priorityThreshold(p)}</td><td class="num">${d.total}</td><td class="num pass">${d.pass}</td><td class="num">${rate}%</td></tr>`;
   }).join('');
 
+  renderKpiGroupTable(rows);
+
   // chi tiết fail
   const failRows = rows.filter(r=>r.result==='Fail');
   document.getElementById('failBody').innerHTML = failRows.map((r,i) => `
@@ -374,6 +403,54 @@ function renderResult(rows){
   resultBlock.style.display = 'block';
 }
 function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* KPI 70/30: Nhóm 1 = Critical & Urgent (P1,P2), trọng số 70%, ngưỡng tối thiểu 95%.
+   Nhóm 2 = phần còn lại — High/Medium/Low… (P3,P4,P5), trọng số 30%, ngưỡng tối thiểu 80%.
+   Actual < ngưỡng tối thiểu thì bị tính về 0 theo đúng công thức yêu cầu. */
+function priorityGroup(priorityRaw){
+  const p = String(priorityRaw||'').trim().toLowerCase();
+  return (p === 'critical' || p === 'urgent') ? 1 : 2;
+}
+
+function renderKpiGroupTable(rows){
+  const projects = [...document.querySelectorAll('.projChk:checked')].map(b=>b.value);
+  const byProjectAll = {};
+  projects.forEach(p => byProjectAll[p] = { g1total:0, g1pass:0, g2total:0, g2pass:0 });
+  rows.forEach(r => {
+    if (!byProjectAll[r.project]) byProjectAll[r.project] = { g1total:0, g1pass:0, g2total:0, g2pass:0 };
+    const d = byProjectAll[r.project];
+    if (priorityGroup(r.priority) === 1){
+      d.g1total++; if (r.result === 'Pass') d.g1pass++;
+    } else {
+      d.g2total++; if (r.result === 'Pass') d.g2pass++;
+    }
+  });
+
+  document.getElementById('kpiGroupBody').innerHTML = Object.keys(byProjectAll).map(p => {
+    const d = byProjectAll[p];
+    const actual1Raw = d.g1total ? (d.g1pass / d.g1total * 100) : null;
+    const actual2Raw = d.g2total ? (d.g2pass / d.g2total * 100) : null;
+    const actual1Applied = actual1Raw === null ? null : (actual1Raw < 95 ? 0 : actual1Raw);
+    const actual2Applied = actual2Raw === null ? null : (actual2Raw < 80 ? 0 : actual2Raw);
+    const kpiScore = (actual1Applied || 0) * 0.7 + (actual2Applied || 0) * 0.3;
+    const hasBothGroups = actual1Raw !== null && actual2Raw !== null;
+    const meetsCondition = hasBothGroups && actual1Raw >= 95 && actual2Raw >= 80;
+    const fmt = v => v === null ? '—' : v.toFixed(1) + '%';
+    const appliedClass = v => v === null ? '' : (v === 0 ? 'fail' : 'pass');
+    const conditionLabel = !hasBothGroups ? 'Chưa đủ dữ liệu' : (meetsCondition ? 'Đạt' : 'Không đạt');
+    const conditionClass = !hasBothGroups ? '' : (meetsCondition ? 'pass' : 'fail');
+
+    return `<tr>
+      <td>${escapeHtml(p)}</td>
+      <td class="num">${d.g1total}</td><td class="num pass">${d.g1pass}</td><td class="num">${fmt(actual1Raw)}</td>
+      <td class="num ${appliedClass(actual1Applied)}">${fmt(actual1Applied)}</td>
+      <td class="num">${d.g2total}</td><td class="num pass">${d.g2pass}</td><td class="num">${fmt(actual2Raw)}</td>
+      <td class="num ${appliedClass(actual2Applied)}">${fmt(actual2Applied)}</td>
+      <td class="num" style="font-weight:700;">${kpiScore.toFixed(1)}%</td>
+      <td style="text-align:center;" class="${conditionClass}">${conditionLabel}</td>
+    </tr>`;
+  }).join('');
+}
 
 exportBtn.addEventListener('click', () => {
   if (!calcRows.length) return;
