@@ -56,22 +56,24 @@ async function jiraFetch(pathAndQuery, options = {}) {
 }
 
 /**
- * Tim issue theo JQL, tu dong phan trang (Jira gioi han toi da ~100 issue/lan goi).
- * fields=['*all'] de lay het field (ke ca custom field) - giong triet ly dang dung voi ERP.
+ * Tim issue theo JQL, tu dong phan trang. Dung API moi /rest/api/3/search/jql
+ * (API cu /rest/api/3/search da bi Atlassian go bo - xem CHANGE-2046). API moi
+ * phan trang bang con tro nextPageToken thay vi startAt/total.
  */
 async function searchIssues({ jql, maxTotal = 3000 }) {
   const pageSize = 100;
-  let startAt = 0;
+  let nextPageToken;
   let all = [];
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const body = { jql, startAt, maxResults: pageSize, fields: ['*all'] };
-    const data = await jiraFetch('/rest/api/3/search', { method: 'POST', body: JSON.stringify(body) });
+    const body = { jql, maxResults: pageSize, fields: ['*all'] };
+    if (nextPageToken) body.nextPageToken = nextPageToken;
+    const data = await jiraFetch('/rest/api/3/search/jql', { method: 'POST', body: JSON.stringify(body) });
     const issues = Array.isArray(data.issues) ? data.issues : [];
     all = all.concat(issues);
-    const total = typeof data.total === 'number' ? data.total : issues.length;
-    startAt += issues.length;
-    if (!issues.length || startAt >= total || all.length >= maxTotal) break;
+    nextPageToken = data.nextPageToken;
+    const isLast = typeof data.isLast === 'boolean' ? data.isLast : !nextPageToken;
+    if (!issues.length || isLast || all.length >= maxTotal) break;
   }
   return all;
 }
