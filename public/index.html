@@ -341,7 +341,7 @@
     <div class="panel dash-kpi">
       <div class="label">Tổng ticket đang mở</div>
       <div class="value" id="kpiOpenTotal">—</div>
-      <div class="note">4 dự án · trạng thái chưa Closed</div>
+      <div class="note">5 dự án · trạng thái chưa Closed</div>
     </div>
     <div class="panel dash-kpi">
       <div class="label">First Response Time (SLA) — % Pass tháng này</div>
@@ -528,7 +528,7 @@ document.querySelectorAll('.side-leaf[data-path]').forEach(a=>{
 });
 
 /* ---------- Dashboard Tổng Quan: gọi lại API /api/erp/tickets đã có ---------- */
-const ALL_PROJECTS = ['MerapLion_eSales', 'ABI_eSales_Support', 'ANVY_eSale_Support', 'Sabeco_PG'];
+const ALL_PROJECTS = ['MerapLion_eSales', 'ABI_eSales_Support', 'ANVY_eSale_Support', 'Sabeco_PG', 'Sabeco_B2B_Support'];
 const OPEN_STATUSES = ['Open','Assign','Working','Reviewing','Waiting','Pending','Re-open'];
 
 // Ngưỡng SLA phản hồi đầu (phút) theo Priority — đúng công thức đã xác nhận,
@@ -833,7 +833,7 @@ function renderSla(rows){
   });
 
   /* ---- KPI đầu trang: % Pass thuần theo đúng công thức Priority (không nhân trọng số
-     70/30 — chỉ dùng trọng số 70/30 ở 2 bảng chi tiết bên dưới), toàn bộ 4 dự án, tháng hiện tại ---- */
+     70/30 — chỉ dùng trọng số 70/30 ở 2 bảng chi tiết bên dưới), toàn bộ 5 dự án, tháng hiện tại ---- */
   document.getElementById('kpiFrt').textContent = frtMissing ? '—' : passRate(frtMonthItems).toFixed(1) + '%';
   document.getElementById('kpiRes').textContent = resMissing ? '—' : passRate(resMonthItems).toFixed(1) + '%';
   document.getElementById('kpiFrtNote').textContent = frtMissing
