@@ -344,14 +344,14 @@
       <div class="note">4 dự án · trạng thái chưa Closed</div>
     </div>
     <div class="panel dash-kpi">
-      <div class="label">First Response Time (SLA) — trọng số tháng này</div>
+      <div class="label">First Response Time (SLA) — % Pass tháng này</div>
       <div class="value" id="kpiFrt">—</div>
-      <div class="note" id="kpiFrtNote">Actual 1 (P1&amp;P2) × 70% + Actual 2 (P3-P5) × 30%</div>
+      <div class="note" id="kpiFrtNote">Pass nếu W = First Responded On − Opening On &lt; ngưỡng theo Priority</div>
     </div>
     <div class="panel dash-kpi">
-      <div class="label">Resolution Time (SLA) — trọng số tháng này</div>
+      <div class="label">Resolution Time (SLA) — % Pass tháng này</div>
       <div class="value" id="kpiRes">—</div>
-      <div class="note" id="kpiResNote">Actual 1 (P1&amp;P2) × 70% + Actual 2 (P3-P5) × 30%</div>
+      <div class="note" id="kpiResNote">Pass nếu W = Resolution Date − Opening On &lt; ngưỡng theo Priority</div>
     </div>
   </div>
 
@@ -694,12 +694,25 @@ function renderSla(rows){
   const { items: frtItems, fields: frtFields, missing: frtMissing } = computeSlaItems(rows, FRT_KEYWORDS);
   const { items: resItems, fields: resFields, missing: resMissing } = computeSlaItems(rows, RES_KEYWORDS);
 
-  if (!rows.length || frtMissing || resMissing){
+  if (!rows.length){
     document.getElementById('kpiFrt').textContent = '—';
     document.getElementById('kpiRes').textContent = '—';
-    const msg = (frtMissing || resMissing)
-      ? 'Không tự nhận diện được đủ field (Priority/Opening On/First Responded On/Resolution Date) từ ERP — xem chi tiết & xác nhận field tại Ticket dự án → SLA Phản Hồi Đầu Tiên / SLA Xử Lý Hoàn Tất.'
-      : 'Không có dữ liệu.';
+    document.getElementById('slaTrendSub').textContent = 'Không có dữ liệu.';
+    document.getElementById('slaMonthSub').textContent = 'Không có dữ liệu.';
+    document.getElementById('slaTrendBody').innerHTML = '';
+    document.getElementById('slaMonthBody').innerHTML = '';
+    document.getElementById('frtWeekBody').innerHTML = '';
+    if (slaTrendChartInst){ slaTrendChartInst.destroy(); slaTrendChartInst = null; }
+    if (slaMonthChartInst){ slaMonthChartInst.destroy(); slaMonthChartInst = null; }
+    return;
+  }
+
+  // 2 chỉ số độc lập nhau — nếu 1 bên không dò được field thì chỉ báo lỗi riêng bên đó,
+  // không xoá luôn dữ liệu của bên còn lại đang hoạt động bình thường.
+  if (frtMissing) document.getElementById('kpiFrt').textContent = '—';
+  if (resMissing) document.getElementById('kpiRes').textContent = '—';
+  if (frtMissing && resMissing){
+    const msg = 'Không tự nhận diện được đủ field (Priority/Opening On/First Responded On/Resolution Date) từ ERP — xem chi tiết & xác nhận field tại Ticket dự án → SLA Phản Hồi Đầu Tiên / SLA Xử Lý Hoàn Tất.';
     document.getElementById('slaTrendSub').textContent = msg;
     document.getElementById('slaMonthSub').textContent = msg;
     document.getElementById('slaTrendBody').innerHTML = '';
@@ -789,9 +802,16 @@ function renderSla(rows){
     options: { responsive:true, scales:{ y:{ ticks:{ callback:v => v+'%' } } } },
   });
 
-  /* ---- KPI đầu trang: trọng số toàn bộ 4 dự án, tháng hiện tại ---- */
-  document.getElementById('kpiFrt').textContent = weightedSlaScore(frtMonthItems).weighted.toFixed(1) + '%';
-  document.getElementById('kpiRes').textContent = weightedSlaScore(resMonthItems).weighted.toFixed(1) + '%';
+  /* ---- KPI đầu trang: % Pass thuần theo đúng công thức Priority (không nhân trọng số
+     70/30 — chỉ dùng trọng số 70/30 ở 2 bảng chi tiết bên dưới), toàn bộ 4 dự án, tháng hiện tại ---- */
+  document.getElementById('kpiFrt').textContent = frtMissing ? '—' : passRate(frtMonthItems).toFixed(1) + '%';
+  document.getElementById('kpiRes').textContent = resMissing ? '—' : passRate(resMonthItems).toFixed(1) + '%';
+  document.getElementById('kpiFrtNote').textContent = frtMissing
+    ? 'Không dò được field First Responded On từ ERP.'
+    : `Pass nếu W = First Responded On − Opening On < ngưỡng theo Priority (${frtMonthItems.length} ticket tháng này)`;
+  document.getElementById('kpiResNote').textContent = resMissing
+    ? 'Không dò được field Resolution Date từ ERP.'
+    : `Pass nếu W = Resolution Date − Opening On < ngưỡng theo Priority (${resMonthItems.length} ticket tháng này)`;
 
   /* ---- Theo tuần trong tháng hiện tại (Thứ 2 -> Chủ Nhật) — First Response ---- */
   const weekGroups = {};
