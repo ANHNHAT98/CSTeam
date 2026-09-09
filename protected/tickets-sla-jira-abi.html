@@ -223,6 +223,7 @@ const PRIORITY_ORDER = ['p1','p2','p3','p4','s1','s2','s3'];
 
 let calcRows = [];
 let jiraBaseUrl = 'https://vnservicedesk.atlassian.net'; // dùng làm link issue mặc định kể cả khi import file (API sẽ ghi đè nếu có)
+let ticketPriorityFieldId = null; // customfield_XXXXX của field "Ticket priority[dropdown]" — server tự tra, hiển thị ra để đối chiếu
 
 const createdFrom = document.getElementById('createdFrom');
 const createdTo = document.getElementById('createdTo');
@@ -335,6 +336,10 @@ calcBtn.addEventListener('click', async () => {
     const issuesData = await fetchJson('/api/jira/issues?' + qs.toString());
     const issues = Array.isArray(issuesData.issues) ? issuesData.issues : [];
     jiraBaseUrl = issuesData.baseUrl || jiraBaseUrl;
+    ticketPriorityFieldId = issuesData.ticketPriorityFieldId || null;
+    if (!ticketPriorityFieldId){
+      console.warn('Không tìm thấy field "Ticket priority" (kiểu dropdown) trên Jira — đang tạm dùng field Priority chuẩn của Jira, có thể sai P1/P2.');
+    }
     if (!issues.length){
       setStatus('Không có issue nào khớp bộ lọc (kiểm tra lại khoảng ngày).', 'err');
       return;
@@ -353,7 +358,10 @@ calcBtn.addEventListener('click', async () => {
 
     calcRows = issues.map(issue => {
       const fields = issue.fields || {};
-      const priority = fields.priority ? fields.priority.name : '';
+      // Dùng đúng field custom "Ticket priority[dropdown]" (mã P1/P2/P3...) — KHÔNG dùng
+      // field "Priority" chuẩn của Jira (fields.priority.name) vì là 2 field khác nhau.
+      // Chỉ fallback về field Priority chuẩn nếu không tra được field dropdown trên (tránh trắng dữ liệu).
+      const priority = fields.ticketPriorityDropdown || (fields.priority ? fields.priority.name : '');
       const createdDate = fields.created ? new Date(fields.created) : null;
       const slaValues = slaResults[issue.key] || [];
 
@@ -366,9 +374,12 @@ calcBtn.addEventListener('click', async () => {
     });
 
     renderResult(calcRows);
+    const priorityNote = ticketPriorityFieldId
+      ? `Priority lấy từ field "Ticket priority[dropdown]" (${ticketPriorityFieldId}).`
+      : `⚠ Không tra được field "Ticket priority[dropdown]" — đang tạm dùng field Priority chuẩn của Jira (có thể không đúng mã P1/P2).`;
     setStatus(
-      `Xong — ${issues.length} issue.` + (errorCount ? ` (${errorCount} issue không lấy được SLA — có thể không phải service desk request hoặc tài khoản không đủ quyền, xem console.)` : ''),
-      errorCount ? 'err' : 'ok'
+      `Xong — ${issues.length} issue. ${priorityNote}` + (errorCount ? ` (${errorCount} issue không lấy được SLA — có thể không phải service desk request hoặc tài khoản không đủ quyền, xem console.)` : ''),
+      errorCount ? 'err' : (ticketPriorityFieldId ? 'ok' : 'err')
     );
     if (errorCount) console.warn('Lỗi lấy SLA cho các issue:', slaErrors);
   }catch(err){

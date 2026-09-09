@@ -112,9 +112,80 @@ async function getIssuesSlaBulk(issueKeys, concurrency = 6) {
   return { results, errors };
 }
 
+/**
+ * Jira co the co nhieu field trung ten nhung khac kieu (vd "Ticket priority" vua co ban
+ * kieu "Priority Field" mac dinh, vua co ban custom kieu "Select List (dropdown)"). Khi do
+ * Jira JQL bat phai ghi ro "Ticket priority[dropdown]" de phan biet. Ham nay tra cuu dung
+ * field custom kieu dropdown/select co ten khop (khong phan biet hoa/thuong), tra ve id
+ * dang "customfield_XXXXX". Ket qua duoc cache trong bo nho (theo tien trinh server).
+ */
+let fieldIdCache = new Map();
+async function resolveFieldId(displayName, { preferType } = {}) {
+  const cacheKey = `${displayName.toLowerCase()}::${preferType || ''}`;
+  if (fieldIdCache.has(cacheKey)) return fieldIdCache.get(cacheKey);
+
+  const allFields = await jiraFetch('/rest/api/3/field');
+  const target = String(displayName || '').trim().toLowerCase();
+  const candidates = (Array.isArray(allFields) ? allFields : []).filter(
+    (f) => String(f.name || '').trim().toLowerCase() === target
+  );
+
+  let picked = null;
+  if (candidates.length === 1) {
+    picked = candidates[0];
+  } else if (candidates.length > 1) {
+    // Nhieu field trung ten -> uu tien field custom kieu dropdown/select (schema.type === 'option'
+    // hoac schema.custom chua 'select'), dung nhu Jira dang phan biet bang hau to "[dropdown]".
+    picked =
+      candidates.find((f) => {
+        const schemaType = f.schema && f.schema.type;
+        const customType = (f.schema && f.schema.custom) || '';
+        if (preferType === 'dropdown') {
+          return schemaType === 'option' || customType.toLowerCase().includes('select');
+        }
+        return false;
+      }) || candidates[0];
+  }
+
+  const id = picked ? picked.id : null;
+  fieldIdCache.set(cacheKey, id);
+  return id;
+}
+
+/** Doc gia tri hien thi cua 1 custom field kieu select/dropdown tu object fields cua issue Jira.
+ * Cac dang co the gap: string thuan, { value: "P2" }, { name: "P2" }, hoac null/undefined. */
+function extractSelectValue(rawFieldValue) {
+  if (rawFieldValue === null || rawFieldValue === undefined || rawFieldValue === '') return '';
+  if (typeof rawFieldValue === 'string') return rawFieldValue;
+  if (typeof rawFieldValue === 'object') {
+    if (typeof rawFieldValue.value === 'string') return rawFieldValue.value;
+    if (typeof rawFieldValue.name === 'string') return rawFieldValue.name;
+  }
+  return String(rawFieldValue);
+}
+
+/**
+ * Tim issue theo JQL (nhu searchIssues) roi gan them field
+ * `ticketPriorityDropdown` = gia tri cua field custom "Ticket priority" (kieu dropdown) —
+ * dung field nay de tinh SLA theo Priority (P1/P2/P3...), KHONG dung field "Priority" chuan
+ * cua Jira (fields.priority.name) vi la field khac.
+ */
+async function searchIssuesWithTicketPriority({ jql, maxTotal }) {
+  const [issues, ticketPriorityFieldId] = await Promise.all([
+    searchIssues({ jql, maxTotal }),
+    resolveFieldId('Ticket priority', { preferType: 'dropdown' }).catch(() => null),
+  ]);
+  issues.forEach((issue) => {
+    const raw = ticketPriorityFieldId ? issue.fields[ticketPriorityFieldId] : undefined;
+    issue.fields.ticketPriorityDropdown = extractSelectValue(raw);
+  });
+  return { issues, ticketPriorityFieldId };
+}
+
 module.exports = {
   isConfigured,
   searchIssues,
+  searchIssuesWithTicketPriority,
   getIssueSla,
   getIssuesSlaBulk,
 };
