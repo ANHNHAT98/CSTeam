@@ -163,8 +163,9 @@
       </div>
       <div class="table-scroll">
         <table><thead><tr>
-          <th></th><th>Ticket</th><th>HQ Ticket ID</th><th>Work</th><th>Priority</th><th>Create</th>
+          <th></th><th>Ticket</th><th>HQ Ticket ID</th><th>Work</th><th>Priority</th><th>Status</th><th>Create</th>
           <th>First Response</th><th style="text-align:right;">Time to First Response − Create<br>so với Ngưỡng SLA (phút)</th><th>Time to First Response</th>
+          <th style="text-align:right;">Sum First Response<br><span style="font-weight:400;color:var(--muted);">(Jira tự tính)</span></th>
         </tr></thead>
           <tbody id="frtFailBody"></tbody></table>
       </div>
@@ -208,6 +209,7 @@ const PRIORITY_ORDER = ['p1','p2','p3','p4','s1','s2','s3'];
 let calcRows = [];
 let jiraBaseUrl = 'https://vnservicedesk.atlassian.net'; // dùng làm link issue mặc định kể cả khi import file (API sẽ ghi đè nếu có)
 let ticketPriorityFieldId = null; // customfield_XXXXX của field "Ticket priority[dropdown]" — server tự tra, hiển thị ra để đối chiếu
+let hqTicketIdFieldId = null;     // customfield_XXXXX của field "HQ Ticket ID" — server tự tra
 
 const createdFrom = document.getElementById('createdFrom');
 const createdTo = document.getElementById('createdTo');
@@ -304,6 +306,34 @@ function slaCompletedStopIso(slaDef){
   return (last && last.stopTime && last.stopTime.iso8601) || null;
 }
 
+/* Lấy đúng số/định dạng mà Jira TỰ TÍNH cho 1 SLA (giống cột "Time to first response" /
+   "Time to resolution" hiển thị trên queue Jira) — dùng field remainingTime.millis của Jira,
+   KHÔNG tự tính lại bằng công thức riêng. Dấu "-" nghĩa là đã trễ (quá ngưỡng) bấy nhiêu;
+   số dương nghĩa là còn/đã hoàn thành sớm bấy nhiêu. state dùng để tô màu/hiện icon. */
+function jiraSlaTimeText(slaDef){
+  if (!slaDef) return { text: '—', state: 'none' };
+  const isCompleted = Array.isArray(slaDef.completedCycles) && slaDef.completedCycles.length > 0;
+  const cycle = isCompleted ? slaDef.completedCycles[slaDef.completedCycles.length - 1] : slaDef.ongoingCycle;
+  if (!cycle) return { text: '—', state: 'none' };
+  const remainMillis = cycle.remainingTime && typeof cycle.remainingTime.millis === 'number' ? cycle.remainingTime.millis : null;
+  const breached = !!cycle.breached;
+  const paused = !!cycle.paused;
+  let state = paused ? 'paused' : (breached ? 'breached' : (isCompleted ? 'met' : 'ongoing'));
+  if (remainMillis === null) return { text: '—', state };
+  const totalMin = Math.round(remainMillis / 60000);
+  const sign = totalMin < 0 ? '-' : '';
+  const abs = Math.abs(totalMin);
+  const h = Math.floor(abs / 60);
+  const m = abs % 60;
+  return { text: `${sign}${h}:${String(m).padStart(2,'0')}`, state };
+}
+function slaStateIcon(state){
+  return { met:'✓', breached:'✗', paused:'Ⅱ', ongoing:'⏱', none:'' }[state] || '';
+}
+function slaStateClass(state){
+  return { met:'pass', breached:'fail' }[state] || '';
+}
+
 async function fetchJson(url, options){
   const res = await fetch(url, { credentials:'same-origin', ...(options||{}) });
   const raw = await res.text();
@@ -330,16 +360,24 @@ function calcSlaMetric(createdDate, stopValue, threshold, useBusinessHours){
 }
 /* Đóng gói 1 dòng kết quả theo đúng schema calcRows dùng chung cho renderResult()/exportBtn.
    First Response và Resolution dùng 2 bảng ngưỡng khác nhau theo đúng cam kết SLA.
-   P1 tính 24/7 (calendar time); P2 → S3 chỉ tính giờ hành chính 8x5 (08:00–17:30, T2–T6). */
-function buildSlaRow(key, summary, priority, createdDate, createdDisplay, frtStopValue, frtDisplay, resStopValue, resDisplay){
+   P1 tính 24/7 (calendar time); P2 → S3 chỉ tính giờ hành chính 8x5 (08:00–17:30, T2–T6).
+   frtSlaTime = số Jira TỰ TÍNH cho SLA First Response (không phải số tự tính W ở trên) —
+   dùng để hiển thị cột "Sum First Response" giống hệt cột trên queue Jira. */
+function buildSlaRow(opts){
+  const { key, hqTicketId, status, summary, priority, createdDate, createdDisplay,
+          frtStopValue, frtDisplay, resStopValue, resDisplay, frtSlaTime } = opts;
   const useBusinessHours = priorityCode(priority) !== 'p1';
   const frt = calcSlaMetric(createdDate, frtStopValue, frtThreshold(priority), useBusinessHours);
   const res = calcSlaMetric(createdDate, resStopValue, resThreshold(priority), useBusinessHours);
   return {
-    key, summary, priority,
+    key,
+    hqTicketId: hqTicketId || '',
+    status: status || '',
+    summary, priority,
     created: createdDisplay,
     frtStop: frtDisplay || '', frtW: frt.w, frtResult: frt.result,
     resStop: resDisplay || '', resW: res.w, resResult: res.result,
+    frtSlaTime: frtSlaTime || { text: '—', state: 'none' },
   };
 }
 
@@ -356,8 +394,12 @@ calcBtn.addEventListener('click', async () => {
     const issues = Array.isArray(issuesData.issues) ? issuesData.issues : [];
     jiraBaseUrl = issuesData.baseUrl || jiraBaseUrl;
     ticketPriorityFieldId = issuesData.ticketPriorityFieldId || null;
+    hqTicketIdFieldId = issuesData.hqTicketIdFieldId || null;
     if (!ticketPriorityFieldId){
       console.warn('Không tìm thấy field "Ticket priority" (kiểu dropdown) trên Jira — đang tạm dùng field Priority chuẩn của Jira, có thể sai P1/P2.');
+    }
+    if (!hqTicketIdFieldId){
+      console.warn('Không tìm thấy field "HQ Ticket ID" trên Jira — cột HQ Ticket ID sẽ để trống.');
     }
     if (!issues.length){
       setStatus('Không có issue nào khớp bộ lọc (kiểm tra lại khoảng ngày).', 'err');
@@ -388,8 +430,18 @@ calcBtn.addEventListener('click', async () => {
       const resDef = findSlaByName(slaValues, ['resolution']);
       const frtStopIso = slaCompletedStopIso(frtDef);
       const resStopIso = slaCompletedStopIso(resDef);
+      const frtSlaTime = jiraSlaTimeText(frtDef); // số Jira tự tính, giống cột "Time to first response" trên queue
 
-      return buildSlaRow(issue.key, fields.summary || '', priority, createdDate, fields.created || '', frtStopIso, frtStopIso, resStopIso, resStopIso);
+      return buildSlaRow({
+        key: issue.key,
+        hqTicketId: fields.hqTicketId || '',
+        status: fields.status ? fields.status.name : '',
+        summary: fields.summary || '',
+        priority, createdDate, createdDisplay: fields.created || '',
+        frtStopValue: frtStopIso, frtDisplay: frtStopIso,
+        resStopValue: resStopIso, resDisplay: resStopIso,
+        frtSlaTime,
+      });
     });
 
     renderResult(calcRows);
@@ -453,18 +505,21 @@ function renderResult(rows){
       const firstRespStatus = noResponse ? 'Chưa phản hồi' : 'Đã phản hồi (trễ SLA)';
       const threshold = frtThreshold(r.priority);
       const wDisplay = noResponse ? `— / ngưỡng ${threshold}` : `${Math.round(r.frtW)} / ngưỡng ${threshold}`;
+      const sla = r.frtSlaTime || { text:'—', state:'none' };
       return `
       <tr><td><button class="btn-copy" data-idx="${i}" data-table="frtFailBody" title="Copy Ticket + Project">⧉</button></td>
       <td>${issueLink(r.key)}</td>
-      <td>${escapeHtml(r.key)}</td>
+      <td>${escapeHtml(r.hqTicketId || '—')}</td>
       <td>${escapeHtml(r.summary || '')}</td>
       <td>${escapeHtml(r.priority)}</td>
+      <td>${escapeHtml(r.status || '—')}</td>
       <td>${escapeHtml(r.created)}</td>
       <td class="${noResponse?'fail':''}">${firstRespStatus}</td>
       <td class="num fail">${wDisplay}</td>
       <td>${escapeHtml(r.frtStop || '— (chưa phản hồi)')}</td>
+      <td class="num ${slaStateClass(sla.state)}">${slaStateIcon(sla.state)} ${escapeHtml(sla.text)}</td>
       </tr>`;
-    }).join('') : '<tr><td colspan="9" style="color:var(--muted);">Không có issue Fail / chưa cập nhật First Response nào 🎉</td></tr>';
+    }).join('') : '<tr><td colspan="11" style="color:var(--muted);">Không có issue Fail / chưa cập nhật First Response nào 🎉</td></tr>';
 
     document.querySelectorAll('[data-table="frtFailBody"]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -582,10 +637,24 @@ fileInput.addEventListener('change', (e) => {
       const createdIdx = findCol(headers, ['created']);
       const frtIdx = findCol(headers, ['time to first response','first response']);
       const resIdx = findCol(headers, ['time to resolution','resolution','resolved']);
-      const summaryIdx = findCol(headers, ['summary']);
+      const summaryIdx = findCol(headers, ['summary','work']);
+      const hqIdIdx = findCol(headers, ['hq ticket id','hq ticket']);
+      const statusIdx = findCol(headers, ['status','trạng thái']);
 
       if (keyIdx < 0 || priorityIdx < 0 || createdIdx < 0){
         throw new Error(`Không nhận diện đủ cột bắt buộc (Key/Priority/Created). Cột đọc được trong file: ${headers.join(', ')}`);
+      }
+
+      /* Nếu cột "Time to first response" trong file export là số Jira tự tính kiểu lệch giờ
+         (vd "0:55", "-9:23" — giống hệt cột trên queue Jira), giữ nguyên hiển thị dạng đó
+         cho "Sum First Response" thay vì cố ép thành ngày giờ tuyệt đối. */
+      function importSlaTimeFromRaw(raw, parsedDate){
+        if (parsedDate) return { text: '—', state: 'none' };
+        if (raw === null || raw === undefined || raw === '') return { text: '—', state: 'none' };
+        const text = String(raw).trim();
+        if (!text) return { text: '—', state: 'none' };
+        const state = text.startsWith('-') ? 'breached' : (/^\d+:\d{2}$/.test(text) ? 'met' : 'none');
+        return { text, state };
       }
 
       calcRows = dataRows.map(r => {
@@ -597,10 +666,18 @@ fileInput.addEventListener('change', (e) => {
         const frtDate = parseJiraDate(frtRaw);
         const resDate = parseJiraDate(resRaw);
         const summary = summaryIdx>=0 ? String(r[summaryIdx]||'') : '';
-        return buildSlaRow(key, summary, priority, createdDate,
-          createdDate ? createdDate.toLocaleString('vi-VN') : String(r[createdIdx]||''),
-          frtDate, frtDate ? frtDate.toLocaleString('vi-VN') : (frtRaw!==null && frtRaw!=='' ? String(frtRaw) : ''),
-          resDate, resDate ? resDate.toLocaleString('vi-VN') : (resRaw!==null && resRaw!=='' ? String(resRaw) : ''));
+        return buildSlaRow({
+          key,
+          hqTicketId: hqIdIdx>=0 ? String(r[hqIdIdx]||'').trim() : '',
+          status: statusIdx>=0 ? String(r[statusIdx]||'').trim() : '',
+          summary, priority, createdDate,
+          createdDisplay: createdDate ? createdDate.toLocaleString('vi-VN') : String(r[createdIdx]||''),
+          frtStopValue: frtDate,
+          frtDisplay: frtDate ? frtDate.toLocaleString('vi-VN') : (frtRaw!==null && frtRaw!=='' ? String(frtRaw) : ''),
+          resStopValue: resDate,
+          resDisplay: resDate ? resDate.toLocaleString('vi-VN') : (resRaw!==null && resRaw!=='' ? String(resRaw) : ''),
+          frtSlaTime: importSlaTimeFromRaw(frtRaw, frtDate),
+        });
       }).filter(r => r.key);
 
       if (!calcRows.length) throw new Error('Không đọc được dòng dữ liệu hợp lệ nào (kiểm tra lại cột Key).');
@@ -610,6 +687,8 @@ fileInput.addEventListener('change', (e) => {
         `Key=${headers[keyIdx]}`, `Priority=${headers[priorityIdx]}`, `Created=${headers[createdIdx]}`,
         frtIdx>=0?`First Response=${headers[frtIdx]}`:'First Response=(không có, tính Fail hết)',
         resIdx>=0?`Resolution=${headers[resIdx]}`:'Resolution=(không có, tính Fail hết)',
+        hqIdIdx>=0?`HQ Ticket ID=${headers[hqIdIdx]}`:'HQ Ticket ID=(không có trong file)',
+        statusIdx>=0?`Status=${headers[statusIdx]}`:'Status=(không có trong file)',
       ].join(' · ');
       setImportStatus(`✅ Đã import ${calcRows.length} issue. Cột nhận diện: ${cols}`, 'ok');
     }catch(err){
@@ -622,14 +701,14 @@ fileInput.addEventListener('change', (e) => {
 
 exportBtn.addEventListener('click', () => {
   if (!calcRows.length) return;
-  const aoa = [['Ticket','HQ Ticket ID','Work','Project','Priority','Created','Time to First Response','FRT W (phút)','FRT Kết quả','Time to Resolution','RES W (phút)','RES Kết quả']];
+  const aoa = [['Ticket','HQ Ticket ID','Work','Status','Project','Priority','Created','Time to First Response','FRT W (phút)','FRT Kết quả','Sum First Response (Jira)','Time to Resolution','RES W (phút)','RES Kết quả']];
   calcRows.forEach(r => aoa.push([
-    r.key, r.key, r.summary || '', PROJECT_LABEL, r.priority, r.created,
-    r.frtStop, r.frtW===1.1?'':Math.round(r.frtW*100)/100, r.frtResult,
+    r.key, r.hqTicketId || '', r.summary || '', r.status || '', PROJECT_LABEL, r.priority, r.created,
+    r.frtStop, r.frtW===1.1?'':Math.round(r.frtW*100)/100, r.frtResult, (r.frtSlaTime && r.frtSlaTime.text) || '',
     r.resStop, r.resW===1.1?'':Math.round(r.resW*100)/100, r.resResult,
   ]));
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = [{wch:12},{wch:12},{wch:30},{wch:10},{wch:12},{wch:20},{wch:20},{wch:12},{wch:8},{wch:20},{wch:12},{wch:8}];
+  ws['!cols'] = [{wch:12},{wch:16},{wch:30},{wch:14},{wch:10},{wch:12},{wch:20},{wch:20},{wch:12},{wch:8},{wch:16},{wch:20},{wch:12},{wch:8}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'SLA Jira ABI');
   XLSX.writeFile(wb, 'SLA_Jira_ABI.xlsx');

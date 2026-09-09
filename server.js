@@ -235,8 +235,8 @@ app.get('/api/jira/issues', requireAuth, async (req, res) => {
     if (createdFrom) jqlParts.push(`created >= "${createdFrom} 00:00"`);
     if (createdTo) jqlParts.push(`created <= "${createdTo} 23:59"`);
     const jql = jqlParts.join(' AND ') + ' ORDER BY created DESC';
-    const { issues, ticketPriorityFieldId } = await jira.searchIssuesWithTicketPriority({ jql });
-    res.json({ issues, jql, baseUrl: process.env.JIRA_BASE_URL || '', ticketPriorityFieldId });
+    const { issues, ticketPriorityFieldId, hqTicketIdFieldId } = await jira.searchIssuesWithTicketPriority({ jql });
+    res.json({ issues, jql, baseUrl: process.env.JIRA_BASE_URL || '', ticketPriorityFieldId, hqTicketIdFieldId });
   } catch (e) {
     console.error('[jira/issues] lỗi:', e.message);
     res.status(502).json({ error: e.message });

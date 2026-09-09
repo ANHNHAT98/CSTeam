@@ -165,21 +165,24 @@ function extractSelectValue(rawFieldValue) {
 }
 
 /**
- * Tim issue theo JQL (nhu searchIssues) roi gan them field
- * `ticketPriorityDropdown` = gia tri cua field custom "Ticket priority" (kieu dropdown) —
- * dung field nay de tinh SLA theo Priority (P1/P2/P3...), KHONG dung field "Priority" chuan
- * cua Jira (fields.priority.name) vi la field khac.
+ * Tim issue theo JQL (nhu searchIssues) roi gan them:
+ *  - fields.ticketPriorityDropdown = gia tri field custom "Ticket priority" (kieu dropdown, P1/P2/P3...)
+ *  - fields.hqTicketId = gia tri field custom "HQ Ticket ID" (vd "TKT-20260831-00058", co the rong/None)
+ * Ca 2 deu la field custom cua Jira, KHONG dung field chuan (fields.priority / issue.key) vi la field khac.
  */
 async function searchIssuesWithTicketPriority({ jql, maxTotal }) {
-  const [issues, ticketPriorityFieldId] = await Promise.all([
+  const [issues, ticketPriorityFieldId, hqTicketIdFieldId] = await Promise.all([
     searchIssues({ jql, maxTotal }),
     resolveFieldId('Ticket priority', { preferType: 'dropdown' }).catch(() => null),
+    resolveFieldId('HQ Ticket ID').catch(() => null),
   ]);
   issues.forEach((issue) => {
-    const raw = ticketPriorityFieldId ? issue.fields[ticketPriorityFieldId] : undefined;
-    issue.fields.ticketPriorityDropdown = extractSelectValue(raw);
+    const priorityRaw = ticketPriorityFieldId ? issue.fields[ticketPriorityFieldId] : undefined;
+    issue.fields.ticketPriorityDropdown = extractSelectValue(priorityRaw);
+    const hqIdRaw = hqTicketIdFieldId ? issue.fields[hqTicketIdFieldId] : undefined;
+    issue.fields.hqTicketId = extractSelectValue(hqIdRaw);
   });
-  return { issues, ticketPriorityFieldId };
+  return { issues, ticketPriorityFieldId, hqTicketIdFieldId };
 }
 
 module.exports = {
