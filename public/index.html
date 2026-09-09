@@ -370,7 +370,7 @@
 
   <div class="panel">
     <div class="panel-title">SLA — So sánh 3 tháng gần nhất</div>
-    <div class="panel-sub" id="slaTrendSub">Pass/Fail theo công thức: W = (First Responded On hoặc Resolution Date) − Opening On (phút); Fail nếu chưa có mốc thời gian đó (W=1.1) hoặc W ≥ ngưỡng theo Priority (Critical 60 / Urgent 240 / High 480 / Medium 4320 / khác 7200 phút). Trọng số = Actual 1 (P1&amp;P2, &lt;95%→0) × 70% + Actual 2 (P3-P5, &lt;80%→0) × 30%. Lọc theo Opening On.</div>
+    <div class="panel-sub" id="slaTrendSub">Pass/Fail theo công thức: W = (First Responded On hoặc Resolution Date) − Opening On (phút); Fail nếu chưa có mốc thời gian đó (W=1.1) hoặc W ≥ ngưỡng theo Priority (Critical 60 / Urgent 240 / High 480 / Medium 4320 / khác 7200 phút). Trọng số = Actual 1 (P1&amp;P2) × 70% + Actual 2 (P3-P5) × 30% — giữ nguyên % thực tế (không làm tròn về 0) để theo dõi xu hướng cải thiện dần tới ngưỡng 90%. Lọc theo Opening On.</div>
     <div class="dash-cols">
       <div>
         <div style="font-weight:700;font-size:13px;margin-bottom:8px;">First Response Time (SLA)</div>
@@ -665,8 +665,10 @@ function weightedSlaScore(items){
   const g2 = items.filter(it => priorityGroup(it.priority) === 2);
   const actual1 = g1.length ? (g1.filter(it => it.result === 'Pass').length / g1.length * 100) : 100;
   const actual2 = g2.length ? (g2.filter(it => it.result === 'Pass').length / g2.length * 100) : 100;
-  const applied1 = (actual1 < 95 ? 0 : actual1) * 0.7;
-  const applied2 = (actual2 < 80 ? 0 : actual2) * 0.3;
+  // Không "làm tròn về 0" khi dưới ngưỡng (95%/80%) như 2 trang SLA riêng — ở dashboard cần
+  // thấy đúng % thực tế để theo dõi xu hướng cải thiện dần, kể cả khi chưa đạt 90%.
+  const applied1 = actual1 * 0.7;
+  const applied2 = actual2 * 0.3;
   return { total: items.length, pass: items.filter(it => it.result === 'Pass').length, weighted: applied1 + applied2 };
 }
 function passRate(items){
