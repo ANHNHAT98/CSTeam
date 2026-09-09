@@ -95,6 +95,7 @@
 
 <div class="wrap">
   <h1>SLA Jira — Dự án ABI</h1>
+  <p class="sub">W (thời gian phản hồi/xử lý) = mốc SLA − Created. <b>P1</b> tính theo giờ đồng hồ 24/7. <b>P2, P3, P4, S1, S2, S3</b> chỉ tính phút nằm trong giờ hành chính 8x5 (Thứ 2–6, 08:00–17:30) — thời gian ngoài giờ/cuối tuần không tính vào W.</p>
 
   <div class="panel">
     <h2>Bộ lọc &amp; tính SLA</h2>
@@ -135,7 +136,7 @@
       <div class="kpi"><div class="label">Tổng issue</div><div class="value" id="kpiTotal">—</div></div>
       <div class="kpi"><div class="label">First Response — % Pass</div><div class="value" id="kpiFrtRate">—</div></div>
       <div class="kpi"><div class="label">Resolution — % Pass</div><div class="value" id="kpiResRate">—</div></div>
-      <div class="kpi"><div class="label">Đạt SLA (KPI ≥ 90%)</div><div class="value" id="kpiPassAll">—</div></div>
+      <div class="kpi fail"><div class="label">FRT Fail / chưa phản hồi</div><div class="value" id="kpiFrtFailCount">—</div></div>
     </div>
 
     <div class="two-col">
@@ -152,40 +153,19 @@
     </div>
 
     <div class="panel">
-      <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Tỷ lệ đạt SLA theo Nhóm Priority (KPI 70/30)</div>
+      <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Ticket First Response — Fail / Chưa cập nhật</div>
       <div class="panel-sub">
-        Nhóm 1 = P1 &amp; P2, chiếm tối đa 70% điểm KPI — % Actual &lt; 95% thì Actual 1 (áp dụng) = 0, ngược lại Actual 1 (áp dụng) = % Actual × 70%.<br>
-        Nhóm 2 = P3, P4, S1, S2, S3, chiếm tối đa 30% điểm KPI — % Actual &lt; 80% thì Actual 2 (áp dụng) = 0, ngược lại Actual 2 (áp dụng) = % Actual × 30%.<br>
-        Điểm KPI = Actual 1 (áp dụng) + Actual 2 (áp dụng). "Đạt điều kiện" = Điểm KPI ≥ 90% → Đạt SLA, ngược lại Không đạt SLA.
+        Danh sách issue First Response bị <b>Fail</b> (trễ ngưỡng SLA) hoặc <b>chưa có ai phản hồi</b> — để rà soát/follow-up.
+        Sắp xếp theo mức độ ưu tiên (P1 → S3). Bấm ⧉ ở từng dòng hoặc nút bên dưới để copy Ticket + Project gửi cho các thành viên.
       </div>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th rowspan="2">Chỉ số</th>
-              <th colspan="4" style="text-align:center;">Nhóm 1 — P1 &amp; P2 (Critical, Urgent) — 70%</th>
-              <th colspan="4" style="text-align:center;">Nhóm 2 — P3, P4, P5 — 30%</th>
-              <th rowspan="2" style="text-align:right;">Điểm KPI (Actual1+Actual2)</th>
-              <th rowspan="2" style="text-align:center;">Đạt điều kiện</th>
-            </tr>
-            <tr>
-              <th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Actual</th><th style="text-align:right;">Actual 1 (áp dụng, ×70%)</th>
-              <th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Actual</th><th style="text-align:right;">Actual 2 (áp dụng, ×30%)</th>
-            </tr>
-          </thead>
-          <tbody id="kpiGroupBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Chi tiết issue Fail — First Response</div>
-      <div class="panel-sub">Sắp xếp theo mức độ ưu tiên (Critical → Urgent → High → Medium → Low). Bấm ⧉ ở từng dòng hoặc nút bên dưới để copy Ticket + Project gửi cho các thành viên.</div>
       <div class="actions" style="margin-top:0;margin-bottom:12px;">
         <button class="btn btn-ghost" id="copyAllFrtFailBtn">⧉ Copy toàn bộ danh sách Fail (Ticket + Project)</button>
       </div>
       <div class="table-scroll">
-        <table><thead><tr><th></th><th>Ticket</th><th>Project</th><th>Priority</th><th>Created</th><th>Time to First Response</th><th style="text-align:right;">W (phút)</th></tr></thead>
+        <table><thead><tr>
+          <th></th><th>Ticket</th><th>HQ Ticket ID</th><th>Work</th><th>Priority</th><th>Create</th>
+          <th>First Response</th><th style="text-align:right;">Time to First Response − Create<br>so với Ngưỡng SLA (phút)</th><th>Time to First Response</th>
+        </tr></thead>
           <tbody id="frtFailBody"></tbody></table>
       </div>
     </div>
@@ -212,10 +192,14 @@
 const PROJECT_LABEL = 'ABI'; // nhãn hiển thị (Jira project key thật là "HQ")
 
 // Ngưỡng SLA (phút) theo đúng "Bảng cam kết SLA — tính từ thời điểm ticket được tạo".
-// Priority lấy trực tiếp từ Jira field Priority (mã P1-P4 / S1-S3), KHÔNG map qua
-// Critical/Urgent/High/Medium như trước nữa.
+// Priority lấy từ field custom "Ticket priority[dropdown]" của Jira (mã P1-P4 / S1-S3),
+// KHÔNG map qua Critical/Urgent/High/Medium như trước nữa.
 // First Response = cột "Phản hồi L2 (HQSOFT)". Resolution = cột "Giải quyết (Resolution)".
-// "1 ngày LV" quy đổi = 8 giờ làm việc = 480 phút (khung 8x5: Thứ 2-6, 08:00-17:30).
+// CÁCH TÍNH THỜI GIAN (W):
+//  - P1: tính theo giờ đồng hồ 24/7 (calendar time), không loại trừ ngoài giờ/cuối tuần.
+//  - P2, P3, P4, S1, S2, S3: chỉ tính phần thời gian rơi vào khung giờ hành chính 8x5
+//    (Thứ 2-6, 08:00-17:30) — thời gian ngoài khung này (đêm, cuối tuần) không cộng vào W.
+// "1 ngày LV" quy đổi = 8 giờ làm việc = 480 phút.
 const FRT_THRESHOLD = { p1: 15, p2: 60, p3: 240, p4: 480, s1: 60, s2: 240, s3: 480 };
 const RES_THRESHOLD = { p1: 240, p2: 480, p3: 1440, p4: 2400, s1: 360, s2: 1440, s3: 2400 };
 const SLA_DEFAULT_THRESHOLD = 7200; // Priority lạ, không khớp bảng trên (an toàn, không fail oan)
@@ -271,9 +255,38 @@ function priorityRank(priorityRaw){
   const idx = PRIORITY_ORDER.indexOf(p);
   return idx === -1 ? PRIORITY_ORDER.length : idx;
 }
-function priorityGroup(priorityRaw){
-  const p = priorityCode(priorityRaw);
-  return (p === 'p1' || p === 'p2') ? 1 : 2;
+
+/* Khung giờ hành chính dùng để tính SLA cho P2 → S3: 8x5, Thứ 2–6, 08:00–17:30.
+   P1 KHÔNG dùng khung này — P1 tính theo giờ đồng hồ 24/7 (calendar time). */
+const BUSINESS_START_MIN = 8 * 60;        // 08:00
+const BUSINESS_END_MIN = 17 * 60 + 30;    // 17:30
+function isBusinessDay(d){
+  const dow = d.getDay(); // 0 = CN, 6 = Thứ 7
+  return dow >= 1 && dow <= 5;
+}
+/* Tính số phút "trong giờ hành chính" (8x5) giữa 2 mốc thời gian bất kỳ — bỏ qua phần
+   thời gian rơi vào ngoài giờ (trước 8h/sau 17h30) và cuối tuần. Duyệt từng ngày, mỗi
+   ngày làm việc chỉ cộng phần giao giữa [start,end] và [08:00,17:30] của ngày đó. */
+function businessMinutesBetween(start, end){
+  if (!(start instanceof Date) || isNaN(start.getTime())) return NaN;
+  if (!(end instanceof Date) || isNaN(end.getTime())) return NaN;
+  if (end <= start) return 0;
+  let total = 0;
+  const day = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const lastDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  while (day <= lastDay){
+    if (isBusinessDay(day)){
+      const dayWorkStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+      dayWorkStart.setMinutes(BUSINESS_START_MIN);
+      const dayWorkEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+      dayWorkEnd.setMinutes(BUSINESS_END_MIN);
+      const segStart = start > dayWorkStart ? start : dayWorkStart;
+      const segEnd = end < dayWorkEnd ? end : dayWorkEnd;
+      if (segEnd > segStart) total += (segEnd.getTime() - segStart.getTime()) / 60000;
+    }
+    day.setDate(day.getDate() + 1);
+  }
+  return total;
 }
 
 /* Tìm định nghĩa SLA theo tên (không phân biệt hoa/thường), vd "Time to first response". */
@@ -302,20 +315,26 @@ async function fetchJson(url, options){
 }
 
 /* Tính W (phút) + Pass/Fail giữa 1 mốc "đích" (first response / resolved) so với created,
-   dùng chung cho cả nguồn API lẫn nguồn import file. */
-function calcSlaMetric(createdDate, stopValue, threshold){
+   dùng chung cho cả nguồn API lẫn nguồn import file.
+   useBusinessHours=false (P1) -> W tính theo giờ đồng hồ 24/7.
+   useBusinessHours=true  (P2..S3) -> W chỉ cộng phần thời gian rơi vào 08:00–17:30, Thứ 2–6. */
+function calcSlaMetric(createdDate, stopValue, threshold, useBusinessHours){
   if (!stopValue || !createdDate || isNaN(createdDate.getTime())) return { w: 1.1, result: 'Fail' };
   const stopDate = (stopValue instanceof Date) ? stopValue : new Date(stopValue);
   if (isNaN(stopDate.getTime())) return { w: 1.1, result: 'Fail' };
-  const w = (stopDate.getTime() - createdDate.getTime()) / 60000;
+  const w = useBusinessHours
+    ? businessMinutesBetween(createdDate, stopDate)
+    : (stopDate.getTime() - createdDate.getTime()) / 60000;
   const result = (w < threshold) ? 'Pass' : 'Fail';
   return { w, result };
 }
 /* Đóng gói 1 dòng kết quả theo đúng schema calcRows dùng chung cho renderResult()/exportBtn.
-   First Response và Resolution dùng 2 bảng ngưỡng khác nhau theo đúng cam kết SLA. */
+   First Response và Resolution dùng 2 bảng ngưỡng khác nhau theo đúng cam kết SLA.
+   P1 tính 24/7 (calendar time); P2 → S3 chỉ tính giờ hành chính 8x5 (08:00–17:30, T2–T6). */
 function buildSlaRow(key, summary, priority, createdDate, createdDisplay, frtStopValue, frtDisplay, resStopValue, resDisplay){
-  const frt = calcSlaMetric(createdDate, frtStopValue, frtThreshold(priority));
-  const res = calcSlaMetric(createdDate, resStopValue, resThreshold(priority));
+  const useBusinessHours = priorityCode(priority) !== 'p1';
+  const frt = calcSlaMetric(createdDate, frtStopValue, frtThreshold(priority), useBusinessHours);
+  const res = calcSlaMetric(createdDate, resStopValue, resThreshold(priority), useBusinessHours);
   return {
     key, summary, priority,
     created: createdDisplay,
@@ -407,58 +426,62 @@ function buildPriorityTable(bodyId, rows, resultKey, thresholdFn){
     }).join('');
 }
 
-function weightedSlaScore(rows, resultKey){
-  const g1 = rows.filter(r => priorityGroup(r.priority) === 1);
-  const g2 = rows.filter(r => priorityGroup(r.priority) === 2);
-  const actual1 = g1.length ? (g1.filter(r => r[resultKey] === 'Pass').length / g1.length * 100) : 100;
-  const actual2 = g2.length ? (g2.filter(r => r[resultKey] === 'Pass').length / g2.length * 100) : 100;
-  const applied1 = (actual1 < 95 ? 0 : actual1) * 0.7;
-  const applied2 = (actual2 < 80 ? 0 : actual2) * 0.3;
-  return {
-    g1total: g1.length, g1pass: g1.filter(r => r[resultKey]==='Pass').length, actual1,
-    g2total: g2.length, g2pass: g2.filter(r => r[resultKey]==='Pass').length, actual2,
-    applied1, applied2, kpiScore: applied1 + applied2,
-  };
-}
-
 function renderResult(rows){
   const total = rows.length;
   const frtPass = rows.filter(r => r.frtResult === 'Pass').length;
   const resPass = rows.filter(r => r.resResult === 'Pass').length;
+  const frtFailRows = rows.filter(r => r.frtResult === 'Fail').slice()
+    .sort((a,b) => priorityRank(a.priority) - priorityRank(b.priority) || String(a.key).localeCompare(String(b.key)));
   document.getElementById('kpiTotal').textContent = total;
   document.getElementById('kpiFrtRate').textContent = total ? (frtPass/total*100).toFixed(1)+'%' : '—';
   document.getElementById('kpiResRate').textContent = total ? (resPass/total*100).toFixed(1)+'%' : '—';
+  document.getElementById('kpiFrtFailCount').textContent = frtFailRows.length;
 
   buildPriorityTable('byPriorityFrtBody', rows, 'frtResult', frtThreshold);
   buildPriorityTable('byPriorityResBody', rows, 'resResult', resThreshold);
-
-  const frtScore = weightedSlaScore(rows, 'frtResult');
-  const resScore = weightedSlaScore(rows, 'resResult');
-  const bothPass = frtScore.kpiScore >= 90 && resScore.kpiScore >= 90;
-  document.getElementById('kpiPassAll').textContent = bothPass ? 'Đạt' : 'Không đạt';
-  document.getElementById('kpiPassAll').style.color = bothPass ? 'var(--success)' : 'var(--danger)';
-
-  const fmt = v => v.toFixed(1) + '%';
-  const appliedClass = v => v === 0 ? 'fail' : 'pass';
-  function kpiRow(label, s){
-    const meets = s.kpiScore >= 90;
-    return `<tr>
-      <td>${label}</td>
-      <td class="num">${s.g1total}</td><td class="num pass">${s.g1pass}</td><td class="num">${fmt(s.actual1)}</td>
-      <td class="num ${appliedClass(s.applied1)}">${fmt(s.applied1)}</td>
-      <td class="num">${s.g2total}</td><td class="num pass">${s.g2pass}</td><td class="num">${fmt(s.actual2)}</td>
-      <td class="num ${appliedClass(s.applied2)}">${fmt(s.applied2)}</td>
-      <td class="num" style="font-weight:700;">${s.kpiScore.toFixed(1)}%</td>
-      <td style="text-align:center;" class="${meets?'pass':'fail'}">${meets?'Đạt SLA':'Không đạt SLA'}</td>
-    </tr>`;
-  }
-  document.getElementById('kpiGroupBody').innerHTML =
-    kpiRow('First Response Time', frtScore) + kpiRow('Resolution Time', resScore);
 
   function issueLink(key){
     const label = escapeHtml(key);
     return jiraBaseUrl ? `<a class="issue-link" href="${jiraBaseUrl}/browse/${encodeURIComponent(key)}" target="_blank" rel="noopener">${label}</a>` : label;
   }
+
+  /* Bảng "Ticket First Response — Fail / Chưa cập nhật": gồm cả issue trễ SLA lẫn issue
+     chưa từng có First Response (frtW === 1.1 là sentinel "chưa phản hồi"). */
+  (function renderFrtFailTable(){
+    document.getElementById('frtFailBody').innerHTML = frtFailRows.length ? frtFailRows.map((r,i) => {
+      const noResponse = r.frtW === 1.1;
+      const firstRespStatus = noResponse ? 'Chưa phản hồi' : 'Đã phản hồi (trễ SLA)';
+      const threshold = frtThreshold(r.priority);
+      const wDisplay = noResponse ? `— / ngưỡng ${threshold}` : `${Math.round(r.frtW)} / ngưỡng ${threshold}`;
+      return `
+      <tr><td><button class="btn-copy" data-idx="${i}" data-table="frtFailBody" title="Copy Ticket + Project">⧉</button></td>
+      <td>${issueLink(r.key)}</td>
+      <td>${escapeHtml(r.key)}</td>
+      <td>${escapeHtml(r.summary || '')}</td>
+      <td>${escapeHtml(r.priority)}</td>
+      <td>${escapeHtml(r.created)}</td>
+      <td class="${noResponse?'fail':''}">${firstRespStatus}</td>
+      <td class="num fail">${wDisplay}</td>
+      <td>${escapeHtml(r.frtStop || '— (chưa phản hồi)')}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="9" style="color:var(--muted);">Không có issue Fail / chưa cập nhật First Response nào 🎉</td></tr>';
+
+    document.querySelectorAll('[data-table="frtFailBody"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const r = frtFailRows[Number(btn.dataset.idx)];
+        const text = `Ticket: ${r.key} — Project: ${PROJECT_LABEL}`;
+        navigator.clipboard.writeText(text).then(() => setStatus(`Đã copy: ${text}`, 'ok'))
+          .catch(() => setStatus('Không copy được tự động — vui lòng copy thủ công.', 'err'));
+      });
+    });
+
+    document.getElementById('copyAllFrtFailBtn').onclick = () => {
+      if (!frtFailRows.length){ setStatus('Không có issue Fail nào để copy.', 'err'); return; }
+      const text = frtFailRows.map(r => `Ticket: ${r.key} — Project: ${PROJECT_LABEL}`).join('\n');
+      navigator.clipboard.writeText(text).then(() => setStatus(`Đã copy ${frtFailRows.length} issue Fail (Ticket + Project) vào clipboard.`, 'ok'))
+        .catch(() => setStatus('Không copy được tự động — vui lòng copy thủ công.', 'err'));
+    };
+  })();
 
   function renderFailTable(bodyId, resultKey, stopKey, wKey, copyBtnId){
     const failRows = rows.filter(r => r[resultKey] === 'Fail').slice()
@@ -486,7 +509,6 @@ function renderResult(rows){
         .catch(() => setStatus('Không copy được tự động — vui lòng copy thủ công.', 'err'));
     };
   }
-  renderFailTable('frtFailBody', 'frtResult', 'frtStop', 'frtW', 'copyAllFrtFailBtn');
   renderFailTable('resFailBody', 'resResult', 'resStop', 'resW', 'copyAllResFailBtn');
 
   resultBlock.style.display = 'block';
@@ -600,14 +622,14 @@ fileInput.addEventListener('change', (e) => {
 
 exportBtn.addEventListener('click', () => {
   if (!calcRows.length) return;
-  const aoa = [['Ticket','Project','Priority','Created','Time to First Response','FRT W (phút)','FRT Kết quả','Time to Resolution','RES W (phút)','RES Kết quả']];
+  const aoa = [['Ticket','HQ Ticket ID','Work','Project','Priority','Created','Time to First Response','FRT W (phút)','FRT Kết quả','Time to Resolution','RES W (phút)','RES Kết quả']];
   calcRows.forEach(r => aoa.push([
-    r.key, PROJECT_LABEL, r.priority, r.created,
+    r.key, r.key, r.summary || '', PROJECT_LABEL, r.priority, r.created,
     r.frtStop, r.frtW===1.1?'':Math.round(r.frtW*100)/100, r.frtResult,
     r.resStop, r.resW===1.1?'':Math.round(r.resW*100)/100, r.resResult,
   ]));
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = [{wch:12},{wch:10},{wch:12},{wch:20},{wch:20},{wch:12},{wch:8},{wch:20},{wch:12},{wch:8}];
+  ws['!cols'] = [{wch:12},{wch:12},{wch:30},{wch:10},{wch:12},{wch:20},{wch:20},{wch:12},{wch:8},{wch:20},{wch:12},{wch:8}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'SLA Jira ABI');
   XLSX.writeFile(wb, 'SLA_Jira_ABI.xlsx');
