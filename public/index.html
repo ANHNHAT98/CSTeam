@@ -369,9 +369,18 @@
   </div>
 
   <div class="panel">
-    <div class="panel-title">SLA — So sánh 3 tháng gần nhất (First Response &amp; Resolution)</div>
+    <div class="panel-title">SLA — So sánh 3 tháng gần nhất</div>
     <div class="panel-sub" id="slaTrendSub">Pass/Fail theo công thức: W = (First Responded On hoặc Resolution Date) − Opening On (phút); Fail nếu chưa có mốc thời gian đó (W=1.1) hoặc W ≥ ngưỡng theo Priority (Critical 60 / Urgent 240 / High 480 / Medium 4320 / khác 7200 phút). Trọng số = Actual 1 (P1&amp;P2, &lt;95%→0) × 70% + Actual 2 (P3-P5, &lt;80%→0) × 30%. Lọc theo Opening On.</div>
-    <canvas id="slaTrendChart" height="90"></canvas>
+    <div class="dash-cols">
+      <div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;">First Response Time (SLA)</div>
+        <canvas id="slaTrendChartFrt" height="180"></canvas>
+      </div>
+      <div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;">Resolution Time (SLA)</div>
+        <canvas id="slaTrendChartRes" height="180"></canvas>
+      </div>
+    </div>
     <table id="slaTrendTable" style="margin-top:14px;">
       <thead>
         <tr>
@@ -409,9 +418,18 @@
   </div>
 
   <div class="panel">
-    <div class="panel-title">First Response Time (SLA) — Xu hướng theo tuần (tháng hiện tại)</div>
-    <div class="panel-sub" id="frtWeekSub">Mỗi tuần tính từ Thứ 2 → Chủ Nhật, chỉ tính ticket có Opening On trong tháng hiện tại.</div>
-    <table id="frtWeekTable"><thead><tr><th>Tuần</th><th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">Fail</th><th style="text-align:right;">% Pass</th></tr></thead><tbody id="frtWeekBody"></tbody></table>
+    <div class="panel-title">SLA — Xu hướng theo tuần (tháng hiện tại)</div>
+    <div class="panel-sub" id="frtWeekSub">Mỗi tuần tính từ Thứ 2 → Chủ Nhật (% Pass, theo công thức Priority), chỉ tính ticket có Opening On trong tháng hiện tại.</div>
+    <div class="dash-cols">
+      <div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;">First Response Time (SLA)</div>
+        <canvas id="frtWeekChart" height="180"></canvas>
+      </div>
+      <div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;">Resolution (SLA)</div>
+        <canvas id="resWeekChart" height="180"></canvas>
+      </div>
+    </div>
   </div>
 
   <footer>
@@ -687,8 +705,16 @@ function monthKeyLabel(d){
   return { key: d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'), label: 'Tháng '+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear() };
 }
 
-let slaTrendChartInst = null;
+let slaTrendChartFrtInst = null;
+let slaTrendChartResInst = null;
 let slaMonthChartInst = null;
+let frtWeekChartInst = null;
+let resWeekChartInst = null;
+
+function destroyAllCharts(){
+  [slaTrendChartFrtInst, slaTrendChartResInst, slaMonthChartInst, frtWeekChartInst, resWeekChartInst].forEach(c => { if (c) c.destroy(); });
+  slaTrendChartFrtInst = null; slaTrendChartResInst = null; slaMonthChartInst = null; frtWeekChartInst = null; resWeekChartInst = null;
+}
 
 function renderSla(rows){
   const { items: frtItems, fields: frtFields, missing: frtMissing } = computeSlaItems(rows, FRT_KEYWORDS);
@@ -701,9 +727,7 @@ function renderSla(rows){
     document.getElementById('slaMonthSub').textContent = 'Không có dữ liệu.';
     document.getElementById('slaTrendBody').innerHTML = '';
     document.getElementById('slaMonthBody').innerHTML = '';
-    document.getElementById('frtWeekBody').innerHTML = '';
-    if (slaTrendChartInst){ slaTrendChartInst.destroy(); slaTrendChartInst = null; }
-    if (slaMonthChartInst){ slaMonthChartInst.destroy(); slaMonthChartInst = null; }
+    destroyAllCharts();
     return;
   }
 
@@ -717,9 +741,7 @@ function renderSla(rows){
     document.getElementById('slaMonthSub').textContent = msg;
     document.getElementById('slaTrendBody').innerHTML = '';
     document.getElementById('slaMonthBody').innerHTML = '';
-    document.getElementById('frtWeekBody').innerHTML = '';
-    if (slaTrendChartInst){ slaTrendChartInst.destroy(); slaTrendChartInst = null; }
-    if (slaMonthChartInst){ slaMonthChartInst.destroy(); slaMonthChartInst = null; }
+    destroyAllCharts();
     return;
   }
 
@@ -753,19 +775,25 @@ function renderSla(rows){
     </tr>`;
   }).join('') : '<tr><td colspan="9" style="color:var(--muted);">Không có ticket nào trong 3 tháng gần nhất</td></tr>';
 
-  if (slaTrendChartInst) slaTrendChartInst.destroy();
-  slaTrendChartInst = new Chart(document.getElementById('slaTrendChart'), {
-    type: 'line',
-    data: {
-      labels: monthRows.map(m => m.label),
-      datasets: [
-        { label: 'First Response — Trọng số', data: monthRows.map(m => weightedSlaScore(m.frt).weighted.toFixed(1)), borderColor:'#2E6F95', backgroundColor:'#2E6F95', tension:0.25 },
-        { label: 'Resolution — Trọng số', data: monthRows.map(m => weightedSlaScore(m.res).weighted.toFixed(1)), borderColor:'#B5533C', backgroundColor:'#B5533C', tension:0.25 },
-        { label: 'Ngưỡng 90%', data: monthRows.map(()=>90), borderColor:'#dc2626', borderDash:[6,4], borderWidth:2, pointRadius:0 },
-      ],
-    },
-    options: { responsive:true, scales:{ y:{ ticks:{ callback:v => v+'%' } } } },
-  });
+  function buildTrendChart(canvasId, existingInst, label, color, dataValues, labels){
+    if (existingInst) existingInst.destroy();
+    return new Chart(document.getElementById(canvasId), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label, data: dataValues, borderColor: color, backgroundColor: color, tension: 0.25, pointRadius: 4 },
+          { label: 'Ngưỡng 90%', data: labels.map(()=>90), borderColor:'#dc2626', borderDash:[6,4], borderWidth:2, pointRadius:0 },
+        ],
+      },
+      options: { responsive:true, plugins:{ legend:{ display:true } }, scales:{ y:{ min:0, max:100, ticks:{ callback:v => v+'%' } } } },
+    });
+  }
+
+  slaTrendChartFrtInst = buildTrendChart('slaTrendChartFrt', slaTrendChartFrtInst, 'First Response — Trọng số',
+    '#2E6F95', monthRows.map(m => weightedSlaScore(m.frt).weighted.toFixed(1)), monthRows.map(m => m.label));
+  slaTrendChartResInst = buildTrendChart('slaTrendChartRes', slaTrendChartResInst, 'Resolution — Trọng số',
+    '#B5533C', monthRows.map(m => weightedSlaScore(m.res).weighted.toFixed(1)), monthRows.map(m => m.label));
 
   /* ---- Tháng hiện tại (lọc theo Opening On), gộp theo dự án — cả First Response & Resolution ---- */
   const { start, end } = getCurrentMonthRange();
@@ -813,22 +841,42 @@ function renderSla(rows){
     ? 'Không dò được field Resolution Date từ ERP.'
     : `Pass nếu W = Resolution Date − Opening On < ngưỡng theo Priority (${resMonthItems.length} ticket tháng này)`;
 
-  /* ---- Theo tuần trong tháng hiện tại (Thứ 2 -> Chủ Nhật) — First Response ---- */
-  const weekGroups = {};
-  frtMonthItems.forEach(it => {
-    const mon = mondayOf(it.openDate);
-    const sun = new Date(mon); sun.setDate(mon.getDate()+6);
-    const key = mon.toISOString().slice(0,10);
-    const label = fmtDdMm(mon) + '–' + fmtDdMm(sun);
-    if (!weekGroups[key]) weekGroups[key] = { key, label, total:0, pass:0 };
-    weekGroups[key].total++;
-    if (it.result === 'Pass') weekGroups[key].pass++;
-  });
-  const weekRows = Object.values(weekGroups).sort((a,b) => a.key.localeCompare(b.key));
-  document.getElementById('frtWeekBody').innerHTML = weekRows.length ? weekRows.map(w => {
-    const rate = w.total ? (w.pass/w.total*100).toFixed(1) : '0.0';
-    return `<tr><td>${w.label}</td><td style="text-align:right;">${w.total}</td><td style="text-align:right;color:var(--success);">${w.pass}</td><td style="text-align:right;color:var(--danger);">${w.total-w.pass}</td><td style="text-align:right;">${rate}%</td></tr>`;
-  }).join('') : '<tr><td colspan="5" style="color:var(--muted);">Không có ticket nào trong tháng này</td></tr>';
+  /* ---- Theo tuần trong tháng hiện tại (Thứ 2 -> Chủ Nhật) — cả First Response & Resolution ---- */
+  function groupByWeek(items){
+    const groups = {};
+    items.forEach(it => {
+      const mon = mondayOf(it.openDate);
+      const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+      const key = mon.toISOString().slice(0,10);
+      const label = fmtDdMm(mon) + '–' + fmtDdMm(sun);
+      if (!groups[key]) groups[key] = { key, label, total:0, pass:0 };
+      groups[key].total++;
+      if (it.result === 'Pass') groups[key].pass++;
+    });
+    return Object.values(groups).sort((a,b) => a.key.localeCompare(b.key));
+  }
+  const frtWeekRows = groupByWeek(frtMonthItems);
+  const resWeekRows = groupByWeek(resMonthItems);
+
+  function buildWeekChart(canvasId, existingInst, label, color, weekRows){
+    if (existingInst) existingInst.destroy();
+    if (!weekRows.length){
+      return null; // không có dữ liệu tuần nào — bỏ qua, giữ canvas trống
+    }
+    return new Chart(document.getElementById(canvasId), {
+      type: 'line',
+      data: {
+        labels: weekRows.map(w => w.label),
+        datasets: [
+          { label, data: weekRows.map(w => w.total ? (w.pass/w.total*100).toFixed(1) : 0), borderColor: color, backgroundColor: color, tension:0.25, pointRadius:4 },
+          { label: 'Ngưỡng 90%', data: weekRows.map(()=>90), borderColor:'#dc2626', borderDash:[6,4], borderWidth:2, pointRadius:0 },
+        ],
+      },
+      options: { responsive:true, plugins:{ legend:{ display:true } }, scales:{ y:{ min:0, max:100, ticks:{ callback:v => v+'%' } } } },
+    });
+  }
+  frtWeekChartInst = buildWeekChart('frtWeekChart', frtWeekChartInst, 'First Response — % Pass', '#2E6F95', frtWeekRows);
+  resWeekChartInst = buildWeekChart('resWeekChart', resWeekChartInst, 'Resolution — % Pass', '#B5533C', resWeekRows);
 }
 
 loadDashBtn.addEventListener('click', loadDashboard);
