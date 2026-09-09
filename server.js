@@ -6,6 +6,7 @@ const express = require('express');
 const session = require('express-session');
 const multer = require('multer');
 const erp = require('./erpClient');
+const jira = require('./jiraClient');
 const { hqEncrypt, hqDecrypt } = require('./hqPasswordCrypto');
 
 const app = express();
@@ -93,6 +94,10 @@ app.get('/tickets/sla-first-response', requirePageAuth, (req, res) => {
 
 app.get('/tickets/sla-resolution', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'tickets-sla-resolution.html'));
+});
+
+app.get('/tickets/sla-jira-abi', requirePageAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'protected', 'tickets-sla-jira-abi.html'));
 });
 
 app.get('/hotfix/gop-sql', requirePageAuth, (req, res) => {
@@ -210,6 +215,49 @@ app.get('/api/erp/timesheet', requireAuth, async (req, res) => {
     res.json(data);
   } catch (e) {
     console.error('[erp/timesheet] lỗi:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+/* ---------- API: lấy issue từ Jira (Jira Cloud / Jira Service Management) ----------
+   ?project=HQ&created_from=YYYY-MM-DD&created_to=YYYY-MM-DD (project mặc định "HQ") */
+app.get('/api/jira/issues', requireAuth, async (req, res) => {
+  if (!jira.isConfigured()) {
+    return res.status(501).json({
+      error: 'Server chưa cấu hình kết nối Jira (thiếu JIRA_BASE_URL / JIRA_EMAIL / JIRA_API_TOKEN).',
+    });
+  }
+  try {
+    const project = req.query.project || 'HQ';
+    const createdFrom = req.query.created_from;
+    const createdTo = req.query.created_to;
+    const jqlParts = [`project = "${project}"`];
+    if (createdFrom) jqlParts.push(`created >= "${createdFrom} 00:00"`);
+    if (createdTo) jqlParts.push(`created <= "${createdTo} 23:59"`);
+    const jql = jqlParts.join(' AND ') + ' ORDER BY created DESC';
+    const issues = await jira.searchIssues({ jql });
+    res.json({ issues, jql, baseUrl: process.env.JIRA_BASE_URL || '' });
+  } catch (e) {
+    console.error('[jira/issues] lỗi:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+/* ---------- API: lấy dữ liệu SLA (Time to first response / Time to resolution...) cho
+   nhiều issue Jira cùng lúc — body: { issueKeys: ["HQ-1","HQ-2",...] } ---------- */
+app.post('/api/jira/sla-bulk', requireAuth, async (req, res) => {
+  if (!jira.isConfigured()) {
+    return res.status(501).json({
+      error: 'Server chưa cấu hình kết nối Jira (thiếu JIRA_BASE_URL / JIRA_EMAIL / JIRA_API_TOKEN).',
+    });
+  }
+  try {
+    const issueKeys = Array.isArray(req.body && req.body.issueKeys) ? req.body.issueKeys : [];
+    if (!issueKeys.length) return res.json({ results: {}, errors: {} });
+    const { results, errors } = await jira.getIssuesSlaBulk(issueKeys);
+    res.json({ results, errors });
+  } catch (e) {
+    console.error('[jira/sla-bulk] lỗi:', e.message);
     res.status(502).json({ error: e.message });
   }
 });

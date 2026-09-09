@@ -15,4 +15,10 @@ services:
       - ERP_BASE_URL=https://erp.hqsoft.vn
       - ERP_USER=email-dang-nhap-erp@hqsoft.vn
       - ERP_PASS=mat-khau-erp-that
+
+      # --- Ket noi Jira khach hang (du an ABI) - dung API token, khong dung mat khau ---
+      # Tao token tai: https://id.atlassian.com/manage-profile/security/api-tokens
+      - JIRA_BASE_URL=https://vnservicedesk.atlassian.net
+      - JIRA_EMAIL=email-co-quyen-xem-queue-425@hqsoft.vn
+      - JIRA_API_TOKEN=jira-api-token-that
     restart: unless-stopped

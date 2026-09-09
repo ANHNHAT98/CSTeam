@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ticket dự án — SLA Jira ABI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#12233D; --blueprint:#1F4E79; --blueprint-deep:#0F2138;
+    --paper:#EEF2F6; --panel:#FFFFFF;
+    --grid-line:rgba(31,78,121,.14); --grid-line-strong:rgba(31,78,121,.28);
+    --amber:#E8A33D; --amber-deep:#C9821F;
+    --success:#3F7D58; --danger:#B23A48; --muted:#5B7089; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans',sans-serif;
+    background-image:linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size:32px 32px; min-height:100vh;
+  }
+  .ops-topbar{background:#12233D;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:14px;}
+  .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;opacity:.9;}
+  .ops-topbar a:hover{opacity:1;text-decoration:underline;}
+  .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
+
+  .wrap{max-width:1500px;margin:0 auto;padding:32px 24px 80px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 6px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 26px;line-height:1.6;}
+
+  .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:22px;margin-bottom:20px;}
+  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0 0 4px;}
+  .panel .panel-sub{color:var(--muted);font-size:12px;margin:0 0 16px;}
+
+  .btn{
+    appearance:none;border:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-weight:600;
+    font-size:14px;padding:11px 18px;border-radius:8px;display:inline-flex;align-items:center;gap:8px;
+  }
+  .btn-primary{background:var(--amber);color:#3A2405;box-shadow:0 2px 0 var(--amber-deep);}
+  .btn-primary:disabled{background:#D8DEE6;color:#8B98A6;box-shadow:none;cursor:not-allowed;}
+  .btn-ghost{background:transparent;color:var(--blueprint);border:1px solid var(--grid-line-strong);}
+  .actions{display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap;}
+
+  .status{font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);margin-top:10px;white-space:pre-wrap;}
+  .status.ok{color:var(--success);}
+  .status.err{color:var(--danger);}
+
+  .filter-row-main{display:flex;gap:32px;align-items:flex-end;flex-wrap:wrap;}
+  .date-field{display:flex;flex-direction:column;gap:6px;}
+  .date-field label{font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.05em;}
+  .date-field input[type=date]{font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;padding:8px 10px;border-radius:7px;border:1px solid var(--grid-line-strong);background:#fff;color:var(--ink);}
+  .btn-copy{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--blueprint);background:#fff;
+    border:1px solid var(--grid-line-strong);border-radius:5px;cursor:pointer;padding:3px 7px;white-space:nowrap;
+  }
+  .btn-copy:hover{background:rgba(31,78,121,.06);}
+
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+  @media(max-width:800px){.kpi-grid{grid-template-columns:1fr 1fr;}}
+  .kpi{border:1px solid var(--grid-line-strong);border-radius:8px;padding:16px;background:#fbfcfe;}
+  .kpi .label{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+  .kpi .value{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;margin-top:6px;}
+  .kpi.pass .value{color:var(--success);}
+  .kpi.fail .value{color:var(--danger);}
+
+  table{border-collapse:collapse;width:100%;font-size:12.5px;}
+  thead th{
+    background:var(--blueprint);color:#fff;text-align:left;padding:8px 10px;
+    font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:10.5px;white-space:nowrap;
+  }
+  tbody td{padding:7px 10px;border-bottom:1px solid var(--grid-line);}
+  tbody tr:nth-child(even){background:rgba(31,78,121,.025);}
+  td.num{font-family:'IBM Plex Mono',monospace;text-align:right;}
+  td.pass{color:var(--success);font-weight:600;}
+  td.fail{color:var(--danger);font-weight:600;}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media(max-width:800px){.two-col{grid-template-columns:1fr;}}
+
+  .table-scroll{max-height:420px;overflow:auto;border:1px solid var(--grid-line-strong);border-radius:8px;}
+  code.tag{font-family:'IBM Plex Mono',monospace;background:rgba(31,78,121,.08);color:var(--blueprint);padding:1px 6px;border-radius:4px;font-size:11.5px;}
+  a.issue-link{color:var(--blueprint);font-weight:600;text-decoration:none;}
+  a.issue-link:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="ops-topbar">
+  <a href="/">← Quay về</a>
+  <span class="crumb">Ticket dự án / SLA Jira — ABI</span>
+</div>
+
+<div class="wrap">
+  <h1>SLA Jira — Dự án ABI</h1>
+  <p class="sub">Lấy issue trực tiếp từ Jira Service Management của khách hàng (<code class="tag">vnservicedesk.atlassian.net</code>, project <code class="tag">HQ</code>) — tính Pass/Fail <b>First Response Time</b> và <b>Resolution Time</b> theo đúng ngưỡng SLA từng Priority, dựa vào Created / Time to first response / Time to resolution.</p>
+
+  <div class="panel">
+    <h2>Bộ lọc &amp; tính SLA</h2>
+    <div class="panel-sub">Chọn 1 trong 2 cách bên dưới — kết quả nạp vào đều chạy chung 1 pipeline tính SLA/hiển thị bảng biểu ở dưới.</div>
+
+    <div style="border:1px solid var(--grid-line-strong);border-radius:8px;padding:16px;margin-bottom:14px;">
+      <div style="font-weight:700;font-size:13.5px;margin-bottom:10px;">Cách 1 — Lấy trực tiếp từ Jira (cần API token)</div>
+      <div class="panel-sub" style="margin-bottom:14px;">Cần biến môi trường <code class="tag">JIRA_BASE_URL</code>/<code class="tag">JIRA_EMAIL</code>/<code class="tag">JIRA_API_TOKEN</code> đã cấu hình trên server. Nếu tài khoản của bạn không tự tạo được API token (bị chặn cấp tổ chức), dùng Cách 2 bên dưới.</div>
+      <div class="filter-row-main">
+        <div class="date-field">
+          <label for="createdFrom">Created — từ ngày</label>
+          <input type="date" id="createdFrom">
+        </div>
+        <div class="date-field">
+          <label for="createdTo">Created — đến ngày</label>
+          <input type="date" id="createdTo">
+        </div>
+        <button class="btn btn-ghost" id="clearDatesBtn" type="button">Xoá lọc ngày</button>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="calcBtn">⇩ Lấy dữ liệu &amp; tính SLA</button>
+      </div>
+      <div class="status" id="fetchStatus"></div>
+    </div>
+
+    <div style="border:1px solid var(--grid-line-strong);border-radius:8px;padding:16px;">
+      <div style="font-weight:700;font-size:13.5px;margin-bottom:10px;">Cách 2 — Import file Excel/CSV export từ Jira</div>
+      <div class="panel-sub" style="margin-bottom:14px;">
+        Vào queue 425 trên Jira (hoặc Issue Navigator, JQL <code class="tag">project = HQ</code>) → thêm cột <b>Priority</b>, <b>Created</b>, và 2 cột SLA <b>Time to first response</b>, <b>Time to resolution</b> (nếu queue có sẵn) → Export → CSV/Excel. Tool sẽ tự nhận diện tên cột (không phân biệt hoa/thường, gần đúng là được).
+      </div>
+      <input id="fileInput" type="file" accept=".xlsx,.xls,.csv">
+      <div class="status" id="importStatus" style="margin-top:12px;">Chưa import file nào.</div>
+    </div>
+  </div>
+
+  <div id="resultBlock" style="display:none;">
+    <div class="kpi-grid">
+      <div class="kpi"><div class="label">Tổng issue</div><div class="value" id="kpiTotal">—</div></div>
+      <div class="kpi"><div class="label">First Response — % Pass</div><div class="value" id="kpiFrtRate">—</div></div>
+      <div class="kpi"><div class="label">Resolution — % Pass</div><div class="value" id="kpiResRate">—</div></div>
+      <div class="kpi"><div class="label">Đạt SLA (KPI ≥ 90%)</div><div class="value" id="kpiPassAll">—</div></div>
+    </div>
+
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">First Response — Theo Priority</div>
+        <table><thead><tr><th>Priority</th><th style="text-align:right;">Ngưỡng (phút)</th><th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Pass</th></tr></thead>
+          <tbody id="byPriorityFrtBody"></tbody></table>
+      </div>
+      <div class="panel">
+        <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Resolution — Theo Priority</div>
+        <table><thead><tr><th>Priority</th><th style="text-align:right;">Ngưỡng (phút)</th><th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Pass</th></tr></thead>
+          <tbody id="byPriorityResBody"></tbody></table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Tỷ lệ đạt SLA theo Nhóm Priority (KPI 70/30)</div>
+      <div class="panel-sub">
+        Nhóm 1 = Critical &amp; Urgent (P1, P2), chiếm tối đa 70% điểm KPI — % Actual &lt; 95% thì Actual 1 (áp dụng) = 0, ngược lại Actual 1 (áp dụng) = % Actual × 70%.<br>
+        Nhóm 2 = High, Medium, Low… (P3, P4, P5), chiếm tối đa 30% điểm KPI — % Actual &lt; 80% thì Actual 2 (áp dụng) = 0, ngược lại Actual 2 (áp dụng) = % Actual × 30%.<br>
+        Điểm KPI = Actual 1 (áp dụng) + Actual 2 (áp dụng). "Đạt điều kiện" = Điểm KPI ≥ 90% → Đạt SLA, ngược lại Không đạt SLA.
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th rowspan="2">Chỉ số</th>
+              <th colspan="4" style="text-align:center;">Nhóm 1 — P1 &amp; P2 (Critical, Urgent) — 70%</th>
+              <th colspan="4" style="text-align:center;">Nhóm 2 — P3, P4, P5 — 30%</th>
+              <th rowspan="2" style="text-align:right;">Điểm KPI (Actual1+Actual2)</th>
+              <th rowspan="2" style="text-align:center;">Đạt điều kiện</th>
+            </tr>
+            <tr>
+              <th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Actual</th><th style="text-align:right;">Actual 1 (áp dụng, ×70%)</th>
+              <th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Actual</th><th style="text-align:right;">Actual 2 (áp dụng, ×30%)</th>
+            </tr>
+          </thead>
+          <tbody id="kpiGroupBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Chi tiết issue Fail — First Response</div>
+      <div class="panel-sub">Sắp xếp theo mức độ ưu tiên (Critical → Urgent → High → Medium → Low). Bấm ⧉ ở từng dòng hoặc nút bên dưới để copy Ticket + Project gửi cho các thành viên.</div>
+      <div class="actions" style="margin-top:0;margin-bottom:12px;">
+        <button class="btn btn-ghost" id="copyAllFrtFailBtn">⧉ Copy toàn bộ danh sách Fail (Ticket + Project)</button>
+      </div>
+      <div class="table-scroll">
+        <table><thead><tr><th></th><th>Ticket</th><th>Project</th><th>Priority</th><th>Created</th><th>Time to First Response</th><th style="text-align:right;">W (phút)</th></tr></thead>
+          <tbody id="frtFailBody"></tbody></table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Chi tiết issue Fail — Resolution</div>
+      <div class="panel-sub">Sắp xếp theo mức độ ưu tiên (Critical → Urgent → High → Medium → Low). Bấm ⧉ ở từng dòng hoặc nút bên dưới để copy Ticket + Project gửi cho các thành viên.</div>
+      <div class="actions" style="margin-top:0;margin-bottom:12px;">
+        <button class="btn btn-ghost" id="copyAllResFailBtn">⧉ Copy toàn bộ danh sách Fail (Ticket + Project)</button>
+      </div>
+      <div class="table-scroll">
+        <table><thead><tr><th></th><th>Ticket</th><th>Project</th><th>Priority</th><th>Created</th><th>Time to Resolution</th><th style="text-align:right;">W (phút)</th></tr></thead>
+          <tbody id="resFailBody"></tbody></table>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-ghost" id="exportBtn">⬇ Xuất Excel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PROJECT_LABEL = 'ABI'; // nhãn hiển thị (Jira project key thật là "HQ")
+// Ngưỡng SLA (phút) theo Priority — đúng công thức đã dùng cho ERP.
+const SLA_THRESHOLD = { critical: 60, urgent: 240, high: 480, medium: 4320 };
+const SLA_DEFAULT_THRESHOLD = 7200; // Priority khác (vd Low) hoặc không khớp danh sách trên
+const PRIORITY_ORDER = ['critical','urgent','high','medium','low'];
+
+let calcRows = [];
+let jiraBaseUrl = 'https://vnservicedesk.atlassian.net'; // dùng làm link issue mặc định kể cả khi import file (API sẽ ghi đè nếu có)
+
+const createdFrom = document.getElementById('createdFrom');
+const createdTo = document.getElementById('createdTo');
+const calcBtn = document.getElementById('calcBtn');
+const fetchStatus = document.getElementById('fetchStatus');
+const resultBlock = document.getElementById('resultBlock');
+const exportBtn = document.getElementById('exportBtn');
+
+function setStatus(msg, cls){ fetchStatus.textContent = msg; fetchStatus.className = 'status ' + (cls||''); }
+function pad(n){ return String(n).padStart(2,'0'); }
+function toISO(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+document.getElementById('clearDatesBtn').addEventListener('click', () => {
+  createdFrom.value = '';
+  createdTo.value = '';
+});
+
+/* Mặc định: tháng hiện tại — có thể chỉnh lại tuỳ ý, hoặc xoá hết để lấy toàn bộ lịch sử. */
+(function initDefaultMonth(){
+  const today = new Date();
+  const first = new Date(today.getFullYear(), today.getMonth(), 1);
+  const last = new Date(today.getFullYear(), today.getMonth()+1, 0);
+  createdFrom.value = toISO(first);
+  createdTo.value = toISO(last);
+})();
+
+function priorityThreshold(priorityRaw){
+  const p = String(priorityRaw||'').trim().toLowerCase();
+  if (p in SLA_THRESHOLD) return SLA_THRESHOLD[p];
+  return SLA_DEFAULT_THRESHOLD;
+}
+function priorityRank(priorityRaw){
+  const p = String(priorityRaw||'').trim().toLowerCase();
+  const idx = PRIORITY_ORDER.indexOf(p);
+  return idx === -1 ? PRIORITY_ORDER.length : idx;
+}
+function priorityGroup(priorityRaw){
+  const p = String(priorityRaw||'').trim().toLowerCase();
+  return (p === 'critical' || p === 'urgent') ? 1 : 2;
+}
+
+/* Tìm định nghĩa SLA theo tên (không phân biệt hoa/thường), vd "Time to first response". */
+function findSlaByName(slaValues, keywords){
+  if (!Array.isArray(slaValues)) return null;
+  return slaValues.find(v => {
+    const name = String(v.name || '').toLowerCase();
+    return keywords.some(kw => name.includes(kw));
+  }) || null;
+}
+/* Lấy mốc thời gian ISO của chu kỳ SLA đã hoàn tất gần nhất (vd lúc phản hồi đầu / lúc đóng). */
+function slaCompletedStopIso(slaDef){
+  if (!slaDef || !Array.isArray(slaDef.completedCycles) || !slaDef.completedCycles.length) return null;
+  const last = slaDef.completedCycles[slaDef.completedCycles.length - 1];
+  return (last && last.stopTime && last.stopTime.iso8601) || null;
+}
+
+async function fetchJson(url, options){
+  const res = await fetch(url, { credentials:'same-origin', ...(options||{}) });
+  const raw = await res.text();
+  let data;
+  try{ data = raw ? JSON.parse(raw) : {}; }
+  catch(e){ throw new Error(`Server trả về không phải JSON (HTTP ${res.status}). Nội dung: ${raw.slice(0,150)}`); }
+  if (!res.ok) throw new Error(data.error || `Lỗi HTTP ${res.status}`);
+  return data;
+}
+
+/* Tính W (phút) + Pass/Fail giữa 1 mốc "đích" (first response / resolved) so với created,
+   dùng chung cho cả nguồn API lẫn nguồn import file. */
+function calcSlaMetric(createdDate, stopValue, priority){
+  if (!stopValue || !createdDate || isNaN(createdDate.getTime())) return { w: 1.1, result: 'Fail' };
+  const stopDate = (stopValue instanceof Date) ? stopValue : new Date(stopValue);
+  if (isNaN(stopDate.getTime())) return { w: 1.1, result: 'Fail' };
+  const w = (stopDate.getTime() - createdDate.getTime()) / 60000;
+  const result = (w < priorityThreshold(priority)) ? 'Pass' : 'Fail';
+  return { w, result };
+}
+/* Đóng gói 1 dòng kết quả theo đúng schema calcRows dùng chung cho renderResult()/exportBtn. */
+function buildSlaRow(key, summary, priority, createdDate, createdDisplay, frtStopValue, frtDisplay, resStopValue, resDisplay){
+  const frt = calcSlaMetric(createdDate, frtStopValue, priority);
+  const res = calcSlaMetric(createdDate, resStopValue, priority);
+  return {
+    key, summary, priority,
+    created: createdDisplay,
+    frtStop: frtDisplay || '', frtW: frt.w, frtResult: frt.result,
+    resStop: resDisplay || '', resW: res.w, resResult: res.result,
+  };
+}
+
+calcBtn.addEventListener('click', async () => {
+  calcBtn.disabled = true;
+  resultBlock.style.display = 'none';
+  setStatus('Đang lấy danh sách issue từ Jira…', '');
+  try{
+    const qs = new URLSearchParams();
+    qs.set('project', 'HQ');
+    if (createdFrom.value) qs.set('created_from', createdFrom.value);
+    if (createdTo.value) qs.set('created_to', createdTo.value);
+    const issuesData = await fetchJson('/api/jira/issues?' + qs.toString());
+    const issues = Array.isArray(issuesData.issues) ? issuesData.issues : [];
+    jiraBaseUrl = issuesData.baseUrl || jiraBaseUrl;
+    if (!issues.length){
+      setStatus('Không có issue nào khớp bộ lọc (kiểm tra lại khoảng ngày).', 'err');
+      return;
+    }
+
+    const issueKeys = issues.map(i => i.key);
+    setStatus(`Đã lấy ${issues.length} issue — đang lấy dữ liệu SLA (First Response / Resolution)… có thể mất một lúc.`, '');
+    const slaData = await fetchJson('/api/jira/sla-bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ issueKeys }),
+    });
+    const slaResults = slaData.results || {};
+    const slaErrors = slaData.errors || {};
+    const errorCount = Object.keys(slaErrors).length;
+
+    calcRows = issues.map(issue => {
+      const fields = issue.fields || {};
+      const priority = fields.priority ? fields.priority.name : '';
+      const createdDate = fields.created ? new Date(fields.created) : null;
+      const slaValues = slaResults[issue.key] || [];
+
+      const frtDef = findSlaByName(slaValues, ['first response']);
+      const resDef = findSlaByName(slaValues, ['resolution']);
+      const frtStopIso = slaCompletedStopIso(frtDef);
+      const resStopIso = slaCompletedStopIso(resDef);
+
+      return buildSlaRow(issue.key, fields.summary || '', priority, createdDate, fields.created || '', frtStopIso, frtStopIso, resStopIso, resStopIso);
+    });
+
+    renderResult(calcRows);
+    setStatus(
+      `Xong — ${issues.length} issue.` + (errorCount ? ` (${errorCount} issue không lấy được SLA — có thể không phải service desk request hoặc tài khoản không đủ quyền, xem console.)` : ''),
+      errorCount ? 'err' : 'ok'
+    );
+    if (errorCount) console.warn('Lỗi lấy SLA cho các issue:', slaErrors);
+  }catch(err){
+    console.error(err);
+    setStatus('Lỗi: ' + err.message, 'err');
+  }finally{
+    calcBtn.disabled = false;
+  }
+});
+
+function buildPriorityTable(bodyId, rows, resultKey){
+  const byPriority = {};
+  rows.forEach(r => {
+    const key = String(r.priority || '(trống)');
+    if (!byPriority[key]) byPriority[key] = { total:0, pass:0 };
+    byPriority[key].total++;
+    if (r[resultKey] === 'Pass') byPriority[key].pass++;
+  });
+  document.getElementById(bodyId).innerHTML = Object.keys(byPriority)
+    .sort((a,b) => priorityRank(a) - priorityRank(b) || a.localeCompare(b))
+    .map(p => {
+      const d = byPriority[p];
+      const rate = d.total ? (d.pass/d.total*100).toFixed(1) : '0.0';
+      return `<tr><td>${escapeHtml(p)}</td><td class="num">${priorityThreshold(p)}</td><td class="num">${d.total}</td><td class="num pass">${d.pass}</td><td class="num">${rate}%</td></tr>`;
+    }).join('');
+}
+
+function weightedSlaScore(rows, resultKey){
+  const g1 = rows.filter(r => priorityGroup(r.priority) === 1);
+  const g2 = rows.filter(r => priorityGroup(r.priority) === 2);
+  const actual1 = g1.length ? (g1.filter(r => r[resultKey] === 'Pass').length / g1.length * 100) : 100;
+  const actual2 = g2.length ? (g2.filter(r => r[resultKey] === 'Pass').length / g2.length * 100) : 100;
+  const applied1 = (actual1 < 95 ? 0 : actual1) * 0.7;
+  const applied2 = (actual2 < 80 ? 0 : actual2) * 0.3;
+  return {
+    g1total: g1.length, g1pass: g1.filter(r => r[resultKey]==='Pass').length, actual1,
+    g2total: g2.length, g2pass: g2.filter(r => r[resultKey]==='Pass').length, actual2,
+    applied1, applied2, kpiScore: applied1 + applied2,
+  };
+}
+
+function renderResult(rows){
+  const total = rows.length;
+  const frtPass = rows.filter(r => r.frtResult === 'Pass').length;
+  const resPass = rows.filter(r => r.resResult === 'Pass').length;
+  document.getElementById('kpiTotal').textContent = total;
+  document.getElementById('kpiFrtRate').textContent = total ? (frtPass/total*100).toFixed(1)+'%' : '—';
+  document.getElementById('kpiResRate').textContent = total ? (resPass/total*100).toFixed(1)+'%' : '—';
+
+  buildPriorityTable('byPriorityFrtBody', rows, 'frtResult');
+  buildPriorityTable('byPriorityResBody', rows, 'resResult');
+
+  const frtScore = weightedSlaScore(rows, 'frtResult');
+  const resScore = weightedSlaScore(rows, 'resResult');
+  const bothPass = frtScore.kpiScore >= 90 && resScore.kpiScore >= 90;
+  document.getElementById('kpiPassAll').textContent = bothPass ? 'Đạt' : 'Không đạt';
+  document.getElementById('kpiPassAll').style.color = bothPass ? 'var(--success)' : 'var(--danger)';
+
+  const fmt = v => v.toFixed(1) + '%';
+  const appliedClass = v => v === 0 ? 'fail' : 'pass';
+  function kpiRow(label, s){
+    const meets = s.kpiScore >= 90;
+    return `<tr>
+      <td>${label}</td>
+      <td class="num">${s.g1total}</td><td class="num pass">${s.g1pass}</td><td class="num">${fmt(s.actual1)}</td>
+      <td class="num ${appliedClass(s.applied1)}">${fmt(s.applied1)}</td>
+      <td class="num">${s.g2total}</td><td class="num pass">${s.g2pass}</td><td class="num">${fmt(s.actual2)}</td>
+      <td class="num ${appliedClass(s.applied2)}">${fmt(s.applied2)}</td>
+      <td class="num" style="font-weight:700;">${s.kpiScore.toFixed(1)}%</td>
+      <td style="text-align:center;" class="${meets?'pass':'fail'}">${meets?'Đạt SLA':'Không đạt SLA'}</td>
+    </tr>`;
+  }
+  document.getElementById('kpiGroupBody').innerHTML =
+    kpiRow('First Response Time', frtScore) + kpiRow('Resolution Time', resScore);
+
+  function issueLink(key){
+    const label = escapeHtml(key);
+    return jiraBaseUrl ? `<a class="issue-link" href="${jiraBaseUrl}/browse/${encodeURIComponent(key)}" target="_blank" rel="noopener">${label}</a>` : label;
+  }
+
+  function renderFailTable(bodyId, resultKey, stopKey, wKey, copyBtnId){
+    const failRows = rows.filter(r => r[resultKey] === 'Fail').slice()
+      .sort((a,b) => priorityRank(a.priority) - priorityRank(b.priority) || String(a.key).localeCompare(String(b.key)));
+    document.getElementById(bodyId).innerHTML = failRows.length ? failRows.map((r,i) => `
+      <tr><td><button class="btn-copy" data-idx="${i}" data-table="${bodyId}" title="Copy Ticket + Project">⧉</button></td>
+      <td>${issueLink(r.key)}</td><td>${escapeHtml(PROJECT_LABEL)}</td><td>${escapeHtml(r.priority)}</td>
+      <td>${escapeHtml(r.created)}</td><td>${escapeHtml(r[stopKey] || '— (chưa đạt mốc này)')}</td>
+      <td class="num">${r[wKey]===1.1?'—':Math.round(r[wKey])}</td></tr>`).join('')
+      : '<tr><td colspan="7" style="color:var(--muted);">Không có issue Fail nào 🎉</td></tr>';
+
+    document.querySelectorAll(`[data-table="${bodyId}"]`).forEach(btn => {
+      btn.addEventListener('click', () => {
+        const r = failRows[Number(btn.dataset.idx)];
+        const text = `Ticket: ${r.key} — Project: ${PROJECT_LABEL}`;
+        navigator.clipboard.writeText(text).then(() => setStatus(`Đã copy: ${text}`, 'ok'))
+          .catch(() => setStatus('Không copy được tự động — vui lòng copy thủ công.', 'err'));
+      });
+    });
+
+    document.getElementById(copyBtnId).onclick = () => {
+      if (!failRows.length){ setStatus('Không có issue Fail nào để copy.', 'err'); return; }
+      const text = failRows.map(r => `Ticket: ${r.key} — Project: ${PROJECT_LABEL}`).join('\n');
+      navigator.clipboard.writeText(text).then(() => setStatus(`Đã copy ${failRows.length} issue Fail (Ticket + Project) vào clipboard.`, 'ok'))
+        .catch(() => setStatus('Không copy được tự động — vui lòng copy thủ công.', 'err'));
+    };
+  }
+  renderFailTable('frtFailBody', 'frtResult', 'frtStop', 'frtW', 'copyAllFrtFailBtn');
+  renderFailTable('resFailBody', 'resResult', 'resStop', 'resW', 'copyAllResFailBtn');
+
+  resultBlock.style.display = 'block';
+}
+
+/* ---------- Cách 2: import file Excel/CSV export từ Jira ---------- */
+const fileInput = document.getElementById('fileInput');
+const importStatus = document.getElementById('importStatus');
+function setImportStatus(msg, cls){ importStatus.textContent = msg; importStatus.className = 'status ' + (cls||''); }
+
+function normHeader(h){ return String(h||'').trim().toLowerCase(); }
+function findCol(headers, candidates){
+  for (const cand of candidates){
+    const idx = headers.findIndex(h => normHeader(h) === cand);
+    if (idx >= 0) return idx;
+  }
+  for (const cand of candidates){
+    const idx = headers.findIndex(h => normHeader(h).includes(cand));
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+/* Parse ngày linh hoạt: Date object (khi đọc .xlsx có cellDates), số serial Excel,
+   chuỗi ISO, hoặc định dạng mặc định Jira export "05/Sep/26 3:45 PM". */
+function parseJiraDate(v){
+  if (v === null || v === undefined || v === '') return null;
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+  if (typeof v === 'number'){
+    const d = new Date(Math.round((v - 25569) * 86400 * 1000));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const s = String(v).trim();
+  const iso = new Date(s);
+  if (!isNaN(iso.getTime())) return iso;
+  const m = s.match(/^(\d{1,2})\/([A-Za-z]{3})\/(\d{2,4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if (m){
+    const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+    const mon = months[m[2].toLowerCase()];
+    if (mon !== undefined){
+      let year = parseInt(m[3],10); if (year < 100) year += 2000;
+      let hour = parseInt(m[4],10);
+      const ampm = (m[6]||'').toUpperCase();
+      if (ampm === 'PM' && hour < 12) hour += 12;
+      if (ampm === 'AM' && hour === 12) hour = 0;
+      const d = new Date(year, mon, parseInt(m[1],10), hour, parseInt(m[5],10));
+      return isNaN(d.getTime()) ? null : d;
+    }
+  }
+  return null;
+}
+
+fileInput.addEventListener('change', (e) => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  setImportStatus('⏳ Đang đọc file...', '');
+  resultBlock.style.display = 'none';
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try{
+      const wb = XLSX.read(ev.target.result, { type:'array', cellDates:true });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows2d = XLSX.utils.sheet_to_json(sheet, { header:1, defval:'', raw:true });
+      if (!rows2d.length) throw new Error('File không có dữ liệu.');
+      const headers = rows2d[0].map(h => String(h||''));
+      const dataRows = rows2d.slice(1).filter(r => r.some(c => c !== ''));
+
+      const keyIdx = findCol(headers, ['issue key','key']);
+      const priorityIdx = findCol(headers, ['priority']);
+      const createdIdx = findCol(headers, ['created']);
+      const frtIdx = findCol(headers, ['time to first response','first response']);
+      const resIdx = findCol(headers, ['time to resolution','resolution','resolved']);
+      const summaryIdx = findCol(headers, ['summary']);
+
+      if (keyIdx < 0 || priorityIdx < 0 || createdIdx < 0){
+        throw new Error(`Không nhận diện đủ cột bắt buộc (Key/Priority/Created). Cột đọc được trong file: ${headers.join(', ')}`);
+      }
+
+      calcRows = dataRows.map(r => {
+        const key = String(r[keyIdx]||'').trim();
+        const priority = priorityIdx>=0 ? String(r[priorityIdx]||'').trim() : '';
+        const createdDate = createdIdx>=0 ? parseJiraDate(r[createdIdx]) : null;
+        const frtRaw = frtIdx>=0 ? r[frtIdx] : null;
+        const resRaw = resIdx>=0 ? r[resIdx] : null;
+        const frtDate = parseJiraDate(frtRaw);
+        const resDate = parseJiraDate(resRaw);
+        const summary = summaryIdx>=0 ? String(r[summaryIdx]||'') : '';
+        return buildSlaRow(key, summary, priority, createdDate,
+          createdDate ? createdDate.toLocaleString('vi-VN') : String(r[createdIdx]||''),
+          frtDate, frtDate ? frtDate.toLocaleString('vi-VN') : (frtRaw!==null && frtRaw!=='' ? String(frtRaw) : ''),
+          resDate, resDate ? resDate.toLocaleString('vi-VN') : (resRaw!==null && resRaw!=='' ? String(resRaw) : ''));
+      }).filter(r => r.key);
+
+      if (!calcRows.length) throw new Error('Không đọc được dòng dữ liệu hợp lệ nào (kiểm tra lại cột Key).');
+
+      renderResult(calcRows);
+      const cols = [
+        `Key=${headers[keyIdx]}`, `Priority=${headers[priorityIdx]}`, `Created=${headers[createdIdx]}`,
+        frtIdx>=0?`First Response=${headers[frtIdx]}`:'First Response=(không có, tính Fail hết)',
+        resIdx>=0?`Resolution=${headers[resIdx]}`:'Resolution=(không có, tính Fail hết)',
+      ].join(' · ');
+      setImportStatus(`✅ Đã import ${calcRows.length} issue. Cột nhận diện: ${cols}`, 'ok');
+    }catch(err){
+      console.error(err);
+      setImportStatus('Lỗi: ' + err.message, 'err');
+    }
+  };
+  reader.readAsArrayBuffer(f);
+});
+
+exportBtn.addEventListener('click', () => {
+  if (!calcRows.length) return;
+  const aoa = [['Ticket','Project','Priority','Created','Time to First Response','FRT W (phút)','FRT Kết quả','Time to Resolution','RES W (phút)','RES Kết quả']];
+  calcRows.forEach(r => aoa.push([
+    r.key, PROJECT_LABEL, r.priority, r.created,
+    r.frtStop, r.frtW===1.1?'':Math.round(r.frtW*100)/100, r.frtResult,
+    r.resStop, r.resW===1.1?'':Math.round(r.resW*100)/100, r.resResult,
+  ]));
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:12},{wch:10},{wch:12},{wch:20},{wch:20},{wch:12},{wch:8},{wch:20},{wch:12},{wch:8}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'SLA Jira ABI');
+  XLSX.writeFile(wb, 'SLA_Jira_ABI.xlsx');
+});
+</script>
+</body>
+</html>
