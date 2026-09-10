@@ -7,6 +7,7 @@ const session = require('express-session');
 const multer = require('multer');
 const erp = require('./erpClient');
 const jira = require('./jiraClient');
+const monthlyReport = require('./monthlyReportStore');
 const { hqEncrypt, hqDecrypt } = require('./hqPasswordCrypto');
 
 const app = express();
@@ -240,6 +241,38 @@ app.get('/api/jira/issues', requireAuth, async (req, res) => {
   } catch (e) {
     console.error('[jira/issues] lỗi:', e.message);
     res.status(502).json({ error: e.message });
+  }
+});
+
+/* ---------- API: "Báo cáo SLA hàng tháng" — dữ liệu do KHÁCH HÀNG tổng hợp và gửi cuối
+   tháng (không lấy realtime qua Jira được), lưu lại để tool theo dõi xu hướng qua các tháng.
+   month="YYYY-MM", project="HQ" (mã dự án ABI trên Jira). ---------- */
+app.get('/api/monthly-report', requireAuth, (req, res) => {
+  try {
+    res.json({ rows: monthlyReport.readAll() });
+  } catch (e) {
+    console.error('[monthly-report:get] lỗi:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/monthly-report', requireAuth, (req, res) => {
+  try {
+    const saved = monthlyReport.upsert(req.body || {});
+    res.json({ ok: true, row: saved });
+  } catch (e) {
+    console.error('[monthly-report:post] lỗi:', e.message);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.delete('/api/monthly-report/:project/:month', requireAuth, (req, res) => {
+  try {
+    monthlyReport.remove(req.params.month, req.params.project);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[monthly-report:delete] lỗi:', e.message);
+    res.status(400).json({ error: e.message });
   }
 });
 

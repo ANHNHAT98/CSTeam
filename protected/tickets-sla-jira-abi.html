@@ -187,6 +187,49 @@
       <button class="btn btn-ghost" id="exportBtn">⬇ Xuất Excel</button>
     </div>
   </div>
+
+  <div class="panel">
+    <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Báo cáo SLA hàng tháng (khách hàng tổng hợp gửi cuối tháng)</div>
+    <div class="panel-sub">
+      Các chỉ số <b>Total Received, Total Done, Still Open, Avg First Response (h), First Response SLA Met %, Avg Resolution (h), Resolution SLA Met %</b>
+      không lấy realtime qua Jira API được — khách hàng chỉ tổng hợp và gửi file báo cáo (<code class="tag">Jira_Monthly_Report_*.xlsx</code>, sheet "Dashboard") vào cuối tháng.
+      Nhập tay hoặc import file bên dưới để tool lưu lại và theo dõi xu hướng qua các tháng.
+    </div>
+
+    <div style="border:1px solid var(--grid-line-strong);border-radius:8px;padding:16px;margin-bottom:14px;">
+      <div style="font-weight:700;font-size:13.5px;margin-bottom:10px;">Import file báo cáo khách hàng gửi (sheet "Dashboard")</div>
+      <input id="monthlyFileInput" type="file" accept=".xlsx,.xls">
+      <div class="status" id="monthlyImportStatus" style="margin-top:12px;">Chưa import file nào.</div>
+    </div>
+
+    <div style="border:1px solid var(--grid-line-strong);border-radius:8px;padding:16px;margin-bottom:14px;">
+      <div style="font-weight:700;font-size:13.5px;margin-bottom:10px;">Hoặc nhập tay</div>
+      <div class="filter-row-main" style="flex-wrap:wrap;">
+        <div class="date-field"><label for="mrMonth">Tháng</label><input type="month" id="mrMonth"></div>
+        <div class="date-field"><label for="mrReceived">Total Received</label><input type="number" id="mrReceived" min="0"></div>
+        <div class="date-field"><label for="mrDone">Total Done</label><input type="number" id="mrDone" min="0"></div>
+        <div class="date-field"><label for="mrOpen">Still Open</label><input type="number" id="mrOpen" min="0"></div>
+        <div class="date-field"><label for="mrFrtH">Avg First Response (h)</label><input type="number" id="mrFrtH" step="0.1" min="0"></div>
+        <div class="date-field"><label for="mrFrtPct">First Response SLA Met %</label><input type="number" id="mrFrtPct" step="0.1" min="0" max="100"></div>
+        <div class="date-field"><label for="mrResH">Avg Resolution (h)</label><input type="number" id="mrResH" step="0.1" min="0"></div>
+        <div class="date-field"><label for="mrResPct">Resolution SLA Met %</label><input type="number" id="mrResPct" step="0.1" min="0" max="100"></div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="mrSaveBtn" type="button">💾 Lưu tháng này</button>
+      </div>
+      <div class="status" id="monthlySaveStatus"></div>
+    </div>
+
+    <div class="table-scroll">
+      <table><thead><tr>
+        <th>Tháng</th><th style="text-align:right;">Total Received</th><th style="text-align:right;">Total Done</th>
+        <th style="text-align:right;">Still Open</th><th style="text-align:right;">Avg First Response (h)</th>
+        <th style="text-align:right;">First Response SLA Met %</th><th style="text-align:right;">Avg Resolution (h)</th>
+        <th style="text-align:right;">Resolution SLA Met %</th><th></th>
+      </tr></thead>
+        <tbody id="monthlyReportBody"><tr><td colspan="9" style="color:var(--muted);">Đang tải…</td></tr></tbody></table>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -222,6 +265,14 @@ function setStatus(msg, cls){ fetchStatus.textContent = msg; fetchStatus.classNa
 function pad(n){ return String(n).padStart(2,'0'); }
 function toISO(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
 function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* Loại các ticket có status Cancel/Cancelled khỏi TẤT CẢ các bảng phân tích SLA — ticket đã
+   huỷ không tính vào SLA First Response/Resolution (dù đúng hay trễ hạn cũng không có ý nghĩa
+   để đo hiệu suất đội ngũ). So khớp không phân biệt hoa/thường, chấp nhận cả "Cancel",
+   "Cancelled", "Canceled", "Cancel Request"... */
+function isCancelledStatus(status){
+  return /^cancel/i.test(String(status || '').trim());
+}
 
 document.getElementById('clearDatesBtn').addEventListener('click', () => {
   createdFrom.value = '';
@@ -391,7 +442,10 @@ calcBtn.addEventListener('click', async () => {
     if (createdFrom.value) qs.set('created_from', createdFrom.value);
     if (createdTo.value) qs.set('created_to', createdTo.value);
     const issuesData = await fetchJson('/api/jira/issues?' + qs.toString());
-    const issues = Array.isArray(issuesData.issues) ? issuesData.issues : [];
+    const allIssues = Array.isArray(issuesData.issues) ? issuesData.issues : [];
+    // Bỏ ticket status Cancel/Cancelled khỏi toàn bộ phân tích — không tính vào SLA.
+    const cancelledIssues = allIssues.filter(i => isCancelledStatus(i.fields && i.fields.status && i.fields.status.name));
+    const issues = allIssues.filter(i => !isCancelledStatus(i.fields && i.fields.status && i.fields.status.name));
     jiraBaseUrl = issuesData.baseUrl || jiraBaseUrl;
     ticketPriorityFieldId = issuesData.ticketPriorityFieldId || null;
     hqTicketIdFieldId = issuesData.hqTicketIdFieldId || null;
@@ -402,7 +456,7 @@ calcBtn.addEventListener('click', async () => {
       console.warn('Không tìm thấy field "HQ Ticket ID" trên Jira — cột HQ Ticket ID sẽ để trống.');
     }
     if (!issues.length){
-      setStatus('Không có issue nào khớp bộ lọc (kiểm tra lại khoảng ngày).', 'err');
+      setStatus(`Không có issue nào khớp bộ lọc (kiểm tra lại khoảng ngày).${cancelledIssues.length ? ` (Đã loại ${cancelledIssues.length} issue status Cancel.)` : ''}`, 'err');
       return;
     }
 
@@ -448,8 +502,9 @@ calcBtn.addEventListener('click', async () => {
     const priorityNote = ticketPriorityFieldId
       ? `Priority lấy từ field "Ticket priority[dropdown]" (${ticketPriorityFieldId}).`
       : `⚠ Không tra được field "Ticket priority[dropdown]" — đang tạm dùng field Priority chuẩn của Jira (có thể không đúng mã P1/P2).`;
+    const cancelledNote = cancelledIssues.length ? ` Đã loại ${cancelledIssues.length} issue status Cancel khỏi phân tích.` : '';
     setStatus(
-      `Xong — ${issues.length} issue. ${priorityNote}` + (errorCount ? ` (${errorCount} issue không lấy được SLA — có thể không phải service desk request hoặc tài khoản không đủ quyền, xem console.)` : ''),
+      `Xong — ${issues.length} issue. ${priorityNote}${cancelledNote}` + (errorCount ? ` (${errorCount} issue không lấy được SLA — có thể không phải service desk request hoặc tài khoản không đủ quyền, xem console.)` : ''),
       errorCount ? 'err' : (ticketPriorityFieldId ? 'ok' : 'err')
     );
     if (errorCount) console.warn('Lỗi lấy SLA cho các issue:', slaErrors);
@@ -657,7 +712,11 @@ fileInput.addEventListener('change', (e) => {
         return { text, state };
       }
 
-      calcRows = dataRows.map(r => {
+      // Bỏ dòng status Cancel/Cancelled khỏi phân tích (chỉ lọc được nếu file có cột Status).
+      const cancelledCount = statusIdx>=0 ? dataRows.filter(r => isCancelledStatus(r[statusIdx])).length : 0;
+      const usableRows = statusIdx>=0 ? dataRows.filter(r => !isCancelledStatus(r[statusIdx])) : dataRows;
+
+      calcRows = usableRows.map(r => {
         const key = String(r[keyIdx]||'').trim();
         const priority = priorityIdx>=0 ? String(r[priorityIdx]||'').trim() : '';
         const createdDate = createdIdx>=0 ? parseJiraDate(r[createdIdx]) : null;
@@ -690,7 +749,10 @@ fileInput.addEventListener('change', (e) => {
         hqIdIdx>=0?`HQ Ticket ID=${headers[hqIdIdx]}`:'HQ Ticket ID=(không có trong file)',
         statusIdx>=0?`Status=${headers[statusIdx]}`:'Status=(không có trong file)',
       ].join(' · ');
-      setImportStatus(`✅ Đã import ${calcRows.length} issue. Cột nhận diện: ${cols}`, 'ok');
+      const cancelledNote = statusIdx>=0
+        ? (cancelledCount ? ` Đã loại ${cancelledCount} dòng status Cancel.` : '')
+        : ' ⚠ File không có cột Status nên không lọc được ticket Cancel.';
+      setImportStatus(`✅ Đã import ${calcRows.length} issue. Cột nhận diện: ${cols}${cancelledNote}`, 'ok');
     }catch(err){
       console.error(err);
       setImportStatus('Lỗi: ' + err.message, 'err');
@@ -713,6 +775,192 @@ exportBtn.addEventListener('click', () => {
   XLSX.utils.book_append_sheet(wb, ws, 'SLA Jira ABI');
   XLSX.writeFile(wb, 'SLA_Jira_ABI.xlsx');
 });
+
+/* ============================================================================
+   Báo cáo SLA hàng tháng — dữ liệu KHÁCH HÀNG tổng hợp gửi cuối tháng, không lấy
+   realtime qua Jira được. Lưu server-side (file JSON, xem monthlyReportStore.js) để
+   tool theo dõi xu hướng qua các tháng. Độc lập hoàn toàn với phần tính SLA theo ticket ở trên.
+   ============================================================================ */
+const REAL_PROJECT_KEY = 'HQ'; // mã dự án thật trên Jira/trong file báo cáo (PROJECT_LABEL='ABI' chỉ là nhãn hiển thị)
+const monthlyFileInput = document.getElementById('monthlyFileInput');
+const monthlyReportBody = document.getElementById('monthlyReportBody');
+const mrSaveBtn = document.getElementById('mrSaveBtn');
+
+function setMonthlyStatus(elId, msg, cls){
+  const el = document.getElementById(elId);
+  el.textContent = msg;
+  el.className = 'status' + (cls ? ' ' + cls : '');
+}
+function pctDisplay(v){ return (v===null || v===undefined || v==='') ? '—' : (Number(v).toFixed(1) + '%'); }
+function numDisplay(v){ return (v===null || v===undefined || v==='') ? '—' : v; }
+function slaPctClass(v){ if (v===null||v===undefined||v==='') return ''; return Number(v) >= 90 ? 'pass' : 'fail'; }
+
+async function loadMonthlyReport(){
+  try{
+    const data = await fetchJson('/api/monthly-report');
+    const rows = (data.rows || []).filter(r => r.project === REAL_PROJECT_KEY);
+    renderMonthlyReportTable(rows);
+  }catch(err){
+    monthlyReportBody.innerHTML = `<tr><td colspan="9" style="color:var(--danger);">Lỗi tải dữ liệu: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function renderMonthlyReportTable(rows){
+  if (!rows.length){
+    monthlyReportBody.innerHTML = '<tr><td colspan="9" style="color:var(--muted);">Chưa có dữ liệu tháng nào — nhập tay hoặc import file ở trên.</td></tr>';
+    return;
+  }
+  monthlyReportBody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${escapeHtml(r.month)}</td>
+      <td class="num">${numDisplay(r.totalReceived)}</td>
+      <td class="num">${numDisplay(r.totalDone)}</td>
+      <td class="num">${numDisplay(r.stillOpen)}</td>
+      <td class="num">${numDisplay(r.avgFirstResponseH)}</td>
+      <td class="num ${slaPctClass(r.firstResponseSlaMetPct)}">${pctDisplay(r.firstResponseSlaMetPct)}</td>
+      <td class="num">${numDisplay(r.avgResolutionH)}</td>
+      <td class="num ${slaPctClass(r.resolutionSlaMetPct)}">${pctDisplay(r.resolutionSlaMetPct)}</td>
+      <td style="text-align:center;">
+        <button class="btn-copy" data-action="edit" data-month="${escapeHtml(r.month)}" title="Sửa — nạp lại vào form nhập tay">✎</button>
+        <button class="btn-copy" data-action="del" data-month="${escapeHtml(r.month)}" title="Xoá">🗑</button>
+      </td>
+    </tr>`).join('');
+
+  monthlyReportBody.querySelectorAll('[data-action="edit"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const r = rows.find(x => x.month === btn.dataset.month);
+      if (!r) return;
+      document.getElementById('mrMonth').value = r.month;
+      document.getElementById('mrReceived').value = r.totalReceived ?? '';
+      document.getElementById('mrDone').value = r.totalDone ?? '';
+      document.getElementById('mrOpen').value = r.stillOpen ?? '';
+      document.getElementById('mrFrtH').value = r.avgFirstResponseH ?? '';
+      document.getElementById('mrFrtPct').value = r.firstResponseSlaMetPct ?? '';
+      document.getElementById('mrResH').value = r.avgResolutionH ?? '';
+      document.getElementById('mrResPct').value = r.resolutionSlaMetPct ?? '';
+      setMonthlyStatus('monthlySaveStatus', `Đang sửa tháng ${r.month} — bấm "Lưu tháng này" để cập nhật.`, '');
+    });
+  });
+  monthlyReportBody.querySelectorAll('[data-action="del"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(`Xoá dữ liệu tháng ${btn.dataset.month}?`)) return;
+      try{
+        await fetchJson(`/api/monthly-report/${REAL_PROJECT_KEY}/${btn.dataset.month}`, { method: 'DELETE' });
+        loadMonthlyReport();
+      }catch(err){
+        alert('Lỗi xoá: ' + err.message);
+      }
+    });
+  });
+}
+
+mrSaveBtn.addEventListener('click', async () => {
+  const month = document.getElementById('mrMonth').value;
+  if (!month){ setMonthlyStatus('monthlySaveStatus', 'Vui lòng chọn Tháng.', 'err'); return; }
+  const body = {
+    month, project: REAL_PROJECT_KEY,
+    totalReceived: document.getElementById('mrReceived').value,
+    totalDone: document.getElementById('mrDone').value,
+    stillOpen: document.getElementById('mrOpen').value,
+    avgFirstResponseH: document.getElementById('mrFrtH').value,
+    firstResponseSlaMetPct: document.getElementById('mrFrtPct').value,
+    avgResolutionH: document.getElementById('mrResH').value,
+    resolutionSlaMetPct: document.getElementById('mrResPct').value,
+  };
+  mrSaveBtn.disabled = true;
+  try{
+    await fetchJson('/api/monthly-report', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    setMonthlyStatus('monthlySaveStatus', `✅ Đã lưu tháng ${month}.`, 'ok');
+    loadMonthlyReport();
+  }catch(err){
+    setMonthlyStatus('monthlySaveStatus', 'Lỗi: ' + err.message, 'err');
+  }finally{
+    mrSaveBtn.disabled = false;
+  }
+});
+
+/* Import file "Jira_Monthly_Report_*.xlsx" — đọc sheet "Dashboard" (đúng định dạng file
+   khách hàng gửi), lọc đúng dự án HQ, rồi lưu từng dòng (mỗi dòng = 1 tháng) lên server. */
+monthlyFileInput.addEventListener('change', (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  setMonthlyStatus('monthlyImportStatus', 'Đang đọc file…', '');
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    try{
+      const wb = XLSX.read(ev.target.result, { type: 'array', cellDates: true });
+      const sheetName = wb.SheetNames.find(n => n.trim().toLowerCase() === 'dashboard') || wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const rows2d = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+      if (!rows2d.length) throw new Error('File/sheet rỗng.');
+      const headers = rows2d[0].map(h => String(h||'').trim().toLowerCase());
+      const dataRows = rows2d.slice(1).filter(r => r.some(c => c !== null && c !== ''));
+
+      const col = (...names) => headers.findIndex(h => names.some(n => h === n));
+      const monthIdx = col('month');
+      const projectIdx = col('project');
+      const receivedIdx = col('total received');
+      const doneIdx = col('total done');
+      const openIdx = col('still open');
+      const frtHIdx = col('avg first response (h)','avg first response(h)');
+      const frtPctIdx = col('first response sla met %','first response sla met%');
+      const resHIdx = col('avg resolution (h)','avg resolution(h)');
+      const resPctIdx = col('resolution sla met %','resolution sla met%');
+
+      if (monthIdx<0 || projectIdx<0){
+        throw new Error(`Không nhận diện được cột Month/Project trong sheet "${sheetName}". Cột đọc được: ${rows2d[0].join(', ')}`);
+      }
+
+      function monthToStr(v){
+        if (v instanceof Date && !isNaN(v.getTime())) return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}`;
+        const s = String(v||'').trim();
+        const m = s.match(/^(\d{4})-(\d{2})/);
+        return m ? `${m[1]}-${m[2]}` : s.slice(0,7);
+      }
+
+      const matched = dataRows.filter(r => String(r[projectIdx]||'').trim().toUpperCase() === REAL_PROJECT_KEY);
+      if (!matched.length){
+        throw new Error(`Không có dòng nào ứng với dự án "${REAL_PROJECT_KEY}" trong sheet "${sheetName}".`);
+      }
+
+      let saved = 0;
+      for (const r of matched){
+        const body = {
+          month: monthToStr(r[monthIdx]), project: REAL_PROJECT_KEY,
+          totalReceived: receivedIdx>=0 ? r[receivedIdx] : undefined,
+          totalDone: doneIdx>=0 ? r[doneIdx] : undefined,
+          stillOpen: openIdx>=0 ? r[openIdx] : undefined,
+          avgFirstResponseH: frtHIdx>=0 ? r[frtHIdx] : undefined,
+          firstResponseSlaMetPct: frtPctIdx>=0 ? toPct(r[frtPctIdx]) : undefined,
+          avgResolutionH: resHIdx>=0 ? r[resHIdx] : undefined,
+          resolutionSlaMetPct: resPctIdx>=0 ? toPct(r[resPctIdx]) : undefined,
+        };
+        await fetchJson('/api/monthly-report', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        });
+        saved++;
+      }
+      setMonthlyStatus('monthlyImportStatus', `✅ Đã import ${saved} tháng (dự án ${REAL_PROJECT_KEY}) từ sheet "${sheetName}".`, 'ok');
+      loadMonthlyReport();
+    }catch(err){
+      console.error(err);
+      setMonthlyStatus('monthlyImportStatus', 'Lỗi: ' + err.message, 'err');
+    }
+  };
+  reader.readAsArrayBuffer(f);
+});
+
+/* % trong file có thể là số thập phân kiểu tỉ lệ (0.71) hoặc đã nhân 100 (71) — quy về thang 0-100. */
+function toPct(v){
+  if (v === null || v === undefined || v === '') return undefined;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return undefined;
+  return n <= 1 ? n * 100 : n;
+}
+
+loadMonthlyReport();
 </script>
 </body>
 </html>

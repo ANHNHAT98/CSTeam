@@ -4,6 +4,10 @@ services:
     container_name: hqsoft-ops-console
     ports:
       - "4000:4000"
+    volumes:
+      # Lưu bền "Báo cáo SLA hàng tháng" (khách hàng gửi cuối tháng, nhập tay/import vào tool)
+      # — nếu KHÔNG mount volume này, dữ liệu sẽ mất mỗi khi container bị xoá/deploy lại.
+      - ./data:/app/data
     environment:
       - PORT=4000
       - SESSION_SECRET=doi-chuoi-nay-thanh-gia-tri-bi-mat-cua-ban
