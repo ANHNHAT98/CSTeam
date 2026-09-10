@@ -189,21 +189,35 @@
   </div>
 
   <div class="panel">
-    <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Báo cáo SLA hàng tháng (khách hàng tổng hợp gửi cuối tháng)</div>
+    <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Báo cáo SLA hàng tháng</div>
     <div class="panel-sub">
       Các chỉ số <b>Total Received, Total Done, Still Open, Avg First Response (h), First Response SLA Met %, Avg Resolution (h), Resolution SLA Met %</b>
-      không lấy realtime qua Jira API được — khách hàng chỉ tổng hợp và gửi file báo cáo (<code class="tag">Jira_Monthly_Report_*.xlsx</code>, sheet "Dashboard") vào cuối tháng.
-      Nhập tay hoặc import file bên dưới để tool lưu lại và theo dõi xu hướng qua các tháng.
+      — tool tự <b>tính trực tiếp từ Jira</b> (Cách 1 bên dưới), không cần chờ khách hàng gửi báo cáo cuối tháng nữa.
+      Import file / nhập tay chỉ để đối chiếu hoặc bổ sung các tháng cũ không còn kéo được từ Jira.
     </div>
 
     <div style="border:1px solid var(--grid-line-strong);border-radius:8px;padding:16px;margin-bottom:14px;">
-      <div style="font-weight:700;font-size:13.5px;margin-bottom:10px;">Import file báo cáo khách hàng gửi (sheet "Dashboard")</div>
+      <div style="font-weight:700;font-size:13.5px;margin-bottom:10px;">Cách 1 — Tính trực tiếp từ Jira (khuyến nghị)</div>
+      <div class="panel-sub" style="margin-bottom:14px;">
+        Lấy toàn bộ issue project <code class="tag">HQ</code> có <b>Created</b> trong tháng chọn, loại ticket status Cancel, rồi tính:
+        Total Received = số issue tạo trong tháng · Total Done = issue đã ở status nhóm "Done" (Resolved/Closed...) · Still Open = Received − Done ·
+        Avg (h)/SLA Met % của First Response &amp; Resolution = tính trên các issue <b>đã có chu kỳ SLA hoàn tất</b> (đã phản hồi/đã xử lý xong — khớp đúng cách khách hàng tự tính, không tính issue đang chạy dở).
+      </div>
+      <div class="filter-row-main">
+        <div class="date-field"><label for="mrJiraMonth">Tháng</label><input type="month" id="mrJiraMonth"></div>
+        <button class="btn btn-primary" id="mrCalcFromJiraBtn" type="button">⇩ Tính từ Jira &amp; lưu</button>
+      </div>
+      <div class="status" id="monthlyJiraStatus"></div>
+    </div>
+
+    <div style="border:1px solid var(--grid-line-strong);border-radius:8px;padding:16px;margin-bottom:14px;">
+      <div style="font-weight:700;font-size:13.5px;margin-bottom:10px;">Cách 2 — Import file báo cáo khách hàng gửi (đối chiếu / tháng cũ)</div>
       <input id="monthlyFileInput" type="file" accept=".xlsx,.xls">
       <div class="status" id="monthlyImportStatus" style="margin-top:12px;">Chưa import file nào.</div>
     </div>
 
     <div style="border:1px solid var(--grid-line-strong);border-radius:8px;padding:16px;margin-bottom:14px;">
-      <div style="font-weight:700;font-size:13.5px;margin-bottom:10px;">Hoặc nhập tay</div>
+      <div style="font-weight:700;font-size:13.5px;margin-bottom:10px;">Cách 3 — Nhập tay</div>
       <div class="filter-row-main" style="flex-wrap:wrap;">
         <div class="date-field"><label for="mrMonth">Tháng</label><input type="month" id="mrMonth"></div>
         <div class="date-field"><label for="mrReceived">Total Received</label><input type="number" id="mrReceived" min="0"></div>
@@ -383,6 +397,19 @@ function slaStateIcon(state){
 }
 function slaStateClass(state){
   return { met:'pass', breached:'fail' }[state] || '';
+}
+
+/* Dùng cho "Báo cáo SLA hàng tháng" — lấy elapsedTime (giờ) + breached từ chu kỳ SLA ĐÃ
+   HOÀN TẤT gần nhất (completedCycles), đúng công thức khách hàng dùng để tính Avg (h)/SLA
+   Met % trong file Dashboard: chỉ tính trên các ticket đã có chu kỳ hoàn tất (đã phản hồi /
+   đã xử lý xong) — KHÔNG tính ticket đang chạy dở (ongoingCycle) hay không áp dụng SLA nào.
+   Trả về null nếu chưa có chu kỳ hoàn tất. */
+function slaCompletedElapsedHours(slaDef){
+  if (!slaDef || !Array.isArray(slaDef.completedCycles) || !slaDef.completedCycles.length) return null;
+  const last = slaDef.completedCycles[slaDef.completedCycles.length - 1];
+  const millis = last.elapsedTime && typeof last.elapsedTime.millis === 'number' ? last.elapsedTime.millis : null;
+  if (millis === null) return null;
+  return { hours: millis / 3600000, breached: !!last.breached };
 }
 
 async function fetchJson(url, options){
@@ -785,12 +812,101 @@ const REAL_PROJECT_KEY = 'HQ'; // mã dự án thật trên Jira/trong file báo
 const monthlyFileInput = document.getElementById('monthlyFileInput');
 const monthlyReportBody = document.getElementById('monthlyReportBody');
 const mrSaveBtn = document.getElementById('mrSaveBtn');
+const mrCalcFromJiraBtn = document.getElementById('mrCalcFromJiraBtn');
 
 function setMonthlyStatus(elId, msg, cls){
   const el = document.getElementById(elId);
   el.textContent = msg;
   el.className = 'status' + (cls ? ' ' + cls : '');
 }
+
+/* "YYYY-MM" -> { start: "YYYY-MM-01", end: "YYYY-MM-<ngày cuối tháng>" } */
+function monthRange(monthStr){
+  const [y, m] = monthStr.split('-').map(Number);
+  const lastDay = new Date(y, m, 0).getDate(); // new Date(y, m, 0) = ngày cuối của tháng m (1-indexed)
+  return { start: `${monthStr}-01`, end: `${monthStr}-${String(lastDay).padStart(2,'0')}` };
+}
+
+/* Tính trực tiếp 7 chỉ số "Báo cáo SLA hàng tháng" từ Jira cho 1 tháng — đúng công thức
+   khách hàng dùng (đã đối chiếu khớp 100% với file Dashboard khách gửi tháng 8/2026):
+   - Total Received = số issue project HQ có Created trong tháng (đã loại status Cancel)
+   - Total Done = trong số đó, issue đang ở status nhóm "Done" (statusCategory.key === 'done')
+   - Still Open = Total Received − Total Done
+   - Avg (h) / SLA Met % của First Response & Resolution = CHỈ tính trên issue đã có chu kỳ
+     SLA tương ứng HOÀN TẤT (đã phản hồi / đã xử lý xong) — không tính issue đang chạy dở
+     hoặc không áp dụng SLA đó. */
+async function computeMonthlyFromJira(monthStr){
+  const { start, end } = monthRange(monthStr);
+  const qs = new URLSearchParams({ project: REAL_PROJECT_KEY, created_from: start, created_to: end });
+  const issuesData = await fetchJson('/api/jira/issues?' + qs.toString());
+  const rawIssues = Array.isArray(issuesData.issues) ? issuesData.issues : [];
+  const issues = rawIssues.filter(i => !isCancelledStatus(i.fields && i.fields.status && i.fields.status.name));
+  if (!issues.length){
+    throw new Error(`Không có issue nào tạo trong tháng ${monthStr} (project ${REAL_PROJECT_KEY}, đã loại status Cancel).`);
+  }
+
+  const issueKeys = issues.map(i => i.key);
+  const slaData = await fetchJson('/api/jira/sla-bulk', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ issueKeys }),
+  });
+  const slaResults = slaData.results || {};
+
+  let totalDone = 0;
+  const frtDone = []; // { hours, breached }
+  const resDone = [];
+  issues.forEach(issue => {
+    const fields = issue.fields || {};
+    const statusCategoryKey = fields.status && fields.status.statusCategory && fields.status.statusCategory.key;
+    if (statusCategoryKey === 'done') totalDone++;
+
+    const slaValues = slaResults[issue.key] || [];
+    const frtDef = findSlaByName(slaValues, ['first response']);
+    const resDef = findSlaByName(slaValues, ['resolution']);
+    const frtElapsed = slaCompletedElapsedHours(frtDef);
+    const resElapsed = slaCompletedElapsedHours(resDef);
+    if (frtElapsed) frtDone.push(frtElapsed);
+    if (resElapsed) resDone.push(resElapsed);
+  });
+
+  const avgHours = arr => arr.length ? arr.reduce((s,x) => s + x.hours, 0) / arr.length : null;
+  const metPct = arr => arr.length ? (arr.filter(x => !x.breached).length / arr.length * 100) : null;
+
+  return {
+    month: monthStr, project: REAL_PROJECT_KEY,
+    totalReceived: issues.length,
+    totalDone,
+    stillOpen: issues.length - totalDone,
+    avgFirstResponseH: avgHours(frtDone),
+    firstResponseSlaMetPct: metPct(frtDone),
+    avgResolutionH: avgHours(resDone),
+    resolutionSlaMetPct: metPct(resDone),
+    note: `Tính tự động từ Jira lúc ${new Date().toLocaleString('vi-VN')} — ${issues.length} issue tạo trong tháng (First Response: ${frtDone.length} issue đã có phản hồi / Resolution: ${resDone.length} issue đã xử lý xong).`,
+  };
+}
+
+mrCalcFromJiraBtn.addEventListener('click', async () => {
+  const monthStr = document.getElementById('mrJiraMonth').value;
+  if (!monthStr){ setMonthlyStatus('monthlyJiraStatus', 'Vui lòng chọn Tháng.', 'err'); return; }
+  mrCalcFromJiraBtn.disabled = true;
+  setMonthlyStatus('monthlyJiraStatus', `Đang lấy dữ liệu Jira cho tháng ${monthStr}… có thể mất một lúc nếu tháng có nhiều issue.`, '');
+  try{
+    const result = await computeMonthlyFromJira(monthStr);
+    await fetchJson('/api/monthly-report', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(result),
+    });
+    setMonthlyStatus(
+      'monthlyJiraStatus',
+      `✅ Đã tính & lưu tháng ${monthStr}: Total Received ${result.totalReceived} · Total Done ${result.totalDone} · Still Open ${result.stillOpen} · First Response ${result.firstResponseSlaMetPct===null?'—':result.firstResponseSlaMetPct.toFixed(1)+'%'} · Resolution ${result.resolutionSlaMetPct===null?'—':result.resolutionSlaMetPct.toFixed(1)+'%'}.`,
+      'ok'
+    );
+    loadMonthlyReport();
+  }catch(err){
+    console.error(err);
+    setMonthlyStatus('monthlyJiraStatus', 'Lỗi: ' + err.message, 'err');
+  }finally{
+    mrCalcFromJiraBtn.disabled = false;
+  }
+});
 function pctDisplay(v){ return (v===null || v===undefined || v==='') ? '—' : (Number(v).toFixed(1) + '%'); }
 function numDisplay(v){ return (v===null || v===undefined || v==='') ? '—' : v; }
 function slaPctClass(v){ if (v===null||v===undefined||v==='') return ''; return Number(v) >= 90 ? 'pass' : 'fail'; }
