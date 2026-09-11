@@ -85,6 +85,16 @@
   code.tag{font-family:'IBM Plex Mono',monospace;background:rgba(31,78,121,.08);color:var(--blueprint);padding:1px 6px;border-radius:4px;font-size:11.5px;}
   a.issue-link{color:var(--blueprint);font-weight:600;text-decoration:none;}
   a.issue-link:hover{text-decoration:underline;}
+
+  .tabs{display:flex;gap:4px;margin-bottom:18px;border-bottom:1px solid var(--grid-line-strong);}
+  .tab-btn{
+    background:transparent;border:1px solid var(--grid-line-strong);border-bottom:none;padding:9px 18px;
+    font-family:'Space Grotesk',sans-serif;font-size:13.5px;font-weight:600;color:var(--muted);
+    cursor:pointer;border-radius:8px 8px 0 0;margin-bottom:-1px;
+  }
+  .tab-btn.active{background:var(--panel);color:var(--blueprint);border-bottom:1px solid var(--panel);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
 </style>
 </head>
 <body>
@@ -95,15 +105,15 @@
 
 <div class="wrap">
   <h1>SLA Jira — Dự án ABI</h1>
-  <p class="sub">W (thời gian phản hồi/xử lý) = mốc SLA − Created. <b>P1, P2, S1</b> tính theo giờ đồng hồ 24/7. <b>P3, P4, S2, S3</b> chỉ tính phút nằm trong giờ hành chính 8x5 (Thứ 2–6, 08:00–17:30) — thời gian ngoài giờ/cuối tuần không tính vào W.</p>
 
   <div class="panel">
     <h2>Bộ lọc &amp; tính SLA</h2>
-    <div class="panel-sub">Chọn 1 trong 2 cách bên dưới — kết quả nạp vào đều chạy chung 1 pipeline tính SLA/hiển thị bảng biểu ở dưới.</div>
+    <div class="tabs">
+      <button class="tab-btn active" id="tabBtnApi" type="button">Cách 1 — Lấy trực tiếp từ Jira</button>
+      <button class="tab-btn" id="tabBtnFile" type="button">Cách 2 — Import file Excel/CSV</button>
+    </div>
 
-    <div style="border:1px solid var(--grid-line-strong);border-radius:8px;padding:16px;margin-bottom:14px;">
-      <div style="font-weight:700;font-size:13.5px;margin-bottom:10px;">Cách 1 — Lấy trực tiếp từ Jira (cần API token)</div>
-      <div class="panel-sub" style="margin-bottom:14px;">Cần biến môi trường <code class="tag">JIRA_BASE_URL</code>/<code class="tag">JIRA_EMAIL</code>/<code class="tag">JIRA_API_TOKEN</code> đã cấu hình trên server. Nếu tài khoản của bạn không tự tạo được API token (bị chặn cấp tổ chức), dùng Cách 2 bên dưới.</div>
+    <div class="tab-panel active" id="tabPanelApi">
       <div class="filter-row-main">
         <div class="date-field">
           <label for="createdFrom">Created — từ ngày</label>
@@ -121,11 +131,7 @@
       <div class="status" id="fetchStatus"></div>
     </div>
 
-    <div style="border:1px solid var(--grid-line-strong);border-radius:8px;padding:16px;">
-      <div style="font-weight:700;font-size:13.5px;margin-bottom:10px;">Cách 2 — Import file Excel/CSV export từ Jira</div>
-      <div class="panel-sub" style="margin-bottom:14px;">
-        Vào queue 425 trên Jira (hoặc Issue Navigator, JQL <code class="tag">project = HQ</code>) → thêm cột <b>Priority</b>, <b>Created</b>, và 2 cột SLA <b>Time to first response</b>, <b>Time to resolution</b> (nếu queue có sẵn) → Export → CSV/Excel. Tool sẽ tự nhận diện tên cột (không phân biệt hoa/thường, gần đúng là được).
-      </div>
+    <div class="tab-panel" id="tabPanelFile">
       <input id="fileInput" type="file" accept=".xlsx,.xls,.csv">
       <div class="status" id="importStatus" style="margin-top:12px;">Chưa import file nào.</div>
     </div>
@@ -262,6 +268,19 @@ function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt
 function isCancelledStatus(status){
   return /^cancel/i.test(String(status || '').trim());
 }
+
+const tabBtnApi = document.getElementById('tabBtnApi');
+const tabBtnFile = document.getElementById('tabBtnFile');
+const tabPanelApi = document.getElementById('tabPanelApi');
+const tabPanelFile = document.getElementById('tabPanelFile');
+function switchTab(which){
+  tabBtnApi.classList.toggle('active', which === 'api');
+  tabBtnFile.classList.toggle('active', which === 'file');
+  tabPanelApi.classList.toggle('active', which === 'api');
+  tabPanelFile.classList.toggle('active', which === 'file');
+}
+tabBtnApi.addEventListener('click', () => switchTab('api'));
+tabBtnFile.addEventListener('click', () => switchTab('file'));
 
 document.getElementById('clearDatesBtn').addEventListener('click', () => {
   createdFrom.value = '';
