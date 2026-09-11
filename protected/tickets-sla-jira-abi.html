@@ -586,6 +586,11 @@ function buildPriorityTable(bodyId, rows, resultKey, thresholdFn){
     }).join('');
 }
 
+function issueLink(key){
+  const label = escapeHtml(key);
+  return jiraBaseUrl ? `<a class="issue-link" href="${jiraBaseUrl}/browse/${encodeURIComponent(key)}" target="_blank" rel="noopener">${label}</a>` : label;
+}
+
 function renderResult(rows){
   const total = rows.length;
   const frtEvaluated = rows.filter(r => r.frtResult !== 'Pending');
@@ -604,11 +609,6 @@ function renderResult(rows){
   buildPriorityTable('byPriorityFrtBody', rows, 'frtResult', frtThreshold);
   buildPriorityTable('byPriorityResBody', rows, 'resResult', resThreshold);
   renderSummaryStats(rows);
-
-  function issueLink(key){
-    const label = escapeHtml(key);
-    return jiraBaseUrl ? `<a class="issue-link" href="${jiraBaseUrl}/browse/${encodeURIComponent(key)}" target="_blank" rel="noopener">${label}</a>` : label;
-  }
 
   /* Bảng "Ticket First Response — Fail / Chưa cập nhật": gồm cả issue trễ SLA (Fail) lẫn
      issue chưa có chu kỳ First Response hoàn tất (Pending — đang chạy dở/chưa áp dụng SLA). */
