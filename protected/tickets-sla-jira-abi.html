@@ -95,7 +95,7 @@
 
 <div class="wrap">
   <h1>SLA Jira — Dự án ABI</h1>
-  <p class="sub">W (thời gian phản hồi/xử lý) = mốc SLA − Created. <b>P1</b> tính theo giờ đồng hồ 24/7. <b>P2, P3, P4, S1, S2, S3</b> chỉ tính phút nằm trong giờ hành chính 8x5 (Thứ 2–6, 08:00–17:30) — thời gian ngoài giờ/cuối tuần không tính vào W.</p>
+  <p class="sub">W (thời gian phản hồi/xử lý) = mốc SLA − Created. <b>P1, P2, S1</b> tính theo giờ đồng hồ 24/7. <b>P3, P4, S2, S3</b> chỉ tính phút nằm trong giờ hành chính 8x5 (Thứ 2–6, 08:00–17:30) — thời gian ngoài giờ/cuối tuần không tính vào W.</p>
 
   <div class="panel">
     <h2>Bộ lọc &amp; tính SLA</h2>
@@ -137,6 +137,18 @@
       <div class="kpi"><div class="label">First Response — % Pass</div><div class="value" id="kpiFrtRate">—</div></div>
       <div class="kpi"><div class="label">Resolution — % Pass</div><div class="value" id="kpiResRate">—</div></div>
       <div class="kpi fail"><div class="label">FRT Fail / chưa phản hồi</div><div class="value" id="kpiFrtFailCount">—</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Ticket đang chờ Support xử lý (Waiting for support)</div>
+      <div class="panel-sub">Ticket có status hiện tại là <code class="tag">Waiting for support</code> — đang khoanh vùng ở phía support, cần theo dõi/follow-up. Sắp xếp theo mức độ ưu tiên.</div>
+      <div class="actions" style="margin-top:0;margin-bottom:12px;">
+        <button class="btn btn-ghost" id="copyAllWaitingBtn">⧉ Copy toàn bộ danh sách (Ticket + Project)</button>
+      </div>
+      <div class="table-scroll">
+        <table><thead><tr><th></th><th>Ticket</th><th>HQ Ticket ID</th><th>Summary</th><th>Priority</th><th>Created</th><th style="text-align:right;">Số ngày chờ</th></tr></thead>
+          <tbody id="waitingForSupportBody"></tbody></table>
+      </div>
     </div>
 
     <div class="panel">
@@ -199,18 +211,6 @@
       </div>
     </div>
 
-    <div class="panel">
-      <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Ticket đang chờ Support xử lý (Waiting for support)</div>
-      <div class="panel-sub">Ticket có status hiện tại là <code class="tag">Waiting for support</code> — đang khoanh vùng ở phía support, cần theo dõi/follow-up. Sắp xếp theo mức độ ưu tiên.</div>
-      <div class="actions" style="margin-top:0;margin-bottom:12px;">
-        <button class="btn btn-ghost" id="copyAllWaitingBtn">⧉ Copy toàn bộ danh sách (Ticket + Project)</button>
-      </div>
-      <div class="table-scroll">
-        <table><thead><tr><th></th><th>Ticket</th><th>HQ Ticket ID</th><th>Summary</th><th>Priority</th><th>Created</th><th style="text-align:right;">Số ngày chờ</th></tr></thead>
-          <tbody id="waitingForSupportBody"></tbody></table>
-      </div>
-    </div>
-
     <div class="actions">
       <button class="btn btn-ghost" id="exportBtn">⬇ Xuất Excel</button>
     </div>
@@ -225,8 +225,8 @@ const PROJECT_LABEL = 'ABI'; // nhãn hiển thị (Jira project key thật là 
 // KHÔNG map qua Critical/Urgent/High/Medium như trước nữa.
 // First Response = cột "Phản hồi L2 (HQSOFT)". Resolution = cột "Giải quyết (Resolution)".
 // CÁCH TÍNH THỜI GIAN (W):
-//  - P1: tính theo giờ đồng hồ 24/7 (calendar time), không loại trừ ngoài giờ/cuối tuần.
-//  - P2, P3, P4, S1, S2, S3: chỉ tính phần thời gian rơi vào khung giờ hành chính 8x5
+//  - P1, P2, S1: tính theo giờ đồng hồ 24/7 (calendar time), không loại trừ ngoài giờ/cuối tuần.
+//  - P3, P4, S2, S3: chỉ tính phần thời gian rơi vào khung giờ hành chính 8x5
 //    (Thứ 2-6, 08:00-17:30) — thời gian ngoài khung này (đêm, cuối tuần) không cộng vào W.
 // "1 ngày LV" quy đổi = 8 giờ làm việc = 480 phút.
 const FRT_THRESHOLD = { p1: 15, p2: 60, p3: 240, p4: 480, s1: 60, s2: 240, s3: 480 };
@@ -294,8 +294,8 @@ function priorityRank(priorityRaw){
   return idx === -1 ? PRIORITY_ORDER.length : idx;
 }
 
-/* Khung giờ hành chính dùng để tính SLA cho P2 → S3: 8x5, Thứ 2–6, 08:00–17:30.
-   P1 KHÔNG dùng khung này — P1 tính theo giờ đồng hồ 24/7 (calendar time). */
+/* Khung giờ hành chính dùng để tính SLA cho P3, P4, S2, S3: 8x5, Thứ 2–6, 08:00–17:30.
+   P1, P2, S1 KHÔNG dùng khung này — tính theo giờ đồng hồ 24/7 (calendar time). */
 const BUSINESS_START_MIN = 8 * 60;        // 08:00
 const BUSINESS_END_MIN = 17 * 60 + 30;    // 17:30
 function isBusinessDay(d){
@@ -383,10 +383,13 @@ async function fetchJson(url, options){
   return data;
 }
 
-/* Tính W (phút) + Pass/Fail giữa 1 mốc "đích" (first response / resolved) so với created,
-   dùng chung cho cả nguồn API lẫn nguồn import file.
-   useBusinessHours=false (P1) -> W tính theo giờ đồng hồ 24/7.
-   useBusinessHours=true  (P2..S3) -> W chỉ cộng phần thời gian rơi vào 08:00–17:30, Thứ 2–6. */
+/* Khung giờ tính SLA theo đúng "Bảng cam kết SLA": P1, P2, S1 = 24/7 (giờ đồng hồ thực).
+   P3, P4, S2, S3 = 8x5 (chỉ cộng thời gian rơi vào 08:00–17:30, Thứ 2–6). */
+function is24x7Priority(priorityRaw){
+  const p = priorityCode(priorityRaw);
+  return p === 'p1' || p === 'p2' || p === 's1';
+}
+
 /* Trích mã Priority từ tag trong Summary, vd "[DMS] [P2] Kiểm tra lỗi..." -> "P2".
    Đối chiếu với file báo cáo khách hàng tự tính (Jira_Monthly_Report) cho thấy ĐÂY mới là
    nguồn priority chính xác đang được dùng trên thực tế — field "Ticket priority[dropdown]"
@@ -858,13 +861,13 @@ fileInput.addEventListener('change', (e) => {
           frtSlaTime = { text: frtRawSla ? String(frtRawSla) : '—', state: slaStateFromResult(frtResult) };
         } else {
           // Fallback: không có cột SLA Met/Breached trong file -> tự tính lại từ ngày giờ thô
-          // (chỉ áp dụng khung giờ hành chính 8x5 cho P2→S3, P1 tính 24/7) — kém chính xác
+          // (chỉ áp dụng khung giờ hành chính 8x5 cho P3/P4/S2/S3, P1/P2/S1 tính 24/7) — kém chính xác
           // hơn cách trên vì không có lịch SLA chính xác của Jira.
           const frtRaw = frtIdx>=0 ? r[frtIdx] : null;
           const resRaw = resIdx>=0 ? r[resIdx] : null;
           const frtDate = parseJiraDate(frtRaw);
           const resDate = parseJiraDate(resRaw);
-          const useBiz = priorityCode(priority) !== 'p1';
+          const useBiz = !is24x7Priority(priority);
           const calc = (stopDate, threshold) => {
             if (!stopDate || !createdDate || isNaN(createdDate.getTime())) return { w:null, result:'Pending' };
             const w = useBiz ? businessMinutesBetween(createdDate, stopDate) : (stopDate.getTime()-createdDate.getTime())/60000;
