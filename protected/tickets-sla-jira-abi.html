@@ -141,16 +141,15 @@
 
     <div class="panel">
       <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Tổng quan SLA (theo khoảng ngày đã chọn ở Bước 1)</div>
-      <div class="panel-sub">
-        Total Received/Total Done/Still Open tính trên toàn bộ issue đã lấy ở trên (đã loại status Cancel).
-        Avg (h) &amp; SLA Met % của First Response/Resolution chỉ tính trên issue <b>đã có chu kỳ SLA hoàn tất</b> (đã phản hồi / đã xử lý xong — không tính issue đang chạy dở).
-      </div>
       <div class="table-scroll">
         <table><thead><tr>
-          <th style="text-align:right;">Total Received</th><th style="text-align:right;">Total Done</th>
-          <th style="text-align:right;">Still Open</th><th style="text-align:right;">Avg First Response (h)</th>
-          <th style="text-align:right;">First Response SLA Met %</th><th style="text-align:right;">Avg Resolution (h)</th>
-          <th style="text-align:right;">Resolution SLA Met %</th>
+          <th style="text-align:right;" title="Tổng số issue có Created rơi vào khoảng ngày đã chọn (đã loại status Cancel).">Total Received</th>
+          <th style="text-align:right;" title="Số issue đang ở nhóm trạng thái Done (Resolved/Closed...).">Total Done</th>
+          <th style="text-align:right;" title="Total Received − Total Done.">Still Open</th>
+          <th style="text-align:right;" title="Trung bình elapsedTime (giờ) của chu kỳ First Response ĐÃ HOÀN TẤT (không tính issue đang chạy dở/chưa có SLA).">Avg First Response (h)</th>
+          <th style="text-align:right;" title="Tỉ lệ Pass trên số issue First Response ĐÃ HOÀN TẤT (Pass+Fail) — không tính vào mẫu số các issue đang chạy dở/chưa có SLA.">First Response SLA Met %</th>
+          <th style="text-align:right;" title="Trung bình elapsedTime (giờ) của chu kỳ Resolution ĐÃ HOÀN TẤT (không tính issue đang chạy dở/chưa xử lý xong).">Avg Resolution (h)</th>
+          <th style="text-align:right;" title="Tỉ lệ Pass trên số issue Resolution ĐÃ HOÀN TẤT (Pass+Fail) — không tính vào mẫu số các issue đang chạy dở/chưa xử lý xong.">Resolution SLA Met %</th>
         </tr></thead>
           <tbody id="summaryStatsBody"></tbody></table>
       </div>
@@ -197,6 +196,18 @@
       <div class="table-scroll">
         <table><thead><tr><th></th><th>Ticket</th><th>Project</th><th>Priority</th><th>Created</th><th>Time to Resolution</th><th style="text-align:right;">W (phút)</th></tr></thead>
           <tbody id="resFailBody"></tbody></table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;">Ticket đang chờ Support xử lý (Waiting for support)</div>
+      <div class="panel-sub">Ticket có status hiện tại là <code class="tag">Waiting for support</code> — đang khoanh vùng ở phía support, cần theo dõi/follow-up. Sắp xếp theo mức độ ưu tiên.</div>
+      <div class="actions" style="margin-top:0;margin-bottom:12px;">
+        <button class="btn btn-ghost" id="copyAllWaitingBtn">⧉ Copy toàn bộ danh sách (Ticket + Project)</button>
+      </div>
+      <div class="table-scroll">
+        <table><thead><tr><th></th><th>Ticket</th><th>HQ Ticket ID</th><th>Summary</th><th>Priority</th><th>Created</th><th style="text-align:right;">Số ngày chờ</th></tr></thead>
+          <tbody id="waitingForSupportBody"></tbody></table>
       </div>
     </div>
 
@@ -453,7 +464,7 @@ calcBtn.addEventListener('click', async () => {
       console.warn('Không tìm thấy field "HQ Ticket ID" trên Jira — cột HQ Ticket ID sẽ để trống.');
     }
     if (!issues.length){
-      setStatus(`Không có issue nào khớp bộ lọc (kiểm tra lại khoảng ngày).${cancelledIssues.length ? ` (Đã loại ${cancelledIssues.length} issue status Cancel.)` : ''}`, 'err');
+      setStatus('Không có issue nào khớp bộ lọc (kiểm tra lại khoảng ngày).', 'err');
       return;
     }
 
@@ -496,14 +507,9 @@ calcBtn.addEventListener('click', async () => {
     });
 
     renderResult(calcRows);
-    const taggedCount = calcRows.filter(r => extractPriorityFromSummary(r.summary)).length;
-    const priorityNote = taggedCount === calcRows.length
-      ? `Priority lấy từ tag trong Summary (vd "[P2]", "[S1]").`
-      : `Priority: ${taggedCount}/${calcRows.length} issue lấy được từ tag Summary, còn lại fallback field "Ticket priority[dropdown]"${ticketPriorityFieldId ? ` (${ticketPriorityFieldId})` : ' (KHÔNG tra được field này — có thể sai)'}.`;
-    const cancelledNote = cancelledIssues.length ? ` Đã loại ${cancelledIssues.length} issue status Cancel khỏi phân tích.` : '';
     setStatus(
-      `Xong — ${issues.length} issue. ${priorityNote}${cancelledNote}` + (errorCount ? ` (${errorCount} issue không lấy được SLA — có thể không phải service desk request hoặc tài khoản không đủ quyền, xem console.)` : ''),
-      errorCount || taggedCount < calcRows.length ? 'err' : 'ok'
+      `Xong — ${issues.length} issue.` + (errorCount ? ` (${errorCount} issue không lấy được SLA — có thể không phải service desk request hoặc tài khoản không đủ quyền, xem console.)` : ''),
+      errorCount ? 'err' : 'ok'
     );
     if (errorCount) console.warn('Lỗi lấy SLA cho các issue:', slaErrors);
   }catch(err){
@@ -672,8 +678,47 @@ function renderResult(rows){
     };
   }
   renderFailTable('resFailBody', 'resResult', 'resStop', 'resW', 'copyAllResFailBtn');
+  renderWaitingForSupportTable(rows);
 
   resultBlock.style.display = 'block';
+}
+
+/* Ticket đang ở status "Waiting for support" — khoanh vùng ở phía support, cần follow-up.
+   So khớp không phân biệt hoa/thường vì tên status trong Jira có thể lệch hoa/thường. */
+function renderWaitingForSupportTable(rows){
+  const waitingRows = rows.filter(r => String(r.status||'').trim().toLowerCase() === 'waiting for support').slice()
+    .sort((a,b) => priorityRank(a.priority) - priorityRank(b.priority) || String(a.key).localeCompare(String(b.key)));
+
+  const now = new Date();
+  document.getElementById('waitingForSupportBody').innerHTML = waitingRows.length ? waitingRows.map((r,i) => {
+    const createdDate = new Date(r.created);
+    const daysWaiting = isNaN(createdDate.getTime()) ? '—' : Math.max(0, Math.round((now - createdDate) / 86400000));
+    return `
+    <tr><td><button class="btn-copy" data-idx="${i}" data-table="waitingForSupportBody" title="Copy Ticket + Project">⧉</button></td>
+    <td>${issueLink(r.key)}</td>
+    <td>${escapeHtml(r.hqTicketId || '—')}</td>
+    <td>${escapeHtml(r.summary || '')}</td>
+    <td>${escapeHtml(r.priority)}</td>
+    <td>${escapeHtml(r.created)}</td>
+    <td class="num">${daysWaiting}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="7" style="color:var(--muted);">Không có ticket nào đang chờ Support 🎉</td></tr>';
+
+  document.querySelectorAll('[data-table="waitingForSupportBody"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const r = waitingRows[Number(btn.dataset.idx)];
+      const text = `Ticket: ${r.key} — Project: ${PROJECT_LABEL}`;
+      navigator.clipboard.writeText(text).then(() => setStatus(`Đã copy: ${text}`, 'ok'))
+        .catch(() => setStatus('Không copy được tự động — vui lòng copy thủ công.', 'err'));
+    });
+  });
+
+  document.getElementById('copyAllWaitingBtn').onclick = () => {
+    if (!waitingRows.length){ setStatus('Không có ticket nào đang chờ Support để copy.', 'err'); return; }
+    const text = waitingRows.map(r => `Ticket: ${r.key} — Project: ${PROJECT_LABEL}`).join('\n');
+    navigator.clipboard.writeText(text).then(() => setStatus(`Đã copy ${waitingRows.length} ticket (Ticket + Project) vào clipboard.`, 'ok'))
+      .catch(() => setStatus('Không copy được tự động — vui lòng copy thủ công.', 'err'));
+  };
 }
 
 /* ---------- Cách 2: import file Excel/CSV export từ Jira ---------- */
