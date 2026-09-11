@@ -28,7 +28,7 @@
   .ops-topbar a:hover{opacity:1;text-decoration:underline;}
   .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
 
-  .wrap{max-width:1500px;margin:0 auto;padding:32px 24px 80px;}
+  .wrap{max-width:none;margin:0;padding:32px 28px 80px;}
   h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 6px;}
   .sub{color:var(--muted);font-size:13.5px;margin:0 0 26px;line-height:1.6;}
 
@@ -206,7 +206,11 @@
         <button class="btn btn-ghost" id="copyAllResFailBtn">⧉ Copy toàn bộ danh sách Fail (Ticket + Project)</button>
       </div>
       <div class="table-scroll">
-        <table><thead><tr><th></th><th>Ticket</th><th>Project</th><th>Priority</th><th>Created</th><th>Time to Resolution</th><th style="text-align:right;">W (phút)</th></tr></thead>
+        <table><thead><tr>
+          <th></th><th>Ticket</th><th>HQ Ticket ID</th><th>Work</th><th>Priority</th><th>Status</th><th>Created</th>
+          <th>Resolution</th><th style="text-align:right;">Thời gian hiện tại − Create<br>so với Ngưỡng SLA Resolution (phút)</th><th>Time to Resolution</th>
+          <th style="text-align:right;">Sum Resolution Response<br><span style="font-weight:400;color:var(--muted);">(Jira tự tính)</span></th>
+        </tr></thead>
           <tbody id="resFailBody"></tbody></table>
       </div>
     </div>
@@ -425,11 +429,12 @@ function calcSlaFromDef(slaDef){
 /* Đóng gói 1 dòng kết quả theo đúng schema calcRows dùng chung cho renderResult()/exportBtn.
    frtW/frtResult/resW/resResult được tính sẵn bởi nơi gọi (khác nhau giữa nguồn API Jira và
    nguồn import file) rồi truyền thẳng vào đây, không tính lại trong hàm này nữa.
-   frtSlaTime = số Jira TỰ TÍNH hiển thị dạng "còn lại/trễ bao lâu", dùng cho cột "Sum First
-   Response" giống hệt cột trên queue Jira (khác với frtW ở trên là elapsedTime thô). */
+   frtSlaTime/resSlaTime = số Jira TỰ TÍNH hiển thị dạng "còn lại/trễ bao lâu", dùng cho cột
+   "Sum First Response"/"Sum Resolution Response" giống hệt cột trên queue Jira (khác với
+   frtW/resW ở trên là elapsedTime thô). */
 function buildSlaRow(opts){
   const { key, hqTicketId, status, statusCategoryKey, summary, priority, createdDisplay,
-          frtW, frtResult, frtDisplay, resW, resResult, resDisplay, frtSlaTime } = opts;
+          frtW, frtResult, frtDisplay, resW, resResult, resDisplay, frtSlaTime, resSlaTime } = opts;
   return {
     key,
     hqTicketId: hqTicketId || '',
@@ -440,6 +445,7 @@ function buildSlaRow(opts){
     frtStop: frtDisplay || '', frtW, frtResult,
     resStop: resDisplay || '', resW, resResult,
     frtSlaTime: frtSlaTime || { text: '—', state: 'none' },
+    resSlaTime: resSlaTime || { text: '—', state: 'none' },
   };
 }
 
@@ -495,6 +501,7 @@ calcBtn.addEventListener('click', async () => {
       const frtCalc = calcSlaFromDef(frtDef);
       const resCalc = calcSlaFromDef(resDef);
       const frtSlaTime = jiraSlaTimeText(frtDef); // số Jira tự tính, giống cột "Time to first response" trên queue
+      const resSlaTime = jiraSlaTimeText(resDef); // số Jira tự tính, giống cột "Time to resolution" trên queue
 
       return buildSlaRow({
         key: issue.key,
@@ -505,7 +512,7 @@ calcBtn.addEventListener('click', async () => {
         priority, createdDisplay: fields.created || '',
         frtW: frtCalc.w, frtResult: frtCalc.result, frtDisplay: frtCalc.stopIso,
         resW: resCalc.w, resResult: resCalc.result, resDisplay: resCalc.stopIso,
-        frtSlaTime,
+        frtSlaTime, resSlaTime,
       });
     });
 
@@ -654,33 +661,57 @@ function renderResult(rows){
     };
   })();
 
-  function renderFailTable(bodyId, resultKey, stopKey, wKey, copyBtnId){
-    const failRows = rows.filter(r => r[resultKey] === 'Fail' || r[resultKey] === 'Pending').slice()
+  /* Bảng "Chi tiết issue Fail — Resolution": gồm cả issue trễ SLA (Fail) lẫn issue chưa xử
+     lý xong (Pending — đang chạy dở/chưa áp dụng SLA). Với issue Pending, cột thời gian hiển
+     thị "Thời gian hiện tại − Create" (elapsed tính đến bây giờ) để biết đang trễ bao lâu rồi,
+     thay vì chỉ hiện "—" như W chính thức (W chính thức chỉ có khi đã có chu kỳ hoàn tất). */
+  (function renderResFailTable(){
+    const resFailRows = rows.filter(r => r.resResult === 'Fail' || r.resResult === 'Pending').slice()
       .sort((a,b) => priorityRank(a.priority) - priorityRank(b.priority) || String(a.key).localeCompare(String(b.key)));
-    document.getElementById(bodyId).innerHTML = failRows.length ? failRows.map((r,i) => `
-      <tr><td><button class="btn-copy" data-idx="${i}" data-table="${bodyId}" title="Copy Ticket + Project">⧉</button></td>
-      <td>${issueLink(r.key)}</td><td>${escapeHtml(PROJECT_LABEL)}</td><td>${escapeHtml(r.priority)}</td>
-      <td>${escapeHtml(r.created)}</td><td>${escapeHtml(r[stopKey] || '— (chưa đạt mốc này)')}</td>
-      <td class="num">${(r[wKey]===null||r[wKey]===undefined)?'—':Math.round(r[wKey])}</td></tr>`).join('')
-      : '<tr><td colspan="7" style="color:var(--muted);">Không có issue Fail nào 🎉</td></tr>';
+    const now = new Date();
 
-    document.querySelectorAll(`[data-table="${bodyId}"]`).forEach(btn => {
+    document.getElementById('resFailBody').innerHTML = resFailRows.length ? resFailRows.map((r,i) => {
+      const pending = r.resResult === 'Pending';
+      const resStatus = pending ? 'Chưa xử lý xong / đang chạy' : 'Đã xử lý xong (trễ SLA)';
+      const threshold = resThreshold(r.priority);
+      let wValue = r.resW;
+      if (pending){
+        const createdDate = new Date(r.created);
+        wValue = isNaN(createdDate.getTime()) ? null : (now.getTime() - createdDate.getTime()) / 60000;
+      }
+      const wDisplay = (wValue === null || wValue === undefined) ? `— / ngưỡng ${threshold}` : `${Math.round(wValue)} / ngưỡng ${threshold}`;
+      const sla = r.resSlaTime || { text:'—', state:'none' };
+      return `
+      <tr><td><button class="btn-copy" data-idx="${i}" data-table="resFailBody" title="Copy Ticket + Project">⧉</button></td>
+      <td>${issueLink(r.key)}</td>
+      <td>${escapeHtml(r.hqTicketId || '—')}</td>
+      <td>${escapeHtml(r.summary || '')}</td>
+      <td>${escapeHtml(r.priority)}</td>
+      <td>${escapeHtml(r.status || '—')}</td>
+      <td>${escapeHtml(r.created)}</td>
+      <td class="${pending?'':'fail'}">${resStatus}</td>
+      <td class="num fail">${wDisplay}</td>
+      <td>${escapeHtml(r.resStop || '— (chưa xử lý xong)')}</td>
+      <td class="num ${slaStateClass(sla.state)}">${slaStateIcon(sla.state)} ${escapeHtml(sla.text)}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="11" style="color:var(--muted);">Không có issue Fail / chưa xử lý xong Resolution nào 🎉</td></tr>';
+
+    document.querySelectorAll('[data-table="resFailBody"]').forEach(btn => {
       btn.addEventListener('click', () => {
-        const r = failRows[Number(btn.dataset.idx)];
+        const r = resFailRows[Number(btn.dataset.idx)];
         const text = `Ticket: ${r.key} — Project: ${PROJECT_LABEL}`;
         navigator.clipboard.writeText(text).then(() => setStatus(`Đã copy: ${text}`, 'ok'))
           .catch(() => setStatus('Không copy được tự động — vui lòng copy thủ công.', 'err'));
       });
     });
 
-    document.getElementById(copyBtnId).onclick = () => {
-      if (!failRows.length){ setStatus('Không có issue Fail nào để copy.', 'err'); return; }
-      const text = failRows.map(r => `Ticket: ${r.key} — Project: ${PROJECT_LABEL}`).join('\n');
-      navigator.clipboard.writeText(text).then(() => setStatus(`Đã copy ${failRows.length} issue Fail (Ticket + Project) vào clipboard.`, 'ok'))
+    document.getElementById('copyAllResFailBtn').onclick = () => {
+      if (!resFailRows.length){ setStatus('Không có issue Fail nào để copy.', 'err'); return; }
+      const text = resFailRows.map(r => `Ticket: ${r.key} — Project: ${PROJECT_LABEL}`).join('\n');
+      navigator.clipboard.writeText(text).then(() => setStatus(`Đã copy ${resFailRows.length} issue Fail (Ticket + Project) vào clipboard.`, 'ok'))
         .catch(() => setStatus('Không copy được tự động — vui lòng copy thủ công.', 'err'));
     };
-  }
-  renderFailTable('resFailBody', 'resResult', 'resStop', 'resW', 'copyAllResFailBtn');
+  })();
   renderWaitingForSupportTable(rows);
 
   resultBlock.style.display = 'block';
@@ -844,7 +875,7 @@ fileInput.addEventListener('change', (e) => {
         const priority = extractPriorityFromSummary(summary) || (priorityIdx>=0 ? String(r[priorityIdx]||'').trim() : '');
         const createdDate = createdIdx>=0 ? parseJiraDate(r[createdIdx]) : null;
 
-        let frtW, frtResult, frtDisplay, frtSlaTime, resW, resResult, resDisplay;
+        let frtW, frtResult, frtDisplay, frtSlaTime, resW, resResult, resDisplay, resSlaTime;
 
         if (useDirectSlaCols){
           // Cách chính xác nhất: đọc thẳng kết quả Met/Breached + số giờ Jira đã tự tính.
@@ -859,6 +890,7 @@ fileInput.addEventListener('change', (e) => {
           frtDisplay = frtResult !== 'Pending' && Number.isFinite(frtH) ? `${frtH}h` : '';
           resDisplay = resResult !== 'Pending' && Number.isFinite(resH) ? `${resH}h` : '';
           frtSlaTime = { text: frtRawSla ? String(frtRawSla) : '—', state: slaStateFromResult(frtResult) };
+          resSlaTime = { text: resRawSla ? String(resRawSla) : '—', state: slaStateFromResult(resResult) };
         } else {
           // Fallback: không có cột SLA Met/Breached trong file -> tự tính lại từ ngày giờ thô
           // (chỉ áp dụng khung giờ hành chính 8x5 cho P3/P4/S2/S3, P1/P2/S1 tính 24/7) — kém chính xác
@@ -880,6 +912,7 @@ fileInput.addEventListener('change', (e) => {
           frtDisplay = frtDate ? frtDate.toLocaleString('vi-VN') : (frtRaw!==null && frtRaw!=='' ? String(frtRaw) : '');
           resDisplay = resDate ? resDate.toLocaleString('vi-VN') : (resRaw!==null && resRaw!=='' ? String(resRaw) : '');
           frtSlaTime = importSlaTimeFromRaw(frtRaw, frtDate);
+          resSlaTime = importSlaTimeFromRaw(resRaw, resDate);
         }
 
         return buildSlaRow({
@@ -890,7 +923,7 @@ fileInput.addEventListener('change', (e) => {
           createdDisplay: createdDate ? createdDate.toLocaleString('vi-VN') : String(r[createdIdx]||''),
           frtW, frtResult, frtDisplay,
           resW, resResult, resDisplay,
-          frtSlaTime,
+          frtSlaTime, resSlaTime,
         });
       }).filter(r => r.key);
 
@@ -922,14 +955,14 @@ fileInput.addEventListener('change', (e) => {
 
 exportBtn.addEventListener('click', () => {
   if (!calcRows.length) return;
-  const aoa = [['Ticket','HQ Ticket ID','Work','Status','Project','Priority','Created','Time to First Response','FRT W (phút)','FRT Kết quả','Sum First Response (Jira)','Time to Resolution','RES W (phút)','RES Kết quả']];
+  const aoa = [['Ticket','HQ Ticket ID','Work','Status','Project','Priority','Created','Time to First Response','FRT W (phút)','FRT Kết quả','Sum First Response (Jira)','Time to Resolution','RES W (phút)','RES Kết quả','Sum Resolution Response (Jira)']];
   calcRows.forEach(r => aoa.push([
     r.key, r.hqTicketId || '', r.summary || '', r.status || '', PROJECT_LABEL, r.priority, r.created,
     r.frtStop, (r.frtW===null||r.frtW===undefined)?'':Math.round(r.frtW*100)/100, r.frtResult, (r.frtSlaTime && r.frtSlaTime.text) || '',
-    r.resStop, (r.resW===null||r.resW===undefined)?'':Math.round(r.resW*100)/100, r.resResult,
+    r.resStop, (r.resW===null||r.resW===undefined)?'':Math.round(r.resW*100)/100, r.resResult, (r.resSlaTime && r.resSlaTime.text) || '',
   ]));
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = [{wch:12},{wch:16},{wch:30},{wch:14},{wch:10},{wch:12},{wch:20},{wch:20},{wch:12},{wch:8},{wch:16},{wch:20},{wch:12},{wch:8}];
+  ws['!cols'] = [{wch:12},{wch:16},{wch:30},{wch:14},{wch:10},{wch:12},{wch:20},{wch:20},{wch:12},{wch:8},{wch:16},{wch:20},{wch:12},{wch:8},{wch:16}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'SLA Jira ABI');
   XLSX.writeFile(wb, 'SLA_Jira_ABI.xlsx');
