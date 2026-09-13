@@ -554,13 +554,6 @@ fetchBtn.addEventListener('click', async () => {
       if (status === CLOSED_STATUS) closedInWeek++;
     });
 
-    backlogRows.forEach(r => {
-      const opened = parseFrappeDate(r.opening_date || r.creation);
-      // mục 5: ticket tồn đọng trước tuần lọc — mở TRƯỚC ngày "từ ngày" (không giới hạn tháng),
-      // đang ở trạng thái chưa Closed (đã lọc sẵn ở fetch B).
-      if (opened && opened < from) backlogPrevAll++;
-    });
-
     // Biểu đồ "tồn đọng hiện tại": breakdown theo status của TOÀN BỘ backlogRows (không giới
     // hạn ngày mở) — khác với backlogBreakdown ở trên (chỉ tính ticket mở TRONG tuần lọc).
     fullBacklogByStatus = {};
@@ -570,10 +563,14 @@ fetchBtn.addEventListener('click', async () => {
       if (BACKLOG_STATUSES.includes(status)) fullBacklogByStatus[status]++;
     });
 
-    // mục 7: tồn đọng tuần = ticket còn mở trong tuần (theo breakdown mục 1,2) cộng với
-    // ticket tồn đọng mở từ trước tuần lọc (mục 5) — vì mục 1,2 chỉ tính ticket mở trong tuần.
+    // mục 7 (Tổng tồn đọng còn lại): dùng ĐÚNG tổng backlogRows.length (khớp 100% với donut
+    // "tồn đọng hiện tại") — KHÔNG cộng dồn từ backlogPrevAll + openedThisWeek như trước nữa,
+    // vì cách cộng dồn cũ có thể bị hụt số khi 1 số ticket thiếu/lỗi field opening_date.
+    // mục 5 (tồn đọng TRƯỚC tuần lọc) suy ra ngược lại = Tổng tồn đọng − ticket mở trong tuần
+    // còn đang mở (openedThisWeek) — đảm bảo 2 số luôn cộng khớp với tổng thật.
     const openedThisWeek = BACKLOG_STATUSES.reduce((sum, s) => sum + backlogBreakdown[s], 0);
-    const backlogNow = openedThisWeek + backlogPrevAll;
+    const backlogNow = backlogRows.length;
+    backlogPrevAll = backlogNow - openedThisWeek;
 
     document.getElementById('m_closed').value = closedInWeek;
     BACKLOG_STATUSES.forEach(s => {
