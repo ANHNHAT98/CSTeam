@@ -187,14 +187,18 @@
       <li>Ticket nhận trong tuần/tháng: <input type="number" id="m_received" value="0" style="border:none;background:transparent;font-weight:700;width:70px;"></li>
       <li>Ticket tồn đọng tuần/tháng trước: <input type="number" id="m_backlogPrev" value="0" style="border:none;background:transparent;font-weight:700;width:70px;"></li>
       <li>Ticket xử lý trong tuần/tháng: <input type="number" id="m_processed" value="0" style="border:none;background:transparent;font-weight:700;width:70px;"></li>
-      <li>Ticket tồn đọng tuần/tháng: <input type="number" id="m_backlogNow" value="0" style="border:none;background:transparent;font-weight:700;width:70px;"></li>
+      <li>Tổng ticket tồn đọng còn lại: <input type="number" id="m_backlogNow" value="0" style="border:none;background:transparent;font-weight:700;width:70px;"></li>
     </ol>
 
     <div class="rep-section-h" style="margin-top:20px;">Biểu đồ tuần</div>
     <div id="chartPanel">
       <div class="chart-block">
-        <h4>Tình trạng ticket (tồn đọng cuối tuần)</h4>
-        <div class="donut-wrap" id="chartDonut"></div>
+        <h4>Tình trạng ticket (tồn đọng hiện tại)</h4>
+        <div class="donut-wrap" id="chartDonutBacklog"></div>
+      </div>
+      <div class="chart-block">
+        <h4 id="chartWeekTitle">Tình trạng ticket (trong khoảng ngày đã chọn)</h4>
+        <div class="donut-wrap" id="chartDonutWeek"></div>
       </div>
       <div class="chart-block">
         <h4>Nhận / Xử lý / Tồn đọng</h4>
@@ -308,9 +312,13 @@ function vbarChartSvg(counts, opts){
   }).join('') + '</div>';
 }
 
+// Breakdown trạng thái của TOÀN BỘ ticket tồn đọng hiện tại (không giới hạn ngày mở) —
+// tính từ backlogRows sau mỗi lần fetch, dùng riêng cho donut "tồn đọng hiện tại".
+let fullBacklogByStatus = {};
+
 function renderCharts(){
   const v = id => Number(document.getElementById(id).value) || 0;
-  const statusCounts = {
+  const weekStatusCounts = {
     Closed: v('m_closed'), Open: v('m_open'), Assign: v('m_assign'), Working: v('m_working'),
     Reviewing: v('m_reviewing'), Waiting: v('m_waiting'), Pending: v('m_pending'), 'Re-open': v('m_reopen'),
   };
@@ -318,8 +326,13 @@ function renderCharts(){
     'Nhận': v('m_received'), 'Xử lý': v('m_processed'),
     'Tồn đọng trước': v('m_backlogPrev'), 'Tồn đọng': v('m_backlogNow'),
   };
-  document.getElementById('chartDonut').innerHTML = donutChartSvg(statusCounts) + `<div style="flex:1">${chartLegendHtml(statusCounts)}</div>`;
+  document.getElementById('chartDonutBacklog').innerHTML = donutChartSvg(fullBacklogByStatus) + `<div style="flex:1">${chartLegendHtml(fullBacklogByStatus)}</div>`;
+  document.getElementById('chartDonutWeek').innerHTML = donutChartSvg(weekStatusCounts) + `<div style="flex:1">${chartLegendHtml(weekStatusCounts)}</div>`;
   document.getElementById('chartVbar').innerHTML = vbarChartSvg(flowCounts);
+
+  if (fromDate.value && toDate.value){
+    document.getElementById('chartWeekTitle').textContent = `Tình trạng ticket (${fromDate.value} → ${toDate.value})`;
+  }
 }
 renderCharts(); // vẽ sẵn với giá trị mặc định (0) khi mới mở trang
 
@@ -548,6 +561,15 @@ fetchBtn.addEventListener('click', async () => {
       if (opened && opened < from) backlogPrevAll++;
     });
 
+    // Biểu đồ "tồn đọng hiện tại": breakdown theo status của TOÀN BỘ backlogRows (không giới
+    // hạn ngày mở) — khác với backlogBreakdown ở trên (chỉ tính ticket mở TRONG tuần lọc).
+    fullBacklogByStatus = {};
+    BACKLOG_STATUSES.forEach(s => fullBacklogByStatus[s] = 0);
+    backlogRows.forEach(r => {
+      const status = (r.status || '').trim();
+      if (BACKLOG_STATUSES.includes(status)) fullBacklogByStatus[status]++;
+    });
+
     // mục 7: tồn đọng tuần = ticket còn mở trong tuần (theo breakdown mục 1,2) cộng với
     // ticket tồn đọng mở từ trước tuần lọc (mục 5) — vì mục 1,2 chỉ tính ticket mở trong tuần.
     const openedThisWeek = BACKLOG_STATUSES.reduce((sum, s) => sum + backlogBreakdown[s], 0);
@@ -651,7 +673,7 @@ Báo cáo số lượng ticket trong tuần:
 4. Ticket nhận trong tuần/tháng: ${v('m_received')}
 5. Ticket tồn động tuần/tháng trước: ${v('m_backlogPrev')}
 6. Ticket xử lý trong tuần/tháng : ${v('m_processed')}
-7. Ticket tồn động tuần/tháng: ${v('m_backlogNow')}
+7. Tổng ticket tồn đọng còn lại: ${v('m_backlogNow')}
 
 2. Nhận xét/Vấn đề
 Nhận xét chung về tình hình support tuần/tháng báo cáo so với tuần trước:
@@ -700,7 +722,7 @@ function buildReportHtmlAndPlain(){
     ['Ticket nhận trong tuần/tháng', v('m_received')],
     ['Ticket tồn động tuần/tháng trước', v('m_backlogPrev')],
     ['Ticket xử lý trong tuần/tháng', v('m_processed')],
-    ['Ticket tồn động tuần/tháng', v('m_backlogNow')],
+    ['Tổng ticket tồn đọng còn lại', v('m_backlogNow')],
   ].map(([k,val]) => `<tr><td style="${thtd}">${esc(k)}</td><td style="${thtd}">${esc(val)}</td></tr>`).join('');
 
   const tablesHtml = `
@@ -738,7 +760,7 @@ Time hỗ trợ\t${v('m_hours')}
 Ticket nhận trong tuần/tháng\t${v('m_received')}
 Ticket tồn động tuần/tháng trước\t${v('m_backlogPrev')}
 Ticket xử lý trong tuần/tháng\t${v('m_processed')}
-Ticket tồn động tuần/tháng\t${v('m_backlogNow')}
+Tổng ticket tồn đọng còn lại\t${v('m_backlogNow')}
 
 2. Nhận xét/Vấn đề
 Nhận xét chung về tình hình support tuần/tháng báo cáo so với tuần trước:
