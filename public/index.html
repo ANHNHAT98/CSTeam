@@ -66,34 +66,18 @@
 
   /* ---- login gate ---- */
   .login-gate{
-    position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+    position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:flex-end;
     overflow:hidden;
-    background:
-      radial-gradient(ellipse 900px 700px at 18% 92%, rgba(95,167,120,.16), transparent 60%),
-      radial-gradient(ellipse 700px 600px at 85% 10%, rgba(255,255,255,.5), transparent 55%),
-      linear-gradient(160deg, #F4EEE2 0%, #E9DFC9 38%, #DCCFAF 62%, #C9B98F 100%);
+    background:#EDE6D8 url('/img/login-bg.jpg') center center / cover no-repeat;
   }
-  .login-deco{position:absolute;inset:0;pointer-events:none;}
-  .deco-leaf{position:absolute;width:120px;opacity:.85;filter:drop-shadow(0 8px 14px rgba(0,0,0,.08));}
-  .deco-leaf-tl{top:-18px;left:-18px;transform:rotate(-12deg);}
-  .deco-leaf-br{bottom:-24px;right:-14px;width:150px;transform:rotate(168deg);opacity:.7;}
-  .deco-tags{
-    position:absolute;top:8%;left:6%;display:grid;grid-template-columns:1fr 1fr;gap:14px;
-    max-width:230px;
-  }
-  @media(max-width:900px){.deco-tags{display:none;}}
-  .deco-tag{
-    background:#fff;border-radius:6px;padding:14px 10px;text-align:center;
-    font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;color:var(--tag-color);
-    box-shadow:0 10px 24px rgba(31,45,56,.12);transform:rotate(-2deg);
-    border-top:3px solid var(--tag-color);
-  }
-  .deco-tag:nth-child(2){transform:rotate(2deg);}
-  .deco-tag:nth-child(3){transform:rotate(2.5deg);}
-  .deco-tag:nth-child(4){transform:rotate(-1.5deg);}
   .login-card{
-    width:100%;max-width:360px;background:#fff;border-radius:12px;padding:30px 28px 26px;
-    box-shadow:0 20px 60px rgba(0,0,0,.22);position:relative;z-index:1;
+    width:100%;max-width:360px;background:rgba(255,255,255,.97);border-radius:12px;padding:30px 28px 26px;
+    box-shadow:0 20px 60px rgba(0,0,0,.28);position:relative;z-index:1;
+    margin-right:8%;backdrop-filter:blur(2px);
+  }
+  @media(max-width:900px){
+    .login-gate{justify-content:center;background-position:65% center;}
+    .login-card{margin-right:0;}
   }
   .login-card .brand-mark{margin-bottom:14px;}
   .login-card h2{font-family:'Space Grotesk',sans-serif;font-size:19px;margin:0 0 20px;}
@@ -232,16 +216,6 @@
 
 <!-- ================= LOGIN GATE ================= -->
 <div class="login-gate" id="loginGate">
-  <div class="login-deco" aria-hidden="true">
-    <svg class="deco-leaf deco-leaf-tl" viewBox="0 0 120 160" xmlns="http://www.w3.org/2000/svg"><path d="M60 8C20 30 8 70 22 110c10 28 34 42 38 42s28-14 38-42c14-40 2-80-38-102z" fill="#5FA778"/><path d="M60 20v120" stroke="#3F7D58" stroke-width="3" fill="none"/></svg>
-    <svg class="deco-leaf deco-leaf-br" viewBox="0 0 120 160" xmlns="http://www.w3.org/2000/svg"><path d="M60 8C20 30 8 70 22 110c10 28 34 42 38 42s28-14 38-42c14-40 2-80-38-102z" fill="#5FA778"/><path d="M60 20v120" stroke="#3F7D58" stroke-width="3" fill="none"/></svg>
-    <div class="deco-tags">
-      <div class="deco-tag" style="--tag-color:#2E6F95;">ABI</div>
-      <div class="deco-tag" style="--tag-color:#B5533C;">SABECO</div>
-      <div class="deco-tag" style="--tag-color:#5B4B8A;">MERAP</div>
-      <div class="deco-tag" style="--tag-color:#5FA778;">Anvy</div>
-    </div>
-  </div>
   <div class="login-card">
     <div class="brand-mark">HQ</div>
     <h2>Đăng nhập Ops Console</h2>
