@@ -6,6 +6,7 @@
 <title>Báo cáo Ticket theo tuần — ERP</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   :root{
     --ink:#12233D; --blueprint:#1F4E79; --blueprint-deep:#0F2138;
@@ -109,6 +110,22 @@
     .report{border:none;padding:0;}
     input, textarea{border:none !important;background:transparent !important;}
   }
+
+  /* ---------- biểu đồ (Power BI style, giống abi-dashboard-ticket) ---------- */
+  #chartPanel{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start;background:#fff;padding:6px 2px;}
+  .chart-block{flex:1 1 260px;min-width:220px;}
+  .chart-block h4{font-family:'Space Grotesk',sans-serif;font-size:13px;margin:0 0 12px;color:var(--ink);}
+  .donut-wrap{display:flex;align-items:center;gap:16px;}
+  .legend-row{display:flex;align-items:center;gap:8px;font-size:12.5px;margin-bottom:6px;}
+  .legend-row .dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto;}
+  .legend-label{flex:1;color:var(--ink);}
+  .legend-val{font-family:'IBM Plex Mono',monospace;font-weight:600;}
+  .legend-pct{color:var(--muted);font-weight:400;}
+  .vbar-wrap{display:flex;align-items:flex-end;gap:14px;height:150px;padding-top:10px;}
+  .vbar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
+  .vbar-val{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;margin-bottom:4px;}
+  .vbar-bar{width:70%;border-radius:4px 4px 0 0;min-height:2px;}
+  .vbar-label{font-size:10.5px;color:var(--muted);margin-top:6px;text-align:center;}
 </style>
 </head>
 <body>
@@ -173,6 +190,18 @@
       <li>Ticket tồn đọng tuần/tháng: <input type="number" id="m_backlogNow" value="0" style="border:none;background:transparent;font-weight:700;width:70px;"></li>
     </ol>
 
+    <div class="rep-section-h" style="margin-top:20px;">Biểu đồ tuần</div>
+    <div id="chartPanel">
+      <div class="chart-block">
+        <h4>Tình trạng ticket (tồn đọng cuối tuần)</h4>
+        <div class="donut-wrap" id="chartDonut"></div>
+      </div>
+      <div class="chart-block">
+        <h4>Nhận / Xử lý / Tồn đọng</h4>
+        <div id="chartVbar"></div>
+      </div>
+    </div>
+
     <div class="rep-section-h">2. Nhận xét / Vấn đề</div>
     <div class="sub-h">Nhận xét chung về tình hình support tuần/tháng báo cáo so với tuần trước:</div>
     <textarea class="freeform" id="txt_nhanxet" placeholder="Ví dụ: khối lượng ticket ổn định so với tuần trước, không phát sinh sự cố nghiêm trọng…"></textarea>
@@ -182,14 +211,16 @@
 Hỗ trợ người dùng chốt số đơn hàng, hoá đơn, sổ xuất hàng
 Hỗ trợ liên quan đến tồn kho
 Hỗ trợ thanh toán công cho MDS và kế toán</textarea>
-    <div class="list-hint">Mỗi dòng = 1 mục, sẽ tự đánh số khi xuất báo cáo.</div>
+    <div class="list-hint">Mỗi dòng = 1 mục, sẽ tự đánh số khi xuất báo cáo.
+      <button class="btn btn-ghost" id="fillFromSubjectBtn" type="button" style="margin-left:8px;padding:4px 10px;font-size:11.5px;">⇩ Điền từ Subject ticket (theo ngày cập nhật)</button>
+    </div>
 
     <div class="sub-h">Xử lý tuần sau: <span class="range" id="nextWeekRange">(…)</span></div>
     <textarea class="list-input" id="txt_tuansau">Review rls app và các rls BO
 Hỗ trợ người dùng chốt số đơn hàng, hoá đơn, sổ xuất hàng
 Hỗ trợ liên quan đến tồn kho
 Hỗ trợ thanh toán công cho MDS và kế toán</textarea>
-    <div class="list-hint">Mỗi dòng = 1 mục.</div>
+    <div class="list-hint">Mỗi dòng = 1 mục. Tự động điền sẵn từ Subject ticket đang Open/Assign/Working/Reviewing khi bấm "Lấy dữ liệu" — có thể sửa/thêm/xoá tuỳ ý.</div>
 
     <div class="rep-section-h">3. Báo cáo tình hình thực hiện CRs</div>
     <textarea class="freeform" id="txt_crs" style="min-height:44px;">không có</textarea>
@@ -201,6 +232,8 @@ Hỗ trợ thanh toán công cho MDS và kế toán</textarea>
   <div class="actions no-print">
     <button class="btn btn-ghost" id="copyBtn">⧉ Sao chép nội dung báo cáo (text)</button>
     <button class="btn btn-ghost" id="copyTableBtn">⊞ Sao chép dạng bảng (dán vào ERP)</button>
+    <button class="btn btn-ghost" id="copyImageBtn">📷 Sao chép hình ảnh biểu đồ</button>
+    <button class="btn btn-primary" id="copyTableImageBtn">⊞📷 Sao chép bảng + hình ảnh</button>
     <button class="btn btn-ghost" id="printBtn">🖨 In / Xuất PDF</button>
   </div>
   <div class="status no-print" id="bottomStatusText"></div>
@@ -209,6 +242,8 @@ Hỗ trợ thanh toán công cho MDS và kế toán</textarea>
 <script>
 /* ---------- cấu hình trạng thái ---------- */
 const BACKLOG_STATUSES = ['Open','Assign','Working','Reviewing','Waiting','Pending','Re-open'];
+// Mã trạng thái dùng để tự động gợi ý "Xử lý tuần sau" — subset của BACKLOG_STATUSES.
+const NEXT_WEEK_STATUSES = ['Open', 'Assign', 'Working', 'Reviewing'];
 const CLOSED_STATUS = 'Closed';
 const STATUS_TO_FIELD = {
   Open:'m_open', Assign:'m_assign', Working:'m_working', Reviewing:'m_reviewing',
@@ -223,6 +258,104 @@ const prevWeekBtn = document.getElementById('prevWeekBtn');
 const statusText = document.getElementById('statusText');
 
 function setStatus(msg, cls){ statusText.textContent = msg; statusText.className = 'status ' + (cls || ''); }
+
+/* ---------- biểu đồ (SVG thuần, Power BI style — cùng cách vẽ với abi-dashboard-ticket) ---------- */
+const CHART_PALETTE = {
+  Closed:'#5FA778', Open:'#B5533C', Assign:'#E3A857', Working:'#2E6F95',
+  Reviewing:'#5B4B8A', Waiting:'#8FA6B3', Pending:'#C9821F', 'Re-open':'#8B2E2E',
+  'Nhận': '#2E6F95', 'Xử lý': '#5FA778', 'Tồn đọng trước': '#8FA6B3', 'Tồn đọng': '#B5533C',
+};
+const CHART_DEFAULT_COLORS = ['#2E6F95','#E3A857','#5FA778','#B5533C','#5B4B8A','#8FA6B3'];
+function chartColor(label, idx){ return CHART_PALETTE[label] || CHART_DEFAULT_COLORS[idx % CHART_DEFAULT_COLORS.length]; }
+
+function donutChartSvg(counts, size, stroke){
+  size = size || 150; stroke = stroke || 24;
+  const entries = Object.entries(counts).filter(([,v]) => v > 0);
+  const total = entries.reduce((a,[,v]) => a+v, 0) || 1;
+  const r = (size - stroke) / 2, cx = size/2, cy = size/2;
+  const circumference = 2 * Math.PI * r;
+  let offset = 0, segs = '';
+  entries.forEach(([label, val], i) => {
+    const frac = val / total;
+    const dash = frac * circumference;
+    segs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${chartColor(label, i)}" stroke-width="${stroke}" stroke-dasharray="${dash.toFixed(2)} ${(circumference-dash).toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    offset += dash;
+  });
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">${segs}` +
+    `<circle cx="${cx}" cy="${cy}" r="${r-stroke/2-4}" fill="#FFFFFF"/>` +
+    `<text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="20" font-weight="700" fill="#12233D" font-family="Arial">${total}</text>` +
+    `<text x="${cx}" y="${cy+15}" text-anchor="middle" font-size="10" fill="#5B7089" font-family="Arial">ticket</text></svg>`;
+}
+function chartLegendHtml(counts){
+  const entries = Object.entries(counts);
+  const total = entries.reduce((a,[,v]) => a+v, 0) || 1;
+  return entries.map(([label,val],i) => {
+    const pct = Math.round(val/total*100);
+    return `<div class="legend-row"><span class="dot" style="background:${chartColor(label,i)}"></span>` +
+      `<span class="legend-label">${escapeHtml(label)}</span>` +
+      `<span class="legend-val">${val} <span class="legend-pct">(${pct}%)</span></span></div>`;
+  }).join('');
+}
+function vbarChartSvg(counts, opts){
+  opts = opts || {};
+  const entries = Object.entries(counts);
+  const maxVal = Math.max.apply(null, entries.map(([,v]) => v).concat([1]));
+  return '<div class="vbar-wrap">' + entries.map(([label,val],i) => {
+    const pct = Math.max((val/maxVal*100), val>0 ? 4 : 0);
+    return `<div class="vbar-col"><div class="vbar-val">${val}</div>` +
+      `<div class="vbar-bar" style="height:${pct.toFixed(1)}%;background:${chartColor(label,i)}"></div>` +
+      `<div class="vbar-label">${escapeHtml(label)}</div></div>`;
+  }).join('') + '</div>';
+}
+
+function renderCharts(){
+  const v = id => Number(document.getElementById(id).value) || 0;
+  const statusCounts = {
+    Closed: v('m_closed'), Open: v('m_open'), Assign: v('m_assign'), Working: v('m_working'),
+    Reviewing: v('m_reviewing'), Waiting: v('m_waiting'), Pending: v('m_pending'), 'Re-open': v('m_reopen'),
+  };
+  const flowCounts = {
+    'Nhận': v('m_received'), 'Xử lý': v('m_processed'),
+    'Tồn đọng trước': v('m_backlogPrev'), 'Tồn đọng': v('m_backlogNow'),
+  };
+  document.getElementById('chartDonut').innerHTML = donutChartSvg(statusCounts) + `<div style="flex:1">${chartLegendHtml(statusCounts)}</div>`;
+  document.getElementById('chartVbar').innerHTML = vbarChartSvg(flowCounts);
+}
+renderCharts(); // vẽ sẵn với giá trị mặc định (0) khi mới mở trang
+
+// Cập nhật biểu đồ ngay khi người dùng sửa tay bất kỳ số liệu nào (mọi ô số trong báo cáo đều cho sửa tay).
+['m_closed','m_open','m_assign','m_working','m_reviewing','m_waiting','m_pending','m_reopen',
+ 'm_received','m_processed','m_backlogPrev','m_backlogNow'].forEach(id => {
+  document.getElementById(id).addEventListener('input', renderCharts);
+});
+
+/* Sao chép hình ảnh biểu đồ vào clipboard (html2canvas chụp #chartPanel -> PNG).
+   Fallback: nếu trình duyệt không hỗ trợ ghi ảnh vào clipboard, tự tải file PNG xuống. */
+document.getElementById('copyImageBtn').addEventListener('click', async () => {
+  try{
+    const canvas = await html2canvas(document.getElementById('chartPanel'), { backgroundColor:'#ffffff', scale:2 });
+    canvas.toBlob(async (blob) => {
+      if (!blob){ setBottomStatus('Không tạo được ảnh biểu đồ.', 'err'); return; }
+      try{
+        if (window.ClipboardItem){
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+          setBottomStatus('Đã sao chép hình ảnh biểu đồ vào clipboard — dán (Ctrl+V) vào Zalo/Teams/Word/ERP.', 'ok');
+        } else {
+          throw new Error('no-clipboard-item');
+        }
+      }catch(e){
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'bieu-do-ticket-tuan.png';
+        link.click();
+        setBottomStatus('Trình duyệt không hỗ trợ copy ảnh trực tiếp — đã tải file PNG xuống thay thế.', 'ok');
+      }
+    }, 'image/png');
+  }catch(err){
+    console.error(err);
+    setBottomStatus('Lỗi khi tạo ảnh biểu đồ: ' + err.message, 'err');
+  }
+});
 
 const bottomStatusText = document.getElementById('bottomStatusText');
 function setBottomStatus(msg, cls){ bottomStatusText.textContent = msg; bottomStatusText.className = 'status no-print ' + (cls || ''); }
@@ -429,6 +562,15 @@ fetchBtn.addEventListener('click', async () => {
     document.getElementById('m_processed').value = closedInWeek;
     document.getElementById('m_backlogNow').value = backlogNow;
 
+    // Tự động gợi ý "Xử lý tuần sau" từ Subject các ticket đang Open/Assign/Working/Reviewing
+    // (lấy lại từ backlogRows đã fetch ở trên, không cần gọi thêm API) — người dùng vẫn có
+    // thể sửa/thêm/xoá tuỳ ý sau khi điền.
+    const nextWeekSubjects = backlogRows
+      .filter(r => NEXT_WEEK_STATUSES.includes((r.status || '').trim()))
+      .map(r => (r.subject || '').trim())
+      .filter(Boolean);
+    if (nextWeekSubjects.length) document.getElementById('txt_tuansau').value = nextWeekSubjects.join('\n');
+
     /* ---------- timesheet (giờ hỗ trợ) ---------- */
     setStatus('Đang lấy Timesheet…', 'busy');
     let hoursNote = '';
@@ -450,12 +592,47 @@ fetchBtn.addEventListener('click', async () => {
       hoursNote = ' (lỗi lấy timesheet: ' + tsErr.message + ' — nhập tay)';
     }
 
-    setStatus(`Xong — ${weekRows.length} ticket mở trong tuần, ${backlogRows.length} ticket đang tồn đọng (mọi thời điểm).${hoursNote}`, hoursNote ? 'err' : 'ok');
+    setStatus(`Xong — ${weekRows.length} ticket mở trong tuần, ${backlogRows.length} ticket đang tồn đọng (mọi thời điểm), đã điền ${nextWeekSubjects.length} mục vào "Xử lý tuần sau".${hoursNote}`, hoursNote ? 'err' : 'ok');
+    renderCharts();
   }catch(err){
     console.error(err);
     setStatus('Lỗi: ' + err.message, 'err');
   }finally{
     fetchBtn.disabled = false;
+  }
+});
+
+/* Lấy Subject các ticket có "modified" (lần cập nhật gần nhất) rơi vào khoảng Từ ngày–Đến
+   ngày đã chọn, điền mỗi Subject 1 dòng vào ô "Thực hiện trong tuần" — dùng để có gợi ý ban
+   đầu, vẫn sửa tay lại cho đúng ý trước khi gửi báo cáo. */
+const fillFromSubjectBtn = document.getElementById('fillFromSubjectBtn');
+fillFromSubjectBtn.addEventListener('click', async () => {
+  const project = projectSelect.value;
+  if (!project){ setStatus('Chưa chọn dự án.', 'err'); return; }
+  if (!fromDate.value || !toDate.value){ setStatus('Chưa chọn khoảng ngày.', 'err'); return; }
+
+  fillFromSubjectBtn.disabled = true;
+  setStatus('Đang lấy Subject ticket có cập nhật trong khoảng ngày đã chọn…', 'busy');
+  try{
+    const qs = new URLSearchParams();
+    qs.set('projects', JSON.stringify([project]));
+    qs.set('statuses', JSON.stringify([]));
+    qs.set('modified_from', fromDate.value);
+    qs.set('modified_to', toDate.value);
+    const data = await fetchJson('/api/erp/tickets?' + qs.toString());
+    const rows = Array.isArray(data.data) ? data.data : [];
+    const subjects = rows.map(r => (r.subject || '').trim()).filter(Boolean);
+    if (!subjects.length){
+      setStatus('Không có ticket nào được cập nhật trong khoảng ngày đã chọn.', 'err');
+      return;
+    }
+    document.getElementById('txt_thuchien').value = subjects.join('\n');
+    setStatus(`Đã điền ${subjects.length} Subject ticket (theo ngày cập nhật) vào "Thực hiện trong tuần" — kiểm tra/sửa lại trước khi gửi báo cáo.`, 'ok');
+  }catch(err){
+    console.error(err);
+    setStatus('Lỗi: ' + err.message, 'err');
+  }finally{
+    fillFromSubjectBtn.disabled = false;
   }
 });
 
@@ -499,7 +676,7 @@ ${listify(v('txt_tuansau'))}
 });
 
 /* ---------- copy dạng bảng (HTML thật) để dán vào ERP / rich-text editor ---------- */
-document.getElementById('copyTableBtn').addEventListener('click', async () => {
+function buildReportHtmlAndPlain(){
   const v = id => document.getElementById(id).value;
   const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const listifyHtml = raw => {
@@ -526,7 +703,7 @@ document.getElementById('copyTableBtn').addEventListener('click', async () => {
     ['Ticket tồn động tuần/tháng', v('m_backlogNow')],
   ].map(([k,val]) => `<tr><td style="${thtd}">${esc(k)}</td><td style="${thtd}">${esc(val)}</td></tr>`).join('');
 
-  const html = `
+  const tablesHtml = `
     <p><b>Tuần báo cáo:</b> ${esc(v('weekLabel'))}</p>
     <p><b>1. Báo cáo số lượng ticket trong tuần</b></p>
     <table style="${tableStyle}"><tr><th style="${thtd}">Trạng thái</th><th style="${thtd}">Số lượng</th></tr>${statusRows}
@@ -578,10 +755,15 @@ ${listifyText(v('txt_tuansau'))}
 3. Báo cáo tình hình thực hiện CRs: ${v('txt_crs')}
 4. Báo cáo thông tin khác: ${v('txt_khac')}`;
 
+  return { tablesHtml, plain };
+}
+
+document.getElementById('copyTableBtn').addEventListener('click', async () => {
+  const { tablesHtml, plain } = buildReportHtmlAndPlain();
   try{
     if (window.ClipboardItem){
       const item = new ClipboardItem({
-        'text/html': new Blob([html], { type: 'text/html' }),
+        'text/html': new Blob([tablesHtml], { type: 'text/html' }),
         'text/plain': new Blob([plain], { type: 'text/plain' }),
       });
       await navigator.clipboard.write([item]);
@@ -592,6 +774,34 @@ ${listifyText(v('txt_tuansau'))}
     }
   }catch(err){
     setBottomStatus('Không sao chép được tự động: ' + err.message, 'err');
+  }
+});
+
+/* Sao chép GỘP: hình ảnh biểu đồ + bảng số liệu trong CÙNG 1 lần dán — nhúng ảnh biểu đồ
+   (base64) làm <img> ngay trên đầu bảng HTML, rồi ghi 1 clipboard item duy nhất. Khi dán vào
+   nơi hỗ trợ rich-text (ERP, Word, Zalo/Teams, Gmail...) sẽ ra cả ảnh lẫn bảng cùng lúc. */
+document.getElementById('copyTableImageBtn').addEventListener('click', async () => {
+  try{
+    setBottomStatus('Đang tạo ảnh biểu đồ…', '');
+    const canvas = await html2canvas(document.getElementById('chartPanel'), { backgroundColor:'#ffffff', scale:2 });
+    const imgDataUrl = canvas.toDataURL('image/png');
+    const { tablesHtml, plain } = buildReportHtmlAndPlain();
+    const combinedHtml = `<img src="${imgDataUrl}" style="max-width:640px;display:block;margin-bottom:14px;">` + tablesHtml;
+
+    if (window.ClipboardItem){
+      const item = new ClipboardItem({
+        'text/html': new Blob([combinedHtml], { type: 'text/html' }),
+        'text/plain': new Blob([plain], { type: 'text/plain' }),
+      });
+      await navigator.clipboard.write([item]);
+      setBottomStatus('Đã sao chép cả hình ảnh biểu đồ + bảng số liệu — dán (Ctrl+V) 1 lần vào ERP/Word/Zalo/Teams sẽ ra cả 2.', 'ok');
+    } else {
+      await navigator.clipboard.writeText(plain);
+      setBottomStatus('Trình duyệt không hỗ trợ copy ảnh+bảng gộp — đã sao chép dạng text thay thế.', 'ok');
+    }
+  }catch(err){
+    console.error(err);
+    setBottomStatus('Lỗi khi sao chép gộp: ' + err.message, 'err');
   }
 });
 

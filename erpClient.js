@@ -90,8 +90,10 @@ async function erpFetch(pathWithQuery, { retry = true } = {}) {
  * statuses: string | (string|null)[] -> loc theo status, ho tro ca gia tri null (chua co status)
  * openingFrom/openingTo: 'YYYY-MM-DD' -> loc theo opening_date ngay tren ERP (tranh bi cat bot
  *   du lieu khi project co qua limit_page_length ticket va API khong sap xep theo ngay).
+ * modifiedFrom/modifiedTo: 'YYYY-MM-DD' -> loc theo modified (lan cap nhat gan nhat), dung de
+ *   lay danh sach ticket co thao tac/cap nhat trong 1 khoang ngay (vd de gen "Thuc hien trong tuan").
  */
-async function fetchTickets({ projects, statuses, limit = 2000, openingFrom, openingTo } = {}) {
+async function fetchTickets({ projects, statuses, limit = 2000, openingFrom, openingTo, modifiedFrom, modifiedTo } = {}) {
   const filters = [];
 
   const projList = normalizeList(projects);
@@ -104,12 +106,14 @@ async function fetchTickets({ projects, statuses, limit = 2000, openingFrom, ope
 
   if (openingFrom) filters.push(['opening_date', '>=', `${openingFrom} 00:00:00`]);
   if (openingTo) filters.push(['opening_date', '<=', `${openingTo} 23:59:59`]);
+  if (modifiedFrom) filters.push(['modified', '>=', `${modifiedFrom} 00:00:00`]);
+  if (modifiedTo) filters.push(['modified', '<=', `${modifiedTo} 23:59:59`]);
 
   const qs = new URLSearchParams();
   qs.set('filters', JSON.stringify(filters));
   qs.set('fields', JSON.stringify(['*']));
   qs.set('limit_page_length', String(limit));
-  qs.set('order_by', 'opening_date desc');
+  qs.set('order_by', modifiedFrom || modifiedTo ? 'modified desc' : 'opening_date desc');
 
   return erpFetch(`/api/resource/Ticket?${qs.toString()}`);
 }

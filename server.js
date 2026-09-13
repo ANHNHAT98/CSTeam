@@ -170,8 +170,10 @@ app.get('/api/erp/tickets', requireAuth, async (req, res) => {
     const statuses = parseJsonArrayParam(req.query.statuses);
     const openingFrom = req.query.opening_from || undefined;
     const openingTo = req.query.opening_to || undefined;
+    const modifiedFrom = req.query.modified_from || undefined;
+    const modifiedTo = req.query.modified_to || undefined;
     const limit = req.query.limit ? Number(req.query.limit) : undefined;
-    const data = await erp.fetchTickets({ projects, statuses, openingFrom, openingTo, limit });
+    const data = await erp.fetchTickets({ projects, statuses, openingFrom, openingTo, modifiedFrom, modifiedTo, limit });
     res.json(data);
   } catch (e) {
     console.error('[erp/tickets] lỗi:', e.message);
