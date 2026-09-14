@@ -215,9 +215,7 @@
 Hỗ trợ người dùng chốt số đơn hàng, hoá đơn, sổ xuất hàng
 Hỗ trợ liên quan đến tồn kho
 Hỗ trợ thanh toán công cho MDS và kế toán</textarea>
-    <div class="list-hint">Mỗi dòng = 1 mục, sẽ tự đánh số khi xuất báo cáo.
-      <button class="btn btn-ghost" id="fillFromSubjectBtn" type="button" style="margin-left:8px;padding:4px 10px;font-size:11.5px;">⇩ Điền từ Subject ticket (theo ngày cập nhật)</button>
-    </div>
+    <div class="list-hint">Mỗi dòng = 1 mục. Tự động điền sẵn từ Subject ticket có cập nhật trong khoảng Từ ngày–Đến ngày khi bấm "Lấy dữ liệu" — có thể sửa/thêm/xoá tuỳ ý.</div>
 
     <div class="sub-h">Xử lý tuần sau: <span class="range" id="nextWeekRange">(…)</span></div>
     <textarea class="list-input" id="txt_tuansau">Review rls app và các rls BO
@@ -590,6 +588,25 @@ fetchBtn.addEventListener('click', async () => {
       .filter(Boolean);
     if (nextWeekSubjects.length) document.getElementById('txt_tuansau').value = nextWeekSubjects.join('\n');
 
+    // Tự động gợi ý "Thực hiện trong tuần" từ Subject các ticket có "modified" (lần cập nhật
+    // gần nhất) rơi vào đúng khoảng Từ ngày–Đến ngày đã chọn — gọi API riêng vì cần lọc theo
+    // "modified" chứ không phải "opening_date" như weekRows/backlogRows ở trên.
+    let doneWeekSubjectsCount = 0;
+    try{
+      const qsModified = new URLSearchParams();
+      qsModified.set('projects', JSON.stringify([project]));
+      qsModified.set('statuses', JSON.stringify([]));
+      qsModified.set('modified_from', fromDate.value);
+      qsModified.set('modified_to', toDate.value);
+      const modifiedData = await fetchJson('/api/erp/tickets?' + qsModified.toString());
+      const modifiedRows = Array.isArray(modifiedData.data) ? modifiedData.data : [];
+      const doneWeekSubjects = modifiedRows.map(r => (r.subject || '').trim()).filter(Boolean);
+      doneWeekSubjectsCount = doneWeekSubjects.length;
+      if (doneWeekSubjects.length) document.getElementById('txt_thuchien').value = doneWeekSubjects.join('\n');
+    }catch(modErr){
+      console.error('Lỗi lấy ticket theo modified:', modErr);
+    }
+
     /* ---------- timesheet (giờ hỗ trợ) ---------- */
     setStatus('Đang lấy Timesheet…', 'busy');
     let hoursNote = '';
@@ -611,7 +628,7 @@ fetchBtn.addEventListener('click', async () => {
       hoursNote = ' (lỗi lấy timesheet: ' + tsErr.message + ' — nhập tay)';
     }
 
-    setStatus(`Xong — ${weekRows.length} ticket mở trong tuần, ${backlogRows.length} ticket đang tồn đọng (mọi thời điểm), đã điền ${nextWeekSubjects.length} mục vào "Xử lý tuần sau".${hoursNote}`, hoursNote ? 'err' : 'ok');
+    setStatus(`Xong — ${weekRows.length} ticket mở trong tuần, ${backlogRows.length} ticket đang tồn đọng (mọi thời điểm), đã điền ${doneWeekSubjectsCount} mục vào "Thực hiện trong tuần" và ${nextWeekSubjects.length} mục vào "Xử lý tuần sau".${hoursNote}`, hoursNote ? 'err' : 'ok');
     renderCharts();
   }catch(err){
     console.error(err);
@@ -621,39 +638,6 @@ fetchBtn.addEventListener('click', async () => {
   }
 });
 
-/* Lấy Subject các ticket có "modified" (lần cập nhật gần nhất) rơi vào khoảng Từ ngày–Đến
-   ngày đã chọn, điền mỗi Subject 1 dòng vào ô "Thực hiện trong tuần" — dùng để có gợi ý ban
-   đầu, vẫn sửa tay lại cho đúng ý trước khi gửi báo cáo. */
-const fillFromSubjectBtn = document.getElementById('fillFromSubjectBtn');
-fillFromSubjectBtn.addEventListener('click', async () => {
-  const project = projectSelect.value;
-  if (!project){ setStatus('Chưa chọn dự án.', 'err'); return; }
-  if (!fromDate.value || !toDate.value){ setStatus('Chưa chọn khoảng ngày.', 'err'); return; }
-
-  fillFromSubjectBtn.disabled = true;
-  setStatus('Đang lấy Subject ticket có cập nhật trong khoảng ngày đã chọn…', 'busy');
-  try{
-    const qs = new URLSearchParams();
-    qs.set('projects', JSON.stringify([project]));
-    qs.set('statuses', JSON.stringify([]));
-    qs.set('modified_from', fromDate.value);
-    qs.set('modified_to', toDate.value);
-    const data = await fetchJson('/api/erp/tickets?' + qs.toString());
-    const rows = Array.isArray(data.data) ? data.data : [];
-    const subjects = rows.map(r => (r.subject || '').trim()).filter(Boolean);
-    if (!subjects.length){
-      setStatus('Không có ticket nào được cập nhật trong khoảng ngày đã chọn.', 'err');
-      return;
-    }
-    document.getElementById('txt_thuchien').value = subjects.join('\n');
-    setStatus(`Đã điền ${subjects.length} Subject ticket (theo ngày cập nhật) vào "Thực hiện trong tuần" — kiểm tra/sửa lại trước khi gửi báo cáo.`, 'ok');
-  }catch(err){
-    console.error(err);
-    setStatus('Lỗi: ' + err.message, 'err');
-  }finally{
-    fillFromSubjectBtn.disabled = false;
-  }
-});
 
 /* ---------- copy nội dung báo cáo dạng text ---------- */
 document.getElementById('copyBtn').addEventListener('click', () => {
