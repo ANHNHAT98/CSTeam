@@ -682,21 +682,32 @@ ${listify(v('txt_tuansau'))}
 function buildReportHtmlAndPlain(){
   const v = id => document.getElementById(id).value;
   const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  // Style dùng inline hết (không dùng thẻ <style>) vì hầu hết trình soạn thảo rich-text của
+  // ERP/Zalo/Teams/Gmail khi dán vào sẽ loại bỏ <style> — chỉ giữ lại inline style.
+  const BRAND = '#1F4E79';
+  const BORDER = '#D8DEE6';
+  const ZEBRA = '#F5F8FB';
+  const FONT = "font-family:Arial,Helvetica,sans-serif;";
+  const sectionHeadStyle = `${FONT}background:${BRAND};color:#fff;font-weight:700;font-size:13.5px;padding:8px 12px;margin:18px 0 0;border-radius:5px 5px 0 0;`;
+  const boxStyle = `border:1px solid ${BORDER};border-top:none;border-radius:0 0 5px 5px;padding:12px 14px;margin:0 0 4px;`;
+  const th = `${FONT}text-align:left;background:${BRAND};color:#fff;font-size:12px;padding:7px 10px;border:1px solid ${BRAND};`;
+  const tdBase = `${FONT}font-size:12.5px;padding:6px 10px;border:1px solid ${BORDER};`;
+  const tableStyle = 'border-collapse:collapse;width:100%;margin-bottom:2px;';
+
   const listifyHtml = raw => {
     const items = raw.split('\n').map(s => s.trim()).filter(Boolean);
-    if (!items.length) return '<p>(chưa nhập)</p>';
-    return '<ol>' + items.map(s => `<li>${esc(s)}</li>`).join('') + '</ol>';
+    if (!items.length) return `<p style="${FONT}font-size:12.5px;color:#777;margin:4px 0;">(chưa nhập)</p>`;
+    return `<ol style="${FONT}font-size:12.5px;line-height:1.65;margin:6px 0 0;padding-left:20px;">` +
+      items.map(s => `<li style="margin-bottom:3px;">${esc(s)}</li>`).join('') + '</ol>';
   };
   const listifyText = raw => raw.split('\n').map(s => s.trim()).filter(Boolean)
     .map((s,i) => `${i+1}. ${s}`).join('\n');
 
-  const tableStyle = 'border-collapse:collapse;';
-  const thtd = 'border:1px solid #999;padding:5px 10px;text-align:left;';
-
   const statusRows = [
     ['Closed', v('m_closed')], ['Open', v('m_open')], ['Assign', v('m_assign')], ['Working', v('m_working')],
     ['Reviewing', v('m_reviewing')], ['Waiting', v('m_waiting')], ['Pending', v('m_pending')], ['Re-open', v('m_reopen')],
-  ].map(([k,val]) => `<tr><td style="${thtd}">${esc(k)}</td><td style="${thtd}">${esc(val)}</td></tr>`).join('');
+  ].map(([k,val],i) => `<tr${i%2?` style="background:${ZEBRA};"`:''}><td style="${tdBase}">${esc(k)}</td><td style="${tdBase}text-align:right;font-weight:700;">${esc(val)}</td></tr>`).join('');
 
   const summaryRows = [
     ['Time hỗ trợ', v('m_hours')],
@@ -704,23 +715,37 @@ function buildReportHtmlAndPlain(){
     ['Ticket tồn động tuần/tháng trước', v('m_backlogPrev')],
     ['Ticket xử lý trong tuần/tháng', v('m_processed')],
     ['Tổng ticket tồn đọng còn lại', v('m_backlogNow')],
-  ].map(([k,val]) => `<tr><td style="${thtd}">${esc(k)}</td><td style="${thtd}">${esc(val)}</td></tr>`).join('');
+  ].map(([k,val],i) => `<tr${i%2?` style="background:${ZEBRA};"`:''}><td style="${tdBase}">${esc(k)}</td><td style="${tdBase}text-align:right;font-weight:700;">${esc(val)}</td></tr>`).join('');
 
   const tablesHtml = `
-    <p><b>Tuần báo cáo:</b> ${esc(v('weekLabel'))}</p>
-    <p><b>1. Báo cáo số lượng ticket trong tuần</b></p>
-    <table style="${tableStyle}"><tr><th style="${thtd}">Trạng thái</th><th style="${thtd}">Số lượng</th></tr>${statusRows}
-    <tr><td style="${thtd}" colspan="2">&nbsp;</td></tr>
-    <tr><th style="${thtd}">Chỉ số</th><th style="${thtd}">Giá trị</th></tr>${summaryRows}</table>
-    <p>&nbsp;</p>
-    <p><b>2. Nhận xét/Vấn đề</b></p>
-    <p><i>Nhận xét chung về tình hình support tuần/tháng báo cáo so với tuần trước:</i><br>${esc(v('txt_nhanxet') || '(chưa nhập)')}</p>
-    <p><i>Thực hiện trong tuần: ${esc(document.getElementById('doneWeekRange').textContent)}</i></p>
-    ${listifyHtml(v('txt_thuchien'))}
-    <p><i>Xử lý tuần sau: ${esc(document.getElementById('nextWeekRange').textContent)}</i></p>
-    ${listifyHtml(v('txt_tuansau'))}
-    <p><b>3. Báo cáo tình hình thực hiện CRs:</b> ${esc(v('txt_crs'))}</p>
-    <p><b>4. Báo cáo thông tin khác:</b> ${esc(v('txt_khac'))}</p>
+    <p style="${FONT}font-size:14px;margin:0 0 14px;"><b>Tuần báo cáo:</b> ${esc(v('weekLabel'))}</p>
+
+    <div style="${sectionHeadStyle}">1. Báo cáo số lượng ticket trong tuần</div>
+    <div style="${boxStyle}">
+      <table style="${tableStyle}margin-bottom:12px;">
+        <tr><th style="${th}">Trạng thái</th><th style="${th}text-align:right;">Số lượng</th></tr>
+        ${statusRows}
+      </table>
+      <table style="${tableStyle}">
+        <tr><th style="${th}">Chỉ số</th><th style="${th}text-align:right;">Giá trị</th></tr>
+        ${summaryRows}
+      </table>
+    </div>
+
+    <div style="${sectionHeadStyle}">2. Nhận xét / Vấn đề</div>
+    <div style="${boxStyle}">
+      <p style="${FONT}font-size:12.5px;margin:0 0 10px;"><i>Nhận xét chung về tình hình support tuần/tháng báo cáo so với tuần trước:</i><br>${esc(v('txt_nhanxet') || '(chưa nhập)')}</p>
+      <p style="${FONT}font-size:12.5px;font-weight:700;margin:10px 0 0;">Thực hiện trong tuần: <span style="font-weight:400;color:#5B7089;">${esc(document.getElementById('doneWeekRange').textContent)}</span></p>
+      ${listifyHtml(v('txt_thuchien'))}
+      <p style="${FONT}font-size:12.5px;font-weight:700;margin:14px 0 0;">Xử lý tuần sau: <span style="font-weight:400;color:#5B7089;">${esc(document.getElementById('nextWeekRange').textContent)}</span></p>
+      ${listifyHtml(v('txt_tuansau'))}
+    </div>
+
+    <div style="${sectionHeadStyle}">3. Báo cáo tình hình thực hiện CRs</div>
+    <div style="${boxStyle}"><p style="${FONT}font-size:12.5px;margin:0;">${esc(v('txt_crs')) || '(chưa nhập)'}</p></div>
+
+    <div style="${sectionHeadStyle}">4. Báo cáo thông tin khác</div>
+    <div style="${boxStyle}"><p style="${FONT}font-size:12.5px;margin:0;">${esc(v('txt_khac')) || '(chưa nhập)'}</p></div>
   `.trim();
 
   const plain = `Tuần báo cáo: ${v('weekLabel')}
@@ -789,7 +814,10 @@ document.getElementById('copyTableImageBtn').addEventListener('click', async () 
     const canvas = await html2canvas(document.getElementById('chartPanel'), { backgroundColor:'#ffffff', scale:2 });
     const imgDataUrl = canvas.toDataURL('image/png');
     const { tablesHtml, plain } = buildReportHtmlAndPlain();
-    const combinedHtml = `<img src="${imgDataUrl}" style="max-width:640px;display:block;margin-bottom:14px;">` + tablesHtml;
+    const imgSectionHtml = `<div style="font-family:Arial,Helvetica,sans-serif;background:#1F4E79;color:#fff;font-weight:700;font-size:13.5px;padding:8px 12px;margin:0;border-radius:5px 5px 0 0;">Biểu đồ tuần</div>` +
+      `<div style="border:1px solid #D8DEE6;border-top:none;border-radius:0 0 5px 5px;padding:12px 14px;margin:0 0 4px;">` +
+      `<img src="${imgDataUrl}" style="max-width:680px;width:100%;display:block;"></div>`;
+    const combinedHtml = imgSectionHtml + tablesHtml;
 
     if (window.ClipboardItem){
       const item = new ClipboardItem({
