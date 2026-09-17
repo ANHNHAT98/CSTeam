@@ -207,6 +207,12 @@ var STEPS = [
     action:function(p){ return "UPDATE PPC_Setting SET Value = '"+p.kelmKey+"' WHERE [Key] = 'KELM_KEY';\nUPDATE PPC_Setting SET Value = '"+p.googleMapsKey+"' WHERE [Key] = 'KEY_API_GG_MAPS_FLUTTER_V3';"; }
   },
   {
+    id:"promotionSalesOrdService", title:"SYS_Configurations — Promotion & SalesOrd Service Path",
+    desc:"Trỏ PromotionServicePath (tính khuyến mãi cho eSales) và SalesOrdServicePath (lưu đơn hàng từ PDA) sang đúng domain UAT.",
+    preview:function(){ return "SELECT Code, TextVal FROM SYS_Configurations WHERE Code IN ('PromotionServicePath','SalesOrdServicePath');"; },
+    action:function(){ return "Declare @PromotionServicePath = 'https://dev.hqsoft.vn/ANVY_UAT_PromotionService/OM10100/CalcPromo4eSales/'\nDeclare @SalesOrdServicePath = 'https://dev.hqsoft.vn/ANVY_UAT_PromotionService/OM10100/SaveForPDA'\nUpdate SYS_Configurations set TextVal = @PromotionServicePath\nwhere code = 'PromotionServicePath'\nUpdate SYS_Configurations set TextVal = @SalesOrdServicePath\nwhere code = 'SalesOrdServicePath'"; }
+  },
+  {
     id:"apiUsers", title:"ApiUsers — seed admin / admin1",
     desc:"Tạo 2 tài khoản quản trị mặc định nếu UAT chưa có (giữ nguyên hash lấy từ PROD). Có kiểm tra tồn tại để chạy lại không lỗi trùng khoá.",
     warn:"Đổi mật khẩu 2 tài khoản này ngay sau khi seed — hash/salt hiện đang lấy nguyên từ PROD.",

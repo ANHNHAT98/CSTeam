@@ -209,6 +209,7 @@
     <div class="rep-section-h">2. Nhận xét / Vấn đề</div>
     <div class="sub-h">Nhận xét chung về tình hình support tuần/tháng báo cáo so với tuần trước:</div>
     <textarea class="freeform" id="txt_nhanxet" placeholder="Ví dụ: khối lượng ticket ổn định so với tuần trước, không phát sinh sự cố nghiêm trọng…"></textarea>
+    <div class="list-hint">Tự động điền sẵn nhận xét so sánh tổng ticket nhận &amp; ticket Critical/Urgent so với tuần trước khi bấm "Lấy dữ liệu" — có thể sửa/thêm/xoá tuỳ ý.</div>
 
     <div class="sub-h">Thực hiện trong tuần: <span class="range" id="doneWeekRange">(…)</span></div>
     <textarea class="list-input" id="txt_thuchien">Review rls app và các rls BO
@@ -529,6 +530,19 @@ fetchBtn.addEventListener('click', async () => {
     const backlogData = await fetchJson('/api/erp/tickets?' + qsBacklog.toString());
     const backlogRows = Array.isArray(backlogData.data) ? backlogData.data : [];
 
+    // Fetch C: ticket mở trong TUẦN/KHOẢNG TRƯỚC ĐÓ (cùng độ dài, ngay trước "Từ ngày") —
+    // dùng để so sánh xu hướng tăng/giảm, tự điền gợi ý vào "Nhận xét/Vấn đề".
+    const periodDays = Math.round((to.getTime() - from.getTime()) / 86400000) + 1;
+    const prevTo = new Date(from); prevTo.setDate(prevTo.getDate() - 1);
+    const prevFrom = new Date(prevTo); prevFrom.setDate(prevFrom.getDate() - periodDays + 1);
+    const qsPrevWeek = new URLSearchParams();
+    qsPrevWeek.set('projects', JSON.stringify([project]));
+    qsPrevWeek.set('statuses', JSON.stringify([]));
+    qsPrevWeek.set('opening_from', toISO(prevFrom));
+    qsPrevWeek.set('opening_to', toISO(prevTo));
+    const prevWeekData = await fetchJson('/api/erp/tickets?' + qsPrevWeek.toString());
+    const prevWeekRows = Array.isArray(prevWeekData.data) ? prevWeekData.data : [];
+
     const backlogBreakdown = {};
     BACKLOG_STATUSES.forEach(s => backlogBreakdown[s] = 0);
     let receivedInWeek = 0, closedInWeek = 0, backlogPrevAll = 0;
@@ -579,6 +593,25 @@ fetchBtn.addEventListener('click', async () => {
     document.getElementById('m_processed').value = closedInWeek;
     document.getElementById('m_backlogNow').value = backlogNow;
 
+    // Tự động so sánh với tuần/khoảng trước đó (cùng độ dài) rồi điền gợi ý vào "Nhận xét/Vấn đề":
+    // 1) tổng ticket nhận trong khoảng lọc so với khoảng trước — tăng/giảm bao nhiêu.
+    // 2) ticket mức Critical/Urgent phát sinh trong khoảng lọc so với khoảng trước.
+    function isUrgentCritical(r){
+      const p = String(r.priority || '').trim().toLowerCase();
+      return p === 'critical' || p === 'urgent';
+    }
+    const prevReceived = prevWeekRows.length;
+    const curUrgentCritical = weekRows.filter(isUrgentCritical).length;
+    const prevUrgentCritical = prevWeekRows.filter(isUrgentCritical).length;
+    const receivedDiff = receivedInWeek - prevReceived;
+    const urgentDiff = curUrgentCritical - prevUrgentCritical;
+    const trend = (diff) => diff > 0 ? `tăng ${diff}` : (diff < 0 ? `giảm ${Math.abs(diff)}` : 'không đổi');
+    const nhanxetAuto =
+      `Tổng ticket nhận trong tuần: ${receivedInWeek} (tuần trước: ${prevReceived}) — ${trend(receivedDiff)} ticket so với tuần trước.\n` +
+      `Ticket mức độ Critical/Urgent phát sinh trong tuần: ${curUrgentCritical} (tuần trước: ${prevUrgentCritical}) — ${trend(urgentDiff)} ticket so với tuần trước.\n` +
+      `Tổng ticket tồn đọng hiện tại: ${backlogNow}.`;
+    document.getElementById('txt_nhanxet').value = nhanxetAuto;
+
     // Tự động gợi ý "Xử lý tuần sau" từ Subject các ticket đang Open/Assign/Working/Reviewing
     // (lấy lại từ backlogRows đã fetch ở trên, không cần gọi thêm API) — người dùng vẫn có
     // thể sửa/thêm/xoá tuỳ ý sau khi điền.
@@ -628,7 +661,7 @@ fetchBtn.addEventListener('click', async () => {
       hoursNote = ' (lỗi lấy timesheet: ' + tsErr.message + ' — nhập tay)';
     }
 
-    setStatus(`Xong — ${weekRows.length} ticket mở trong tuần, ${backlogRows.length} ticket đang tồn đọng (mọi thời điểm), đã điền ${doneWeekSubjectsCount} mục vào "Thực hiện trong tuần" và ${nextWeekSubjects.length} mục vào "Xử lý tuần sau".${hoursNote}`, hoursNote ? 'err' : 'ok');
+    setStatus(`Xong — ${weekRows.length} ticket mở trong tuần, ${backlogRows.length} ticket đang tồn đọng (mọi thời điểm), đã điền ${doneWeekSubjectsCount} mục vào "Thực hiện trong tuần", ${nextWeekSubjects.length} mục vào "Xử lý tuần sau" và tự nhận xét so với tuần trước.${hoursNote}`, hoursNote ? 'err' : 'ok');
     renderCharts();
   }catch(err){
     console.error(err);
@@ -689,11 +722,12 @@ function buildReportHtmlAndPlain(){
   const BORDER = '#D8DEE6';
   const ZEBRA = '#F5F8FB';
   const FONT = "font-family:Arial,Helvetica,sans-serif;";
-  const sectionHeadStyle = `${FONT}background:${BRAND};color:#fff;font-weight:700;font-size:13.5px;padding:8px 12px;margin:18px 0 0;border-radius:5px 5px 0 0;`;
-  const boxStyle = `border:1px solid ${BORDER};border-top:none;border-radius:0 0 5px 5px;padding:12px 14px;margin:0 0 4px;`;
+  const sectionHeadStyle = `${FONT}background:${BRAND};color:#fff;font-weight:700;font-size:13.5px;padding:8px 12px;margin:0;border-radius:5px 5px 0 0;`;
+  const boxStyle = `border:1px solid ${BORDER};border-top:none;border-radius:0 0 5px 5px;padding:12px 14px;margin:0;`;
+  const sectionGap = '<div style="height:18px;line-height:18px;font-size:1px;">&nbsp;</div>';
   const th = `${FONT}text-align:left;background:${BRAND};color:#fff;font-size:12px;padding:7px 10px;border:1px solid ${BRAND};`;
   const tdBase = `${FONT}font-size:12.5px;padding:6px 10px;border:1px solid ${BORDER};`;
-  const tableStyle = 'border-collapse:collapse;width:100%;margin-bottom:2px;';
+  const tableStyle = 'border-collapse:collapse;width:100%;margin:0;';
 
   const listifyHtml = raw => {
     const items = raw.split('\n').map(s => s.trim()).filter(Boolean);
@@ -722,15 +756,17 @@ function buildReportHtmlAndPlain(){
 
     <div style="${sectionHeadStyle}">1. Báo cáo số lượng ticket trong tuần</div>
     <div style="${boxStyle}">
-      <table style="${tableStyle}margin-bottom:12px;">
+      <table style="${tableStyle}">
         <tr><th style="${th}">Trạng thái</th><th style="${th}text-align:right;">Số lượng</th></tr>
         ${statusRows}
       </table>
+      <div style="height:16px;line-height:16px;font-size:1px;">&nbsp;</div>
       <table style="${tableStyle}">
         <tr><th style="${th}">Chỉ số</th><th style="${th}text-align:right;">Giá trị</th></tr>
         ${summaryRows}
       </table>
     </div>
+    ${sectionGap}
 
     <div style="${sectionHeadStyle}">2. Nhận xét / Vấn đề</div>
     <div style="${boxStyle}">
@@ -740,9 +776,11 @@ function buildReportHtmlAndPlain(){
       <p style="${FONT}font-size:12.5px;font-weight:700;margin:14px 0 0;">Xử lý tuần sau: <span style="font-weight:400;color:#5B7089;">${esc(document.getElementById('nextWeekRange').textContent)}</span></p>
       ${listifyHtml(v('txt_tuansau'))}
     </div>
+    ${sectionGap}
 
     <div style="${sectionHeadStyle}">3. Báo cáo tình hình thực hiện CRs</div>
     <div style="${boxStyle}"><p style="${FONT}font-size:12.5px;margin:0;">${esc(v('txt_crs')) || '(chưa nhập)'}</p></div>
+    ${sectionGap}
 
     <div style="${sectionHeadStyle}">4. Báo cáo thông tin khác</div>
     <div style="${boxStyle}"><p style="${FONT}font-size:12.5px;margin:0;">${esc(v('txt_khac')) || '(chưa nhập)'}</p></div>
