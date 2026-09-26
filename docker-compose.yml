@@ -25,4 +25,11 @@ services:
       - JIRA_BASE_URL=https://vnservicedesk.atlassian.net
       - JIRA_EMAIL=email-co-quyen-xem-queue-425@hqsoft.vn
       - JIRA_API_TOKEN=jira-api-token-that
+
+      # --- Ghi du lieu "Case Ho Tro" thang vao repo GitHub (tao commit that) ---
+      # Tao token tai: https://github.com/settings/personal-access-tokens/new
+      # (Fine-grained token, chon dung repo nay, quyen Contents: Read and write)
+      - GITHUB_TOKEN=github-pat-token-that
+      - GITHUB_REPO=ten-user/ten-repo
+      - GITHUB_BRANCH=main
     restart: unless-stopped

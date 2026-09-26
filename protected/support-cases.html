@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thư viện Case Hỗ Trợ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#12233D; --blueprint:#1F4E79; --blueprint-deep:#0F2138;
+    --paper:#EEF2F6; --panel:#FFFFFF;
+    --grid-line:rgba(31,78,121,.14); --grid-line-strong:rgba(31,78,121,.28);
+    --amber:#E8A33D; --amber-deep:#C9821F;
+    --success:#3F7D58; --danger:#B23A48; --muted:#5B7089; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper); color:var(--ink); font-family:'IBM Plex Sans',sans-serif;
+    background-image:linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size:32px 32px; min-height:100vh;
+  }
+  .ops-topbar{background:#12233D;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:14px;}
+  .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;opacity:.9;}
+  .ops-topbar a:hover{opacity:1;text-decoration:underline;}
+  .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
+
+  .wrap{max-width:1200px;margin:0 auto;padding:32px 24px 80px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 6px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 22px;line-height:1.6;}
+
+  .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:22px;margin-bottom:20px;}
+  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0 0 4px;}
+  .panel .panel-sub{color:var(--muted);font-size:12px;margin:0 0 16px;}
+
+  .btn{appearance:none;border:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;padding:10px 16px;border-radius:8px;display:inline-flex;align-items:center;gap:8px;}
+  .btn-primary{background:var(--amber);color:#3A2405;box-shadow:0 2px 0 var(--amber-deep);}
+  .btn-primary:disabled{background:#D8DEE6;color:#8B98A6;box-shadow:none;cursor:not-allowed;}
+  .btn-ghost{background:transparent;color:var(--blueprint);border:1px solid var(--grid-line-strong);}
+  .btn-danger{background:transparent;color:var(--danger);border:1px solid rgba(178,58,72,.4);}
+  .btn-mini{font-family:'IBM Plex Mono',monospace;font-size:11.5px;padding:5px 10px;border-radius:6px;}
+  .actions{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap;}
+
+  .status{font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);margin-top:10px;white-space:pre-wrap;}
+  .status.ok{color:var(--success);}
+  .status.err{color:var(--danger);}
+  .status.busy{color:var(--blueprint);}
+  .backend-badge{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:4px 10px;border-radius:20px;margin-bottom:14px;}
+  .backend-badge.gh{background:rgba(63,125,88,.12);color:var(--success);}
+  .backend-badge.local{background:rgba(232,163,61,.15);color:var(--amber-deep);}
+
+  .filter-row{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:4px;}
+  .filter-row input[type=text], .filter-row select{
+    font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;padding:9px 11px;border-radius:7px;
+    border:1px solid var(--grid-line-strong);background:#fff;color:var(--ink);
+  }
+  .filter-row input[type=text]{flex:1;min-width:220px;}
+  .case-count{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);}
+
+  .case-card{border:1px solid var(--grid-line-strong);border-radius:9px;padding:16px 18px;margin-bottom:12px;background:#fbfcfe;}
+  .case-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;cursor:pointer;}
+  .case-title{font-family:'Space Grotesk',sans-serif;font-size:14.5px;font-weight:700;margin:0 0 4px;}
+  .case-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .case-chip{font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:2px 8px;border-radius:12px;background:rgba(31,78,121,.08);color:var(--blueprint);}
+  .case-chip.tag{background:rgba(95,167,120,.12);color:var(--success);}
+  .case-toggle{font-size:18px;color:var(--muted);user-select:none;flex:0 0 auto;}
+  .case-body{display:none;margin-top:14px;padding-top:14px;border-top:1px dashed var(--grid-line-strong);}
+  .case-body.open{display:block;}
+  .case-field{margin-bottom:10px;}
+  .case-field label{display:block;font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;}
+  .case-field .val{font-size:13px;line-height:1.6;white-space:pre-wrap;}
+  .case-card-actions{display:flex;gap:8px;margin-top:12px;}
+
+  /* ---- form thêm/sửa ---- */
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+  @media(max-width:700px){.form-grid{grid-template-columns:1fr;}}
+  .form-field label{display:block;font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-bottom:6px;}
+  .form-field input[type=text], .form-field select, .form-field textarea{
+    width:100%;font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;padding:9px 11px;border-radius:7px;
+    border:1px solid var(--grid-line-strong);background:#fff;color:var(--ink);
+  }
+  .form-field textarea{min-height:80px;resize:vertical;font-family:'IBM Plex Sans',sans-serif;}
+  .form-field.full{grid-column:1/-1;}
+</style>
+</head>
+<body>
+<div class="ops-topbar">
+  <a href="/">← Quay về</a>
+  <span class="crumb">Case Hỗ Trợ / Thư viện</span>
+</div>
+
+<div class="wrap">
+  <h1 id="pageTitle">Thư viện Case Hỗ Trợ</h1>
+  <p class="sub" id="pageSub">Tổng hợp các case thường gặp trong quá trình hỗ trợ &amp; cách xử lý — xem lại nhanh khi gặp case tương tự, hoặc thêm case mới ngay tại đây.</p>
+
+  <div class="panel">
+    <div id="backendBadge"></div>
+    <h2>+ Thêm case mới</h2>
+    <div class="panel-sub">Điền thông tin rồi bấm Lưu — case sẽ hiện ngay trong danh sách bên dưới.</div>
+    <div class="form-grid">
+      <div class="form-field">
+        <label>DỰ ÁN</label>
+        <input type="text" id="f_project" placeholder="VD: ABI, Anvy, MerapLion, Sabeco_PG, Chung...">
+        <div id="projectLockNote" style="font-size:11px;color:var(--muted);margin-top:4px;display:none;"></div>
+      </div>
+      <div class="form-field">
+        <label>TIÊU ĐỀ CASE *</label>
+        <input type="text" id="f_title" placeholder="VD: Lỗi không lưu được kiểm tồn trên SFA">
+      </div>
+      <div class="form-field full">
+        <label>MÔ TẢ VẤN ĐỀ</label>
+        <textarea id="f_symptom" placeholder="Triệu chứng, cách tái hiện lỗi..."></textarea>
+      </div>
+      <div class="form-field full">
+        <label>NGUYÊN NHÂN</label>
+        <textarea id="f_cause" placeholder="Nguyên nhân gốc rễ (nếu đã xác định được)..."></textarea>
+      </div>
+      <div class="form-field full">
+        <label>CÁCH XỬ LÝ</label>
+        <textarea id="f_solution" placeholder="Các bước xử lý / hướng dẫn khắc phục..."></textarea>
+      </div>
+      <div class="form-field full">
+        <label>TAGS (cách nhau bằng dấu phẩy)</label>
+        <input type="text" id="f_tags" placeholder="VD: SFA, tồn kho, checkout">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="saveBtn">💾 Lưu case</button>
+      <button class="btn btn-ghost" id="cancelEditBtn" style="display:none;">Huỷ sửa</button>
+    </div>
+    <div class="status" id="formStatus"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Danh sách case (<span id="caseCount">0</span>)</h2>
+    <div class="filter-row">
+      <input type="text" id="searchInput" placeholder="Tìm theo tiêu đề, mô tả, nguyên nhân, cách xử lý, tag...">
+      <select id="projectFilter"><option value="">Tất cả dự án</option></select>
+      <button class="btn btn-ghost btn-mini" id="reloadBtn">⟳ Tải lại</button>
+      <button class="btn btn-ghost btn-mini" id="exportBtn">⬇ Xuất Excel</button>
+    </div>
+    <div class="status" id="listStatus"></div>
+    <div id="caseList" style="margin-top:14px;"></div>
+  </div>
+</div>
+
+<script>
+let allCases = [];
+let editingId = null;
+
+const $ = id => document.getElementById(id);
+function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function setFormStatus(msg, cls){ $('formStatus').textContent = msg; $('formStatus').className = 'status ' + (cls||''); }
+function setListStatus(msg, cls){ $('listStatus').textContent = msg; $('listStatus').className = 'status ' + (cls||''); }
+
+// Dự án cố định theo trang (đến từ menu "Dự Án → ABI/Merap/AnVy/Sabeco → Case Hỗ Trợ", vd
+// /tickets/support-cases?project=ABI) — nếu có, khoá field Dự án trong form thêm/sửa và tự
+// lọc sẵn danh sách theo đúng dự án đó, tránh gõ tay bị lệch chính tả (VD "Abi" vs "ABI").
+const LOCKED_PROJECT = new URLSearchParams(window.location.search).get('project') || '';
+if (LOCKED_PROJECT){
+  document.getElementById('pageTitle').textContent = `Case Hỗ Trợ — ${LOCKED_PROJECT}`;
+  document.getElementById('pageSub').textContent = `Các case thường gặp khi hỗ trợ dự án ${LOCKED_PROJECT} và cách xử lý — xem lại nhanh khi gặp case tương tự, hoặc thêm case mới ngay tại đây.`;
+}
+
+async function fetchJson(url, options){
+  const res = await fetch(url, { credentials:'same-origin', ...(options||{}) });
+  const raw = await res.text();
+  let data;
+  try{ data = raw ? JSON.parse(raw) : {}; }
+  catch(e){ throw new Error(`Server trả về không phải JSON (HTTP ${res.status}). Nội dung: ${raw.slice(0,150)}`); }
+  if (!res.ok) throw new Error(data.error || `Lỗi HTTP ${res.status}`);
+  return data;
+}
+
+async function loadCases(){
+  setListStatus('Đang tải danh sách case…', 'busy');
+  try{
+    const data = await fetchJson('/api/support-cases');
+    allCases = Array.isArray(data.cases) ? data.cases : [];
+    const badge = $('backendBadge');
+    if (data.githubBacked){
+      badge.innerHTML = '<span class="backend-badge gh">● Đang lưu qua GitHub — mỗi lần thêm/sửa sẽ tạo 1 commit, Render tự deploy lại</span>';
+    } else {
+      badge.innerHTML = '<span class="backend-badge local">● Chưa cấu hình GitHub — đang lưu tạm trên server, CÓ THỂ MẤT khi redeploy. Cấu hình GITHUB_TOKEN/GITHUB_REPO để lưu vĩnh viễn.</span>';
+    }
+    renderProjectFilter();
+    if (LOCKED_PROJECT) $('projectFilter').value = LOCKED_PROJECT;
+    renderList();
+    setListStatus(`Đã tải ${allCases.length} case.`, 'ok');
+  }catch(err){
+    console.error(err);
+    setListStatus('Lỗi tải danh sách: ' + err.message, 'err');
+  }
+}
+
+function renderProjectFilter(){
+  const sel = $('projectFilter');
+  const current = sel.value;
+  const projects = Array.from(new Set(allCases.map(c => c.project).filter(Boolean))).sort();
+  sel.innerHTML = '<option value="">Tất cả dự án</option>' + projects.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+  sel.value = current;
+}
+
+function matchesFilter(c, q, project){
+  if (project && c.project !== project) return false;
+  if (!q) return true;
+  const hay = [c.title, c.symptom, c.cause, c.solution, c.tags, c.project].join(' ').toLowerCase();
+  return hay.includes(q.toLowerCase());
+}
+
+function renderList(){
+  const q = $('searchInput').value.trim();
+  const project = $('projectFilter').value;
+  const filtered = allCases.filter(c => matchesFilter(c, q, project))
+    .sort((a,b) => (b.updatedAt||'').localeCompare(a.updatedAt||''));
+  $('caseCount').textContent = allCases.length;
+
+  if (!filtered.length){
+    $('caseList').innerHTML = '<p style="color:var(--muted);font-size:13px;">Không có case nào khớp bộ lọc.</p>';
+    return;
+  }
+
+  $('caseList').innerHTML = filtered.map(c => {
+    const tags = (c.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+    return `
+    <div class="case-card" data-id="${escapeHtml(c.id)}">
+      <div class="case-card-head" data-toggle="${escapeHtml(c.id)}">
+        <div>
+          <div class="case-title">${escapeHtml(c.title)}</div>
+          <div class="case-meta">
+            ${c.project ? `<span class="case-chip">${escapeHtml(c.project)}</span>` : ''}
+            ${tags.map(t => `<span class="case-chip tag">#${escapeHtml(t)}</span>`).join('')}
+          </div>
+        </div>
+        <div class="case-toggle">▾</div>
+      </div>
+      <div class="case-body" id="body-${escapeHtml(c.id)}">
+        ${c.symptom ? `<div class="case-field"><label>Mô tả vấn đề</label><div class="val">${escapeHtml(c.symptom)}</div></div>` : ''}
+        ${c.cause ? `<div class="case-field"><label>Nguyên nhân</label><div class="val">${escapeHtml(c.cause)}</div></div>` : ''}
+        ${c.solution ? `<div class="case-field"><label>Cách xử lý</label><div class="val">${escapeHtml(c.solution)}</div></div>` : ''}
+        <div class="case-card-actions">
+          <button class="btn btn-ghost btn-mini" data-edit="${escapeHtml(c.id)}">✎ Sửa</button>
+          <button class="btn btn-danger btn-mini" data-delete="${escapeHtml(c.id)}">🗑 Xoá</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.querySelectorAll('[data-toggle]').forEach(el => {
+    el.addEventListener('click', () => {
+      const body = $('body-' + el.dataset.toggle);
+      body.classList.toggle('open');
+    });
+  });
+  document.querySelectorAll('[data-edit]').forEach(el => {
+    el.addEventListener('click', (e) => { e.stopPropagation(); startEdit(el.dataset.edit); });
+  });
+  document.querySelectorAll('[data-delete]').forEach(el => {
+    el.addEventListener('click', (e) => { e.stopPropagation(); deleteCase(el.dataset.delete); });
+  });
+}
+
+function startEdit(id){
+  const c = allCases.find(x => x.id === id);
+  if (!c) return;
+  editingId = id;
+  $('f_project').value = c.project || '';
+  $('f_title').value = c.title || '';
+  $('f_symptom').value = c.symptom || '';
+  $('f_cause').value = c.cause || '';
+  $('f_solution').value = c.solution || '';
+  $('f_tags').value = c.tags || '';
+  $('cancelEditBtn').style.display = 'inline-flex';
+  $('saveBtn').textContent = '💾 Lưu thay đổi';
+  window.scrollTo({ top:0, behavior:'smooth' });
+  setFormStatus(`Đang sửa case: ${c.title}`, '');
+}
+
+function clearForm(){
+  editingId = null;
+  ['f_project','f_title','f_symptom','f_cause','f_solution','f_tags'].forEach(id => $(id).value = '');
+  if (LOCKED_PROJECT) $('f_project').value = LOCKED_PROJECT;
+  $('cancelEditBtn').style.display = 'none';
+  $('saveBtn').textContent = '💾 Lưu case';
+}
+
+// Nếu vào trang qua menu 1 dự án cụ thể (?project=...) thì khoá sẵn field Dự án trong form,
+// tránh gõ tay bị lệch chính tả (VD "Abi" khác "ABI" sẽ không lọc chung được với nhau).
+if (LOCKED_PROJECT){
+  const pf = $('f_project');
+  pf.value = LOCKED_PROJECT;
+  pf.readOnly = true;
+  pf.style.background = '#F0F3F7';
+  const note = $('projectLockNote');
+  note.style.display = 'block';
+  note.textContent = `Đã khoá theo dự án "${LOCKED_PROJECT}" (vào từ menu Dự Án). Muốn case thuộc dự án khác, vào lại từ menu đúng dự án đó.`;
+}
+
+$('cancelEditBtn').addEventListener('click', () => { clearForm(); setFormStatus('Đã huỷ sửa.', ''); });
+
+$('saveBtn').addEventListener('click', async () => {
+  const title = $('f_title').value.trim();
+  if (!title){ setFormStatus('Cần nhập Tiêu đề case.', 'err'); return; }
+
+  const payload = {
+    id: editingId || undefined,
+    project: $('f_project').value.trim(),
+    title,
+    symptom: $('f_symptom').value.trim(),
+    cause: $('f_cause').value.trim(),
+    solution: $('f_solution').value.trim(),
+    tags: $('f_tags').value.trim(),
+  };
+
+  $('saveBtn').disabled = true;
+  setFormStatus(payload.id ? 'Đang lưu thay đổi…' : 'Đang thêm case mới…', 'busy');
+  try{
+    const data = await fetchJson('/api/support-cases', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const commitNote = data.commitUrl ? ` Đã tạo commit trên GitHub: ${data.commitUrl}` : ' (lưu tạm trên server — chưa cấu hình GitHub nên chưa được commit).';
+    setFormStatus((payload.id ? 'Đã lưu thay đổi.' : 'Đã thêm case mới.') + commitNote, 'ok');
+    clearForm();
+    await loadCases();
+  }catch(err){
+    console.error(err);
+    setFormStatus('Lỗi: ' + err.message, 'err');
+  }finally{
+    $('saveBtn').disabled = false;
+  }
+});
+
+async function deleteCase(id){
+  const c = allCases.find(x => x.id === id);
+  if (!c) return;
+  if (!confirm(`Xoá case "${c.title}"? Không thể hoàn tác.`)) return;
+  setListStatus('Đang xoá…', 'busy');
+  try{
+    const data = await fetchJson('/api/support-cases/' + encodeURIComponent(id), { method:'DELETE' });
+    const commitNote = data.commitUrl ? ` Đã tạo commit trên GitHub.` : '';
+    setListStatus('Đã xoá case.' + commitNote, 'ok');
+    await loadCases();
+  }catch(err){
+    console.error(err);
+    setListStatus('Lỗi khi xoá: ' + err.message, 'err');
+  }
+}
+
+$('searchInput').addEventListener('input', renderList);
+$('projectFilter').addEventListener('change', renderList);
+$('reloadBtn').addEventListener('click', loadCases);
+
+$('exportBtn').addEventListener('click', () => {
+  if (!allCases.length){ setListStatus('Chưa có case nào để xuất.', 'err'); return; }
+  const aoa = [['Dự án','Tiêu đề','Mô tả vấn đề','Nguyên nhân','Cách xử lý','Tags','Cập nhật lần cuối']];
+  allCases.forEach(c => aoa.push([c.project, c.title, c.symptom, c.cause, c.solution, c.tags, c.updatedAt]));
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:14},{wch:30},{wch:34},{wch:28},{wch:34},{wch:20},{wch:20}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Case Ho Tro');
+  XLSX.writeFile(wb, 'Thu_Vien_Case_Ho_Tro.xlsx');
+});
+
+loadCases();
+</script>
+</body>
+</html>

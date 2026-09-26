@@ -7,6 +7,7 @@ const session = require('express-session');
 const multer = require('multer');
 const erp = require('./erpClient');
 const jira = require('./jiraClient');
+const supportCases = require('./supportCasesStore');
 const { hqEncrypt, hqDecrypt } = require('./hqPasswordCrypto');
 
 const app = express();
@@ -98,6 +99,10 @@ app.get('/tickets/sla-resolution', requirePageAuth, (req, res) => {
 
 app.get('/tickets/sla-jira-abi', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'tickets-sla-jira-abi.html'));
+});
+
+app.get('/tickets/support-cases', requirePageAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'protected', 'support-cases.html'));
 });
 
 app.get('/hotfix/gop-sql', requirePageAuth, (req, res) => {
@@ -261,6 +266,39 @@ app.post('/api/jira/sla-bulk', requireAuth, async (req, res) => {
   } catch (e) {
     console.error('[jira/sla-bulk] lỗi:', e.message);
     res.status(502).json({ error: e.message });
+  }
+});
+
+/* ---------- API: Case Hỗ Trợ (thư viện case thường gặp + cách xử lý) ----------
+   Ghi qua GitHub Contents API nếu đã cấu hình GITHUB_TOKEN/GITHUB_REPO (tạo commit thật,
+   Render auto-deploy sẽ tự nhận và deploy lại) — fallback lưu file local nếu chưa cấu hình. */
+app.get('/api/support-cases', requireAuth, async (req, res) => {
+  try {
+    const cases = await supportCases.readAll();
+    res.json({ cases, githubBacked: supportCases.isGithubBacked() });
+  } catch (e) {
+    console.error('[support-cases:get] lỗi:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+app.post('/api/support-cases', requireAuth, async (req, res) => {
+  try {
+    const result = await supportCases.upsert(req.body || {});
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    console.error('[support-cases:post] lỗi:', e.message);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.delete('/api/support-cases/:id', requireAuth, async (req, res) => {
+  try {
+    const result = await supportCases.remove(req.params.id);
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    console.error('[support-cases:delete] lỗi:', e.message);
+    res.status(400).json({ error: e.message });
   }
 });
 

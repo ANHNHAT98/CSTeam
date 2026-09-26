@@ -257,11 +257,17 @@
         <div class="side-branch-children">
           <a class="side-leaf sub" href="/abi/dashboard-ticket" data-path="/abi/dashboard-ticket">Dashboard Ticket</a>
           <a class="side-leaf sub" href="/tickets/sla-jira-abi" data-path="/tickets/sla-jira-abi">SLA Jira</a>
+          <a class="side-leaf sub" href="/tickets/support-cases?project=ABI" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
 
-      <div class="side-branch empty">
-        <div class="side-branch-head static"><span class="chevron">▾</span><span>Merap</span></div>
+      <div class="side-branch open">
+        <button class="side-branch-head" type="button">
+          <span class="chevron">▾</span><span>Merap</span>
+        </button>
+        <div class="side-branch-children">
+          <a class="side-leaf sub" href="/tickets/support-cases?project=Merap" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
+        </div>
       </div>
       <div class="side-branch open">
         <button class="side-branch-head" type="button">
@@ -270,10 +276,16 @@
         <div class="side-branch-children">
           <a class="side-leaf sub" href="/anvy/ticket-slide" data-path="/anvy/ticket-slide">Ticket Slide</a>
           <a class="side-leaf sub" href="/anvy/uat-runbook" data-path="/anvy/uat-runbook">Runbook UAT (PROD→UAT)</a>
+          <a class="side-leaf sub" href="/tickets/support-cases?project=Anvy" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch empty">
-        <div class="side-branch-head static"><span class="chevron">▾</span><span>Sabeco</span></div>
+      <div class="side-branch open">
+        <button class="side-branch-head" type="button">
+          <span class="chevron">▾</span><span>Sabeco</span>
+        </button>
+        <div class="side-branch-children">
+          <a class="side-leaf sub" href="/tickets/support-cases?project=Sabeco" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
+        </div>
       </div>
     </div>
 
@@ -514,7 +526,9 @@ document.querySelectorAll('.side-branch-head:not(.static)').forEach(btn=>{
   });
 });
 document.querySelectorAll('.side-leaf[data-path]').forEach(a=>{
-  if (a.dataset.path === window.location.pathname) a.classList.add('active');
+  const hrefUrl = new URL(a.getAttribute('href'), window.location.origin);
+  const sameQuery = hrefUrl.search === window.location.search;
+  if (a.dataset.path === window.location.pathname && (hrefUrl.search === '' || sameQuery)) a.classList.add('active');
 });
 
 /* ---------- Dashboard Tổng Quan: gọi lại API /api/erp/tickets đã có ---------- */
