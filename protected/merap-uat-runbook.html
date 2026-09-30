@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MERAP — Runbook cấu hình PROD → UAT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F7F8FA; --panel:#FFFFFF; --panel-2:#F1F4F7; --border:#DFE5EB;
+    --text:#1A2530; --text-dim:#5C6B7A; --text-faint:#94A2AF;
+    --accent:#0F766E; --accent-dim:#99D8CF;
+    --amber:#B45309; --amber-dim:#FDE68A;
+    --red:#DC2626; --red-dim:#FCA5A5;
+    --green:#16A34A;
+    --radius:6px;
+    --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'IBM Plex Sans', -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  body{min-height:100vh;}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px;}
+
+  header.top{border-bottom:1px solid var(--border);padding-bottom:20px;margin-bottom:24px;}
+  header.top .eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.02em;margin-bottom:6px;}
+  header.top h1{font-size:22px;font-weight:600;margin:0 0 6px;letter-spacing:-.01em;}
+  header.top p{margin:0;color:var(--text-dim);font-size:14px;max-width:640px;line-height:1.55;}
+
+  .env-banner{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--border);
+    border-left:3px solid var(--amber);border-radius:var(--radius);padding:12px 14px;margin-top:16px;font-size:13px;color:var(--text-dim);}
+  .env-banner strong{color:var(--amber);font-weight:600;}
+
+  .params{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:18px 20px;margin-bottom:26px;}
+  .params summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--text);list-style:none;display:flex;align-items:center;gap:8px;}
+  .params summary::-webkit-details-marker{display:none;}
+  .params summary::before{content:"▸";color:var(--accent);font-size:12px;transition:transform .15s;}
+  .params[open] summary::before{transform:rotate(90deg);}
+  .params-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px 18px;margin-top:18px;}
+  .field label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:5px;font-family:var(--mono);}
+  .field input{width:100%;background:var(--panel-2);border:1px solid var(--border);border-radius:5px;color:var(--text);
+    padding:8px 10px;font-family:var(--mono);font-size:13px;}
+  .field input:focus{outline:none;border-color:var(--accent);}
+  .field .hint{font-size:11px;color:var(--text-faint);margin-top:4px;}
+
+  .layout{display:grid;grid-template-columns:270px 1fr;gap:24px;align-items:start;}
+  @media (max-width:820px){.layout{grid-template-columns:1fr;}}
+
+  .timeline{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px;position:sticky;top:20px;}
+  .tl-item{display:flex;gap:10px;align-items:flex-start;padding:10px 10px;border-radius:6px;cursor:pointer;border:1px solid transparent;}
+  .tl-item:hover{background:var(--panel-2);}
+  .tl-item.active{background:var(--panel-2);border-color:var(--accent-dim);}
+  .tl-item.disabled{cursor:not-allowed;opacity:.4;}
+  .tl-num{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:11px;color:var(--text-dim);flex-shrink:0;margin-top:1px;}
+  .tl-item.done .tl-num{background:var(--accent);border-color:var(--accent);color:#FFFFFF;}
+  .tl-item.active .tl-num{border-color:var(--accent);color:var(--accent);}
+  .tl-item.skipped .tl-num{border-color:var(--text-faint);color:var(--text-faint);}
+  .tl-label{font-size:13px;line-height:1.4;color:var(--text);}
+  .tl-item.disabled .tl-label{color:var(--text-faint);}
+  .tl-status{font-size:10.5px;font-family:var(--mono);color:var(--text-faint);margin-top:2px;}
+  .tl-item.done .tl-status{color:var(--accent);}
+  .tl-item.skipped .tl-status{color:var(--text-faint);}
+
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:24px 26px 26px;min-height:420px;}
+  .panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:6px;}
+  .panel-head h2{font-size:17px;margin:0;font-weight:600;}
+  .step-tag{font-family:var(--mono);font-size:11px;color:var(--text-faint);}
+  .panel-desc{color:var(--text-dim);font-size:13.5px;line-height:1.6;margin:8px 0 20px;max-width:640px;}
+  .panel-desc code{background:var(--panel-2);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:12.5px;color:var(--accent);}
+
+  .warn-box{display:flex;gap:8px;background:rgba(240,180,41,.08);border:1px solid var(--amber-dim);border-radius:6px;
+    padding:10px 12px;font-size:12.5px;color:var(--amber);margin-bottom:18px;line-height:1.5;}
+
+  .skip-row{display:flex;align-items:center;gap:8px;margin-bottom:18px;font-size:13px;color:var(--text-dim);}
+  .skip-row input{accent-color:var(--accent);width:15px;height:15px;}
+
+  .sql-block{margin-bottom:18px;}
+  .sql-block .sql-label{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+  .sql-block .sql-label span{font-family:var(--mono);font-size:11.5px;color:var(--text-dim);text-transform:none;}
+  .copy-btn{font-family:var(--mono);font-size:11.5px;background:var(--panel-2);border:1px solid var(--border);color:var(--text-dim);
+    padding:5px 10px;border-radius:5px;cursor:pointer;transition:border-color .12s,color .12s;}
+  .copy-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .copy-btn.copied{border-color:var(--accent);color:var(--accent);}
+  pre.sql{background:#F1F5F9;border:1px solid var(--border);border-radius:6px;padding:14px 16px;overflow-x:auto;
+    font-family:var(--mono);font-size:12.5px;line-height:1.65;color:#1E293B;margin:0;white-space:pre;}
+  pre.sql .kw{color:#1D4ED8;font-weight:600;}
+  pre.sql .cm{color:#94A3B8;font-style:italic;}
+  pre.sql .str{color:#047857;}
+
+  .action-row{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:22px;padding-top:20px;border-top:1px solid var(--border);}
+  .confirm{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--text-dim);}
+  .confirm input{accent-color:var(--accent);width:16px;height:16px;}
+  .btn-next{font-family:var(--sans);font-weight:600;font-size:13.5px;background:var(--accent);color:#FFFFFF;border:none;
+    padding:10px 20px;border-radius:6px;cursor:pointer;}
+  .btn-next:disabled{background:var(--panel-2);color:var(--text-faint);cursor:not-allowed;}
+  .btn-secondary{font-family:var(--sans);font-size:12.5px;background:transparent;color:var(--text-dim);border:1px solid var(--border);
+    padding:9px 14px;border-radius:6px;cursor:pointer;}
+  .btn-secondary:hover{border-color:var(--text-dim);color:var(--text);}
+
+  .done-screen{text-align:center;padding:60px 20px;}
+  .done-screen .check{font-size:38px;color:var(--accent);margin-bottom:14px;}
+  .done-screen h2{font-size:19px;margin:0 0 8px;}
+  .done-screen p{color:var(--text-dim);font-size:13.5px;max-width:420px;margin:0 auto;line-height:1.6;}
+
+  footer.notes{margin-top:30px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:18px 20px;}
+  footer.notes h3{font-size:13px;margin:0 0 10px;color:var(--text-dim);font-family:var(--mono);font-weight:600;}
+  footer.notes ul{margin:0;padding-left:18px;color:var(--text-faint);font-size:12.5px;line-height:1.8;}
+  footer.notes li strong{color:var(--text-dim);}
+
+  .reset-link{font-size:11.5px;color:var(--text-faint);text-decoration:underline;cursor:pointer;background:none;border:none;padding:0;font-family:var(--sans);}
+  .reset-link:hover{color:var(--red);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="eyebrow">RUNBOOK — DB MIGRATION</div>
+    <h1>MERAP — Cấu hình DB sau khi restore PROD → UAT</h1>
+    <p>Chạy từng bước theo thứ tự. Mỗi bước hiện SQL để copy và chạy tay trong SSMS — xem trước bằng SELECT, rồi mới chạy UPDATE/INSERT. Đánh dấu "đã chạy xong" để mở khoá bước tiếp theo.</p>
+    <div class="env-banner">
+      <span>⚠️</span>
+      <span><strong>Trước khi bắt đầu:</strong> file backup PROD đã được restore vào đúng DB UAT (ngoài phạm vi tool này). Không chạy các lệnh bên dưới nhắm vào DB PROD.</span>
+    </div>
+  </header>
+
+  <details class="params" id="paramsBox">
+    <summary>Tham số cấu hình cho UAT — sửa trước khi copy SQL</summary>
+    <div class="params-grid" id="paramsGrid"></div>
+  </details>
+
+  <div class="layout">
+    <nav class="timeline" id="timeline"></nav>
+    <main class="panel" id="panel"></main>
+  </div>
+
+  <footer class="notes">
+    <button class="reset-link" id="resetBtn">Xoá tiến trình đã lưu, làm lại từ đầu</button>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+
+/* ---------------------------------------------------------------------
+   1) THAM SỐ — field definitions
+--------------------------------------------------------------------- */
+var PARAM_DEFS = [
+  {key:"envSubstring", label:"Chuỗi nhận diện DB UAT", def:"UAT", hint:"Tên DB hiện tại phải chứa chuỗi này"},
+  {key:"anonEmail", label:"Email dùng để ẩn danh (Users/AR_Customer/...)", def:"phuctm@hqsoft.com.vn"},
+  {key:"companyDbName", label:"SYS_Company.DatabaseName (UAT)", def:"DemoPharma"},
+  {key:"invoiceSerial", label:"SA_InvoiceNotation — Serial hoá đơn", def:"1C26TTE"},
+  {key:"apiLinkMerap", label:"APILink Promotion/CircularEffect (UAT)", def:"https://hdtest.meraplion.com/api/"},
+  {key:"imagePublicUrl", label:"SYS_Configurations.ImagePublic", def:"https://dms.meraplion.com/INTERNAL_IMG/"},
+  {key:"publicIN20500Url", label:"SYS_Configurations.PublicIN20500", def:"https://dms.meraplion.com/INTERNAL_IMG/IN20500/"},
+  {key:"viewImagesAR20500Url", label:"SYS_Configurations.ViewImagesAR20500", def:"https://dms.meraplion.com/INTERNAL_IMG/"},
+  {key:"publicOM20500Url", label:"SYS_Configurations.PublicOM20500", def:"https://dms.meraplion.com/INTERNAL_IMG/OM20500"},
+  {key:"mediaServerPath", label:"SYS_Configurations.MediaServerPath", def:"E:\\Source\\MERAPLION_INTERNAL\\Service\\IMG"},
+  {key:"ar20400WaitingPicPath", label:"SYS_Configurations.AR20400WaitingPic", def:"D:\\Picture\\MERAPLION_INTERNAL\\WaitingPictures"},
+  {key:"uploadOM11600Path", label:"SYS_Configurations.uploadOM11600", def:"D:\\Picture\\MERAPLION_INTERNAL\\OM11600\\"},
+  {key:"uploadSA03001Path", label:"SYS_Configurations.UploadSA03001", def:"D:\\Picture\\MERAPLION_INTERNAL\\SA03001\\"},
+  {key:"webApiPromoDms", label:"PPC_Setting WEB_API_PROMO_DMS", def:"https://uat.esales.vn/DemoPharma_Promotion/"},
+  {key:"homeAvatarUserImageUrl", label:"PPC_Setting HOME_AVATAR_USER_IMAGE_URL", def:"https://dms.meraplion.com/INTERNAL_IMG/SA03001/"},
+  {key:"programImageUrl", label:"PPC_Setting PROGRAM_IMAGE_URL", def:"https://dms.meraplion.com/INTERNAL_IMG/SI24400/"},
+  {key:"keRequestImageUrl", label:"PPC_Setting KE_REQUEST_IMAGE_URL", def:"https://dms.meraplion.com/INTERNAL_IMG/"},
+  {key:"newCustomerImageSampleUrl", label:"PPC_Setting NEWCUSTOMER_IMAGE_SAMPLE_URL", def:"https://dms.meraplion.com/INTERNAL_IMG/AR20400/"},
+  {key:"customerImageUrl", label:"PPC_Setting CUSTOMER_IMAGE_URL", def:"https://dms.meraplion.com/INTERNAL_IMG/"},
+  {key:"registerDisplayLevelImageUrl", label:"PPC_Setting REGISTERDISPLAY_LEVEL_IMAGE_URL", def:"https://dms.meraplion.com/INTERNAL_IMG/OM22001/"}
+];
+
+/* ---------------------------------------------------------------------
+   2) STEPS — mỗi step: title, desc, warn(optional), defaultSkip,
+      preview(params)->sql, action(params)->sql (null nếu không có)
+--------------------------------------------------------------------- */
+function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+var STEPS = [
+  {
+    id:"env", title:"Kiểm tra môi trường",
+    desc:'Chạy trước tiên trên connection đang mở trong SSMS, để chắc chắn bạn đang đứng đúng trên DB UAT — tránh chạy nhầm các bước phía sau lên PROD.',
+    noAction:true,
+    preview:function(p){ return "SELECT DB_NAME() AS CurrentDatabase;\n-- Kiểm tra: tên DB phải chứa \""+p.envSubstring+"\". Nếu không đúng, DỪNG LẠI ngay."; }
+  },
+  {
+    id:"anonymize", title:"Ẩn danh Email (Users / AR_Customer / AR_CustomerInvoice / AR_Customer_InvoiceCustomer)",
+    desc:"Xoá email thật của user & khách hàng trước khi bàn giao DB cho môi trường test. Mặc định BỎ QUA — chỉ bật nếu chắc chắn UAT cần ẩn danh.",
+    defaultSkip:true,
+    warn:"Đây là thao tác không thể hoàn tác dễ dàng (ghi đè dữ liệu gốc). Cả 4 câu UPDATE này đều KHÔNG có WHERE — sẽ áp dụng cho TẤT CẢ dòng. Chỉ bật khi chắc chắn.",
+    preview:function(){ return "SELECT * FROM Users;\nSELECT EMailAddr, * FROM AR_Customer;\nSELECT * FROM AR_CustomerInvoice;\nSELECT * FROM AR_Customer_InvoiceCustomer;"; },
+    action:function(p){ return "UPDATE Users SET Email = '"+p.anonEmail+"';\nUPDATE AR_Customer SET EMailAddr = '"+p.anonEmail+"';\nUPDATE AR_CustomerInvoice SET Email = '"+p.anonEmail+"', EmailInvoice = '"+p.anonEmail+"';\nUPDATE AR_Customer_InvoiceCustomer SET ICEmail = '"+p.anonEmail+"', ICEmailInvoice = '"+p.anonEmail+"';"; }
+  },
+  {
+    id:"companyInfo", title:"SYS_Company — DatabaseName & Email",
+    desc:"Đổi tên DB hiển thị và email liên hệ của công ty sang giá trị dùng cho UAT.",
+    defaultSkip:true,
+    warn:"Câu UPDATE này KHÔNG có điều kiện WHERE — sẽ áp dụng cho TẤT CẢ dòng trong SYS_Company. Xem lại kết quả SELECT preview, nếu có nhiều công ty thì cân nhắc thêm WHERE trước khi chạy Action.",
+    preview:function(){ return "SELECT * FROM SYS_Company;"; },
+    action:function(p){ return "UPDATE SYS_Company SET DatabaseName = '"+p.companyDbName+"', Email = '"+p.anonEmail+"';"; }
+  },
+  {
+    id:"invoiceNotation", title:"SA_InvoiceNotation — Invoice & APILink",
+    desc:"Trỏ số hoá đơn (Serial) và API tính khuyến mãi/hoá đơn sang môi trường UAT.",
+    warn:"Câu UPDATE này KHÔNG có điều kiện WHERE — sẽ áp dụng cho TẤT CẢ dòng trong SA_InvoiceNotation.",
+    preview:function(){ return "SELECT * FROM SA_InvoiceNotation;"; },
+    action:function(p){ return "DECLARE @invoice varchar(20) = '"+p.invoiceSerial+"';\nDECLARE @APILink varchar(200) = '"+p.apiLinkMerap+"';\nUPDATE SA_InvoiceNotation\nSET Invoice = @invoice,\n    APILink = @APILink;"; }
+  },
+  {
+    id:"invoiceNotationDetail", title:"SA_InvoiceNotationDetail — Insert dòng detail mới (nâng cao)",
+    desc:"Copy 1 dòng detail mẫu (từ CpnyID='CTO016') sang cho Serial hoá đơn mới, nếu UAT chưa có dòng detail tương ứng. Kiểm tra kỹ CpnyID nguồn trước khi chạy — mặc định BỎ QUA.",
+    defaultSkip:true,
+    warn:"Script này insert dựa trên dữ liệu mẫu có sẵn của CpnyID='CTO016' — chỉ dùng đúng khi UAT có cấu trúc công ty tương tự PROD, kiểm tra lại trước khi chạy Action.",
+    preview:function(p){ return "SELECT * FROM SA_InvoiceNotationDetail WHERE Serial = '"+p.invoiceSerial+"';"; },
+    action:function(p){ return "DECLARE @Invoice varchar(20) = '"+p.invoiceSerial+"';\nDECLARE @Now datetime = GETDATE();\n\nBEGIN TRY\n    BEGIN TRAN;\n\n    INSERT INTO SA_InvoiceNotationDetail\n        (CpnyID, InvcNumber, Idx, Pattern, Serial, FromNum, ToNum, StartDate, UsedNumber, AttFiles,\n         LUpd_DateTime, LUpd_Prog, LUpd_User, Crtd_DateTime, Crtd_Prog, Crtd_User,\n         UpdateDateOrd, TotalReleaseInvc)\n    SELECT n.CpnyID, t.InvcNumber,\n           ISNULL((SELECT MAX(d.Idx) FROM SA_InvoiceNotationDetail d WHERE d.CpnyID = n.CpnyID), 0) + 1,\n           t.Pattern, t.Serial, t.FromNum, t.ToNum, t.StartDate, t.UsedNumber, t.AttFiles,\n           @Now, 'SA20500', 'admin', @Now, 'SA20500', 'admin',\n           @Now, t.TotalReleaseInvc\n    FROM SA_InvoiceNotation n\n    CROSS JOIN (SELECT * FROM SA_InvoiceNotationDetail\n                WHERE CpnyID = 'CTO016' AND Serial = @Invoice) t\n    WHERE n.Invoice = @Invoice\n      AND NOT EXISTS (SELECT 1 FROM SA_InvoiceNotationDetail d\n                      WHERE d.CpnyID = n.CpnyID AND d.Serial = @Invoice);\n\n    PRINT CONCAT(N'Đã insert ', @@ROWCOUNT, N' dòng');\n\n    COMMIT;\nEND TRY\nBEGIN CATCH\n    IF @@TRANCOUNT > 0 ROLLBACK;\n    THROW;\nEND CATCH;"; }
+  },
+  {
+    id:"circularEffect", title:"OM_CircularEffect + OM_CircularEffect_Report — APILink",
+    desc:"Trỏ APILink dùng để tính hiệu lực circular/thông tư sang UAT. Mặc định BỎ QUA — chỉ bật khi UAT có dùng tính năng này.",
+    defaultSkip:true,
+    preview:function(){ return "SELECT * FROM OM_CircularEffect;\nSELECT * FROM OM_CircularEffect_Report;"; },
+    action:function(p){ return "DECLARE @APILink varchar(200) = '"+p.apiLinkMerap+"';\nUPDATE OM_CircularEffect SET APILink = @APILink, APILinkTT78 = @APILink;\nUPDATE OM_CircularEffect_Report SET APILink = @APILink;"; }
+  },
+  {
+    id:"sysConfigImages", title:"SYS_Configurations — URL ảnh public",
+    desc:"Trỏ các Code URL ảnh public sang domain UAT. Mặc định BỎ QUA — bật khi cần đổi domain ảnh.",
+    defaultSkip:true,
+    preview:function(){ return "SELECT * FROM SYS_Configurations WHERE Code = 'ImagePublic';\nSELECT * FROM SYS_Configurations WHERE Code = 'PublicIN20500';\nSELECT * FROM SYS_Configurations WHERE Code = 'ViewImagesAR20500';\nSELECT * FROM SYS_Configurations WHERE Code = 'PublicOM20500';"; },
+    action:function(p){ return "UPDATE SYS_Configurations SET TextVal = '"+p.imagePublicUrl+"' WHERE Code = 'ImagePublic';\nUPDATE SYS_Configurations SET TextVal = '"+p.publicIN20500Url+"' WHERE Code = 'PublicIN20500';\nUPDATE SYS_Configurations SET TextVal = '"+p.viewImagesAR20500Url+"' WHERE Code = 'ViewImagesAR20500';\nUPDATE SYS_Configurations SET TextVal = '"+p.publicOM20500Url+"' WHERE Code = 'PublicOM20500';"; }
+  },
+  {
+    id:"sysConfigPaths", title:"SYS_Configurations — đường dẫn upload server",
+    desc:"Trỏ các Code đường dẫn lưu file upload trên server sang thư mục của UAT. Mặc định BỎ QUA — bật khi cần đổi đường dẫn lưu file.",
+    defaultSkip:true,
+    preview:function(){ return "SELECT * FROM SYS_Configurations WHERE Code = 'MediaServerPath';\nSELECT * FROM SYS_Configurations WHERE Code = 'AR20400WaitingPic';\nSELECT * FROM SYS_Configurations WHERE Code = 'uploadOM11600';\nSELECT * FROM SYS_Configurations WHERE Code = 'UploadSA03001';"; },
+    action:function(p){ return "UPDATE SYS_Configurations SET TextVal = '"+p.mediaServerPath+"' WHERE Code = 'MediaServerPath';\nUPDATE SYS_Configurations SET TextVal = '"+p.ar20400WaitingPicPath+"' WHERE Code = 'AR20400WaitingPic';\nUPDATE SYS_Configurations SET TextVal = '"+p.uploadOM11600Path+"' WHERE Code = 'uploadOM11600';\nUPDATE SYS_Configurations SET TextVal = '"+p.uploadSA03001Path+"' WHERE Code = 'UploadSA03001';"; }
+  },
+  {
+    id:"redirectMainRename", title:"SYS_Configurations — Đổi tên code RedirectMain",
+    desc:"Đổi Code 'RedirectMain' thành 'RedirectMainBK' để vô hiệu hoá redirect (tránh UAT redirect ngược về domain PROD).",
+    preview:function(){ return "SELECT Code FROM SYS_Configurations WHERE Code IN ('RedirectMain','RedirectMainBK');"; },
+    action:function(){ return "UPDATE SYS_Configurations SET code = 'RedirectMainBK' WHERE CODE = 'RedirectMain';"; }
+  },
+  {
+    id:"ppcPromoApi", title:"PPC_Setting — Promotion API (WEB_API_PROMO_DMS)",
+    desc:"Trỏ API tính khuyến mãi DMS sang UAT. Mặc định BỎ QUA.",
+    defaultSkip:true,
+    preview:function(){ return "SELECT * FROM PPC_Setting WHERE [Key] = 'WEB_API_PROMO_DMS';"; },
+    action:function(p){ return "UPDATE PPC_Setting SET Value = '"+p.webApiPromoDms+"' WHERE [Key] = 'WEB_API_PROMO_DMS';"; }
+  },
+  {
+    id:"ppcImageUrls", title:"PPC_Setting — URL ảnh (avatar / chương trình / KE / khách hàng mới / trưng bày)",
+    desc:"Cập nhật 6 Key URL ảnh dùng trong app sang domain UAT. Mặc định BỎ QUA — bật khi cần đổi domain ảnh trong app.",
+    defaultSkip:true,
+    preview:function(){ return "SELECT * FROM PPC_Setting WHERE [Key] = 'HOME_AVATAR_USER_IMAGE_URL';\nSELECT * FROM PPC_Setting WHERE [Key] = 'PROGRAM_IMAGE_URL';\nSELECT * FROM PPC_Setting WHERE [Key] = 'KE_REQUEST_IMAGE_URL';\nSELECT * FROM PPC_Setting WHERE [Key] = 'NEWCUSTOMER_IMAGE_SAMPLE_URL';\nSELECT * FROM PPC_Setting WHERE [Key] = 'CUSTOMER_IMAGE_URL';\nSELECT * FROM PPC_Setting WHERE [Key] = 'REGISTERDISPLAY_LEVEL_IMAGE_URL';"; },
+    action:function(p){ return "UPDATE PPC_Setting SET Value = '"+p.homeAvatarUserImageUrl+"' WHERE [Key] = 'HOME_AVATAR_USER_IMAGE_URL';\nUPDATE PPC_Setting SET Value = '"+p.programImageUrl+"' WHERE [Key] = 'PROGRAM_IMAGE_URL';\nUPDATE PPC_Setting SET Value = '"+p.keRequestImageUrl+"' WHERE [Key] = 'KE_REQUEST_IMAGE_URL';\nUPDATE PPC_Setting SET Value = '"+p.newCustomerImageSampleUrl+"' WHERE [Key] = 'NEWCUSTOMER_IMAGE_SAMPLE_URL';\nUPDATE PPC_Setting SET Value = '"+p.customerImageUrl+"' WHERE [Key] = 'CUSTOMER_IMAGE_URL';\nUPDATE PPC_Setting SET Value = '"+p.registerDisplayLevelImageUrl+"' WHERE [Key] = 'REGISTERDISPLAY_LEVEL_IMAGE_URL';"; }
+  }
+];
+
+/* ---------------------------------------------------------------------
+   3) STATE + PERSISTENCE
+--------------------------------------------------------------------- */
+var STORAGE_KEY_PARAMS = "merap-uat-runbook:params";
+var STORAGE_KEY_PROGRESS = "merap-uat-runbook:progress";
+
+var params = {};
+PARAM_DEFS.forEach(function(f){ params[f.key] = f.def; });
+
+var progress = { current:0, status:{} }; // status[stepId] = 'done' | 'skipped'
+STEPS.forEach(function(s){ if(s.defaultSkip) progress.status[s.id] = null; });
+
+var hasStorage = (typeof window!=="undefined" && window.storage);
+
+async function loadState(){
+  if(!hasStorage) return;
+  try{
+    var r1 = await window.storage.get("params-merap-uat");
+    if(r1 && r1.value) params = Object.assign(params, JSON.parse(r1.value));
+  }catch(e){}
+  try{
+    var r2 = await window.storage.get("progress-merap-uat");
+    if(r2 && r2.value) progress = Object.assign(progress, JSON.parse(r2.value));
+  }catch(e){}
+}
+async function saveParams(){
+  if(!hasStorage) return;
+  try{ await window.storage.set("params-merap-uat", JSON.stringify(params)); }catch(e){}
+}
+async function saveProgress(){
+  if(!hasStorage) return;
+  try{ await window.storage.set("progress-merap-uat", JSON.stringify(progress)); }catch(e){}
+}
+async function clearAll(){
+  if(hasStorage){
+    try{ await window.storage.delete("params-merap-uat"); }catch(e){}
+    try{ await window.storage.delete("progress-merap-uat"); }catch(e){}
+  }
+  PARAM_DEFS.forEach(function(f){ params[f.key] = f.def; });
+  progress = { current:0, status:{} };
+  STEPS.forEach(function(s){ if(s.defaultSkip) progress.status[s.id] = null; });
+  renderAll();
+}
+
+/* ---------------------------------------------------------------------
+   4) RENDER — params form
+--------------------------------------------------------------------- */
+function renderParamsForm(){
+  var grid = document.getElementById("paramsGrid");
+  grid.innerHTML = PARAM_DEFS.map(function(f){
+    return "<div class='field'>"+
+      "<label for='p_"+f.key+"'>"+esc(f.label)+"</label>"+
+      "<input type='text' id='p_"+f.key+"' value=\""+esc(params[f.key])+"\" data-key='"+f.key+"'>"+
+      (f.hint? "<div class='hint'>"+esc(f.hint)+"</div>" : "")+
+      "</div>";
+  }).join("");
+  grid.querySelectorAll("input").forEach(function(inp){
+    inp.addEventListener("input", function(){
+      params[inp.dataset.key] = inp.value;
+      saveParams();
+      renderPanel(); // SQL cần cập nhật theo tham số mới ngay
+    });
+  });
+}
+
+/* ---------------------------------------------------------------------
+   5) RENDER — timeline (sidebar)
+--------------------------------------------------------------------- */
+function stepUnlocked(idx){
+  if(idx===0) return true;
+  var prev = STEPS[idx-1];
+  var st = progress.status[prev.id];
+  return st==="done" || st==="skipped";
+}
+function renderTimeline(){
+  var el = document.getElementById("timeline");
+  el.innerHTML = STEPS.map(function(s,i){
+    var st = progress.status[s.id];
+    var unlocked = stepUnlocked(i);
+    var active = (i===progress.current);
+    var cls = ["tl-item"];
+    if(active) cls.push("active");
+    if(st==="done") cls.push("done");
+    if(st==="skipped") cls.push("skipped");
+    if(!unlocked) cls.push("disabled");
+    var statusText = st==="done" ? "Đã chạy xong" : st==="skipped" ? "Đã bỏ qua" : (unlocked ? "Sẵn sàng" : "Đang khoá");
+    return "<div class='"+cls.join(" ")+"' data-idx='"+i+"'>"+
+      "<div class='tl-num'>"+(st==="done"?"✓":(i+1))+"</div>"+
+      "<div><div class='tl-label'>"+esc(s.title)+"</div><div class='tl-status'>"+statusText+"</div></div>"+
+      "</div>";
+  }).join("");
+  el.querySelectorAll(".tl-item").forEach(function(node){
+    node.addEventListener("click", function(){
+      var idx = +node.dataset.idx;
+      if(!stepUnlocked(idx)) return;
+      progress.current = idx;
+      saveProgress();
+      renderAll();
+    });
+  });
+}
+
+/* ---------------------------------------------------------------------
+   6) RENDER — main panel (current step)
+--------------------------------------------------------------------- */
+function highlightSql(sql){
+  var esc1 = esc(sql);
+  esc1 = esc1.replace(/(--.*$)/gm, "<span class='cm'>$1</span>");
+  esc1 = esc1.replace(/\b(SELECT|FROM|WHERE|UPDATE|SET|INSERT INTO|VALUES|IF NOT EXISTS|IN|TOP|AS|NULL)\b/g, "<span class='kw'>$1</span>");
+  return esc1;
+}
+
+function copyText(btn, text){
+  function done(){
+    var orig = btn.textContent;
+    btn.textContent = "Đã sao chép ✓";
+    btn.classList.add("copied");
+    setTimeout(function(){ btn.textContent = orig; btn.classList.remove("copied"); }, 1400);
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done).catch(function(){ fallbackCopy(text); done(); });
+  } else {
+    fallbackCopy(text); done();
+  }
+}
+function fallbackCopy(text){
+  var ta=document.createElement("textarea");
+  ta.value=text; ta.style.position="fixed"; ta.style.opacity="0";
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand("copy"); }catch(e){}
+  document.body.removeChild(ta);
+}
+
+function renderPanel(){
+  var panel = document.getElementById("panel");
+  var idx = progress.current;
+
+  if(idx >= STEPS.length){
+    panel.innerHTML =
+      "<div class='done-screen'><div class='check'>✓</div>"+
+      "<h2>Hoàn Tất Toàn Bộ BackUp UAT Merap</h2>"+
+      "<p>Tất cả các bước đã được đánh dấu chạy xong hoặc bỏ qua. Kiểm tra lại ứng dụng UAT (đăng nhập, xem ảnh sản phẩm, tạo hoá đơn thử) để xác nhận cấu hình đã đúng.</p>"+
+      "</div>";
+    return;
+  }
+
+  var s = STEPS[idx];
+  var st = progress.status[s.id];
+  var checked = (st==="done") ? "checked" : "";
+
+  var html = "";
+  html += "<div class='panel-head'><h2>"+esc(s.title)+"</h2><span class='step-tag'>Bước "+(idx+1)+" / "+STEPS.length+"</span></div>";
+  html += "<p class='panel-desc'>"+s.desc+"</p>";
+  if(s.warn) html += "<div class='warn-box'>⚠️ "+esc(s.warn)+"</div>";
+
+  if(s.defaultSkip !== undefined || true){
+    // skip toggle luôn có sẵn cho mọi bước có action, trừ bước env
+    if(!s.noAction){
+      var skipChecked = (st==="skipped") || (st===null && s.defaultSkip) ? "checked" : "";
+      html += "<div class='skip-row'><input type='checkbox' id='skipToggle' "+skipChecked+"> "+
+        "<label for='skipToggle'>Bỏ qua bước này (UAT không cần áp dụng thay đổi này)</label></div>";
+    }
+  }
+
+  var isSkipped = (st==="skipped");
+
+  html += "<div class='sql-block'><div class='sql-label'><span>1. Xem trước — chạy SELECT này trước để kiểm tra giá trị hiện tại</span>"+
+    "<button class='copy-btn' id='copyPreview'>Copy SQL</button></div>"+
+    "<pre class='sql'>"+highlightSql(s.preview(params))+"</pre></div>";
+
+  if(!s.noAction){
+    html += "<div class='sql-block' style='"+(isSkipped?"opacity:.35":"")+"'><div class='sql-label'><span>2. Thực thi — chạy sau khi đã xem trước và xác nhận đúng</span>"+
+      "<button class='copy-btn' id='copyAction' "+(isSkipped?"disabled":"")+">Copy SQL</button></div>"+
+      "<pre class='sql'>"+highlightSql(s.action(params))+"</pre></div>";
+  }
+
+  html += "<div class='action-row'>";
+  if(s.noAction){
+    html += "<label class='confirm'><input type='checkbox' id='confirmDone' "+checked+"> Tôi đã xác nhận đang kết nối đúng DB UAT</label>";
+  } else {
+    html += "<label class='confirm'><input type='checkbox' id='confirmDone' "+checked+" "+(isSkipped?"disabled":"")+"> Đã chạy xong bước này trong SSMS</label>";
+  }
+  html += "<div style='display:flex;gap:10px'>";
+  if(idx>0) html += "<button class='btn-secondary' id='backBtn'>← Bước trước</button>";
+  html += "<button class='btn-next' id='nextBtn' "+(st==="done"||st==="skipped"?"":"disabled")+">Sang bước tiếp theo →</button>";
+  html += "</div></div>";
+
+  panel.innerHTML = html;
+
+  // wire events
+  var copyPrev = document.getElementById("copyPreview");
+  if(copyPrev) copyPrev.addEventListener("click", function(){ copyText(copyPrev, s.preview(params)); });
+  var copyAct = document.getElementById("copyAction");
+  if(copyAct) copyAct.addEventListener("click", function(){ copyText(copyAct, s.action(params)); });
+
+  var skipToggle = document.getElementById("skipToggle");
+  if(skipToggle){
+    skipToggle.addEventListener("change", function(){
+      if(skipToggle.checked){
+        progress.status[s.id] = "skipped";
+        document.getElementById("confirmDone").checked = false;
+        document.getElementById("confirmDone").disabled = true;
+      } else {
+        progress.status[s.id] = null;
+        document.getElementById("confirmDone").disabled = false;
+      }
+      saveProgress();
+      renderAll();
+    });
+  }
+
+  var confirmDone = document.getElementById("confirmDone");
+  if(confirmDone){
+    confirmDone.addEventListener("change", function(){
+      if(confirmDone.checked){
+        progress.status[s.id] = "done";
+      } else {
+        progress.status[s.id] = (s.defaultSkip && !s.noAction) ? null : null;
+      }
+      saveProgress();
+      renderAll();
+    });
+  }
+
+  var nextBtn = document.getElementById("nextBtn");
+  if(nextBtn) nextBtn.addEventListener("click", function(){
+    if(nextBtn.disabled) return;
+    progress.current = idx+1;
+    saveProgress();
+    renderAll();
+  });
+  var backBtn = document.getElementById("backBtn");
+  if(backBtn) backBtn.addEventListener("click", function(){
+    progress.current = idx-1;
+    saveProgress();
+    renderAll();
+  });
+}
+
+function renderAll(){
+  renderParamsForm();
+  renderTimeline();
+  renderPanel();
+}
+
+document.getElementById("resetBtn").addEventListener("click", function(){
+  if(confirm("Xoá toàn bộ tham số và tiến trình đã lưu, làm lại từ đầu?")) clearAll();
+});
+
+loadState().then(renderAll);
+renderAll(); // render ngay với giá trị mặc định trong lúc chờ storage load xong
+
+})();
+</script>
+</body>
+</html>

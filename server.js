@@ -85,6 +85,10 @@ app.get('/anvy/uat-runbook', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'anvy-uat-runbook.html'));
 });
 
+app.get('/merap/uat-runbook', requirePageAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'protected', 'merap-uat-runbook.html'));
+});
+
 app.get('/tickets/tra-cuu-erp', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'tickets-tra-cuu-erp.html'));
 });
