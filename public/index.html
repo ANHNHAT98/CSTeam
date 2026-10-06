@@ -435,7 +435,7 @@
   <div class="panel">
     <div class="panel-title">SLA — Tháng hiện tại theo dự án (First Response &amp; Resolution)</div>
     <div class="panel-sub" id="slaMonthSub">Lọc theo Opening On rơi vào tháng hiện tại, gộp theo dự án.</div>
-    <canvas id="slaMonthChart" height="90"></canvas>
+    <div id="slaMonthCharts"></div>
     <table id="slaMonthTable" style="margin-top:14px;">
       <thead>
         <tr>
@@ -746,13 +746,13 @@ function monthKeyLabel(d){
 
 let slaTrendChartFrtInst = null;
 let slaTrendChartResInst = null;
-let slaMonthChartInst = null;
+let slaMonthChartInsts = [];
 let frtWeekChartInst = null;
 let resWeekChartInst = null;
 
 function destroyAllCharts(){
-  [slaTrendChartFrtInst, slaTrendChartResInst, slaMonthChartInst, frtWeekChartInst, resWeekChartInst].forEach(c => { if (c) c.destroy(); });
-  slaTrendChartFrtInst = null; slaTrendChartResInst = null; slaMonthChartInst = null; frtWeekChartInst = null; resWeekChartInst = null;
+  [slaTrendChartFrtInst, slaTrendChartResInst, frtWeekChartInst, resWeekChartInst, ...slaMonthChartInsts].forEach(c => { if (c) c.destroy(); });
+  slaTrendChartFrtInst = null; slaTrendChartResInst = null; slaMonthChartInsts = []; frtWeekChartInst = null; resWeekChartInst = null;
 }
 
 function renderSla(rows){
@@ -856,18 +856,41 @@ function renderSla(rows){
     </tr>`;
   }).join('');
 
-  if (slaMonthChartInst) slaMonthChartInst.destroy();
-  slaMonthChartInst = new Chart(document.getElementById('slaMonthChart'), {
-    type: 'bar',
-    data: {
-      labels: byProject.map(g => g.project),
-      datasets: [
-        { label: 'First Response — Trọng số', data: byProject.map(g => g.frt.weighted.toFixed(1)), backgroundColor:'#2E6F95' },
-        { label: 'Resolution — Trọng số', data: byProject.map(g => g.res.weighted.toFixed(1)), backgroundColor:'#B5533C' },
-      ],
-    },
-    options: { responsive:true, scales:{ y:{ ticks:{ callback:v => v+'%' } } } },
-  });
+  /* Tách biểu đồ theo nhóm tối đa 5 dự án/biểu đồ cho dễ nhìn (VD 9 dự án -> 5 + 4). */
+  slaMonthChartInsts.forEach(c => { if (c) c.destroy(); });
+  slaMonthChartInsts = [];
+  const MAX_PER_CHART = 5;
+  const chartCount = Math.max(1, Math.ceil(byProject.length / MAX_PER_CHART));
+  const chunkSize = Math.ceil(byProject.length / chartCount);
+  const chartsWrap = document.getElementById('slaMonthCharts');
+  chartsWrap.innerHTML = '';
+  for (let i = 0; i < chartCount; i++){
+    const part = byProject.slice(i * chunkSize, (i + 1) * chunkSize);
+    if (!part.length) continue;
+    const box = document.createElement('div');
+    box.style.cssText = 'margin-bottom:' + (i < chartCount - 1 ? '18px' : '0') + ';';
+    if (chartCount > 1){
+      const ttl = document.createElement('div');
+      ttl.style.cssText = 'font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:4px;';
+      ttl.textContent = 'Nhóm ' + (i + 1) + '/' + chartCount + ' — ' + part.length + ' dự án';
+      box.appendChild(ttl);
+    }
+    const cv = document.createElement('canvas');
+    cv.height = 90;
+    box.appendChild(cv);
+    chartsWrap.appendChild(box);
+    slaMonthChartInsts.push(new Chart(cv, {
+      type: 'bar',
+      data: {
+        labels: part.map(g => g.project),
+        datasets: [
+          { label: 'First Response — Trọng số', data: part.map(g => Number(g.frt.weighted.toFixed(1))), backgroundColor:'#2E6F95' },
+          { label: 'Resolution — Trọng số', data: part.map(g => Number(g.res.weighted.toFixed(1))), backgroundColor:'#B5533C' },
+        ],
+      },
+      options: { responsive:true, scales:{ y:{ min:0, suggestedMax:100, ticks:{ callback:v => v+'%' } } } },
+    }));
+  }
 
   /* ---- KPI đầu trang: % Pass thuần theo đúng công thức Priority (không nhân trọng số
      70/30 — chỉ dùng trọng số 70/30 ở 2 bảng chi tiết bên dưới), toàn bộ 5 dự án, tháng hiện tại ---- */

@@ -246,7 +246,7 @@ Hỗ trợ thanh toán công cho MDS và kế toán</textarea>
 /* ---------- cấu hình trạng thái ---------- */
 const BACKLOG_STATUSES = ['Open','Assign','Working','Reviewing','Waiting','Pending','Re-open'];
 // Mã trạng thái dùng để tự động gợi ý "Xử lý tuần sau" — subset của BACKLOG_STATUSES.
-const NEXT_WEEK_STATUSES = ['Open', 'Assign', 'Working', 'Reviewing'];
+const NEXT_WEEK_STATUSES = ['Open', 'Assign', 'Working', 'Reviewing']; // ưu tiên xếp trước trong "Xử lý tuần sau"
 const CLOSED_STATUS = 'Closed';
 const STATUS_TO_FIELD = {
   Open:'m_open', Assign:'m_assign', Working:'m_working', Reviewing:'m_reviewing',
@@ -612,18 +612,23 @@ fetchBtn.addEventListener('click', async () => {
       `Tổng ticket tồn đọng hiện tại: ${backlogNow}.`;
     document.getElementById('txt_nhanxet').value = nhanxetAuto;
 
-    // Tự động gợi ý "Xử lý tuần sau" từ Subject các ticket đang Open/Assign/Working/Reviewing
-    // (lấy lại từ backlogRows đã fetch ở trên, không cần gọi thêm API) — người dùng vẫn có
-    // thể sửa/thêm/xoá tuỳ ý sau khi điền.
+    // "Xử lý tuần sau": liệt kê Subject các ticket tồn đọng, SỐ DÒNG = đúng "Tổng ticket tồn đọng
+    // còn lại" (backlogNow = backlogRows.length). Xếp Open/Assign/Working/Reviewing lên trước,
+    // rồi tới Waiting/Pending/Re-open để tổng số dòng luôn khớp mục tồn đọng. Ticket thiếu
+    // Subject vẫn được giữ 1 dòng (dùng mã ticket) để không bị hụt số.
+    const statusOrder = s => {
+      const i = NEXT_WEEK_STATUSES.indexOf(s);
+      return i === -1 ? NEXT_WEEK_STATUSES.length + BACKLOG_STATUSES.indexOf(s) : i;
+    };
     const nextWeekSubjects = backlogRows
-      .filter(r => NEXT_WEEK_STATUSES.includes((r.status || '').trim()))
-      .map(r => (r.subject || '').trim())
-      .filter(Boolean);
-    if (nextWeekSubjects.length) document.getElementById('txt_tuansau').value = nextWeekSubjects.join('\n');
+      .slice()
+      .sort((x, y) => statusOrder((x.status || '').trim()) - statusOrder((y.status || '').trim()))
+      .map(r => (r.subject || '').trim() || (r.name || '').trim() || '(không có subject)');
+    document.getElementById('txt_tuansau').value = nextWeekSubjects.join('\n');
 
     // Tự động gợi ý "Thực hiện trong tuần" từ Subject các ticket có "modified" (lần cập nhật
-    // gần nhất) rơi vào đúng khoảng Từ ngày–Đến ngày đã chọn — gọi API riêng vì cần lọc theo
-    // "modified" chứ không phải "opening_date" như weekRows/backlogRows ở trên.
+    // gần nhất) rơi vào đúng khoảng Từ ngày–Đến ngày đã chọn VÀ trạng thái hiện tại là Closed —
+    // gọi API riêng vì cần lọc theo "modified" chứ không phải "opening_date" như weekRows/backlogRows.
     let doneWeekSubjectsCount = 0;
     try{
       const qsModified = new URLSearchParams();
@@ -633,9 +638,12 @@ fetchBtn.addEventListener('click', async () => {
       qsModified.set('modified_to', toDate.value);
       const modifiedData = await fetchJson('/api/erp/tickets?' + qsModified.toString());
       const modifiedRows = Array.isArray(modifiedData.data) ? modifiedData.data : [];
-      const doneWeekSubjects = modifiedRows.map(r => (r.subject || '').trim()).filter(Boolean);
+      const doneWeekSubjects = modifiedRows
+        .filter(r => (r.status || '').trim() === CLOSED_STATUS)
+        .map(r => (r.subject || '').trim())
+        .filter(Boolean);
       doneWeekSubjectsCount = doneWeekSubjects.length;
-      if (doneWeekSubjects.length) document.getElementById('txt_thuchien').value = doneWeekSubjects.join('\n');
+      document.getElementById('txt_thuchien').value = doneWeekSubjects.join('\n');
     }catch(modErr){
       console.error('Lỗi lấy ticket theo modified:', modErr);
     }
@@ -661,7 +669,7 @@ fetchBtn.addEventListener('click', async () => {
       hoursNote = ' (lỗi lấy timesheet: ' + tsErr.message + ' — nhập tay)';
     }
 
-    setStatus(`Xong — ${weekRows.length} ticket mở trong tuần, ${backlogRows.length} ticket đang tồn đọng (mọi thời điểm), đã điền ${doneWeekSubjectsCount} mục vào "Thực hiện trong tuần", ${nextWeekSubjects.length} mục vào "Xử lý tuần sau" và tự nhận xét so với tuần trước.${hoursNote}`, hoursNote ? 'err' : 'ok');
+    setStatus(`Xong — ${weekRows.length} ticket mở trong tuần, ${backlogRows.length} ticket đang tồn đọng (mọi thời điểm), đã điền ${doneWeekSubjectsCount} ticket Closed (có modified trong tuần) vào "Thực hiện trong tuần", "Xử lý tuần sau" = ${nextWeekSubjects.length} ticket tồn đọng (khớp tổng tồn đọng ${backlogNow}) và tự nhận xét so với tuần trước.${hoursNote}`, hoursNote ? 'err' : 'ok');
     renderCharts();
   }catch(err){
     console.error(err);
