@@ -288,6 +288,38 @@
           <a class="side-leaf sub" href="/tickets/support-cases?project=Sabeco" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
+      <div class="side-branch open">
+        <button class="side-branch-head" type="button">
+          <span class="chevron">▾</span><span>FES</span>
+        </button>
+        <div class="side-branch-children">
+          <a class="side-leaf sub" href="/tickets/support-cases?project=FES" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
+        </div>
+      </div>
+      <div class="side-branch open">
+        <button class="side-branch-head" type="button">
+          <span class="chevron">▾</span><span>ANKO</span>
+        </button>
+        <div class="side-branch-children">
+          <a class="side-leaf sub" href="/tickets/support-cases?project=ANKO" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
+        </div>
+      </div>
+      <div class="side-branch open">
+        <button class="side-branch-head" type="button">
+          <span class="chevron">▾</span><span>HAIHA</span>
+        </button>
+        <div class="side-branch-children">
+          <a class="side-leaf sub" href="/tickets/support-cases?project=HAIHA" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
+        </div>
+      </div>
+      <div class="side-branch open">
+        <button class="side-branch-head" type="button">
+          <span class="chevron">▾</span><span>JOTUN</span>
+        </button>
+        <div class="side-branch-children">
+          <a class="side-leaf sub" href="/tickets/support-cases?project=JOTUN" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
+        </div>
+      </div>
     </div>
 
     <div class="side-group">
@@ -533,7 +565,7 @@ document.querySelectorAll('.side-leaf[data-path]').forEach(a=>{
 });
 
 /* ---------- Dashboard Tổng Quan: gọi lại API /api/erp/tickets đã có ---------- */
-const ALL_PROJECTS = ['MerapLion_eSales', 'ABI_eSales_Support', 'ANVY_eSale_Support', 'Sabeco_PG', 'Sabeco_B2B_Support'];
+const ALL_PROJECTS = ['MerapLion_eSales', 'ABI_eSales_Support', 'ANVY_eSale_Support', 'Sabeco_PG', 'Sabeco_B2B_Support', 'FES_eSales', 'ANKO_eSales_Support', 'HaiHa_eSales_Support', 'Jotun_VN_eSales'];
 const OPEN_STATUSES = ['Open','Assign','Working','Reviewing','Waiting','Pending','Re-open'];
 
 // Ngưỡng SLA phản hồi đầu (phút) theo Priority — đúng công thức đã xác nhận,

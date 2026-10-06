@@ -115,7 +115,7 @@ Module hiện có:
   nhiều project + nhiều trạng thái cùng lúc, xem trước, xuất Excel
   (`/tickets/tra-cuu-erp`).
 - **Ticket dự án → SLA Phản hồi đầu**: lấy toàn bộ ticket 4 dự án
-  (MerapLion_eSales, ABI_eSales_Support, ANVY_eSale_Support, Sabeco_PG) từ
+  (MerapLion_eSales, ABI_eSales_Support, ANVY_eSale_Support, Sabeco_PG, FES_eSales, ANKO_eSales_Support, HaiHa_eSales_Support, Jotun_VN_eSales) từ
   ERP, tính Pass/Fail SLA phản hồi đầu theo Priority, xem theo dự
   án/priority, xuất Excel (`/tickets/sla-first-response`).
 - **Hotfix → Gom Sql và Back up SQL**: upload nhiều file .sql, gộp lại, tự nhận diện các
@@ -255,7 +255,8 @@ nhập (giống hệt lúc anh bấm nút Login trên web ERP), không cần API
 Key/Secret hay quyền System Manager.
 
 Bộ lọc hỗ trợ **chọn nhiều project** (`MerapLion_eSales`,
-`ABI_eSales_Support`, `ANVY_eSale_Support`, `Sabeco_PG`) và **chọn nhiều
+`ABI_eSales_Support`, `ANVY_eSale_Support`, `Sabeco_PG`, `FES_eSales`,
+`ANKO_eSales_Support`, `HaiHa_eSales_Support`, `Jotun_VN_eSales`) và **chọn nhiều
 trạng thái** (`Open`, `Assign`, `Working`, `Reviewing`, `Waiting`, `Pending`,
 `Re-open`, `Closed`, và cả "chưa có trạng thái") cùng lúc.
 
