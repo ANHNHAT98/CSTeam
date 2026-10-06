@@ -216,7 +216,7 @@
 Hỗ trợ người dùng chốt số đơn hàng, hoá đơn, sổ xuất hàng
 Hỗ trợ liên quan đến tồn kho
 Hỗ trợ thanh toán công cho MDS và kế toán</textarea>
-    <div class="list-hint">Mỗi dòng = 1 mục. Tự động điền sẵn từ Subject ticket có cập nhật trong khoảng Từ ngày–Đến ngày khi bấm "Lấy dữ liệu" — có thể sửa/thêm/xoá tuỳ ý.</div>
+    <div class="list-hint">Mỗi dòng = 1 mục. Tự động điền sẵn từ Subject các ticket Closed (khớp số Closed ở mục 1) khi bấm "Lấy dữ liệu" — có thể sửa/thêm/xoá tuỳ ý.</div>
 
     <div class="sub-h">Xử lý tuần sau: <span class="range" id="nextWeekRange">(…)</span></div>
     <textarea class="list-input" id="txt_tuansau">Review rls app và các rls BO
@@ -626,27 +626,14 @@ fetchBtn.addEventListener('click', async () => {
       .map(r => (r.subject || '').trim() || (r.name || '').trim() || '(không có subject)');
     document.getElementById('txt_tuansau').value = nextWeekSubjects.join('\n');
 
-    // Tự động gợi ý "Thực hiện trong tuần" từ Subject các ticket có "modified" (lần cập nhật
-    // gần nhất) rơi vào đúng khoảng Từ ngày–Đến ngày đã chọn VÀ trạng thái hiện tại là Closed —
-    // gọi API riêng vì cần lọc theo "modified" chứ không phải "opening_date" như weekRows/backlogRows.
-    let doneWeekSubjectsCount = 0;
-    try{
-      const qsModified = new URLSearchParams();
-      qsModified.set('projects', JSON.stringify([project]));
-      qsModified.set('statuses', JSON.stringify([]));
-      qsModified.set('modified_from', fromDate.value);
-      qsModified.set('modified_to', toDate.value);
-      const modifiedData = await fetchJson('/api/erp/tickets?' + qsModified.toString());
-      const modifiedRows = Array.isArray(modifiedData.data) ? modifiedData.data : [];
-      const doneWeekSubjects = modifiedRows
-        .filter(r => (r.status || '').trim() === CLOSED_STATUS)
-        .map(r => (r.subject || '').trim())
-        .filter(Boolean);
-      doneWeekSubjectsCount = doneWeekSubjects.length;
-      document.getElementById('txt_thuchien').value = doneWeekSubjects.join('\n');
-    }catch(modErr){
-      console.error('Lỗi lấy ticket theo modified:', modErr);
-    }
+    // "Thực hiện trong tuần": liệt kê Subject đúng các ticket đã tính vào số "Closed" ở mục 1/6 —
+    // tức ticket mở TRONG khoảng lọc và hiện đang Closed (weekRows) — nên số dòng luôn khớp số Closed.
+    // Ticket thiếu Subject vẫn giữ 1 dòng (dùng mã ticket) để không bị hụt số.
+    const doneWeekSubjects = weekRows
+      .filter(r => (r.status || '').trim() === CLOSED_STATUS)
+      .map(r => (r.subject || '').trim() || (r.name || '').trim() || '(không có subject)');
+    const doneWeekSubjectsCount = doneWeekSubjects.length;
+    document.getElementById('txt_thuchien').value = doneWeekSubjects.join('\n');
 
     /* ---------- timesheet (giờ hỗ trợ) ---------- */
     setStatus('Đang lấy Timesheet…', 'busy');
