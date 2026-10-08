@@ -325,6 +325,7 @@
     <div class="side-group">
       <div class="side-group-label">Ticket dự án</div>
       <a class="side-leaf" href="/tickets/tra-cuu-erp" data-path="/tickets/tra-cuu-erp">Tra cứu ERP</a>
+      <a class="side-leaf" href="/tickets/tao-moi" data-path="/tickets/tao-moi">Tạo Ticket ERP</a>
       <a class="side-leaf" href="/tickets/sla-first-response" data-path="/tickets/sla-first-response">SLA Phản Hồi Đầu Tiên</a>
       <a class="side-leaf" href="/tickets/sla-resolution" data-path="/tickets/sla-resolution">SLA Xử Lý Hoàn Tất</a>
     </div>
@@ -660,6 +661,65 @@ const RES_KEYWORDS = ['resolution_date','resolution','resolved_on'];
 
 /* Tính Pass/Fail cho từng ticket theo 1 mốc thời gian đích (First Responded On hoặc
    Resolution Date) so với Opening On — dùng chung 1 hàm cho cả 2 chỉ số SLA. */
+/* Thời gian tính SLA (phút):
+   - Critical & Urgent: tính FULL 24 giờ/ngày (thời gian trôi thực tế, kể cả đêm/cuối tuần).
+   - Priority còn lại: chỉ tính giờ làm việc T2–T6, 08:00–17:30, trừ nghỉ trưa 12:00–13:30 và ngày nghỉ lễ (HOLIDAYS)
+     (tức 08:00–12:00 và 13:30–17:30; ngoài khung này không tính). */
+/* Ngày nghỉ lễ (rơi vào T2–T6) — KHÔNG tính giờ cho Priority thường (không áp dụng Critical/Urgent vì tính full 24h).
+   Cần bổ sung hằng năm khi có lịch nghỉ chính thức mới (định dạng YYYY-MM-DD).
+   Nguồn: Bộ luật Lao động 2019 (Đ.112), TB 9441/TB-BNV (Tết & Quốc khánh 2026), Nghị quyết 80-NQ/TW (Ngày Văn hóa 24/11). */
+const HOLIDAYS = new Set([
+  // 2025
+  '2025-01-01',                                                                   // Tết Dương lịch
+  '2025-01-27','2025-01-28','2025-01-29','2025-01-30','2025-01-31',               // Tết Nguyên đán Ất Tỵ
+  '2025-04-07',                                                                   // Giỗ Tổ Hùng Vương (10/3 ÂL)
+  '2025-04-30','2025-05-01',                                                      // 30/4, 1/5
+  '2025-09-01','2025-09-02',                                                      // Quốc khánh
+  // 2026
+  '2026-01-01',                                                                   // Tết Dương lịch
+  '2026-02-16','2026-02-17','2026-02-18','2026-02-19','2026-02-20',               // Tết Nguyên đán Bính Ngọ
+  '2026-04-27',                                                                   // Nghỉ bù Giỗ Tổ (10/3 ÂL = CN 26/4)
+  '2026-04-30','2026-05-01',                                                      // 30/4, 1/5
+  '2026-09-01','2026-09-02',                                                      // Quốc khánh (1/9 liền kề + 2/9)
+  '2026-11-24',                                                                   // Ngày Văn hóa Việt Nam (đã chốt, không hoán đổi)
+  // 2027 (Công văn 10065/VPCP-KGVX ngày 02/10/2026 + Luật/NQ 28/2026/QH16)
+  '2027-01-01',                                                                   // Tết Dương lịch (T6)
+  '2027-02-04','2027-02-05','2027-02-08','2027-02-09','2027-02-10',               // Tết Đinh Mùi 4–10/2 (T5,T6,T2,T3,T4; mùng 1 = T7 6/2)
+  '2027-04-16',                                                                   // Giỗ Tổ Hùng Vương 10/3 ÂL (T6)
+  '2027-04-30',                                                                   // Ngày Chiến thắng (T6)
+  '2027-05-03',                                                                   // Nghỉ bù 1/5 (T7) -> T2 3/5
+  '2027-09-02','2027-09-03',                                                      // Quốc khánh 2/9 + 3/9 liền kề sau
+  '2027-11-24',                                                                   // Ngày Văn hóa Việt Nam (T4)
+  // Tuỳ công ty — thêm vào nếu có hoán đổi/nghỉ thêm, VD: '2026-08-31' (nghỉ hoán đổi, làm bù T7 22/8)
+]);
+function isoLocal(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+const WORK_WINDOWS = [[8*60, 12*60], [13*60+30, 17*60+30]]; // phút trong ngày
+function businessMinutesBetween(start, end){
+  if (!(end > start)) return 0;
+  let total = 0;
+  const day = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const lastDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  while (day <= lastDay){
+    const dow = day.getDay(); // 0=CN, 6=T7
+    if (dow >= 1 && dow <= 5 && !HOLIDAYS.has(isoLocal(day))){
+      for (const [s, e] of WORK_WINDOWS){
+        const ws = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, s);
+        const we = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, e);
+        const a = ws > start ? ws : start;
+        const b = we < end ? we : end;
+        if (b > a) total += (b - a) / 60000;
+      }
+    }
+    day.setDate(day.getDate() + 1);
+  }
+  return total;
+}
+function slaElapsedMinutes(priorityRaw, start, end){
+  const p = String(priorityRaw||'').trim().toLowerCase();
+  if (p === 'critical' || p === 'urgent') return (end.getTime() - start.getTime()) / 60000;
+  return businessMinutesBetween(start, end);
+}
+
 function computeSlaItems(rows, targetKeywords){
   if (!rows.length) return { items: [], fields: null, missing: true };
   const fields = Object.keys(rows[0]);
@@ -685,7 +745,7 @@ function computeSlaItems(rows, targetKeywords){
       const targetDate = new Date(targetRaw);
       if (!openDate || isNaN(openDate.getTime()) || isNaN(targetDate.getTime())){ w = 1.1; result = 'Fail'; }
       else {
-        w = (targetDate.getTime() - openDate.getTime()) / 60000;
+        w = slaElapsedMinutes(priority, openDate, targetDate); // Critical/Urgent: 24h; còn lại: giờ làm việc T2–T6
         result = (w < priorityThreshold(priority)) ? 'Pass' : 'Fail';
       }
     }

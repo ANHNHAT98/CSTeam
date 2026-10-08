@@ -292,3 +292,11 @@ miễn phí. Để đỡ khó chịu, đã thêm cơ chế: nếu bị đá về
 đăng nhập lại xong sẽ **tự động quay đúng về trang đang xem** thay vì phải
 bấm menu lại từ đầu. Nếu muốn hết hẳn tình trạng này, cần nâng cấp lên gói
 Render trả phí (không bị "ngủ") hoặc tự host trên máy/server luôn bật.
+
+
+## Tạo Ticket trên ERP (`/tickets/tao-moi`)
+
+- Form dựng tự động từ cấu trúc DocType `Ticket` trên ERP (`GET /api/erp/ticket-meta`), nên không cần hard-code tên trường.
+- `POST /api/erp/tickets` nhận `{ fields, dry_run }`: `dry_run: true` chỉ kiểm tra và trả payload, không ghi vào ERP.
+- Chỉ nhận trường có trong DocType Ticket, bỏ qua trường chỉ-đọc/hệ thống; kiểm tra trường bắt buộc; chặn tạo trùng (cùng Project + Subject trong 2 phút).
+- Cần tài khoản `ERP_USER` có quyền **Create** trên DocType Ticket. Ticket sẽ ghi người tạo là `ERP_USER`.

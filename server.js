@@ -89,6 +89,9 @@ app.get('/merap/uat-runbook', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'merap-uat-runbook.html'));
 });
 
+app.get('/tickets/tao-moi', requirePageAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'protected', 'tickets-tao-moi.html'));
+});
 app.get('/tickets/tra-cuu-erp', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'tickets-tra-cuu-erp.html'));
 });
@@ -186,6 +189,85 @@ app.get('/api/erp/tickets', requireAuth, async (req, res) => {
     res.json(data);
   } catch (e) {
     console.error('[erp/tickets] lỗi:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+/* ---------- API: TẠO TICKET trên ERP (ghi dữ liệu thật) ----------
+   - GET  /api/erp/ticket-meta              : cấu trúc trường của DocType Ticket (để dựng form đúng tên trường)
+   - GET  /api/erp/link-search?doctype=&txt= : gợi ý giá trị cho trường Link (chỉ cho các DocType có trong form Ticket)
+   - POST /api/erp/tickets {fields, dry_run} : dry_run=true chỉ kiểm tra, không gửi sang ERP */
+const BLOCKED_WRITE_FIELDS = new Set(['name', 'owner', 'creation', 'modified', 'modified_by', 'docstatus', 'idx', 'doctype']);
+const recentCreates = new Map(); // chống bấm tạo trùng: project|subject -> thời điểm
+
+app.get('/api/erp/ticket-meta', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  try {
+    res.json(await erp.getTicketMeta());
+  } catch (e) {
+    console.error('[erp/ticket-meta] lỗi:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+app.get('/api/erp/link-search', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  try {
+    const doctype = String(req.query.doctype || '');
+    const meta = await erp.getTicketMeta();
+    const allowed = new Set();
+    meta.fields.forEach((f) => { if (f.fieldtype === 'Link' && f.options) allowed.add(f.options); });
+    Object.values(meta.children).forEach((fs) => fs.forEach((f) => { if (f.fieldtype === 'Link' && f.options) allowed.add(f.options); }));
+    if (!allowed.has(doctype)) return res.status(400).json({ error: 'DocType không nằm trong form Ticket.' });
+    res.json(await erp.searchLink(doctype, String(req.query.txt || '')));
+  } catch (e) {
+    console.error('[erp/link-search] lỗi:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+app.post('/api/erp/tickets', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  try {
+    const input = req.body && req.body.fields;
+    const dryRun = Boolean(req.body && req.body.dry_run);
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      return res.status(400).json({ error: 'Thiếu dữ liệu fields.' });
+    }
+    const meta = await erp.getTicketMeta();
+    const byName = new Map(meta.fields.map((f) => [f.fieldname, f]));
+
+    // Chỉ nhận trường có trong DocType Ticket, không phải trường hệ thống / chỉ-đọc.
+    const payload = {};
+    const rejected = [];
+    for (const [k, v] of Object.entries(input)) {
+      const f = byName.get(k);
+      if (!f || BLOCKED_WRITE_FIELDS.has(k) || f.read_only) { rejected.push(k); continue; }
+      if (v === '' || v === null || v === undefined || (Array.isArray(v) && !v.length)) continue;
+      payload[k] = v;
+    }
+
+    const missing = meta.fields
+      .filter((f) => f.reqd && !f.read_only && !f.hidden && payload[f.fieldname] === undefined && !f.default)
+      .map((f) => f.label || f.fieldname);
+    if (missing.length) {
+      return res.status(400).json({ error: 'Thiếu trường bắt buộc: ' + missing.join(', '), missing });
+    }
+
+    if (dryRun) return res.json({ dry_run: true, payload, rejected });
+
+    const key = `${payload.project || ''}|${String(payload.subject || '').trim().toLowerCase()}`;
+    const last = recentCreates.get(key);
+    if (last && Date.now() - last < 2 * 60 * 1000 && !(req.body && req.body.force)) {
+      return res.status(409).json({ error: 'Ticket cùng Project + Subject vừa được tạo cách đây dưới 2 phút (nghi tạo trùng).', duplicate: true });
+    }
+
+    const doc = await erp.createTicket(payload);
+    recentCreates.set(key, Date.now());
+    console.log(`[erp/tickets] ${req.session && req.session.username ? req.session.username : 'user'} đã tạo ${doc.name} (${payload.project})`);
+    res.json({ ok: true, name: doc.name, url: `${erp.getBaseUrl()}/app/ticket/${encodeURIComponent(doc.name)}`, doc });
+  } catch (e) {
+    console.error('[erp/tickets POST] lỗi:', e.message);
     res.status(502).json({ error: e.message });
   }
 });

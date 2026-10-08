@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ticket dự án — Tạo Ticket ERP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#12233D;--blueprint:#1F4E79;--paper:#EEF2F6;--panel:#FFFFFF;--grid-line:rgba(31,78,121,.14);--grid-line-strong:rgba(31,78,121,.28);--amber:#E8A33D;--success:#3F7D58;--danger:#B23A48;--muted:#5B7089;--radius:10px;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;min-height:100vh;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:32px 32px;}
+  .ops-topbar{background:#12233D;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:14px;}
+  .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;opacity:.9;}
+  .ops-topbar a:hover{opacity:1;text-decoration:underline;}
+  .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
+  .wrap{max-width:1100px;margin:0 auto;padding:32px 28px 70px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 6px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 22px;line-height:1.6;}
+  .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:22px;margin-bottom:20px;}
+  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0 0 14px;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 28px;}
+  @media(max-width:780px){.grid{grid-template-columns:1fr;}}
+  .full{grid-column:1/-1;}
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:5px;}
+  label .req{color:var(--danger);}
+  input,select,textarea{width:100%;font:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--grid-line-strong);border-radius:8px;background:#FAFBFD;color:var(--ink);}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--amber);background:#fff;}
+  input[readonly]{background:#EEF1F5;color:var(--muted);}
+  textarea{min-height:130px;resize:vertical;}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .chip{background:#E3ECF6;border:1px solid var(--grid-line-strong);border-radius:999px;padding:3px 10px;font-size:12.5px;display:flex;gap:6px;align-items:center;}
+  .chip button{border:0;background:none;cursor:pointer;color:var(--danger);font-weight:700;padding:0;}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:4px;}
+  .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  button.btn{font:inherit;font-weight:600;font-size:14px;padding:10px 18px;border-radius:8px;border:1px solid var(--blueprint);background:var(--blueprint);color:#fff;cursor:pointer;}
+  button.btn.sec{background:#fff;color:var(--blueprint);}
+  button.btn:disabled{opacity:.5;cursor:not-allowed;}
+  .msg{padding:12px 14px;border-radius:8px;font-size:13.5px;line-height:1.6;margin-top:14px;white-space:pre-wrap;word-break:break-word;}
+  .msg.ok{background:#E6F2EA;border:1px solid #9CC9AB;color:#1F5A38;}
+  .msg.err{background:#FBE9EB;border:1px solid #E3A7AF;color:#8B2A36;}
+  .msg.info{background:#EAF1F8;border:1px solid var(--grid-line-strong);color:var(--ink);}
+  code,pre{font-family:'IBM Plex Mono',monospace;font-size:12.5px;}
+  pre{margin:8px 0 0;overflow:auto;}
+</style>
+</head>
+<body>
+<div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb">/ tickets / tạo ticket ERP</span></div>
+<div class="wrap">
+  <h1>Tạo Ticket trên ERP</h1>
+  <p class="sub">Form dựng tự động từ cấu trúc DocType <b>Ticket</b> trên ERP (đúng tên trường, bắt buộc, danh sách chọn). Bấm <b>Kiểm tra</b> để xem dữ liệu sẽ gửi mà chưa tạo; bấm <b>Tạo ticket</b> sẽ ghi ticket thật vào ERP bằng tài khoản <code>ERP_USER</code> của server.</p>
+
+  <div class="panel">
+    <h2>Nhập từ AI (JSON)</h2>
+    <p class="hint" style="margin:0 0 8px">Dán JSON do skill/AI sinh ra (1 ticket hoặc nhiều ticket). Định dạng xem file <code>SKILL.md</code> đi kèm. Sau khi nạp, bạn xem lại rồi mới tạo.</p>
+    <textarea id="aiJson" style="min-height:140px;font-family:'IBM Plex Mono',monospace;font-size:12.5px" placeholder='{"tickets":[{"project":"ABI_eSales_Support","subject":"...","request_type":"...","priority":"Medium","products":["..."],"description":"..."}]}'></textarea>
+    <div class="actions" style="margin-top:10px">
+      <button class="btn" id="btnLoadJson" disabled>Nạp vào form</button>
+    </div>
+    <div id="aiMsg"></div>
+    <div id="bulk" style="display:none;margin-top:14px">
+      <table style="width:100%;border-collapse:collapse;font-size:13px" id="bulkTbl"></table>
+      <div class="actions" style="margin-top:12px">
+        <button class="btn sec" id="btnBulkCheck">Kiểm tra tất cả</button>
+        <button class="btn" id="btnBulkCreate">Tạo tất cả</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>New Ticket</h2>
+    <div id="loading" class="hint">Đang tải cấu trúc form từ ERP…</div>
+    <div id="warn"></div>
+    <div id="form" class="grid"></div>
+    <div class="actions" style="margin-top:20px">
+      <button class="btn sec" id="btnCheck" disabled>Kiểm tra (không gửi)</button>
+      <button class="btn" id="btnCreate" disabled>Tạo ticket</button>
+      <button class="btn sec" id="btnReset" disabled>Xoá form</button>
+    </div>
+    <div id="result"></div>
+  </div>
+</div>
+
+<script>
+/* Các trường hiển thị, theo đúng nhãn trên form ERP (khớp nhãn → lấy tên trường thật từ meta). */
+const WANTED = [
+  ['Series',false],['Status',false],
+  ['Subject',false,true],['Internal Request Type',false],
+  ['Request Type',false],['Customer Name',false],
+  ['Project',false],['Priority',false],
+  ['Customer',false],['Products',false],
+  ['Contact',false],['Contact (Temp)',false],
+  ['Raised By (Email)',false],['Region',false],
+  ['Contact Role',false],['Estimated Deadline',false],
+  ['Description',true]
+];
+const state = { meta:null, fields:{}, multi:{} }; // fields: label -> meta field
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function api(url, opts){
+  const r = await fetch(url, opts);
+  const j = await r.json().catch(()=>({error:'Phản hồi không hợp lệ (HTTP '+r.status+')'}));
+  if(!r.ok){ const e = new Error(j.error || ('HTTP '+r.status)); e.data=j; e.status=r.status; throw e; }
+  return j;
+}
+
+function fid(f){ return 'f_' + f.fieldname; }
+
+function controlHtml(f){
+  const id = fid(f), ro = f.read_only ? ' readonly' : '';
+  switch(f.fieldtype){
+    case 'Select': {
+      const opts = String(f.options||'').split('\n');
+      return `<select id="${id}">${opts.map(o=>`<option value="${esc(o)}"${o===f.default?' selected':''}>${esc(o)}</option>`).join('')}</select>`;
+    }
+    case 'Link':
+      return `<input id="${id}" list="dl_${id}" autocomplete="off" data-link="${esc(f.options)}"${ro}><datalist id="dl_${id}"></datalist>`;
+    case 'Table MultiSelect':
+      return `<input id="${id}" list="dl_${id}" autocomplete="off" placeholder="Chọn rồi nhấn Enter để thêm" data-multi="1"><datalist id="dl_${id}"></datalist><div class="chips" id="chips_${id}"></div>`;
+    case 'Text Editor': case 'Text': case 'Small Text': case 'Long Text': case 'HTML Editor': case 'Markdown Editor':
+      return `<textarea id="${id}"${ro}></textarea>`;
+    case 'Datetime':
+      return `<input id="${id}" type="datetime-local" step="1"${ro}>`;
+    case 'Date':
+      return `<input id="${id}" type="date"${ro}>`;
+    case 'Check':
+      return `<select id="${id}"><option value="0">Không</option><option value="1">Có</option></select>`;
+    default:
+      return `<input id="${id}"${ro}>`;
+  }
+}
+
+function build(meta){
+  state.meta = meta;
+  const byLabel = new Map(meta.fields.map(f=>[f.label.trim().toLowerCase(), f]));
+  const missingLabels = [];
+  let html = '';
+  WANTED.forEach(([label, full])=>{
+    const f = byLabel.get(label.toLowerCase());
+    if(!f){ missingLabels.push(label); return; }
+    state.fields[label] = f;
+    html += `<div class="${full||f.fieldtype==='Text Editor'?'full':''}"><label for="${fid(f)}">${esc(f.label)}${f.reqd?' <span class="req">*</span>':''}</label>${controlHtml(f)}${f.read_only?'<div class="hint">Tự điền bởi ERP</div>':''}</div>`;
+  });
+  $('form').innerHTML = html;
+  $('loading').style.display='none';
+  if(missingLabels.length){
+    $('warn').innerHTML = `<div class="msg info">Không tìm thấy trên DocType Ticket các trường: <b>${missingLabels.map(esc).join(', ')}</b> (nhãn khác với form hiển thị) — các trường này được bỏ qua.</div>`;
+  }
+  // Giá trị mặc định
+  Object.values(state.fields).forEach(f=>{ const el=$(fid(f)); if(el && f.default && f.fieldtype!=='Select') el.value=f.default; });
+  const p = new URLSearchParams(location.search).get('project');
+  const pf = state.fields['Project']; if(p && pf) $(fid(pf)).value = p;
+  // Link: gợi ý khi gõ
+  document.querySelectorAll('input[data-link]').forEach(inp=>wireLink(inp, inp.dataset.link));
+  // Table MultiSelect
+  Object.values(state.fields).filter(f=>f.fieldtype==='Table MultiSelect').forEach(f=>{
+    const child = meta.children[f.options] || [];
+    const lf = child.find(x=>x.fieldtype==='Link');
+    state.multi[f.fieldname] = { values:[], linkField: lf && lf.fieldname, linkDoctype: lf && lf.options };
+    const inp = $(fid(f));
+    if(lf) wireLink(inp, lf.options);
+    inp.addEventListener('keydown', e=>{
+      if(e.key==='Enter'){ e.preventDefault(); const v=inp.value.trim(); if(v && !state.multi[f.fieldname].values.includes(v)){ state.multi[f.fieldname].values.push(v); renderChips(f); } inp.value=''; }
+    });
+    inp.addEventListener('change', ()=>{ /* chọn từ datalist */ });
+  });
+  ['btnCheck','btnCreate','btnReset'].forEach(b=>$(b).disabled=false);
+}
+
+function renderChips(f){
+  const box = $('chips_'+fid(f)); const m = state.multi[f.fieldname];
+  box.innerHTML = m.values.map((v,i)=>`<span class="chip">${esc(v)}<button type="button" data-i="${i}" title="Xoá">×</button></span>`).join('');
+  box.querySelectorAll('button').forEach(b=>b.onclick=()=>{ m.values.splice(Number(b.dataset.i),1); renderChips(f); });
+}
+
+function wireLink(inp, doctype){
+  let t=null;
+  const load = async ()=>{
+    try{
+      const list = await api(`/api/erp/link-search?doctype=${encodeURIComponent(doctype)}&txt=${encodeURIComponent(inp.value)}`);
+      const dl = document.getElementById(inp.getAttribute('list'));
+      dl.innerHTML = list.map(x=>`<option value="${esc(x.value)}">${esc(x.description||'')}</option>`).join('');
+    }catch(e){ /* bỏ qua gợi ý lỗi */ }
+  };
+  inp.addEventListener('focus', load);
+  inp.addEventListener('input', ()=>{ clearTimeout(t); t=setTimeout(load,250); });
+}
+
+function collect(){
+  const out = {};
+  Object.values(state.fields).forEach(f=>{
+    if(f.read_only) return;
+    const el = $(fid(f)); if(!el) return;
+    let v = el.value;
+    if(f.fieldtype==='Table MultiSelect'){
+      const m = state.multi[f.fieldname];
+      const pending = el.value.trim(); // nếu gõ mà chưa Enter vẫn nhận
+      const vals = pending && !m.values.includes(pending) ? [...m.values, pending] : m.values;
+      if(m.linkField && vals.length) out[f.fieldname] = vals.map(x=>({[m.linkField]:x}));
+      return;
+    }
+    if(v==='') return;
+    if(f.fieldtype==='Datetime') v = v.replace('T',' ');
+    if(f.fieldtype==='Check') v = Number(v);
+    if(f.fieldtype==='Text Editor' || f.fieldtype==='HTML Editor') v = '<div class="ql-editor read-mode">' + v.split('\n').map(l=>'<p>'+(l.trim()?esc(l):'<br>')+'</p>').join('') + '</div>';
+    out[f.fieldname] = v;
+  });
+  return out;
+}
+
+function show(kind, html){ $('result').innerHTML = `<div class="msg ${kind}">${html}</div>`; }
+
+async function send(dry, force){
+  const fields = collect();
+  const btns=['btnCheck','btnCreate']; btns.forEach(b=>$(b).disabled=true);
+  try{
+    const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,force:!!force})});
+    if(dry){
+      show('info','Dữ liệu hợp lệ — <b>chưa tạo ticket</b>. Payload sẽ gửi sang ERP:<pre>'+esc(JSON.stringify(r.payload,null,2))+'</pre>'+(r.rejected&&r.rejected.length?'<br>Trường bị bỏ qua: '+esc(r.rejected.join(', ')):''));
+    }else{
+      show('ok',`Đã tạo ticket <b>${esc(r.name)}</b>. <a href="${esc(r.url)}" target="_blank" rel="noopener">Mở trên ERP ↗</a>`);
+    }
+  }catch(e){
+    if(e.status===409 && confirm(e.message+'\n\nVẫn tạo ticket mới?')) { btns.forEach(b=>$(b).disabled=false); return send(dry,true); }
+    show('err', esc(e.message));
+  }finally{ btns.forEach(b=>$(b).disabled=false); }
+}
+
+$('btnCheck').onclick = ()=>send(true);
+$('btnCreate').onclick = ()=>{ if(confirm('Tạo ticket thật trên ERP?')) send(false); };
+$('btnReset').onclick = ()=>{ $('result').innerHTML=''; $('form').innerHTML=''; Object.keys(state.multi).forEach(k=>delete state.multi[k]); build(state.meta); };
+
+
+/* ================= Nhập từ AI (JSON) ================= */
+// Khoá JSON gọn  ->  nhãn trên form ERP. Cũng chấp nhận trực tiếp nhãn ERP hoặc tên trường ERP.
+const JSON_KEYS = {
+  series:'Series', status:'Status', subject:'Subject', internal_request_type:'Internal Request Type',
+  request_type:'Request Type', customer_name:'Customer Name', project:'Project', priority:'Priority',
+  customer:'Customer', products:'Products', contact:'Contact', contact_temp:'Contact (Temp)',
+  raised_by:'Raised By (Email)', region:'Region', contact_role:'Contact Role',
+  estimated_deadline:'Estimated Deadline', description:'Description'
+};
+let queue = []; // [{data, status, msg}]
+
+function fieldForKey(k){
+  const lk = String(k).trim().toLowerCase();
+  const label = JSON_KEYS[lk] || Object.keys(state.fields).find(l=>l.toLowerCase()===lk);
+  if(label && state.fields[label]) return state.fields[label];
+  return Object.values(state.fields).find(f=>f.fieldname===lk) || null;
+}
+function asList(v){ return Array.isArray(v) ? v.map(x=>String(x).trim()).filter(Boolean) : String(v).split(/[,;\n]/).map(x=>x.trim()).filter(Boolean); }
+function wrapDesc(v){ return '<div class="ql-editor read-mode">' + String(v).split('\n').map(l=>'<p>'+(l.trim()?esc(l):'<br>')+'</p>').join('') + '</div>'; }
+
+/** 1 ticket JSON -> {fields: payload gửi ERP, unknown: [khoá không nhận ra]} */
+function jsonToPayload(obj){
+  const payload = {}, unknown = [];
+  Object.entries(obj).forEach(([k,v])=>{
+    const f = fieldForKey(k);
+    if(!f){ unknown.push(k); return; }
+    if(f.read_only || v===null || v==='' || (Array.isArray(v)&&!v.length)) return;
+    if(f.fieldtype==='Table MultiSelect'){
+      const m = state.multi[f.fieldname];
+      if(m && m.linkField) payload[f.fieldname] = asList(v).map(x=>({[m.linkField]:x}));
+      return;
+    }
+    if(f.fieldtype==='Check'){ payload[f.fieldname] = (v===true||v==='1'||v===1)?1:0; return; }
+    if(f.fieldtype==='Text Editor' || f.fieldtype==='HTML Editor'){ payload[f.fieldname] = wrapDesc(v); return; }
+    payload[f.fieldname] = String(v);
+  });
+  return { fields: payload, unknown };
+}
+
+/** Đổ 1 ticket JSON lên form để xem/sửa */
+function loadIntoForm(obj){
+  document.getElementById('btnReset').click();
+  Object.entries(obj).forEach(([k,v])=>{
+    const f = fieldForKey(k); if(!f || f.read_only) return;
+    const el = $(fid(f)); if(!el) return;
+    if(f.fieldtype==='Table MultiSelect'){ const m=state.multi[f.fieldname]; m.values = asList(v); renderChips(f); return; }
+    el.value = f.fieldtype==='Datetime' ? String(v).replace(' ','T') : String(v);
+  });
+  window.scrollTo({top: $('form').getBoundingClientRect().top + scrollY - 80, behavior:'smooth'});
+}
+
+function parseAiJson(text){
+  let t = text.trim().replace(/^```(?:json)?\s*/i,'').replace(/```\s*$/,'').trim();
+  const j = JSON.parse(t);
+  const arr = Array.isArray(j) ? j : (Array.isArray(j.tickets) ? j.tickets : [j]);
+  if(!arr.length || arr.some(x=>!x || typeof x!=='object' || Array.isArray(x))) throw new Error('JSON phải là 1 ticket, mảng ticket, hoặc {"tickets":[...]}.');
+  return arr;
+}
+
+function renderBulk(){
+  const tbl = $('bulkTbl');
+  tbl.innerHTML = '<tr style="text-align:left;color:var(--muted)"><th style="padding:6px">#</th><th>Project</th><th>Subject</th><th>Priority</th><th>Trạng thái</th><th></th></tr>' +
+    queue.map((q,i)=>{
+      const d = q.data;
+      const col = q.status==='created'?'var(--success)':(q.status==='error'||q.status==='dup')?'var(--danger)':'var(--muted)';
+      return `<tr style="border-top:1px solid var(--grid-line-strong)"><td style="padding:6px">${i+1}</td><td>${esc(d.project||'')}</td><td>${esc(d.subject||'')}</td><td>${esc(d.priority||'')}</td><td style="color:${col}">${esc(q.msg||'chưa gửi')}</td><td><button class="btn sec" style="padding:4px 10px;font-size:12px" data-i="${i}">Mở trên form</button></td></tr>`;
+    }).join('');
+  tbl.querySelectorAll('button').forEach(b=>b.onclick=()=>loadIntoForm(queue[Number(b.dataset.i)].data));
+}
+
+async function bulkRun(dry){
+  const btns=['btnBulkCheck','btnBulkCreate','btnLoadJson']; btns.forEach(b=>$(b).disabled=true);
+  for(const q of queue){
+    if(q.status==='created') continue;
+    const {fields} = jsonToPayload(q.data);
+    try{
+      const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry})});
+      if(dry){ q.status='checked'; q.msg='✓ hợp lệ'; } else { q.status='created'; q.msg='✓ đã tạo '+r.name; }
+    }catch(e){ q.status = e.status===409?'dup':'error'; q.msg = '✗ '+e.message; }
+    renderBulk();
+  }
+  btns.forEach(b=>$(b).disabled=false);
+}
+
+$('btnLoadJson').onclick = ()=>{
+  $('aiMsg').innerHTML=''; $('bulk').style.display='none';
+  let arr;
+  try{ arr = parseAiJson($('aiJson').value); }
+  catch(e){ $('aiMsg').innerHTML = `<div class="msg err">JSON không hợp lệ: ${esc(e.message)}</div>`; return; }
+  const unknown = new Set();
+  arr.forEach(o=>jsonToPayload(o).unknown.forEach(k=>unknown.add(k)));
+  const note = unknown.size ? `<br>Khoá không nhận ra (bị bỏ qua): <b>${[...unknown].map(esc).join(', ')}</b>` : '';
+  if(arr.length===1){
+    loadIntoForm(arr[0]);
+    $('aiMsg').innerHTML = `<div class="msg ok">Đã nạp 1 ticket vào form bên dưới — xem lại rồi bấm Kiểm tra / Tạo ticket.${note}</div>`;
+  }else{
+    queue = arr.map(d=>({data:d,status:'new',msg:''}));
+    $('bulk').style.display='block'; renderBulk();
+    $('aiMsg').innerHTML = `<div class="msg ok">Đã nạp ${arr.length} ticket. Bấm <b>Kiểm tra tất cả</b> trước, rồi <b>Tạo tất cả</b>.${note}</div>`;
+  }
+};
+$('btnBulkCheck').onclick = ()=>bulkRun(true);
+$('btnBulkCreate').onclick = ()=>{ if(confirm(`Tạo ${queue.filter(q=>q.status!=='created').length} ticket thật trên ERP?`)) bulkRun(false); };
+
+api('/api/erp/ticket-meta').then(m=>{ build(m); $('btnLoadJson').disabled=false; }).catch(e=>{
+  $('loading').innerHTML = `<div class="msg err">Không tải được cấu trúc form: ${esc(e.message)}</div>`;
+});
+</script>
+</body>
+</html>

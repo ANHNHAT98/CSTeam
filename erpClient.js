@@ -166,9 +166,103 @@ async function fetchTimesheetReport({ from_date, to_date, project } = {}) {
   return erpFetch(`/api/method/frappe.desk.query_report.run?${qs.toString()}`);
 }
 
+/* ===================== GHI DỮ LIỆU (tạo ticket) ===================== */
+let cachedCsrf = null;
+
+async function fetchCsrfToken() {
+  // Frappe nhúng csrf_token trong trang /app khi dùng phiên đăng nhập bằng cookie.
+  const res = await fetch(`${ERP_BASE_URL}/app`, { headers: { Cookie: cachedCookie, Accept: 'text/html' } });
+  const html = await res.text();
+  const m = html.match(/csrf_token\s*[=:]\s*["']([^"']+)["']/);
+  cachedCsrf = m ? m[1] : null;
+  return cachedCsrf;
+}
+
+async function erpPost(pathname, body, { retry = true, csrfTried = false } = {}) {
+  assertConfigured();
+  await ensureLoggedIn();
+  const headers = { Cookie: cachedCookie, Accept: 'application/json', 'Content-Type': 'application/json' };
+  if (cachedCsrf) headers['X-Frappe-CSRF-Token'] = cachedCsrf;
+
+  const res = await fetch(`${ERP_BASE_URL}${pathname}`, { method: 'POST', headers, body: JSON.stringify(body) });
+
+  if ((res.status === 401) && retry) {
+    cachedCookie = null; cachedCsrf = null;
+    await ensureLoggedIn();
+    return erpPost(pathname, body, { retry: false, csrfTried });
+  }
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    if (!csrfTried && /csrf/i.test(text)) {
+      await fetchCsrfToken();
+      return erpPost(pathname, body, { retry, csrfTried: true });
+    }
+    const err = new Error(`ERP API lỗi HTTP ${res.status}: ${extractFrappeError(text)}`);
+    err.code = 'ERP_HTTP_ERROR';
+    err.status = res.status;
+    throw err;
+  }
+  return res.json();
+}
+
+// Frappe trả lỗi trong _server_messages (chuỗi JSON lồng nhau) hoặc exception.
+function extractFrappeError(text) {
+  try {
+    const j = JSON.parse(text);
+    if (j._server_messages) {
+      const msgs = JSON.parse(j._server_messages).map((m) => {
+        try { return JSON.parse(m).message; } catch (_) { return m; }
+      });
+      return msgs.join(' | ').replace(/<[^>]+>/g, '').slice(0, 400);
+    }
+    if (j.exception) return String(j.exception).slice(0, 400);
+  } catch (_) { /* không phải JSON */ }
+  return String(text).slice(0, 300);
+}
+
+const LAYOUT_TYPES = new Set(['Section Break', 'Column Break', 'Tab Break', 'HTML', 'Button', 'Heading', 'Fold']);
+let metaCache = { at: 0, data: null };
+
+/** Lấy cấu trúc DocType Ticket (tên trường thật, kiểu, bắt buộc, options) — cache 10 phút. */
+async function getTicketMeta() {
+  if (metaCache.data && Date.now() - metaCache.at < 10 * 60 * 1000) return metaCache.data;
+  const raw = await erpFetch('/api/method/frappe.desk.form.load.getdoctype?doctype=Ticket&with_parent=1');
+  const docs = raw.docs || [];
+  const simplify = (d) => (d.fields || [])
+    .filter((f) => !LAYOUT_TYPES.has(f.fieldtype))
+    .map((f) => ({
+      fieldname: f.fieldname, label: f.label || '', fieldtype: f.fieldtype, options: f.options || '',
+      reqd: f.reqd ? 1 : 0, read_only: f.read_only ? 1 : 0, hidden: f.hidden ? 1 : 0, default: f.default || '',
+    }));
+  const main = docs.find((d) => d.name === 'Ticket');
+  if (!main) throw new Error('Không đọc được cấu trúc DocType Ticket từ ERP (kiểm tra quyền của ERP_USER).');
+  const children = {};
+  docs.filter((d) => d.name !== 'Ticket').forEach((d) => { children[d.name] = simplify(d); });
+  metaCache = { at: Date.now(), data: { fields: simplify(main), children } };
+  return metaCache.data;
+}
+
+/** Gợi ý giá trị cho trường Link (cùng cơ chế ô tìm kiếm trên form ERP). */
+async function searchLink(doctype, txt = '', pageLength = 20) {
+  const qs = new URLSearchParams({ doctype, txt, page_length: String(pageLength) });
+  const r = await erpFetch(`/api/method/frappe.desk.search.search_link?${qs.toString()}`);
+  const list = r.message || r.results || [];
+  return list.map((x) => ({ value: x.value, description: x.description || '' }));
+}
+
+/** Tạo 1 Ticket mới. fields: object {fieldname: value}. Trả về document vừa tạo. */
+async function createTicket(fields) {
+  const r = await erpPost('/api/resource/Ticket', fields);
+  return r.data || r;
+}
+
 module.exports = {
   fetchTickets,
   fetchProjects,
   fetchTimesheetReport,
+  getTicketMeta,
+  searchLink,
+  createTicket,
+  getBaseUrl: () => ERP_BASE_URL,
   isConfigured: () => Boolean(ERP_BASE_URL && ERP_USER && ERP_PASS),
 };
