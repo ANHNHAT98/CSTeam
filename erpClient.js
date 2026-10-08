@@ -18,16 +18,17 @@ function assertConfigured() {
   }
 }
 
-async function erpLogin() {
+/** Đăng nhập ERP bằng 1 cặp tài khoản bất kỳ, trả về chuỗi cookie phiên. */
+async function loginRequest(usr, pwd) {
   assertConfigured();
   const res = await fetch(`${ERP_BASE_URL}/api/method/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ usr: ERP_USER, pwd: ERP_PASS }).toString(),
+    body: new URLSearchParams({ usr, pwd }).toString(),
   });
 
   if (!res.ok) {
-    const err = new Error(`Đăng nhập ERP thất bại (HTTP ${res.status}) — kiểm tra lại ERP_USER/ERP_PASS.`);
+    const err = new Error(`Đăng nhập ERP thất bại cho "${usr}" (HTTP ${res.status}) — kiểm tra lại tài khoản/mật khẩu.`);
     err.code = 'LOGIN_FAILED';
     throw err;
   }
@@ -44,8 +45,11 @@ async function erpLogin() {
     err.code = 'NO_COOKIE';
     throw err;
   }
+  return cookies.map((c) => c.split(';')[0]).join('; ');
+}
 
-  cachedCookie = cookies.map((c) => c.split(';')[0]).join('; ');
+async function erpLogin() {
+  cachedCookie = await loginRequest(ERP_USER, ERP_PASS);
   return cachedCookie;
 }
 
@@ -169,35 +173,93 @@ async function fetchTimesheetReport({ from_date, to_date, project } = {}) {
 /* ===================== GHI DỮ LIỆU (tạo ticket) ===================== */
 let cachedCsrf = null;
 
-async function fetchCsrfToken() {
-  // Frappe nhúng csrf_token trong trang /app khi dùng phiên đăng nhập bằng cookie.
-  const res = await fetch(`${ERP_BASE_URL}/app`, { headers: { Cookie: cachedCookie, Accept: 'text/html' } });
-  const html = await res.text();
-  const m = html.match(/csrf_token\s*[=:]\s*["']([^"']+)["']/);
-  cachedCsrf = m ? m[1] : null;
-  return cachedCsrf;
+/* ERP_USERS: JSON mảng các thành viên có tài khoản ERP riêng để tạo ticket đúng tên người tạo, ví dụ
+   [{"key":"an","label":"Nguyễn An","user":"an@hqsoft.vn","pass":"***"}]
+   Mật khẩu chỉ nằm ở biến môi trường của server, không bao giờ gửi xuống trình duyệt. */
+function parseErpUsers(raw) {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) throw new Error('phải là mảng');
+    return arr
+      .filter((u) => u && u.key && u.user && u.pass)
+      .map((u) => ({ key: String(u.key), label: String(u.label || u.user), user: String(u.user), pass: String(u.pass) }));
+  } catch (e) {
+    console.error('[erp] ERP_USERS không hợp lệ, bỏ qua:', e.message);
+    return [];
+  }
+}
+const ERP_USERS = parseErpUsers(process.env.ERP_USERS);
+
+/** Danh sách người tạo hiển thị trên form (KHÔNG chứa mật khẩu). key '' = tài khoản mặc định ERP_USER. */
+function listCreators() {
+  return [
+    { key: '', label: `Tài khoản chung (${ERP_USER || 'chưa cấu hình'})` },
+    ...ERP_USERS.map((u) => ({ key: u.key, label: `${u.label} (${u.user})` })),
+  ];
 }
 
-async function erpPost(pathname, body, { retry = true, csrfTried = false } = {}) {
+const userCtxs = new Map(); // key -> ngữ cảnh phiên riêng của từng thành viên
+const defaultCtx = {
+  label: ERP_USER,
+  async cookie() { await ensureLoggedIn(); return cachedCookie; },
+  get csrf() { return cachedCsrf; },
+  set csrf(v) { cachedCsrf = v; },
+  reset() { cachedCookie = null; cachedCsrf = null; },
+};
+
+function getCtx(creatorKey) {
+  if (!creatorKey) return defaultCtx;
+  const u = ERP_USERS.find((x) => x.key === creatorKey);
+  if (!u) {
+    const err = new Error(`Không có người tạo "${creatorKey}" trong danh sách ERP_USERS.`);
+    err.code = 'UNKNOWN_CREATOR';
+    throw err;
+  }
+  if (!userCtxs.has(u.key)) {
+    const st = { cookie: null, csrf: null, p: null };
+    userCtxs.set(u.key, {
+      label: u.user,
+      async cookie() {
+        if (st.cookie) return st.cookie;
+        if (!st.p) st.p = loginRequest(u.user, u.pass).then((c) => { st.cookie = c; return c; }).finally(() => { st.p = null; });
+        return st.p;
+      },
+      get csrf() { return st.csrf; },
+      set csrf(v) { st.csrf = v; },
+      reset() { st.cookie = null; st.csrf = null; },
+    });
+  }
+  return userCtxs.get(u.key);
+}
+
+async function fetchCsrfToken(ctx) {
+  // Frappe nhúng csrf_token trong trang /app khi dùng phiên đăng nhập bằng cookie.
+  const res = await fetch(`${ERP_BASE_URL}/app`, { headers: { Cookie: await ctx.cookie(), Accept: 'text/html' } });
+  const html = await res.text();
+  const m = html.match(/csrf_token\s*[=:]\s*["']([^"']+)["']/);
+  ctx.csrf = m ? m[1] : null;
+  return ctx.csrf;
+}
+
+async function erpPost(pathname, body, { ctx = defaultCtx, retry = true, csrfTried = false } = {}) {
   assertConfigured();
-  await ensureLoggedIn();
-  const headers = { Cookie: cachedCookie, Accept: 'application/json', 'Content-Type': 'application/json' };
-  if (cachedCsrf) headers['X-Frappe-CSRF-Token'] = cachedCsrf;
+  const headers = { Cookie: await ctx.cookie(), Accept: 'application/json', 'Content-Type': 'application/json' };
+  if (ctx.csrf) headers['X-Frappe-CSRF-Token'] = ctx.csrf;
 
   const res = await fetch(`${ERP_BASE_URL}${pathname}`, { method: 'POST', headers, body: JSON.stringify(body) });
 
-  if ((res.status === 401) && retry) {
-    cachedCookie = null; cachedCsrf = null;
-    await ensureLoggedIn();
-    return erpPost(pathname, body, { retry: false, csrfTried });
+  if (res.status === 401 && retry) {
+    ctx.reset();
+    return erpPost(pathname, body, { ctx, retry: false, csrfTried });
   }
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     if (!csrfTried && /csrf/i.test(text)) {
-      await fetchCsrfToken();
-      return erpPost(pathname, body, { retry, csrfTried: true });
+      await fetchCsrfToken(ctx);
+      return erpPost(pathname, body, { ctx, retry, csrfTried: true });
     }
-    const err = new Error(`ERP API lỗi HTTP ${res.status}: ${extractFrappeError(text)}`);
+    const err = new Error(`ERP API lỗi HTTP ${res.status} (người tạo: ${ctx.label}): ${extractFrappeError(text)}`);
     err.code = 'ERP_HTTP_ERROR';
     err.status = res.status;
     throw err;
@@ -238,7 +300,20 @@ async function getTicketMeta() {
   if (!main) throw new Error('Không đọc được cấu trúc DocType Ticket từ ERP (kiểm tra quyền của ERP_USER).');
   const children = {};
   docs.filter((d) => d.name !== 'Ticket').forEach((d) => { children[d.name] = simplify(d); });
-  metaCache = { at: Date.now(), data: { fields: simplify(main), children } };
+  // Một số bản ERP không trả kèm DocType con -> tự lấy riêng (cần cho Products: Table MultiSelect).
+  const mainFields = simplify(main);
+  for (const f of mainFields) {
+    if ((f.fieldtype === 'Table MultiSelect' || f.fieldtype === 'Table') && f.options && !children[f.options]) {
+      try {
+        const sub = await erpFetch(`/api/method/frappe.desk.form.load.getdoctype?doctype=${encodeURIComponent(f.options)}`);
+        const d = (sub.docs || []).find((x) => x.name === f.options);
+        if (d) children[f.options] = simplify(d);
+      } catch (e) {
+        console.error(`[erp/meta] không lấy được DocType con ${f.options}:`, e.message);
+      }
+    }
+  }
+  metaCache = { at: Date.now(), data: { fields: mainFields, children } };
   return metaCache.data;
 }
 
@@ -251,8 +326,8 @@ async function searchLink(doctype, txt = '', pageLength = 20) {
 }
 
 /** Tạo 1 Ticket mới. fields: object {fieldname: value}. Trả về document vừa tạo. */
-async function createTicket(fields) {
-  const r = await erpPost('/api/resource/Ticket', fields);
+async function createTicket(fields, creatorKey = '') {
+  const r = await erpPost('/api/resource/Ticket', fields, { ctx: getCtx(creatorKey) });
   return r.data || r;
 }
 
@@ -263,6 +338,7 @@ module.exports = {
   getTicketMeta,
   searchLink,
   createTicket,
+  listCreators,
   getBaseUrl: () => ERP_BASE_URL,
   isConfigured: () => Boolean(ERP_BASE_URL && ERP_USER && ERP_PASS),
 };

@@ -299,4 +299,7 @@ Render trả phí (không bị "ngủ") hoặc tự host trên máy/server luôn
 - Form dựng tự động từ cấu trúc DocType `Ticket` trên ERP (`GET /api/erp/ticket-meta`), nên không cần hard-code tên trường.
 - `POST /api/erp/tickets` nhận `{ fields, dry_run }`: `dry_run: true` chỉ kiểm tra và trả payload, không ghi vào ERP.
 - Chỉ nhận trường có trong DocType Ticket, bỏ qua trường chỉ-đọc/hệ thống; kiểm tra trường bắt buộc; chặn tạo trùng (cùng Project + Subject trong 2 phút).
-- Cần tài khoản `ERP_USER` có quyền **Create** trên DocType Ticket. Ticket sẽ ghi người tạo là `ERP_USER`.
+- Cần tài khoản ERP có quyền **Create** trên DocType Ticket. Mặc định ticket ghi người tạo là `ERP_USER`.
+- Muốn tạo đúng tên từng thành viên: khai báo biến môi trường `ERP_USERS` (JSON, mật khẩu chỉ nằm trên server):
+  `[{"key":"an","label":"Nguyễn An","user":"an@hqsoft.vn","pass":"***"},{"key":"binh","label":"Trần Bình","user":"binh@hqsoft.vn","pass":"***"}]`
+  Trang Tạo Ticket sẽ có ô **Người tạo ticket** để chọn tài khoản; trình duyệt chỉ nhận `key` và nhãn, không nhận mật khẩu.

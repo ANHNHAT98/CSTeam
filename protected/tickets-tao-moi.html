@@ -33,6 +33,7 @@
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
   .chip{background:#E3ECF6;border:1px solid var(--grid-line-strong);border-radius:999px;padding:3px 10px;font-size:12.5px;display:flex;gap:6px;align-items:center;}
   .chip button{border:0;background:none;cursor:pointer;color:var(--danger);font-weight:700;padding:0;}
+  .invalid{border-color:var(--danger)!important;outline:2px solid rgba(178,58,72,.35);}
   .hint{font-size:11.5px;color:var(--muted);margin-top:4px;}
   .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
   button.btn{font:inherit;font-weight:600;font-size:14px;padding:10px 18px;border-radius:8px;border:1px solid var(--blueprint);background:var(--blueprint);color:#fff;cursor:pointer;}
@@ -53,6 +54,9 @@
   <p class="sub">Form dựng tự động từ cấu trúc DocType <b>Ticket</b> trên ERP (đúng tên trường, bắt buộc, danh sách chọn). Bấm <b>Kiểm tra</b> để xem dữ liệu sẽ gửi mà chưa tạo; bấm <b>Tạo ticket</b> sẽ ghi ticket thật vào ERP bằng tài khoản <code>ERP_USER</code> của server.</p>
 
   <div class="panel">
+    <h2>Người tạo ticket</h2>
+    <select id="creator" style="max-width:420px"></select>
+    <p class="hint" style="margin:6px 0 16px">Ticket sẽ được tạo bằng tài khoản ERP của người này (hiện là người tạo/owner trên ERP). Danh sách khai báo ở biến môi trường <code>ERP_USERS</code> của server.</p>
     <h2>Nhập từ AI (JSON)</h2>
     <p class="hint" style="margin:0 0 8px">Dán JSON do skill/AI sinh ra (1 ticket hoặc nhiều ticket). Định dạng xem file <code>SKILL.md</code> đi kèm. Sau khi nạp, bạn xem lại rồi mới tạo.</p>
     <textarea id="aiJson" style="min-height:140px;font-family:'IBM Plex Mono',monospace;font-size:12.5px" placeholder='{"tickets":[{"project":"ABI_eSales_Support","subject":"...","request_type":"...","priority":"Medium","products":["..."],"description":"..."}]}'></textarea>
@@ -158,13 +162,17 @@ function build(meta){
   // Table MultiSelect
   Object.values(state.fields).filter(f=>f.fieldtype==='Table MultiSelect').forEach(f=>{
     const child = meta.children[f.options] || [];
-    const lf = child.find(x=>x.fieldtype==='Link');
-    state.multi[f.fieldname] = { values:[], linkField: lf && lf.fieldname, linkDoctype: lf && lf.options };
+    const lf = child.find(x=>x.fieldtype==='Link') || child.find(x=>!x.read_only && !x.hidden);
+    state.multi[f.fieldname] = { values:[], linkField: lf && lf.fieldname, linkDoctype: lf && lf.options, label:f.label };
+    const hint = document.createElement('div'); hint.className='hint';
+    hint.textContent = `Kiểu ${f.fieldtype} → bảng con "${f.options}", trường con: ${lf ? lf.fieldname : 'KHÔNG TÌM THẤY'}`;
+    $(fid(f)).parentElement.appendChild(hint);
+    if(!lf) $('warn').innerHTML += `<div class="msg err">Không đọc được cấu trúc bảng con "${esc(f.options)}" của trường ${esc(f.label)} — chưa thể gửi trường này. Kiểm tra quyền đọc DocType này của tài khoản ERP.</div>`;
     const inp = $(fid(f));
-    if(lf) wireLink(inp, lf.options);
-    inp.addEventListener('keydown', e=>{
-      if(e.key==='Enter'){ e.preventDefault(); const v=inp.value.trim(); if(v && !state.multi[f.fieldname].values.includes(v)){ state.multi[f.fieldname].values.push(v); renderChips(f); } inp.value=''; }
-    });
+    if(lf && lf.fieldtype==='Link') wireLink(inp, lf.options);
+    const addPending = ()=>{ const v=inp.value.trim(); if(v && !state.multi[f.fieldname].values.includes(v)){ state.multi[f.fieldname].values.push(v); renderChips(f); } inp.value=''; };
+    inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); addPending(); } });
+    inp.addEventListener('blur', addPending);
     inp.addEventListener('change', ()=>{ /* chọn từ datalist */ });
   });
   ['btnCheck','btnCreate','btnReset'].forEach(b=>$(b).disabled=false);
@@ -205,7 +213,7 @@ function collect(){
     if(v==='') return;
     if(f.fieldtype==='Datetime') v = v.replace('T',' ');
     if(f.fieldtype==='Check') v = Number(v);
-    if(f.fieldtype==='Text Editor' || f.fieldtype==='HTML Editor') v = '<div class="ql-editor read-mode">' + v.split('\n').map(l=>'<p>'+(l.trim()?esc(l):'<br>')+'</p>').join('') + '</div>';
+    if(f.fieldtype==='Text Editor' || f.fieldtype==='HTML Editor') v = wrapDesc(v);
     out[f.fieldname] = v;
   });
   return out;
@@ -215,9 +223,20 @@ function show(kind, html){ $('result').innerHTML = `<div class="msg ${kind}">${h
 
 async function send(dry, force){
   const fields = collect();
+  document.querySelectorAll('.invalid').forEach(e=>e.classList.remove('invalid'));
+  const miss = Object.values(state.fields).filter(f=>f.reqd && !f.read_only && !f.default && fields[f.fieldname]===undefined);
+  if(miss.length){
+    miss.forEach(f=>$(fid(f)).classList.add('invalid'));
+    const prod = miss.some(f=>f.fieldtype==='Table MultiSelect') ? '\n(Products: chọn/gõ một sản phẩm rồi nhấn Enter, hoặc chuyển sang ô khác để thêm.)' : '';
+    show('err','Chưa điền trường bắt buộc: '+miss.map(f=>esc(f.label)).join(', ')+esc(prod));
+    $(fid(miss[0])).focus();
+    return;
+  }
+  const bad = Object.values(state.fields).find(f=>f.fieldtype==='Table MultiSelect' && state.multi[f.fieldname] && !state.multi[f.fieldname].linkField && ($(fid(f)).value.trim() || state.multi[f.fieldname].values.length));
+  if(bad){ show('err', 'Không thể gửi trường '+esc(bad.label)+': chưa đọc được cấu trúc bảng con "'+esc(bad.options)+'" từ ERP.'); return; }
   const btns=['btnCheck','btnCreate']; btns.forEach(b=>$(b).disabled=true);
   try{
-    const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,force:!!force})});
+    const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,force:!!force,creator:$('creator').value})});
     if(dry){
       show('info','Dữ liệu hợp lệ — <b>chưa tạo ticket</b>. Payload sẽ gửi sang ERP:<pre>'+esc(JSON.stringify(r.payload,null,2))+'</pre>'+(r.rejected&&r.rejected.length?'<br>Trường bị bỏ qua: '+esc(r.rejected.join(', ')):''));
     }else{
@@ -252,7 +271,22 @@ function fieldForKey(k){
   return Object.values(state.fields).find(f=>f.fieldname===lk) || null;
 }
 function asList(v){ return Array.isArray(v) ? v.map(x=>String(x).trim()).filter(Boolean) : String(v).split(/[,;\n]/).map(x=>x.trim()).filter(Boolean); }
-function wrapDesc(v){ return '<div class="ql-editor read-mode">' + String(v).split('\n').map(l=>'<p>'+(l.trim()?esc(l):'<br>')+'</p>').join('') + '</div>'; }
+function mdInline(t){ return esc(t).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`(.+?)`/g,'<code>$1</code>'); }
+/* Description trên ERP là ô soạn thảo HTML: đổi markdown đơn giản (### tiêu đề, - gạch đầu dòng, **đậm**) sang HTML. */
+function wrapDesc(v){
+  const out=[]; let inList=false;
+  String(v).split('\n').forEach(raw=>{
+    const l = raw.replace(/\s+$/,'');
+    const li = l.match(/^\s*[-*]\s+(.*)$/);
+    if(li){ if(!inList){ out.push('<ul>'); inList=true; } out.push('<li>'+mdInline(li[1])+'</li>'); return; }
+    if(inList){ out.push('</ul>'); inList=false; }
+    const h = l.match(/^#{1,6}\s+(.*)$/);
+    if(h) out.push('<h4>'+mdInline(h[1])+'</h4>');
+    else out.push('<p>'+(l.trim()?mdInline(l):'<br>')+'</p>');
+  });
+  if(inList) out.push('</ul>');
+  return '<div class="ql-editor read-mode">'+out.join('')+'</div>';
+}
 
 /** 1 ticket JSON -> {fields: payload gửi ERP, unknown: [khoá không nhận ra]} */
 function jsonToPayload(obj){
@@ -310,7 +344,7 @@ async function bulkRun(dry){
     if(q.status==='created') continue;
     const {fields} = jsonToPayload(q.data);
     try{
-      const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry})});
+      const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,creator:$('creator').value})});
       if(dry){ q.status='checked'; q.msg='✓ hợp lệ'; } else { q.status='created'; q.msg='✓ đã tạo '+r.name; }
     }catch(e){ q.status = e.status===409?'dup':'error'; q.msg = '✗ '+e.message; }
     renderBulk();
@@ -338,6 +372,11 @@ $('btnLoadJson').onclick = ()=>{
 $('btnBulkCheck').onclick = ()=>bulkRun(true);
 $('btnBulkCreate').onclick = ()=>{ if(confirm(`Tạo ${queue.filter(q=>q.status!=='created').length} ticket thật trên ERP?`)) bulkRun(false); };
 
+api('/api/erp/creators').then(list=>{
+  $('creator').innerHTML = list.map(c=>`<option value="${esc(c.key)}">${esc(c.label)}</option>`).join('');
+  const saved = localStorage.getItem('ticketCreator'); if(saved && list.some(c=>c.key===saved)) $('creator').value = saved;
+}).catch(()=>{});
+$('creator').onchange = ()=>{ try{ localStorage.setItem('ticketCreator',$('creator').value); }catch(_){} };
 api('/api/erp/ticket-meta').then(m=>{ build(m); $('btnLoadJson').disabled=false; }).catch(e=>{
   $('loading').innerHTML = `<div class="msg err">Không tải được cấu trúc form: ${esc(e.message)}</div>`;
 });

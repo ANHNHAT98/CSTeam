@@ -210,6 +210,10 @@ app.get('/api/erp/ticket-meta', requireAuth, async (req, res) => {
   }
 });
 
+app.get('/api/erp/creators', requireAuth, (req, res) => {
+  res.json(erp.listCreators()); // chỉ trả key + nhãn, không có mật khẩu
+});
+
 app.get('/api/erp/link-search', requireAuth, async (req, res) => {
   if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
   try {
@@ -256,15 +260,19 @@ app.post('/api/erp/tickets', requireAuth, async (req, res) => {
 
     if (dryRun) return res.json({ dry_run: true, payload, rejected });
 
-    const key = `${payload.project || ''}|${String(payload.subject || '').trim().toLowerCase()}`;
+    const key = `${String((req.body && req.body.creator) || '')}|${payload.project || ''}|${String(payload.subject || '').trim().toLowerCase()}`;
     const last = recentCreates.get(key);
     if (last && Date.now() - last < 2 * 60 * 1000 && !(req.body && req.body.force)) {
       return res.status(409).json({ error: 'Ticket cùng Project + Subject vừa được tạo cách đây dưới 2 phút (nghi tạo trùng).', duplicate: true });
     }
 
-    const doc = await erp.createTicket(payload);
+    const creator = String((req.body && req.body.creator) || '');
+    if (creator && !erp.listCreators().some((c) => c.key === creator)) {
+      return res.status(400).json({ error: 'Người tạo không hợp lệ.' });
+    }
+    const doc = await erp.createTicket(payload, creator);
     recentCreates.set(key, Date.now());
-    console.log(`[erp/tickets] ${req.session && req.session.username ? req.session.username : 'user'} đã tạo ${doc.name} (${payload.project})`);
+    console.log(`[erp/tickets] ${req.session && req.session.username ? req.session.username : 'user'} đã tạo ${doc.name} (${payload.project}) bằng tài khoản ERP '${creator || 'chung'}'`);
     res.json({ ok: true, name: doc.name, url: `${erp.getBaseUrl()}/app/ticket/${encodeURIComponent(doc.name)}`, doc });
   } catch (e) {
     console.error('[erp/tickets POST] lỗi:', e.message);
