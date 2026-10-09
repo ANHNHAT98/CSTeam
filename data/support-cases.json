@@ -1,13 +1,1 @@
-[
-  {
-    "id": "case_1791493587046_7zgdom",
-    "project": "JOTUN",
-    "title": "[JOTUN] Lỗi import file",
-    "symptom": "Chị Trang cần hỗ trợ check lỗi import file \ncụ thể: khi import file vào hệ thống sau đó file vào thư mục Error , chị Trang cần check xem file đang lỗi ở đâu để xử lý",
-    "cause": "Khách hàng 625297 thông tin không đồng nhất thông tin dẫn dến khi import báo lỗi \nselect * from ServerApplication  where status ='H'--- check lỗi import Jotun",
-    "solution": "user cần chỉnh lại thông tin KH  và thực hiện import lại",
-    "tags": "Lỗi import",
-    "createdAt": "2026-10-08T21:06:26.607Z",
-    "updatedAt": "2026-10-08T21:06:26.607Z"
-  }
-]
+[]

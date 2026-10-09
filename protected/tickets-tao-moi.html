@@ -33,6 +33,9 @@
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
   .chip{background:#E3ECF6;border:1px solid var(--grid-line-strong);border-radius:999px;padding:3px 10px;font-size:12.5px;display:flex;gap:6px;align-items:center;}
   .chip button{border:0;background:none;cursor:pointer;color:var(--danger);font-weight:700;padding:0;}
+  .locked{background:#EEF1F5!important;color:var(--ink);font-weight:600;}
+  .sug{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center;}
+  .sug button{font:inherit;font-size:12.5px;padding:3px 10px;border-radius:999px;border:1px solid var(--blueprint);background:#fff;color:var(--blueprint);cursor:pointer;}
   .invalid{border-color:var(--danger)!important;outline:2px solid rgba(178,58,72,.35);}
   .hint{font-size:11.5px;color:var(--muted);margin-top:4px;}
   .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
@@ -48,18 +51,35 @@
 </style>
 </head>
 <body>
-<div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb">/ tickets / tạo ticket ERP</span></div>
+<div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb" id="crumb">/ tickets / tạo ticket ERP</span></div>
 <div class="wrap">
-  <h1>Tạo Ticket trên ERP</h1>
+  <h1 id="pageTitle">Tạo Ticket trên ERP</h1>
   <p class="sub">Form dựng tự động từ cấu trúc DocType <b>Ticket</b> trên ERP (đúng tên trường, bắt buộc, danh sách chọn). Bấm <b>Kiểm tra</b> để xem dữ liệu sẽ gửi mà chưa tạo; bấm <b>Tạo ticket</b> sẽ ghi ticket thật vào ERP bằng tài khoản <code>ERP_USER</code> của server.</p>
 
   <div class="panel">
     <h2>Người tạo ticket</h2>
     <select id="creator" style="max-width:420px"></select>
-    <p class="hint" style="margin:6px 0 16px">Ticket sẽ được tạo bằng tài khoản ERP của người này (hiện là người tạo/owner trên ERP). Danh sách khai báo ở biến môi trường <code>ERP_USERS</code> của server.</p>
+    <div id="creatorHint" class="hint" style="display:none;color:var(--danger)">Chưa có tài khoản nào từ biến môi trường <code>ERP_USERS</code> trên Render (hoặc JSON sai định dạng) — xem log server dòng <code>[erp] Người tạo ticket đã nạp…</code>.</div>
+    <div id="onbehalfBox" style="display:none;margin-top:12px;max-width:420px">
+      <label for="obUser">Email người tạo (user ERP)</label>
+      <input id="obUser" list="dl_obUser" autocomplete="off" placeholder="vd: lamlt@hqsoft.com.vn"><datalist id="dl_obUser"></datalist>
+      <div class="hint">Không cần mật khẩu. Ticket vẫn được gửi bằng tài khoản ERP cấu hình trên Render nhưng <b>người tạo (owner) sẽ là email này</b>. Gõ để tìm, chọn trong danh sách user ERP.</div>
+    </div>
+    <div id="customBox" style="display:none;margin-top:12px;max-width:420px">
+      <div id="customLogin">
+        <label for="cuUser">Email ERP</label><input id="cuUser" type="email" autocomplete="off" placeholder="ten@hqsoft.vn">
+        <label for="cuPass" style="margin-top:10px">Mật khẩu ERP</label><input id="cuPass" type="password" autocomplete="new-password">
+        <div class="actions" style="margin-top:10px"><button class="btn sec" id="btnCuLogin" type="button">Đăng nhập ERP</button></div>
+        <div class="hint">Mật khẩu chỉ dùng để đăng nhập ERP một lần, server <b>không lưu</b> và không ghi log; chỉ giữ phiên đăng nhập trong bộ nhớ cho đến khi bạn đăng xuất hoặc đóng phiên.</div>
+      </div>
+      <div id="customOn" style="display:none"><span id="cuWho"></span> <button class="btn sec" id="btnCuLogout" type="button" style="padding:4px 10px;font-size:12px">Đăng xuất ERP</button></div>
+      <div id="cuMsg"></div>
+    </div>
+    <p class="hint" style="margin:6px 0 16px">Ticket được tạo bằng tài khoản ERP của người được chọn (hiện là người tạo/owner trên ERP). Có thể chọn tài khoản khai báo sẵn ở <code>ERP_USERS</code> hoặc <b>nhập tài khoản ERP khác</b>.</p>
     <h2>Nhập từ AI (JSON)</h2>
-    <p class="hint" style="margin:0 0 8px">Dán JSON do skill/AI sinh ra (1 ticket hoặc nhiều ticket). Định dạng xem file <code>SKILL.md</code> đi kèm. Sau khi nạp, bạn xem lại rồi mới tạo.</p>
-    <textarea id="aiJson" style="min-height:140px;font-family:'IBM Plex Mono',monospace;font-size:12.5px" placeholder='{"tickets":[{"project":"ABI_eSales_Support","subject":"...","request_type":"...","priority":"Medium","products":["..."],"description":"..."}]}'></textarea>
+    <p class="hint" style="margin:0 0 8px">Dán nội dung do skill/AI sinh ra — có thể là <b>nguyên file .md</b> (chữ + khối <code>```json</code>) hoặc JSON trần, 1 hoặc nhiều ticket. Hoặc chọn / kéo thả file <code>.md .json .txt</code> vào ô bên dưới. Trang tự tìm JSON và điền vào form; bạn xem lại rồi mới tạo.</p>
+    <div class="actions" style="margin-bottom:8px"><input type="file" id="aiFile" accept=".md,.markdown,.json,.txt,text/markdown,application/json,text/plain" style="max-width:360px"></div>
+    <textarea id="aiJson" style="min-height:160px;font-family:'IBM Plex Mono',monospace;font-size:12.5px" placeholder='{"tickets":[{"project":"ABI_eSales_Support","subject":"...","request_type":"...","priority":"Medium","products":["..."],"description":"..."}]}'></textarea>
     <div class="actions" style="margin-top:10px">
       <button class="btn" id="btnLoadJson" disabled>Nạp vào form</button>
     </div>
@@ -100,6 +120,19 @@ const WANTED = [
   ['Contact Role',false],['Estimated Deadline',false],
   ['Description',true]
 ];
+/* Mã dự án (đúng như dashboard) -> tên hiển thị. Trang mở từ menu Dự Án > ... > Tạo Ticket kèm ?project=<mã> sẽ khoá Project theo dự án đó. */
+const PROJECT_LABELS = {
+  MerapLion_eSales:'Merap', ABI_eSales_Support:'ABI', ANVY_eSale_Support:'AnVy', Sabeco_PG:'Sabeco PG', Sabeco_B2B_Support:'Sabeco B2B',
+  FES_eSales:'FES', ANKO_eSales_Support:'ANKO', HaiHa_eSales_Support:'HAIHA', Jotun_VN_eSales:'JOTUN'
+};
+const qpProject = new URLSearchParams(location.search).get('project');
+const LOCKED = qpProject && PROJECT_LABELS[qpProject] ? qpProject : null;
+if(LOCKED){
+  const nm = PROJECT_LABELS[LOCKED];
+  document.title = 'Ticket dự án — Tạo Ticket '+nm;
+  document.getElementById('pageTitle').textContent = 'Tạo Ticket — '+nm;
+  document.getElementById('crumb').textContent = '/ dự án / '+nm.toLowerCase()+' / tạo ticket';
+}
 const state = { meta:null, fields:{}, multi:{} }; // fields: label -> meta field
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -155,9 +188,17 @@ function build(meta){
   }
   // Giá trị mặc định
   Object.values(state.fields).forEach(f=>{ const el=$(fid(f)); if(el && f.default && f.fieldtype!=='Select') el.value=f.default; });
-  const p = new URLSearchParams(location.search).get('project');
-  const pf = state.fields['Project']; if(p && pf) $(fid(pf)).value = p;
+  const pf = state.fields['Project'];
+  if(LOCKED && pf){
+    const el = $(fid(pf)); el.value = LOCKED; el.readOnly = true; el.classList.add('locked'); el.removeAttribute('list');
+    const h = document.createElement('div'); h.className='hint'; h.textContent = 'Cố định theo dự án '+PROJECT_LABELS[LOCKED]+' — Customer lấy theo dự án này';
+    el.parentElement.appendChild(h);
+  }
+  // Gợi ý người liên hệ khi có/đổi email hoặc tên người báo
+  ['Raised By (Email)','Contact (Temp)'].forEach(l=>{ const f=state.fields[l]; if(f) $(fid(f)).addEventListener('change', refreshContactSuggest); });
+  const _cf = state.fields['Contact']; if(_cf && !$('contactSug')){ const d=document.createElement('div'); d.id='contactSug'; d.className='sug'; $(fid(_cf)).parentElement.appendChild(d); }
   // Link: gợi ý khi gõ
+  const _pf = state.fields['Project']; if(_pf) $(fid(_pf)).addEventListener('change', ()=>{ applyAutofill(); });
   document.querySelectorAll('input[data-link]').forEach(inp=>wireLink(inp, inp.dataset.link));
   // Table MultiSelect
   Object.values(state.fields).filter(f=>f.fieldtype==='Table MultiSelect').forEach(f=>{
@@ -222,6 +263,8 @@ function collect(){
 function show(kind, html){ $('result').innerHTML = `<div class="msg ${kind}">${html}</div>`; }
 
 async function send(dry, force){
+  if($('creator').value===ONBEHALF && !$('obUser').value.trim()){ show('err','Chọn/nhập email người tạo (user ERP) ở mục Người tạo ticket.'); $('obUser').focus(); return; }
+  if($('creator').value===CUSTOM && !customUser){ show('err','Bạn đã chọn "Tài khoản ERP khác" nhưng chưa đăng nhập ERP — nhập email/mật khẩu và bấm Đăng nhập ERP.'); return; }
   const fields = collect();
   document.querySelectorAll('.invalid').forEach(e=>e.classList.remove('invalid'));
   const miss = Object.values(state.fields).filter(f=>f.reqd && !f.read_only && !f.default && fields[f.fieldname]===undefined);
@@ -236,11 +279,11 @@ async function send(dry, force){
   if(bad){ show('err', 'Không thể gửi trường '+esc(bad.label)+': chưa đọc được cấu trúc bảng con "'+esc(bad.options)+'" từ ERP.'); return; }
   const btns=['btnCheck','btnCreate']; btns.forEach(b=>$(b).disabled=true);
   try{
-    const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,force:!!force,creator:$('creator').value})});
+    const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,force:!!force,creator:$('creator').value,on_behalf:$('obUser').value.trim()})});
     if(dry){
-      show('info','Dữ liệu hợp lệ — <b>chưa tạo ticket</b>. Payload sẽ gửi sang ERP:<pre>'+esc(JSON.stringify(r.payload,null,2))+'</pre>'+(r.rejected&&r.rejected.length?'<br>Trường bị bỏ qua: '+esc(r.rejected.join(', ')):''));
+      show('info','Dữ liệu hợp lệ — <b>chưa tạo ticket</b>. Payload sẽ gửi sang ERP:<pre>'+esc(JSON.stringify(r.payload,null,2))+'</pre>'+(r.rejected&&r.rejected.length?'<br>Trường bị bỏ qua: '+esc(r.rejected.join(', ')):'')+autoText(r.autofilled));
     }else{
-      show('ok',`Đã tạo ticket <b>${esc(r.name)}</b>. <a href="${esc(r.url)}" target="_blank" rel="noopener">Mở trên ERP ↗</a>`);
+      show(r.warning?'info':'ok',`Đã tạo ticket <b>${esc(r.name)}</b>${r.method?` — người tạo trên ERP: <b>${esc(r.creator)}</b> (${esc(r.method)})`:''}. <a href="${esc(r.url)}" target="_blank" rel="noopener">Mở trên ERP ↗</a>${r.warning?'<br><b>Lưu ý:</b> '+esc(r.warning):''}${autoText(r.autofilled)}`);
     }
   }catch(e){
     if(e.status===409 && confirm(e.message+'\n\nVẫn tạo ticket mới?')) { btns.forEach(b=>$(b).disabled=false); return send(dry,true); }
@@ -304,6 +347,8 @@ function jsonToPayload(obj){
     if(f.fieldtype==='Text Editor' || f.fieldtype==='HTML Editor'){ payload[f.fieldname] = wrapDesc(v); return; }
     payload[f.fieldname] = String(v);
   });
+  const pf = state.fields['Project'];
+  if(LOCKED && pf) payload[pf.fieldname] = LOCKED; // luôn dùng project của trang, bỏ qua project trong JSON
   return { fields: payload, unknown };
 }
 
@@ -312,6 +357,7 @@ function loadIntoForm(obj){
   document.getElementById('btnReset').click();
   Object.entries(obj).forEach(([k,v])=>{
     const f = fieldForKey(k); if(!f || f.read_only) return;
+    if(LOCKED && f===state.fields['Project']) return;
     const el = $(fid(f)); if(!el) return;
     if(f.fieldtype==='Table MultiSelect'){ const m=state.multi[f.fieldname]; m.values = asList(v); renderChips(f); return; }
     el.value = f.fieldtype==='Datetime' ? String(v).replace(' ','T') : String(v);
@@ -319,12 +365,74 @@ function loadIntoForm(obj){
   window.scrollTo({top: $('form').getBoundingClientRect().top + scrollY - 80, behavior:'smooth'});
 }
 
+/* Lấy JSON từ nội dung bất kỳ (file .md có chữ + tiêu đề + khối ```json, hoặc JSON trần). */
+function extractJsonCandidates(text){
+  const out=[]; const re=/```[a-zA-Z]*[ \t]*\r?\n([\s\S]*?)```/g; let m;
+  while((m=re.exec(text))) out.push(m[1].trim());
+  if(out.length) return out;
+  // Không có khối ``` -> quét tìm {...} / [...] cân bằng ngoặc (bỏ qua ngoặc trong chuỗi)
+  for(let i=0;i<text.length;i++){
+    const c=text[i]; if(c!=='{' && c!=='[') continue;
+    let depth=0, inStr=false, esc2=false, end=-1;
+    for(let j=i;j<text.length;j++){
+      const d=text[j];
+      if(inStr){ if(esc2) esc2=false; else if(d==='\\') esc2=true; else if(d==='"') inStr=false; continue; }
+      if(d==='"') inStr=true;
+      else if(d==='{'||d==='[') depth++;
+      else if(d==='}'||d===']'){ depth--; if(depth===0){ end=j; break; } }
+    }
+    if(end<0) continue;
+    const frag=text.slice(i,end+1);
+    try{ JSON.parse(frag); out.push(frag); i=end; }catch(_){ /* không phải JSON, thử vị trí tiếp theo */ }
+  }
+  return out;
+}
+function looksLikeTicket(o){ return o && typeof o==='object' && !Array.isArray(o) && Object.keys(o).some(k=>fieldForKey(k)); }
+/** Hỏi server các trường sẽ được tự điền (Customer theo Project, mặc định cấu hình, Deadline theo Priority) và đổ vào ô còn trống. */
+async function applyAutofill(){
+  try{
+    const r = await api('/api/erp/ticket-defaults',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields:collect()})});
+    const done = [];
+    (r.autofilled||[]).forEach(a=>{
+      const f = Object.values(state.fields).find(x=>x.fieldname===a.fieldname); const el = f && $(fid(f));
+      if(!el || el.value) return;
+      el.value = f.fieldtype==='Datetime' ? String(a.value).replace(' ','T') : a.value;
+      done.push(`${esc(a.label)} = <b>${esc(a.value)}</b> <span class="hint">(${esc(a.source)})</span>`);
+    });
+    return done;
+  }catch(_){ return []; }
+}
+/** Gợi ý Contact theo email / tên người báo (mục "Người liên hệ"). Chỉ hiện khi ô Contact còn trống. */
+async function refreshContactSuggest(){
+  const box = $('contactSug'); const cf = state.fields['Contact']; if(!box || !cf) return;
+  box.innerHTML='';
+  if($(fid(cf)).value.trim()) return;
+  const ef = state.fields['Raised By (Email)'], tf = state.fields['Contact (Temp)'];
+  const email = ef ? $(fid(ef)).value.trim() : '';
+  const name = tf ? $(fid(tf)).value.split(/[-–|,]/)[0].trim() : '';
+  if(!email && !name) return;
+  try{
+    const list = await api('/api/erp/contact-suggest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,name})});
+    if(!list.length){ box.innerHTML = '<span class="hint">Chưa có Contact khớp trên ERP — để trống hoặc dùng Contact (Temp).</span>'; return; }
+    box.innerHTML = '<span class="hint">Gợi ý người liên hệ:</span>';
+    list.forEach(c=>{ const b=document.createElement('button'); b.type='button'; b.textContent = c.value + (c.description?' · '+c.description:'') + (c.match==='email'?' ✓':''); b.onclick=()=>{ $(fid(cf)).value=c.value; box.innerHTML=''; }; box.appendChild(b); });
+  }catch(_){ /* bỏ qua lỗi gợi ý */ }
+}
+function autoText(list){ return (list&&list.length) ? '<br>Tự điền: '+list.map(a=>typeof a==='string'?a:`${esc(a.label)} = <b>${esc(a.value)}</b> <span class="hint">(${esc(a.source)})</span>`).join('; ') : ''; }
+
 function parseAiJson(text){
-  let t = text.trim().replace(/^```(?:json)?\s*/i,'').replace(/```\s*$/,'').trim();
-  const j = JSON.parse(t);
-  const arr = Array.isArray(j) ? j : (Array.isArray(j.tickets) ? j.tickets : [j]);
-  if(!arr.length || arr.some(x=>!x || typeof x!=='object' || Array.isArray(x))) throw new Error('JSON phải là 1 ticket, mảng ticket, hoặc {"tickets":[...]}.');
-  return arr;
+  const src = String(text).replace(/^\uFEFF/,'');
+  const tickets=[]; let parsedAny=false, lastErr=null;
+  extractJsonCandidates(src).forEach(c=>{
+    let j; try{ j=JSON.parse(c); parsedAny=true; }catch(e){ lastErr=e; return; }
+    const arr = Array.isArray(j) ? j : (j && Array.isArray(j.tickets) ? j.tickets : [j]);
+    arr.forEach(o=>{ if(looksLikeTicket(o)) tickets.push(o); });
+  });
+  if(!tickets.length){
+    if(!parsedAny && lastErr) throw new Error('Khối JSON trong nội dung bị lỗi cú pháp: '+lastErr.message);
+    throw new Error('Không tìm thấy JSON ticket trong nội dung (cần 1 ticket, mảng ticket, hoặc {"tickets":[...]} có các khoá như subject, project, request_type...).');
+  }
+  return tickets;
 }
 
 function renderBulk(){
@@ -339,13 +447,15 @@ function renderBulk(){
 }
 
 async function bulkRun(dry){
+  if($('creator').value===ONBEHALF && !$('obUser').value.trim()){ $('aiMsg').innerHTML='<div class="msg err">Chọn/nhập email người tạo (user ERP).</div>'; return; }
+  if($('creator').value===CUSTOM && !customUser){ $('aiMsg').innerHTML='<div class="msg err">Chưa đăng nhập tài khoản ERP khác.</div>'; return; }
   const btns=['btnBulkCheck','btnBulkCreate','btnLoadJson']; btns.forEach(b=>$(b).disabled=true);
   for(const q of queue){
     if(q.status==='created') continue;
     const {fields} = jsonToPayload(q.data);
     try{
-      const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,creator:$('creator').value})});
-      if(dry){ q.status='checked'; q.msg='✓ hợp lệ'; } else { q.status='created'; q.msg='✓ đã tạo '+r.name; }
+      const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,creator:$('creator').value,on_behalf:$('obUser').value.trim()})});
+      if(dry){ q.status='checked'; q.msg='✓ hợp lệ'; } else { q.status='created'; q.msg='✓ đã tạo '+r.name+(r.warning?' ⚠ '+r.warning:''); }
     }catch(e){ q.status = e.status===409?'dup':'error'; q.msg = '✗ '+e.message; }
     renderBulk();
   }
@@ -359,24 +469,69 @@ $('btnLoadJson').onclick = ()=>{
   catch(e){ $('aiMsg').innerHTML = `<div class="msg err">JSON không hợp lệ: ${esc(e.message)}</div>`; return; }
   const unknown = new Set();
   arr.forEach(o=>jsonToPayload(o).unknown.forEach(k=>unknown.add(k)));
-  const note = unknown.size ? `<br>Khoá không nhận ra (bị bỏ qua): <b>${[...unknown].map(esc).join(', ')}</b>` : '';
+  const pkey = k=>{ const f=fieldForKey(k); return f && f===state.fields['Project']; };
+  const other = LOCKED ? [...new Set(arr.map(o=>{ const k=Object.keys(o).find(pkey); return k ? String(o[k]).trim() : ''; }).filter(v=>v && v!==LOCKED))] : [];
+  const projNote = other.length ? `<br>⚠ JSON ghi project <b>${other.map(esc).join(', ')}</b> khác dự án của trang — đã dùng <b>${esc(LOCKED)}</b>.` : '';
+  const note = projNote + (unknown.size ? `<br>Khoá không nhận ra (bị bỏ qua): <b>${[...unknown].map(esc).join(', ')}</b>` : '');
   if(arr.length===1){
     loadIntoForm(arr[0]);
     $('aiMsg').innerHTML = `<div class="msg ok">Đã nạp 1 ticket vào form bên dưới — xem lại rồi bấm Kiểm tra / Tạo ticket.${note}</div>`;
+    applyAutofill().then(done=>{ refreshContactSuggest(); if(done.length) $('aiMsg').innerHTML = `<div class="msg ok">Đã nạp 1 ticket vào form bên dưới — xem lại rồi bấm Kiểm tra / Tạo ticket.${note}${autoText(done)}</div>`; });
   }else{
     queue = arr.map(d=>({data:d,status:'new',msg:''}));
     $('bulk').style.display='block'; renderBulk();
     $('aiMsg').innerHTML = `<div class="msg ok">Đã nạp ${arr.length} ticket. Bấm <b>Kiểm tra tất cả</b> trước, rồi <b>Tạo tất cả</b>.${note}</div>`;
   }
 };
+function readAiFile(file){
+  if(!file) return;
+  if(file.size > 2*1024*1024){ $('aiMsg').innerHTML='<div class="msg err">File quá lớn (tối đa 2 MB).</div>'; return; }
+  const fr = new FileReader();
+  fr.onload = ()=>{ $('aiJson').value = String(fr.result||''); $('btnLoadJson').click(); };
+  fr.onerror = ()=>{ $('aiMsg').innerHTML='<div class="msg err">Không đọc được file.</div>'; };
+  fr.readAsText(file, 'utf-8');
+}
+$('aiFile').addEventListener('change', e=>{ readAiFile(e.target.files[0]); e.target.value=''; });
+['dragenter','dragover'].forEach(ev=>$('aiJson').addEventListener(ev, e=>{ e.preventDefault(); $('aiJson').style.outline='2px dashed var(--amber)'; }));
+['dragleave','drop'].forEach(ev=>$('aiJson').addEventListener(ev, e=>{ e.preventDefault(); $('aiJson').style.outline=''; if(ev==='drop') readAiFile(e.dataTransfer.files[0]); }));
 $('btnBulkCheck').onclick = ()=>bulkRun(true);
 $('btnBulkCreate').onclick = ()=>{ if(confirm(`Tạo ${queue.filter(q=>q.status!=='created').length} ticket thật trên ERP?`)) bulkRun(false); };
 
-api('/api/erp/creators').then(list=>{
-  $('creator').innerHTML = list.map(c=>`<option value="${esc(c.key)}">${esc(c.label)}</option>`).join('');
-  const saved = localStorage.getItem('ticketCreator'); if(saved && list.some(c=>c.key===saved)) $('creator').value = saved;
+const CUSTOM = '__custom__';
+const ONBEHALF = '__onbehalf__';
+let customUser = null;
+function refreshCustomUi(){
+  const on = $('creator').value===CUSTOM;
+  $('customBox').style.display = on ? 'block' : 'none';
+  $('onbehalfBox').style.display = $('creator').value===ONBEHALF ? 'block' : 'none';
+  $('customLogin').style.display = customUser ? 'none' : 'block';
+  $('customOn').style.display = customUser ? 'block' : 'none';
+  $('cuWho').innerHTML = customUser ? 'Đã đăng nhập ERP: <b>'+esc(customUser)+'</b>' : '';
+  const opt = [...$('creator').options].find(o=>o.value===CUSTOM);
+  if(opt) opt.textContent = customUser ? 'Tài khoản ERP khác ('+customUser+')' : '➕ Nhập tài khoản ERP khác…';
+}
+Promise.all([api('/api/erp/creators'), api('/api/erp/custom-session').catch(()=>({user:null}))]).then(([list,cs])=>{
+  customUser = cs.user;
+  const customAllowed = cs.allowed !== false;
+  $('creator').innerHTML = list.map(c=>`<option value="${esc(c.key)}">${esc(c.label)}</option>`).join('') + `<option value="${ONBEHALF}">👤 Chọn người dùng ERP làm người tạo (không cần mật khẩu)</option>` + (customAllowed ? `<option value="${CUSTOM}"></option>` : '');
+  if(list.length<=1) $('creatorHint').style.display='block';
+  const saved = localStorage.getItem('ticketCreator'); if(saved && [...$('creator').options].some(o=>o.value===saved)) $('creator').value = saved;
+  refreshCustomUi();
 }).catch(()=>{});
-$('creator').onchange = ()=>{ try{ localStorage.setItem('ticketCreator',$('creator').value); }catch(_){} };
+(function(){ let t=null; const inp=$('obUser'); const load=async()=>{ try{ const l=await api('/api/erp/users?txt='+encodeURIComponent(inp.value)); $('dl_obUser').innerHTML=l.map(x=>`<option value="${esc(x.value)}">${esc(x.description||'')}</option>`).join(''); }catch(_){} };
+  inp.addEventListener('focus',load); inp.addEventListener('input',()=>{clearTimeout(t);t=setTimeout(load,250);});
+  try{ const s=localStorage.getItem('ticketOnBehalf'); if(s) inp.value=s; }catch(_){}
+  inp.addEventListener('change',()=>{ try{ localStorage.setItem('ticketOnBehalf',inp.value.trim()); }catch(_){} }); })();
+$('creator').onchange = ()=>{ try{ localStorage.setItem('ticketCreator',$('creator').value); }catch(_){} refreshCustomUi(); };
+$('btnCuLogin').onclick = async ()=>{
+  $('cuMsg').innerHTML=''; $('btnCuLogin').disabled=true;
+  try{
+    const r = await api('/api/erp/custom-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:$('cuUser').value,pass:$('cuPass').value})});
+    customUser = r.user; $('cuPass').value=''; refreshCustomUi();
+  }catch(e){ $('cuMsg').innerHTML = `<div class="msg err">${esc(e.message)}</div>`; }
+  finally{ $('btnCuLogin').disabled=false; }
+};
+$('btnCuLogout').onclick = async ()=>{ await api('/api/erp/custom-logout',{method:'POST'}).catch(()=>{}); customUser=null; refreshCustomUi(); };
 api('/api/erp/ticket-meta').then(m=>{ build(m); $('btnLoadJson').disabled=false; }).catch(e=>{
   $('loading').innerHTML = `<div class="msg err">Không tải được cấu trúc form: ${esc(e.message)}</div>`;
 });

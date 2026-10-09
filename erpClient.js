@@ -190,6 +190,9 @@ function parseErpUsers(raw) {
   }
 }
 const ERP_USERS = parseErpUsers(process.env.ERP_USERS);
+// ERP_ALLOW_CUSTOM_LOGIN=0 -> ẩn/chặn tuỳ chọn "nhập tài khoản ERP khác", chỉ cho chọn tài khoản khai báo trong ERP_USERS.
+const ALLOW_CUSTOM_LOGIN = !/^(0|false|no|off)$/i.test(String(process.env.ERP_ALLOW_CUSTOM_LOGIN || '1').trim());
+console.log(`[erp] Người tạo ticket đã nạp từ ERP_USERS: ${ERP_USERS.length} tài khoản${ERP_USERS.length ? ' (' + ERP_USERS.map((u) => u.key).join(', ') + ')' : ''}; nhập tài khoản khác: ${ALLOW_CUSTOM_LOGIN ? 'cho phép' : 'tắt'}`);
 
 /** Danh sách người tạo hiển thị trên form (KHÔNG chứa mật khẩu). key '' = tài khoản mặc định ERP_USER. */
 function listCreators() {
@@ -233,6 +236,25 @@ function getCtx(creatorKey) {
   return userCtxs.get(u.key);
 }
 
+/** Ngữ cảnh cho tài khoản do người dùng tự đăng nhập trên trang: chỉ giữ cookie phiên, KHÔNG giữ mật khẩu. */
+function makeCookieCtx(user, cookie) {
+  const st = { cookie, csrf: null, expired: false };
+  return {
+    label: user,
+    async cookie() {
+      if (st.expired) {
+        const err = new Error(`Phiên ERP của "${user}" đã hết hạn — hãy đăng nhập lại tài khoản ERP.`);
+        err.code = 'SESSION_EXPIRED';
+        throw err;
+      }
+      return st.cookie;
+    },
+    get csrf() { return st.csrf; },
+    set csrf(v) { st.csrf = v; },
+    reset() { st.expired = true; st.cookie = null; st.csrf = null; },
+  };
+}
+
 async function fetchCsrfToken(ctx) {
   // Frappe nhúng csrf_token trong trang /app khi dùng phiên đăng nhập bằng cookie.
   const res = await fetch(`${ERP_BASE_URL}/app`, { headers: { Cookie: await ctx.cookie(), Accept: 'text/html' } });
@@ -242,22 +264,22 @@ async function fetchCsrfToken(ctx) {
   return ctx.csrf;
 }
 
-async function erpPost(pathname, body, { ctx = defaultCtx, retry = true, csrfTried = false } = {}) {
+async function erpPost(pathname, body, { ctx = defaultCtx, retry = true, csrfTried = false, method = 'POST' } = {}) {
   assertConfigured();
   const headers = { Cookie: await ctx.cookie(), Accept: 'application/json', 'Content-Type': 'application/json' };
   if (ctx.csrf) headers['X-Frappe-CSRF-Token'] = ctx.csrf;
 
-  const res = await fetch(`${ERP_BASE_URL}${pathname}`, { method: 'POST', headers, body: JSON.stringify(body) });
+  const res = await fetch(`${ERP_BASE_URL}${pathname}`, { method, headers, body: JSON.stringify(body) });
 
   if (res.status === 401 && retry) {
     ctx.reset();
-    return erpPost(pathname, body, { ctx, retry: false, csrfTried });
+    return erpPost(pathname, body, { ctx, retry: false, csrfTried, method });
   }
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     if (!csrfTried && /csrf/i.test(text)) {
       await fetchCsrfToken(ctx);
-      return erpPost(pathname, body, { ctx, retry, csrfTried: true });
+      return erpPost(pathname, body, { ctx, retry, csrfTried: true, method });
     }
     const err = new Error(`ERP API lỗi HTTP ${res.status} (người tạo: ${ctx.label}): ${extractFrappeError(text)}`);
     err.code = 'ERP_HTTP_ERROR';
@@ -294,7 +316,7 @@ async function getTicketMeta() {
     .filter((f) => !LAYOUT_TYPES.has(f.fieldtype))
     .map((f) => ({
       fieldname: f.fieldname, label: f.label || '', fieldtype: f.fieldtype, options: f.options || '',
-      reqd: f.reqd ? 1 : 0, read_only: f.read_only ? 1 : 0, hidden: f.hidden ? 1 : 0, default: f.default || '',
+      reqd: f.reqd ? 1 : 0, read_only: f.read_only ? 1 : 0, hidden: f.hidden ? 1 : 0, default: f.default || '', fetch_from: f.fetch_from || '',
     }));
   const main = docs.find((d) => d.name === 'Ticket');
   if (!main) throw new Error('Không đọc được cấu trúc DocType Ticket từ ERP (kiểm tra quyền của ERP_USER).');
@@ -317,6 +339,40 @@ async function getTicketMeta() {
   return metaCache.data;
 }
 
+const linkedCache = new Map(); // "DocType|name|field" -> {at, v}
+/** Đọc 1 trường của bản ghi liên kết (vd Project.customer). Cache 5 phút. */
+async function getLinkedValue(doctype, name, field) {
+  const key = `${doctype}|${name}|${field}`;
+  const hit = linkedCache.get(key);
+  if (hit && Date.now() - hit.at < 5 * 60 * 1000) return hit.v;
+  const r = await erpFetch(`/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`);
+  const v = (r.data || r)[field] || '';
+  linkedCache.set(key, { at: Date.now(), v });
+  return v;
+}
+
+/** Gợi ý người liên hệ (Contact): khớp chính xác theo email, hoặc tìm theo tên. Trả [{value, description, match}]. */
+async function suggestContacts({ doctype = 'Contact', email = '', name = '' } = {}) {
+  const out = new Map();
+  if (email) {
+    try {
+      const qs = new URLSearchParams({
+        fields: JSON.stringify(['name', 'email_id', 'mobile_no']),
+        filters: JSON.stringify([['email_id', '=', email]]),
+        limit_page_length: '5',
+      });
+      const r = await erpFetch(`/api/resource/${encodeURIComponent(doctype)}?${qs.toString()}`);
+      (r.data || []).forEach((c) => out.set(c.name, { value: c.name, description: [c.email_id, c.mobile_no].filter(Boolean).join(' · '), match: 'email' }));
+    } catch (e) { console.error('[erp/contact] tìm theo email lỗi:', e.message); }
+  }
+  if (name) {
+    try {
+      (await searchLink(doctype, name, 5)).forEach((x) => { if (!out.has(x.value)) out.set(x.value, { ...x, match: 'tên' }); });
+    } catch (e) { console.error('[erp/contact] tìm theo tên lỗi:', e.message); }
+  }
+  return [...out.values()];
+}
+
 /** Gợi ý giá trị cho trường Link (cùng cơ chế ô tìm kiếm trên form ERP). */
 async function searchLink(doctype, txt = '', pageLength = 20) {
   const qs = new URLSearchParams({ doctype, txt, page_length: String(pageLength) });
@@ -326,9 +382,116 @@ async function searchLink(doctype, txt = '', pageLength = 20) {
 }
 
 /** Tạo 1 Ticket mới. fields: object {fieldname: value}. Trả về document vừa tạo. */
-async function createTicket(fields, creatorKey = '') {
-  const r = await erpPost('/api/resource/Ticket', fields, { ctx: getCtx(creatorKey) });
+async function createTicket(fields, creatorKey = '', ctxOverride = null) {
+  const r = await erpPost('/api/resource/Ticket', fields, { ctx: ctxOverride || getCtx(creatorKey) });
   return r.data || r;
+}
+
+/* ===================== GHI NHẬN THAY NGƯỜI KHÁC (không cần mật khẩu) =====================
+   Tài khoản ERP_USER (Render) là "người thực hiện". Người dùng chỉ chọn email trên giao diện; ticket được gắn
+   người tạo (owner) là email đó. Hai cách, thử theo thứ tự (ERP_ONBEHALF_MODE = auto | impersonate | set-owner):
+   1) impersonate : dùng chức năng "Impersonate" của Frappe để tạo ticket trong phiên của người đó (cần ERP bản hỗ trợ
+                    và ERP_USER là System Manager). ERP tự ghi owner = người đó và lưu vết "impersonated by".
+   2) set-owner   : tạo bằng ERP_USER rồi cập nhật trường owner của ticket sang email đó (PUT), đọc lại để xác nhận. */
+const ONBEHALF_MODE = String(process.env.ERP_ONBEHALF_MODE || 'auto').trim().toLowerCase();
+
+function getSetCookies(res) {
+  if (typeof res.headers.getSetCookie === 'function') return res.headers.getSetCookie();
+  const raw = res.headers.get('set-cookie');
+  return raw ? [raw] : [];
+}
+
+function codedError(code, message) {
+  const err = new Error(message);
+  err.code = code;
+  return err;
+}
+
+/** Kiểm tra email có là user đang hoạt động trên ERP không (chống gõ sai / gửi giá trị bậy). */
+async function userExists(email) {
+  try {
+    const r = await erpFetch(`/api/resource/User/${encodeURIComponent(email)}`);
+    const d = r.data || r;
+    return Boolean(d && d.name && Number(d.enabled) !== 0);
+  } catch (_) {
+    return false;
+  }
+}
+
+/** Mở phiên ERP của `email` bằng impersonate (qua phiên ERP_USER). Trả về cookie phiên mới. */
+async function impersonateCookie(email) {
+  const ctx = defaultCtx;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const headers = { Cookie: await ctx.cookie(), Accept: 'application/json', 'Content-Type': 'application/json' };
+    if (ctx.csrf) headers['X-Frappe-CSRF-Token'] = ctx.csrf;
+    const res = await fetch(`${ERP_BASE_URL}/api/method/frappe.core.doctype.user.user.impersonate`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ user: email, reason: 'Ops Console: tạo ticket thay người dùng' }),
+    });
+    if (res.ok) {
+      const cookies = getSetCookies(res).map((c) => c.split(';')[0]);
+      if (!cookies.length) throw codedError('IMPERSONATE_NO_COOKIE', 'Impersonate không trả về phiên đăng nhập mới.');
+      const cookie = cookies.join('; ');
+      const who = await fetch(`${ERP_BASE_URL}/api/method/frappe.auth.get_logged_user`, { headers: { Cookie: cookie, Accept: 'application/json' } })
+        .then((r) => r.json()).then((j) => j.message).catch(() => null);
+      if (who !== email) throw codedError('IMPERSONATE_MISMATCH', `Impersonate không chuyển được sang "${email}" (đang là "${who}").`);
+      return cookie;
+    }
+    const text = await res.text().catch(() => '');
+    if (attempt === 0 && /csrf/i.test(text)) { await fetchCsrfToken(ctx); continue; }
+    if (attempt === 0 && res.status === 401) { ctx.reset(); continue; }
+    throw codedError('IMPERSONATE_FAILED', `Impersonate bị ERP từ chối (HTTP ${res.status}): ${extractFrappeError(text)}`);
+  }
+  throw codedError('IMPERSONATE_FAILED', 'Impersonate thất bại.');
+}
+
+async function logoutCookie(cookie) {
+  try { await fetch(`${ERP_BASE_URL}/api/method/logout`, { method: 'POST', headers: { Cookie: cookie } }); } catch (_) { /* bỏ qua */ }
+}
+
+/** Tạo ticket rồi đổi owner sang email (cách 2). Trả {doc, applied}. */
+async function createThenSetOwner(fields, email) {
+  const doc = await createTicket(fields);
+  let applied = false;
+  try {
+    await erpPost(`/api/resource/Ticket/${encodeURIComponent(doc.name)}`, { owner: email }, { method: 'PUT' });
+    const back = await erpFetch(`/api/resource/Ticket/${encodeURIComponent(doc.name)}`);
+    applied = ((back.data || back).owner || '') === email;
+    if (applied) doc.owner = email; // phản ánh đúng owner sau khi đổi
+  } catch (e) {
+    console.error('[erp/set-owner] không đổi được owner:', e.message);
+  }
+  return { doc, applied };
+}
+
+/** Tạo ticket với người tạo = email. Trả {doc, method, warning}. */
+async function createTicketOnBehalf(fields, email) {
+  if (ONBEHALF_MODE === 'auto' || ONBEHALF_MODE === 'impersonate') {
+    let cookie = null;
+    try {
+      cookie = await impersonateCookie(email);
+    } catch (e) {
+      if (ONBEHALF_MODE === 'impersonate') throw e;
+      console.warn('[erp/on-behalf] impersonate không dùng được, chuyển sang đổi owner:', e.message);
+    }
+    if (cookie) {
+      try {
+        const doc = await createTicket(fields, '', makeCookieCtx(email, cookie));
+        return { doc, method: 'impersonate', warning: null };
+      } catch (e) {
+        // Lỗi ở bước tạo (thiếu quyền Create của người đó, dữ liệu sai...) -> báo thẳng, KHÔNG tạo lại bằng tài khoản khác.
+        e.message = `Tạo ticket thay "${email}" thất bại: ${e.message}`;
+        throw e;
+      } finally {
+        logoutCookie(cookie);
+      }
+    }
+  }
+  const { doc, applied } = await createThenSetOwner(fields, email);
+  return {
+    doc, method: 'set-owner',
+    warning: applied ? null : `Ticket đã tạo bằng tài khoản chung (${ERP_USER}); ERP không cho đổi người tạo sang "${email}". Hãy ghi người báo ở trường Raised By (Email).`,
+  };
 }
 
 module.exports = {
@@ -339,6 +502,13 @@ module.exports = {
   searchLink,
   createTicket,
   listCreators,
+  loginRequest,
+  getLinkedValue,
+  suggestContacts,
+  userExists,
+  createTicketOnBehalf,
+  isCustomLoginAllowed: () => ALLOW_CUSTOM_LOGIN,
+  makeCookieCtx,
   getBaseUrl: () => ERP_BASE_URL,
   isConfigured: () => Boolean(ERP_BASE_URL && ERP_USER && ERP_PASS),
 };

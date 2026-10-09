@@ -303,3 +303,67 @@ Render trả phí (không bị "ngủ") hoặc tự host trên máy/server luôn
 - Muốn tạo đúng tên từng thành viên: khai báo biến môi trường `ERP_USERS` (JSON, mật khẩu chỉ nằm trên server):
   `[{"key":"an","label":"Nguyễn An","user":"an@hqsoft.vn","pass":"***"},{"key":"binh","label":"Trần Bình","user":"binh@hqsoft.vn","pass":"***"}]`
   Trang Tạo Ticket sẽ có ô **Người tạo ticket** để chọn tài khoản; trình duyệt chỉ nhận `key` và nhãn, không nhận mật khẩu.
+
+### Cấu hình người tạo ticket trên Render
+
+Vào **Environment** của service, thêm biến `ERP_USERS` (một dòng JSON, mật khẩu chỉ nằm ở đây):
+
+```
+[{"key":"an","label":"Nguyễn An","user":"an@hqsoft.vn","pass":"MAT_KHAU_AN"},{"key":"binh","label":"Trần Bình","user":"binh@hqsoft.vn","pass":"MAT_KHAU_BINH"}]
+```
+
+- `key`: mã ngắn không dấu, duy nhất; `label`: tên hiển thị; `user`/`pass`: tài khoản ERP.
+- Sau khi lưu, Render tự redeploy; xem log có dòng `[erp] Người tạo ticket đã nạp từ ERP_USERS: N tài khoản`.
+- Muốn **chỉ** cho chọn các tài khoản này (ẩn ô nhập tài khoản ERP khác): thêm `ERP_ALLOW_CUSTOM_LOGIN=0`.
+
+### Ghi nhận người tạo thay mặt (không cần mật khẩu)
+
+Trang Tạo Ticket có lựa chọn **"Chọn người dùng ERP làm người tạo"**: chỉ cần chọn/gõ email user ERP (vd `lamlt@hqsoft.com.vn`).
+Ticket vẫn gửi bằng tài khoản `ERP_USER` cấu hình trên Render, nhưng người tạo (owner) trên ERP là email đã chọn. Thứ tự thử (`ERP_ONBEHALF_MODE=auto`):
+
+1. **impersonate** — dùng chức năng Impersonate của Frappe (cần ERP bản hỗ trợ và `ERP_USER` là System Manager). ERP tự ghi owner và lưu vết "impersonated by".
+2. **set-owner** — tạo bằng `ERP_USER` rồi cập nhật trường `owner` sang email đó, đọc lại để xác nhận. Nếu ERP không cho đổi, ticket vẫn được tạo và trang hiện cảnh báo.
+
+Đặt `ERP_ONBEHALF_MODE=impersonate` hoặc `set-owner` để ép một cách. Email phải là user đang hoạt động trên ERP.
+
+### Tự điền trường cố định khi tạo ticket
+
+File md/AI chỉ điền phần phụ thuộc nội dung (subject, mô tả, request_type, priority, products). Tool tự điền các trường còn trống, **không ghi đè** giá trị đã có:
+
+1. **Customer** — lấy theo Project (theo `fetch_from` của ERP, hoặc trường `customer` của Project).
+2. **Mặc định cấu hình** — biến `ERP_TICKET_DEFAULTS` (JSON), áp theo dự án, `"*"` áp cho mọi dự án:
+   `{"*":{"contact_role":"HO"},"ABI_eSales_Support":{"contact_role":"IT","customer":"TÊN KHÁCH HÀNG"}}`
+   Khoá hỗ trợ: `customer, contact_role, contact, contact_temp, raised_by, region, internal_request_type, request_type, priority, status` hoặc nhãn/tên trường ERP.
+3. **Estimated Deadline** — theo Priority: Critical +0, Urgent +1, High +2, Medium +3, Low +5 ngày làm việc (bỏ T7/CN và ngày lễ), 17:30. Tắt bằng `ERP_AUTO_DEADLINE=0`.
+
+Danh sách ngày lễ nằm ở `ticketDefaults.js` (và `HOLIDAYS` trong các trang SLA) — cập nhật cả hai khi có lịch nghỉ mới.
+
+### Tự điền trường cố định khi tạo ticket
+
+File md/AI chỉ điền phần phụ thuộc nội dung (subject, mô tả, request_type, priority, products). Tool tự điền các trường còn trống, **không ghi đè** giá trị đã có:
+
+1. **Customer** — lấy theo Project (theo `fetch_from` của ERP, hoặc trường `customer` của Project).
+2. **Mặc định cấu hình** — biến `ERP_TICKET_DEFAULTS` (JSON), áp theo dự án, `"*"` áp cho mọi dự án:
+   `{"*":{"contact_role":"HO"},"ABI_eSales_Support":{"contact_role":"IT","customer":"TÊN KHÁCH HÀNG"}}`
+   Khoá hỗ trợ: `customer, contact_role, contact, contact_temp, raised_by, region, internal_request_type, request_type, priority, status` hoặc nhãn/tên trường ERP.
+3. **Estimated Deadline** — theo Priority: Critical +0, Urgent +1, High +2, Medium +3, Low +5 ngày làm việc (bỏ T7/CN và ngày lễ), 17:30. Tắt bằng `ERP_AUTO_DEADLINE=0`.
+
+Danh sách ngày lễ nằm ở `ticketDefaults.js` (và `HOLIDAYS` trong các trang SLA) — cập nhật cả hai khi có lịch nghỉ mới.
+
+### Tạo ticket theo từng dự án
+
+Menu **Dự Án > (Merap, ABI, AnVy, Sabeco, FES, ANKO, HAIHA, JOTUN) > Tạo Ticket** mở `/tickets/tao-moi?project=<mã dự án>`:
+
+| Menu | Project (mã như dashboard) |
+|---|---|
+| Merap | `MerapLion_eSales` |
+| ABI | `ABI_eSales_Support` |
+| AnVy | `ANVY_eSale_Support` |
+| Sabeco | `Sabeco_PG` / `Sabeco_B2B_Support` |
+| FES | `FES_eSales` |
+| ANKO | `ANKO_eSales_Support` |
+| HAIHA | `HaiHa_eSales_Support` |
+| JOTUN | `Jotun_VN_eSales` |
+
+- Project bị **khoá** theo trang, không đổi được; JSON ghi project khác vẫn dùng project của trang (có cảnh báo). Customer tự lấy theo Project, hoặc đặt cố định trong `ERP_TICKET_DEFAULTS`, ví dụ `{"MerapLion_eSales":{"customer":"CÔNG TY CỔ PHẦN TẬP ĐOÀN MERAP"}}`.
+- **Vai trò người liên hệ:** mục 9 của md chỉ ghi vai trò, Khối 2 điền vào `contact_role` (không có thì tool dùng mặc định trong `ERP_TICKET_DEFAULTS`). `contact` do người dùng chọn trên tool: nếu có email ở `Raised By (Email)` và ERP có đúng 1 Contact trùng thì tự chọn, ngoài ra tool hiện nút gợi ý theo email/tên bên dưới ô Contact.
