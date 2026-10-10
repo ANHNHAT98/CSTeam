@@ -195,6 +195,30 @@ app.get('/api/erp/tickets', requireAuth, async (req, res) => {
   }
 });
 
+/* ---------- File hướng dẫn AI (.md) cho từng dự án: nhân viên tải về để tạo Project/Skill gen ticket ----------
+   Nguồn: ticket-instructions/projects.json + Project-Instructions-<DỰ ÁN>.md (sinh bằng scripts/gen-ticket-instructions.js). */
+const INSTR_DIR = path.join(__dirname, 'ticket-instructions');
+function loadInstructionProjects() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(INSTR_DIR, 'projects.json'), 'utf8'));
+  } catch (e) {
+    console.error('[ticket-instructions] không đọc được projects.json:', e.message);
+    return [];
+  }
+}
+
+app.get('/api/ticket-instructions', requireAuth, (req, res) => {
+  res.json(loadInstructionProjects().map(({ code, label, name, file }) => ({ code, label, name, file })));
+});
+
+app.get('/api/ticket-instructions/:code', requireAuth, (req, res) => {
+  const p = loadInstructionProjects().find((x) => x.code === req.params.code);
+  if (!p || path.basename(p.file) !== p.file) return res.status(404).json({ error: 'Không có file hướng dẫn cho dự án này.' });
+  const full = path.join(INSTR_DIR, p.file);
+  if (!fs.existsSync(full)) return res.status(404).json({ error: 'File hướng dẫn chưa được tạo — chạy: node scripts/gen-ticket-instructions.js' });
+  res.download(full, p.file);
+});
+
 /* ---------- API: TẠO TICKET trên ERP (ghi dữ liệu thật) ----------
    - GET  /api/erp/ticket-meta              : cấu trúc trường của DocType Ticket (để dựng form đúng tên trường)
    - GET  /api/erp/link-search?doctype=&txt= : gợi ý giá trị cho trường Link (chỉ cho các DocType có trong form Ticket)

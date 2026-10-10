@@ -333,7 +333,7 @@ File md/AI chỉ điền phần phụ thuộc nội dung (subject, mô tả, req
 1. **Customer** — lấy theo Project (theo `fetch_from` của ERP, hoặc trường `customer` của Project).
 2. **Mặc định cấu hình** — biến `ERP_TICKET_DEFAULTS` (JSON), áp theo dự án, `"*"` áp cho mọi dự án:
    `{"*":{"contact_role":"HO"},"ABI_eSales_Support":{"contact_role":"IT","customer":"TÊN KHÁCH HÀNG"}}`
-   Khoá hỗ trợ: `customer, contact_role, contact, contact_temp, raised_by, region, internal_request_type, request_type, priority, status` hoặc nhãn/tên trường ERP.
+   Khoá hỗ trợ: `customer, products (mảng), contact_role, contact, contact_temp, raised_by, region, internal_request_type, request_type, priority, status` hoặc nhãn/tên trường ERP.
 3. **Estimated Deadline** — theo Priority: Critical +0, Urgent +1, High +2, Medium +3, Low +5 ngày làm việc (bỏ T7/CN và ngày lễ), 17:30. Tắt bằng `ERP_AUTO_DEADLINE=0`.
 
 Danh sách ngày lễ nằm ở `ticketDefaults.js` (và `HOLIDAYS` trong các trang SLA) — cập nhật cả hai khi có lịch nghỉ mới.
@@ -367,3 +367,17 @@ Menu **Dự Án > (Merap, ABI, AnVy, Sabeco, FES, ANKO, HAIHA, JOTUN) > Tạo Ti
 
 - Project bị **khoá** theo trang, không đổi được; JSON ghi project khác vẫn dùng project của trang (có cảnh báo). Customer tự lấy theo Project, hoặc đặt cố định trong `ERP_TICKET_DEFAULTS`, ví dụ `{"MerapLion_eSales":{"customer":"CÔNG TY CỔ PHẦN TẬP ĐOÀN MERAP"}}`.
 - **Vai trò người liên hệ:** mục 9 của md chỉ ghi vai trò, Khối 2 điền vào `contact_role` (không có thì tool dùng mặc định trong `ERP_TICKET_DEFAULTS`). `contact` do người dùng chọn trên tool: nếu có email ở `Raised By (Email)` và ERP có đúng 1 Contact trùng thì tự chọn, ngoài ra tool hiện nút gợi ý theo email/tên bên dưới ô Contact.
+
+> Lưới an toàn khi AI để trống: đặt mặc định theo dự án cho `request_type`, `products`, `contact_role`, ví dụ
+> `{"ABI_eSales_Support":{"request_type":"Lỗi báo cáo, chức năng","products":["eSales Backoffice"],"contact_role":"HO"}}`.
+> Tool chỉ dùng khi trường đang trống; giá trị AI hoặc người dùng đã chọn luôn được giữ.
+
+### File hướng dẫn AI cho từng dự án (`ticket-instructions/`)
+
+Mỗi dự án có một file `Project-Instructions-<DỰ ÁN>.md` (MERAP, ABI, ANVY, SABECO-PG, SABECO-B2B, FES, ANKO, HAIHA, JOTUN). Trên trang **Dự Án > (dự án) > Tạo Ticket** có nút **Tải file hướng dẫn AI (.md)** và **Sao chép nội dung** để nhân viên dán vào *Project instructions* / Skill của AI (Claude, ChatGPT...) gen ticket tự động; AI trả Khối 1 (nội dung ticket) + Khối 2 (JSON) để dán vào ô **Nhập từ AI (JSON)**.
+
+- `ticket-instructions/_template.md`: mẫu chung (template ticket, quy tắc JSON, master Request Type / Contact Role / Products).
+- `ticket-instructions/projects.json`: cấu hình từng dự án (mã project, tiền tố, môi trường UAT, từ khoá module riêng).
+- Sửa master/quy tắc chung → sửa `_template.md`; sửa UAT/từ khoá của dự án → sửa `projects.json`; rồi chạy `node scripts/gen-ticket-instructions.js` (ghi đè các file `.md`).
+- Thêm dự án mới: thêm một dòng vào `projects.json` và vào danh sách dự án/menu, chạy lại script.
+- API: `GET /api/ticket-instructions` (danh sách), `GET /api/ticket-instructions/:mãProject` (tải file); yêu cầu đăng nhập.

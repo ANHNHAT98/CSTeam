@@ -1,0 +1,34 @@
+[
+  {
+    "code": "MerapLion_eSales",
+    "label": "MERAP",
+    "name": "Merap",
+    "file": "Project-Instructions-MERAP.md",
+    "uat": [],
+    "keywords": []
+  },
+  {
+    "code": "ABI_eSales_Support",
+    "label": "ABI",
+    "name": "ABI",
+    "file": "Project-Instructions-ABI.md",
+    "uat": [
+      ["User", "ABISF00032"],
+      ["Password", "1!zxcvbnml"],
+      ["Mã dự án", "ABIAWSUATNEW"],
+      ["IP DB", "10.10.62.109,1435"],
+      ["Databasename DB", "ABI_eSales_UAT"]
+    ],
+    "keywords": [
+      ["đăng ký CTTB, trưng bày, POC, chấm công, chi nhánh nhân viên, NPP phụ trách", "eSales SFA"],
+      ["mã màn hình OM..., AR..., công nợ, KPI", "eSales Backoffice"]
+    ]
+  },
+  { "code": "ANVY_eSale_Support", "label": "ANVY", "name": "AnVy", "file": "Project-Instructions-ANVY.md", "uat": [], "keywords": [] },
+  { "code": "Sabeco_PG", "label": "SABECO-PG", "name": "Sabeco PG", "file": "Project-Instructions-SABECO-PG.md", "uat": [], "keywords": [] },
+  { "code": "Sabeco_B2B_Support", "label": "SABECO-B2B", "name": "Sabeco B2B", "file": "Project-Instructions-SABECO-B2B.md", "uat": [], "keywords": [] },
+  { "code": "FES_eSales", "label": "FES", "name": "FES", "file": "Project-Instructions-FES.md", "uat": [], "keywords": [] },
+  { "code": "ANKO_eSales_Support", "label": "ANKO", "name": "ANKO", "file": "Project-Instructions-ANKO.md", "uat": [], "keywords": [] },
+  { "code": "HaiHa_eSales_Support", "label": "HAIHA", "name": "HAIHA", "file": "Project-Instructions-HAIHA.md", "uat": [], "keywords": [] },
+  { "code": "Jotun_VN_eSales", "label": "JOTUN", "name": "JOTUN", "file": "Project-Instructions-JOTUN.md", "uat": [], "keywords": [] }
+]

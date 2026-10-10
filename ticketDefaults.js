@@ -17,7 +17,7 @@ const DEADLINE_OFFSET = { critical: 0, urgent: 1, high: 2, medium: 3, low: 5 };
 
 // Khoá JSON gọn -> nhãn trên form ERP (dùng cho ERP_TICKET_DEFAULTS)
 const KEY_TO_LABEL = {
-  customer: 'Customer', contact_role: 'Contact Role', contact: 'Contact', contact_temp: 'Contact (Temp)',
+  customer: 'Customer', products: 'Products', contact_role: 'Contact Role', contact: 'Contact', contact_temp: 'Contact (Temp)',
   raised_by: 'Raised By (Email)', region: 'Region', internal_request_type: 'Internal Request Type',
   request_type: 'Request Type', priority: 'Priority', status: 'Status', series: 'Series',
 };
@@ -116,7 +116,16 @@ async function applyTicketDefaults(payload, meta, erp, today) {
   const merged = { ...(ENV_DEFAULTS['*'] || {}), ...((proj && ENV_DEFAULTS[proj]) || {}) };
   for (const [k, v] of Object.entries(merged)) {
     const f = findField(meta, k);
-    if (f && !f.read_only && empty(f) && v !== '' && v != null) set(f, v, 'mặc định cấu hình');
+    if (!f || f.read_only || !empty(f) || v === '' || v == null) continue;
+    if (f.fieldtype === 'Table MultiSelect') {
+      // vd "products":["eSales Backoffice"] -> các dòng bảng con
+      const child = meta.children[f.options] || [];
+      const lf = child.find((x) => x.fieldtype === 'Link') || child.find((x) => !x.read_only && !x.hidden);
+      const vals = (Array.isArray(v) ? v : String(v).split(',')).map((x) => String(x).trim()).filter(Boolean);
+      if (lf && vals.length) set(f, vals.map((x) => ({ [lf.fieldname]: x })), 'mặc định cấu hình');
+      continue;
+    }
+    set(f, v, 'mặc định cấu hình');
   }
 
   // 3) Estimated Deadline theo Priority
