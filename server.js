@@ -48,7 +48,6 @@ app.post('/api/login', (req, res) => {
 });
 
 app.post('/api/logout', (req, res) => {
-  if (typeof customCtxs !== 'undefined') customCtxs.delete(req.sessionID); // bỏ phiên ERP của tài khoản nhập tay
   req.session.destroy(() => res.json({ ok: true }));
 });
 
@@ -236,60 +235,45 @@ app.get('/api/erp/ticket-meta', requireAuth, async (req, res) => {
   }
 });
 
-app.get('/api/erp/creators', requireAuth, (req, res) => {
-  res.json(erp.listCreators()); // chỉ trả key + nhãn, không có mật khẩu
-});
-
-/* Tài khoản ERP "khác" do người dùng tự nhập trên trang: server đăng nhập ERP 1 lần, chỉ giữ cookie phiên ERP
-   trong session của ops console (bộ nhớ server); KHÔNG lưu và KHÔNG ghi log mật khẩu. */
-const CUSTOM_KEY = '__custom__';
-const ONBEHALF_KEY = '__onbehalf__';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const customCtxs = new Map(); // sessionID -> ctx (không lưu được hàm trong session store nên giữ ở đây)
 
-app.get('/api/erp/custom-session', requireAuth, (req, res) => {
-  const c = req.session.erpCustom;
-  res.json({ user: c ? c.user : null, allowed: erp.isCustomLoginAllowed() });
-});
-
-app.post('/api/erp/custom-login', requireAuth, async (req, res) => {
-  if (!erp.isCustomLoginAllowed()) return res.status(403).json({ error: 'Server đã tắt việc nhập tài khoản ERP khác.' });
-  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
-  const sess = req.session;
-  const now = Date.now();
-  sess.erpLoginFails = (sess.erpLoginFails || []).filter((t0) => now - t0 < 10 * 60 * 1000);
-  if (sess.erpLoginFails.length >= 5) {
-    return res.status(429).json({ error: 'Đăng nhập ERP sai quá 5 lần — thử lại sau 10 phút.' });
-  }
-  const user = String((req.body && req.body.user) || '').trim();
-  const pass = String((req.body && req.body.pass) || '');
-  if (!user || !pass) return res.status(400).json({ error: 'Nhập đủ email và mật khẩu ERP.' });
+/* Người tạo ticket: CHỈ chọn trong danh sách email cấu hình (ticket-creators.json hoặc biến ERP_PROJECT_CREATORS cùng định dạng):
+   {"serviceAccount":"nhatha@hqsoft.com.vn",
+    "creators":["phuctm@hqsoft.com.vn", ...],
+    "defaults":{"MerapLion_eSales":"phuctm@hqsoft.com.vn", ...}}
+   - creators  : danh sách hiển thị ở MỌI dự án để chọn.
+   - defaults  : email mặc định theo từng dự án.
+   - serviceAccount: tài khoản đăng nhập ERP đã cấu hình trên Render (ERP_USER) — chọn email này thì tạo trực tiếp, không thay mặt. */
+function loadProjectCreators() {
+  let raw = process.env.ERP_PROJECT_CREATORS;
   try {
-    const cookie = await erp.loginRequest(user, pass);
-    customCtxs.set(req.sessionID, erp.makeCookieCtx(user, cookie));
-    sess.erpCustom = { user };
-    console.log(`[erp/custom-login] ${sess.username} đăng nhập ERP bằng tài khoản '${user}'`);
-    res.json({ ok: true, user });
+    if (!raw) raw = fs.readFileSync(path.join(__dirname, 'ticket-creators.json'), 'utf8');
+    const j = JSON.parse(raw) || {};
+    const norm = (x) => String(x || '').trim().toLowerCase();
+    const serviceAccount = norm(j.serviceAccount);
+    const creators = [...new Set([...(Array.isArray(j.creators) ? j.creators : []).map(norm), serviceAccount].filter((x) => EMAIL_RE.test(x)))];
+    const defaults = {};
+    for (const [code, v] of Object.entries(j.defaults || {})) {
+      const e = norm(v);
+      if (creators.includes(e)) defaults[code] = e;
+    }
+    return { serviceAccount: EMAIL_RE.test(serviceAccount) ? serviceAccount : '', creators, defaults };
   } catch (e) {
-    sess.erpLoginFails.push(now);
-    res.status(401).json({ error: 'Đăng nhập ERP thất bại — sai email/mật khẩu hoặc tài khoản bị khoá.' });
+    console.error('[ticket-creators] không đọc được cấu hình:', e.message);
+    return { serviceAccount: '', creators: [], defaults: {} };
   }
-});
-
-app.post('/api/erp/custom-logout', requireAuth, (req, res) => {
-  customCtxs.delete(req.sessionID);
-  delete req.session.erpCustom;
-  res.json({ ok: true });
-});
-
-/* Gợi ý người dùng ERP để chọn "người tạo" (không cần mật khẩu) */
-app.get('/api/erp/users', requireAuth, async (req, res) => {
-  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
-  try {
-    res.json(await erp.searchLink('User', String(req.query.txt || '')));
-  } catch (e) {
-    res.status(502).json({ error: e.message });
+}
+{
+  const c = loadProjectCreators();
+  const u = String(erp.getUser() || '').trim().toLowerCase();
+  console.log(`[ticket-creators] ${c.creators.length} email người tạo; tài khoản Render (ERP_USER) = ${u || 'chưa cấu hình'}`);
+  if (c.serviceAccount && u && u !== c.serviceAccount) {
+    console.warn(`[ticket-creators] CẢNH BÁO: ERP_USER (${u}) khác serviceAccount (${c.serviceAccount}) — chọn "${c.serviceAccount}" sẽ tạo bằng ${u}.`);
   }
+}
+
+app.get('/api/erp/ticket-creators', requireAuth, (req, res) => {
+  res.json(loadProjectCreators());
 });
 
 app.get('/api/erp/link-search', requireAuth, async (req, res) => {
@@ -375,45 +359,34 @@ app.post('/api/erp/tickets', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Thiếu trường bắt buộc: ' + missing.join(', '), missing });
     }
 
-    const creator = String((req.body && req.body.creator) || '');
-    let onBehalf = '';
-    if (creator === ONBEHALF_KEY) {
-      onBehalf = String((req.body && req.body.on_behalf) || '').trim().toLowerCase();
-      if (!EMAIL_RE.test(onBehalf)) return res.status(400).json({ error: 'Chọn/nhập email người tạo hợp lệ (vd lamlt@hqsoft.com.vn).' });
-      if (!(await erp.userExists(onBehalf))) return res.status(400).json({ error: `"${onBehalf}" không phải người dùng đang hoạt động trên ERP.` });
+    // Người tạo: CHỈ nhận email nằm trong danh sách cấu hình (ticket-creators.json), không nhận cách nào khác.
+    const cfg = loadProjectCreators();
+    const creatorEmail = String((req.body && req.body.creator_email) || '').trim().toLowerCase();
+    if (!creatorEmail) return res.status(400).json({ error: 'Chọn người tạo ticket.' });
+    if (!cfg.creators.includes(creatorEmail)) return res.status(400).json({ error: 'Người tạo không nằm trong danh sách cho phép.' });
+    const direct = creatorEmail === cfg.serviceAccount; // tài khoản đăng nhập Render: tạo trực tiếp
+    if (!direct && !(await erp.userExists(creatorEmail))) {
+      return res.status(400).json({ error: `"${creatorEmail}" không phải người dùng đang hoạt động trên ERP.` });
     }
 
-    if (dryRun) return res.json({ dry_run: true, payload, rejected, autofilled, creator: onBehalf || creator || 'chung' });
+    if (dryRun) return res.json({ dry_run: true, payload, rejected, autofilled, creator: creatorEmail, method: direct ? 'direct' : 'on-behalf' });
 
-    let customCtx = null;
-    if (creator === CUSTOM_KEY && !erp.isCustomLoginAllowed()) {
-      return res.status(403).json({ error: 'Server đã tắt việc nhập tài khoản ERP khác.' });
-    }
-    if (creator === CUSTOM_KEY) {
-      customCtx = customCtxs.get(req.sessionID);
-      if (!customCtx || !req.session.erpCustom) {
-        return res.status(400).json({ error: 'Chưa đăng nhập tài khoản ERP khác (hoặc phiên đã hết hạn) — đăng nhập lại ở mục Người tạo ticket.' });
-      }
-    } else if (creator && creator !== ONBEHALF_KEY && !erp.listCreators().some((c) => c.key === creator)) {
-      return res.status(400).json({ error: 'Người tạo không hợp lệ.' });
-    }
-    const identity = creator === CUSTOM_KEY ? 'custom:' + req.session.erpCustom.user : (creator === ONBEHALF_KEY ? 'onbehalf:' + onBehalf : creator);
-
-    const key = `${identity}|${payload.project || ''}|${String(payload.subject || '').trim().toLowerCase()}`;
+    const key = `${creatorEmail}|${payload.project || ''}|${String(payload.subject || '').trim().toLowerCase()}`;
     const last = recentCreates.get(key);
     if (last && Date.now() - last < 2 * 60 * 1000 && !(req.body && req.body.force)) {
       return res.status(409).json({ error: 'Ticket cùng Project + Subject vừa được tạo cách đây dưới 2 phút (nghi tạo trùng).', duplicate: true });
     }
 
-    let doc, method = null, warning = null;
-    if (creator === ONBEHALF_KEY) {
-      ({ doc, method, warning } = await erp.createTicketOnBehalf(payload, onBehalf));
+    let doc, method, warning = null;
+    if (direct) {
+      doc = await erp.createTicket(payload);
+      method = 'direct';
     } else {
-      doc = await erp.createTicket(payload, creator, customCtx);
+      ({ doc, method, warning } = await erp.createTicketOnBehalf(payload, creatorEmail));
     }
     recentCreates.set(key, Date.now());
-    console.log(`[erp/tickets] ${req.session && req.session.username ? req.session.username : 'user'} đã tạo ${doc.name} (${payload.project}) bằng tài khoản ERP '${creator === CUSTOM_KEY ? req.session.erpCustom.user : (creator === ONBEHALF_KEY ? onBehalf + ' (thay mặt, ' + method + ')' : (creator || 'chung'))}'`);
-    res.json({ ok: true, name: doc.name, url: `${erp.getBaseUrl()}/app/ticket/${encodeURIComponent(doc.name)}`, doc, creator: onBehalf || creator || 'chung', method, warning, autofilled });
+    console.log(`[erp/tickets] ${req.session && req.session.username ? req.session.username : 'user'} đã tạo ${doc.name} (${payload.project}), người tạo ${creatorEmail} (${method})`);
+    res.json({ ok: true, name: doc.name, url: `${erp.getBaseUrl()}/app/ticket/${encodeURIComponent(doc.name)}`, doc, creator: creatorEmail, method, warning, autofilled });
   } catch (e) {
     console.error('[erp/tickets POST] lỗi:', e.message);
     res.status(502).json({ error: e.message });

@@ -173,36 +173,6 @@ async function fetchTimesheetReport({ from_date, to_date, project } = {}) {
 /* ===================== GHI DỮ LIỆU (tạo ticket) ===================== */
 let cachedCsrf = null;
 
-/* ERP_USERS: JSON mảng các thành viên có tài khoản ERP riêng để tạo ticket đúng tên người tạo, ví dụ
-   [{"key":"an","label":"Nguyễn An","user":"an@hqsoft.vn","pass":"***"}]
-   Mật khẩu chỉ nằm ở biến môi trường của server, không bao giờ gửi xuống trình duyệt. */
-function parseErpUsers(raw) {
-  if (!raw) return [];
-  try {
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) throw new Error('phải là mảng');
-    return arr
-      .filter((u) => u && u.key && u.user && u.pass)
-      .map((u) => ({ key: String(u.key), label: String(u.label || u.user), user: String(u.user), pass: String(u.pass) }));
-  } catch (e) {
-    console.error('[erp] ERP_USERS không hợp lệ, bỏ qua:', e.message);
-    return [];
-  }
-}
-const ERP_USERS = parseErpUsers(process.env.ERP_USERS);
-// ERP_ALLOW_CUSTOM_LOGIN=0 -> ẩn/chặn tuỳ chọn "nhập tài khoản ERP khác", chỉ cho chọn tài khoản khai báo trong ERP_USERS.
-const ALLOW_CUSTOM_LOGIN = !/^(0|false|no|off)$/i.test(String(process.env.ERP_ALLOW_CUSTOM_LOGIN || '1').trim());
-console.log(`[erp] Người tạo ticket đã nạp từ ERP_USERS: ${ERP_USERS.length} tài khoản${ERP_USERS.length ? ' (' + ERP_USERS.map((u) => u.key).join(', ') + ')' : ''}; nhập tài khoản khác: ${ALLOW_CUSTOM_LOGIN ? 'cho phép' : 'tắt'}`);
-
-/** Danh sách người tạo hiển thị trên form (KHÔNG chứa mật khẩu). key '' = tài khoản mặc định ERP_USER. */
-function listCreators() {
-  return [
-    { key: '', label: `Tài khoản chung (${ERP_USER || 'chưa cấu hình'})` },
-    ...ERP_USERS.map((u) => ({ key: u.key, label: `${u.label} (${u.user})` })),
-  ];
-}
-
-const userCtxs = new Map(); // key -> ngữ cảnh phiên riêng của từng thành viên
 const defaultCtx = {
   label: ERP_USER,
   async cookie() { await ensureLoggedIn(); return cachedCookie; },
@@ -211,32 +181,7 @@ const defaultCtx = {
   reset() { cachedCookie = null; cachedCsrf = null; },
 };
 
-function getCtx(creatorKey) {
-  if (!creatorKey) return defaultCtx;
-  const u = ERP_USERS.find((x) => x.key === creatorKey);
-  if (!u) {
-    const err = new Error(`Không có người tạo "${creatorKey}" trong danh sách ERP_USERS.`);
-    err.code = 'UNKNOWN_CREATOR';
-    throw err;
-  }
-  if (!userCtxs.has(u.key)) {
-    const st = { cookie: null, csrf: null, p: null };
-    userCtxs.set(u.key, {
-      label: u.user,
-      async cookie() {
-        if (st.cookie) return st.cookie;
-        if (!st.p) st.p = loginRequest(u.user, u.pass).then((c) => { st.cookie = c; return c; }).finally(() => { st.p = null; });
-        return st.p;
-      },
-      get csrf() { return st.csrf; },
-      set csrf(v) { st.csrf = v; },
-      reset() { st.cookie = null; st.csrf = null; },
-    });
-  }
-  return userCtxs.get(u.key);
-}
-
-/** Ngữ cảnh cho tài khoản do người dùng tự đăng nhập trên trang: chỉ giữ cookie phiên, KHÔNG giữ mật khẩu. */
+/** Ngữ cảnh cho phiên impersonate (người tạo thay mặt): chỉ giữ cookie phiên, KHÔNG giữ mật khẩu. */
 function makeCookieCtx(user, cookie) {
   const st = { cookie, csrf: null, expired: false };
   return {
@@ -382,8 +327,8 @@ async function searchLink(doctype, txt = '', pageLength = 20) {
 }
 
 /** Tạo 1 Ticket mới. fields: object {fieldname: value}. Trả về document vừa tạo. */
-async function createTicket(fields, creatorKey = '', ctxOverride = null) {
-  const r = await erpPost('/api/resource/Ticket', fields, { ctx: ctxOverride || getCtx(creatorKey) });
+async function createTicket(fields, ctxOverride = null) {
+  const r = await erpPost('/api/resource/Ticket', fields, { ctx: ctxOverride || defaultCtx });
   return r.data || r;
 }
 
@@ -476,7 +421,7 @@ async function createTicketOnBehalf(fields, email) {
     }
     if (cookie) {
       try {
-        const doc = await createTicket(fields, '', makeCookieCtx(email, cookie));
+        const doc = await createTicket(fields, makeCookieCtx(email, cookie));
         return { doc, method: 'impersonate', warning: null };
       } catch (e) {
         // Lỗi ở bước tạo (thiếu quyền Create của người đó, dữ liệu sai...) -> báo thẳng, KHÔNG tạo lại bằng tài khoản khác.
@@ -501,14 +446,12 @@ module.exports = {
   getTicketMeta,
   searchLink,
   createTicket,
-  listCreators,
-  loginRequest,
   getLinkedValue,
   suggestContacts,
   userExists,
   createTicketOnBehalf,
-  isCustomLoginAllowed: () => ALLOW_CUSTOM_LOGIN,
   makeCookieCtx,
   getBaseUrl: () => ERP_BASE_URL,
+  getUser: () => ERP_USER,
   isConfigured: () => Boolean(ERP_BASE_URL && ERP_USER && ERP_PASS),
 };

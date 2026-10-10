@@ -300,25 +300,10 @@ Render trả phí (không bị "ngủ") hoặc tự host trên máy/server luôn
 - `POST /api/erp/tickets` nhận `{ fields, dry_run }`: `dry_run: true` chỉ kiểm tra và trả payload, không ghi vào ERP.
 - Chỉ nhận trường có trong DocType Ticket, bỏ qua trường chỉ-đọc/hệ thống; kiểm tra trường bắt buộc; chặn tạo trùng (cùng Project + Subject trong 2 phút).
 - Cần tài khoản ERP có quyền **Create** trên DocType Ticket. Mặc định ticket ghi người tạo là `ERP_USER`.
-- Muốn tạo đúng tên từng thành viên: khai báo biến môi trường `ERP_USERS` (JSON, mật khẩu chỉ nằm trên server):
-  `[{"key":"an","label":"Nguyễn An","user":"an@hqsoft.vn","pass":"***"},{"key":"binh","label":"Trần Bình","user":"binh@hqsoft.vn","pass":"***"}]`
-  Trang Tạo Ticket sẽ có ô **Người tạo ticket** để chọn tài khoản; trình duyệt chỉ nhận `key` và nhãn, không nhận mật khẩu.
-
-### Cấu hình người tạo ticket trên Render
-
-Vào **Environment** của service, thêm biến `ERP_USERS` (một dòng JSON, mật khẩu chỉ nằm ở đây):
-
-```
-[{"key":"an","label":"Nguyễn An","user":"an@hqsoft.vn","pass":"MAT_KHAU_AN"},{"key":"binh","label":"Trần Bình","user":"binh@hqsoft.vn","pass":"MAT_KHAU_BINH"}]
-```
-
-- `key`: mã ngắn không dấu, duy nhất; `label`: tên hiển thị; `user`/`pass`: tài khoản ERP.
-- Sau khi lưu, Render tự redeploy; xem log có dòng `[erp] Người tạo ticket đã nạp từ ERP_USERS: N tài khoản`.
-- Muốn **chỉ** cho chọn các tài khoản này (ẩn ô nhập tài khoản ERP khác): thêm `ERP_ALLOW_CUSTOM_LOGIN=0`.
 
 ### Ghi nhận người tạo thay mặt (không cần mật khẩu)
 
-Trang Tạo Ticket có lựa chọn **"Chọn người dùng ERP làm người tạo"**: chỉ cần chọn/gõ email user ERP (vd `lamlt@hqsoft.com.vn`).
+Chọn email người tạo trên trang Tạo Ticket (danh sách trong `ticket-creators.json`).
 Ticket vẫn gửi bằng tài khoản `ERP_USER` cấu hình trên Render, nhưng người tạo (owner) trên ERP là email đã chọn. Thứ tự thử (`ERP_ONBEHALF_MODE=auto`):
 
 1. **impersonate** — dùng chức năng Impersonate của Frappe (cần ERP bản hỗ trợ và `ERP_USER` là System Manager). ERP tự ghi owner và lưu vết "impersonated by".
@@ -337,18 +322,7 @@ File md/AI chỉ điền phần phụ thuộc nội dung (subject, mô tả, req
 3. **Estimated Deadline** — theo Priority: Critical +0, Urgent +1, High +2, Medium +3, Low +5 ngày làm việc (bỏ T7/CN và ngày lễ), 17:30. Tắt bằng `ERP_AUTO_DEADLINE=0`.
 
 Danh sách ngày lễ nằm ở `ticketDefaults.js` (và `HOLIDAYS` trong các trang SLA) — cập nhật cả hai khi có lịch nghỉ mới.
-
-### Tự điền trường cố định khi tạo ticket
-
-File md/AI chỉ điền phần phụ thuộc nội dung (subject, mô tả, request_type, priority, products). Tool tự điền các trường còn trống, **không ghi đè** giá trị đã có:
-
-1. **Customer** — lấy theo Project (theo `fetch_from` của ERP, hoặc trường `customer` của Project).
-2. **Mặc định cấu hình** — biến `ERP_TICKET_DEFAULTS` (JSON), áp theo dự án, `"*"` áp cho mọi dự án:
-   `{"*":{"contact_role":"HO"},"ABI_eSales_Support":{"contact_role":"IT","customer":"TÊN KHÁCH HÀNG"}}`
    Khoá hỗ trợ: `customer, contact_role, contact, contact_temp, raised_by, region, internal_request_type, request_type, priority, status` hoặc nhãn/tên trường ERP.
-3. **Estimated Deadline** — theo Priority: Critical +0, Urgent +1, High +2, Medium +3, Low +5 ngày làm việc (bỏ T7/CN và ngày lễ), 17:30. Tắt bằng `ERP_AUTO_DEADLINE=0`.
-
-Danh sách ngày lễ nằm ở `ticketDefaults.js` (và `HOLIDAYS` trong các trang SLA) — cập nhật cả hai khi có lịch nghỉ mới.
 
 ### Tạo ticket theo từng dự án
 
@@ -381,3 +355,20 @@ Mỗi dự án có một file `Project-Instructions-<DỰ ÁN>.md` (MERAP, ABI, 
 - Sửa master/quy tắc chung → sửa `_template.md`; sửa UAT/từ khoá của dự án → sửa `projects.json`; rồi chạy `node scripts/gen-ticket-instructions.js` (ghi đè các file `.md`).
 - Thêm dự án mới: thêm một dòng vào `projects.json` và vào danh sách dự án/menu, chạy lại script.
 - API: `GET /api/ticket-instructions` (danh sách), `GET /api/ticket-instructions/:mãProject` (tải file); yêu cầu đăng nhập.
+
+### Người tạo ticket (`ticket-creators.json`)
+
+Ticket luôn gửi bằng tài khoản ERP đã cấu hình trên Render (`ERP_USER`). **Người tạo (create by) ghi vào ticket là email chọn trên trang** — chỉ chọn trong danh sách email cấu hình, không còn cách nhập tài khoản ERP khác hay danh sách `ERP_USERS`.
+
+```
+{
+  "serviceAccount": "nhatha@hqsoft.com.vn",
+  "creators": ["phuctm@hqsoft.com.vn", "viltt@hqsoft.com.vn", "nhuttm@hqsoft.com.vn", "thaontt@hqsoft.com.vn", "nhatha@hqsoft.com.vn"],
+  "defaults": { "MerapLion_eSales": "phuctm@hqsoft.com.vn", "ABI_eSales_Support": "viltt@hqsoft.com.vn", "Sabeco_PG": "nhuttm@hqsoft.com.vn", "FES_eSales": "thaontt@hqsoft.com.vn" }
+}
+```
+
+- `creators`: danh sách hiện ở **mọi** dự án để chọn; `defaults`: email mặc định của từng dự án; thêm email mới = thêm vào `creators`.
+- `serviceAccount`: tài khoản đăng nhập Render. Chọn email này thì tạo trực tiếp (không thay mặt). `ERP_USER` trên Render nên trùng email này (server cảnh báo trong log nếu khác).
+- Chọn email khác `serviceAccount` thì dùng cơ chế "thay mặt" (mục **Ghi nhận người tạo thay mặt** ở trên); email phải là user đang hoạt động trên ERP.
+- Server chặn mọi email ngoài danh sách. Có thể đặt biến `ERP_PROJECT_CREATORS` (cùng định dạng JSON) để ghi đè file.

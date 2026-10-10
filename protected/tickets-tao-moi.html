@@ -67,24 +67,9 @@
 
   <div class="panel">
     <h2>Người tạo ticket</h2>
-    <select id="creator" style="max-width:420px"></select>
-    <div id="creatorHint" class="hint" style="display:none;color:var(--danger)">Chưa có tài khoản nào từ biến môi trường <code>ERP_USERS</code> trên Render (hoặc JSON sai định dạng) — xem log server dòng <code>[erp] Người tạo ticket đã nạp…</code>.</div>
-    <div id="onbehalfBox" style="display:none;margin-top:12px;max-width:420px">
-      <label for="obUser">Email người tạo (user ERP)</label>
-      <input id="obUser" list="dl_obUser" autocomplete="off" placeholder="vd: lamlt@hqsoft.com.vn"><datalist id="dl_obUser"></datalist>
-      <div class="hint">Không cần mật khẩu. Ticket vẫn được gửi bằng tài khoản ERP cấu hình trên Render nhưng <b>người tạo (owner) sẽ là email này</b>. Gõ để tìm, chọn trong danh sách user ERP.</div>
-    </div>
-    <div id="customBox" style="display:none;margin-top:12px;max-width:420px">
-      <div id="customLogin">
-        <label for="cuUser">Email ERP</label><input id="cuUser" type="email" autocomplete="off" placeholder="ten@hqsoft.vn">
-        <label for="cuPass" style="margin-top:10px">Mật khẩu ERP</label><input id="cuPass" type="password" autocomplete="new-password">
-        <div class="actions" style="margin-top:10px"><button class="btn sec" id="btnCuLogin" type="button">Đăng nhập ERP</button></div>
-        <div class="hint">Mật khẩu chỉ dùng để đăng nhập ERP một lần, server <b>không lưu</b> và không ghi log; chỉ giữ phiên đăng nhập trong bộ nhớ cho đến khi bạn đăng xuất hoặc đóng phiên.</div>
-      </div>
-      <div id="customOn" style="display:none"><span id="cuWho"></span> <button class="btn sec" id="btnCuLogout" type="button" style="padding:4px 10px;font-size:12px">Đăng xuất ERP</button></div>
-      <div id="cuMsg"></div>
-    </div>
-    <p class="hint" style="margin:6px 0 16px">Ticket được tạo bằng tài khoản ERP của người được chọn (hiện là người tạo/owner trên ERP). Có thể chọn tài khoản khai báo sẵn ở <code>ERP_USERS</code> hoặc <b>nhập tài khoản ERP khác</b>.</p>
+    <select id="creator" style="max-width:420px" disabled><option>Đang tải…</option></select>
+    <div id="creatorMsg" class="hint" style="margin-top:6px"></div>
+    <p class="hint" style="margin:6px 0 16px">Chỉ chọn trong danh sách email đã cấu hình. Ticket luôn được gửi bằng tài khoản ERP đã cấu hình trên Render; <b>người tạo (create by) ghi vào ticket ERP là email được chọn</b>. Mỗi dự án có email mặc định riêng.</p>
     <h2>Nhập từ AI (JSON)</h2>
     <p class="hint" style="margin:0 0 8px">Dán nội dung do skill/AI sinh ra — có thể là <b>nguyên file .md</b> (chữ + khối <code>```json</code>) hoặc JSON trần, 1 hoặc nhiều ticket. Hoặc chọn / kéo thả file <code>.md .json .txt</code> vào ô bên dưới. Trang tự tìm JSON và điền vào form; bạn xem lại rồi mới tạo.</p>
     <div class="actions" style="margin-bottom:8px"><input type="file" id="aiFile" accept=".md,.markdown,.json,.txt,text/markdown,application/json,text/plain" style="max-width:360px"></div>
@@ -272,8 +257,7 @@ function collect(){
 function show(kind, html){ $('result').innerHTML = `<div class="msg ${kind}">${html}</div>`; }
 
 async function send(dry, force){
-  if($('creator').value===ONBEHALF && !$('obUser').value.trim()){ show('err','Chọn/nhập email người tạo (user ERP) ở mục Người tạo ticket.'); $('obUser').focus(); return; }
-  if($('creator').value===CUSTOM && !customUser){ show('err','Bạn đã chọn "Tài khoản ERP khác" nhưng chưa đăng nhập ERP — nhập email/mật khẩu và bấm Đăng nhập ERP.'); return; }
+  if(!$('creator').value){ show('err','Chọn người tạo ticket ở mục Người tạo ticket.'); return; }
   const fields = collect();
   document.querySelectorAll('.invalid').forEach(e=>e.classList.remove('invalid'));
   const miss = Object.values(state.fields).filter(f=>f.reqd && !f.read_only && !f.default && fields[f.fieldname]===undefined);
@@ -288,7 +272,7 @@ async function send(dry, force){
   if(bad){ show('err', 'Không thể gửi trường '+esc(bad.label)+': chưa đọc được cấu trúc bảng con "'+esc(bad.options)+'" từ ERP.'); return; }
   const btns=['btnCheck','btnCreate']; btns.forEach(b=>$(b).disabled=true);
   try{
-    const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,force:!!force,creator:$('creator').value,on_behalf:$('obUser').value.trim()})});
+    const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,force:!!force,creator_email:$('creator').value})});
     if(dry){
       show('info','Dữ liệu hợp lệ — <b>chưa tạo ticket</b>. Payload sẽ gửi sang ERP:<pre>'+esc(JSON.stringify(r.payload,null,2))+'</pre>'+(r.rejected&&r.rejected.length?'<br>Trường bị bỏ qua: '+esc(r.rejected.join(', ')):'')+autoText(r.autofilled));
     }else{
@@ -463,14 +447,13 @@ function renderBulk(){
 }
 
 async function bulkRun(dry){
-  if($('creator').value===ONBEHALF && !$('obUser').value.trim()){ $('aiMsg').innerHTML='<div class="msg err">Chọn/nhập email người tạo (user ERP).</div>'; return; }
-  if($('creator').value===CUSTOM && !customUser){ $('aiMsg').innerHTML='<div class="msg err">Chưa đăng nhập tài khoản ERP khác.</div>'; return; }
+  if(!$('creator').value){ $('aiMsg').innerHTML='<div class="msg err">Chọn người tạo ticket.</div>'; return; }
   const btns=['btnBulkCheck','btnBulkCreate','btnLoadJson']; btns.forEach(b=>$(b).disabled=true);
   for(const q of queue){
     if(q.status==='created') continue;
     const {fields} = jsonToPayload(q.data);
     try{
-      const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,creator:$('creator').value,on_behalf:$('obUser').value.trim()})});
+      const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,creator_email:$('creator').value})});
       if(dry){ q.status='checked'; q.msg='✓ hợp lệ'; } else { q.status='created'; q.msg='✓ đã tạo '+r.name+(r.warning?' ⚠ '+r.warning:''); }
     }catch(e){ q.status = e.status===409?'dup':'error'; q.msg = '✗ '+e.message; }
     renderBulk();
@@ -541,41 +524,26 @@ $('btnBulkCreate').onclick = ()=>{ if(confirm(`Tạo ${queue.filter(q=>q.status!
   }catch(e){ body.innerHTML = `<span style="color:var(--danger)">Không tải được danh sách file hướng dẫn: ${esc(e.message)}</span>`; }
 })();
 
-const CUSTOM = '__custom__';
-const ONBEHALF = '__onbehalf__';
-let customUser = null;
-function refreshCustomUi(){
-  const on = $('creator').value===CUSTOM;
-  $('customBox').style.display = on ? 'block' : 'none';
-  $('onbehalfBox').style.display = $('creator').value===ONBEHALF ? 'block' : 'none';
-  $('customLogin').style.display = customUser ? 'none' : 'block';
-  $('customOn').style.display = customUser ? 'block' : 'none';
-  $('cuWho').innerHTML = customUser ? 'Đã đăng nhập ERP: <b>'+esc(customUser)+'</b>' : '';
-  const opt = [...$('creator').options].find(o=>o.value===CUSTOM);
-  if(opt) opt.textContent = customUser ? 'Tài khoản ERP khác ('+customUser+')' : '➕ Nhập tài khoản ERP khác…';
+/* ===== Người tạo ticket: chỉ chọn trong danh sách email cấu hình (ticket-creators.json) ===== */
+let CREATOR_CFG = { serviceAccount:'', creators:[], defaults:{} };
+async function initCreators(){
+  const sel = $('creator');
+  try{ CREATOR_CFG = await api('/api/erp/ticket-creators'); }
+  catch(e){ sel.innerHTML = '<option value="">(không tải được danh sách)</option>'; $('creatorMsg').innerHTML = `<span style="color:var(--danger)">Không tải được danh sách người tạo: ${esc(e.message)}</span>`; return; }
+  const def = (LOCKED && CREATOR_CFG.defaults[LOCKED]) || CREATOR_CFG.serviceAccount || CREATOR_CFG.creators[0] || '';
+  if(!CREATOR_CFG.creators.length){ sel.innerHTML = '<option value="">(chưa cấu hình người tạo)</option>'; $('creatorMsg').innerHTML = '<span style="color:var(--danger)">Chưa có email người tạo nào trong ticket-creators.json.</span>'; return; }
+  sel.innerHTML = CREATOR_CFG.creators.map(e=>{
+    const tags = [e===def?'mặc định dự án':'', e===CREATOR_CFG.serviceAccount?'tài khoản Render — tạo trực tiếp':''].filter(Boolean);
+    return `<option value="${esc(e)}">${esc(e)}${tags.length?' ('+esc(tags.join(' · '))+')':''}</option>`;
+  }).join('');
+  const key = 'ticketCreator:'+(LOCKED||'*');
+  let saved = ''; try{ saved = localStorage.getItem(key) || ''; }catch(_){}
+  sel.value = CREATOR_CFG.creators.includes(saved) ? saved : def;
+  sel.disabled = false;
+  sel.onchange = ()=>{ try{ localStorage.setItem(key, sel.value); }catch(_){} };
 }
-Promise.all([api('/api/erp/creators'), api('/api/erp/custom-session').catch(()=>({user:null}))]).then(([list,cs])=>{
-  customUser = cs.user;
-  const customAllowed = cs.allowed !== false;
-  $('creator').innerHTML = list.map(c=>`<option value="${esc(c.key)}">${esc(c.label)}</option>`).join('') + `<option value="${ONBEHALF}">👤 Chọn người dùng ERP làm người tạo (không cần mật khẩu)</option>` + (customAllowed ? `<option value="${CUSTOM}"></option>` : '');
-  if(list.length<=1) $('creatorHint').style.display='block';
-  const saved = localStorage.getItem('ticketCreator'); if(saved && [...$('creator').options].some(o=>o.value===saved)) $('creator').value = saved;
-  refreshCustomUi();
-}).catch(()=>{});
-(function(){ let t=null; const inp=$('obUser'); const load=async()=>{ try{ const l=await api('/api/erp/users?txt='+encodeURIComponent(inp.value)); $('dl_obUser').innerHTML=l.map(x=>`<option value="${esc(x.value)}">${esc(x.description||'')}</option>`).join(''); }catch(_){} };
-  inp.addEventListener('focus',load); inp.addEventListener('input',()=>{clearTimeout(t);t=setTimeout(load,250);});
-  try{ const s=localStorage.getItem('ticketOnBehalf'); if(s) inp.value=s; }catch(_){}
-  inp.addEventListener('change',()=>{ try{ localStorage.setItem('ticketOnBehalf',inp.value.trim()); }catch(_){} }); })();
-$('creator').onchange = ()=>{ try{ localStorage.setItem('ticketCreator',$('creator').value); }catch(_){} refreshCustomUi(); };
-$('btnCuLogin').onclick = async ()=>{
-  $('cuMsg').innerHTML=''; $('btnCuLogin').disabled=true;
-  try{
-    const r = await api('/api/erp/custom-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:$('cuUser').value,pass:$('cuPass').value})});
-    customUser = r.user; $('cuPass').value=''; refreshCustomUi();
-  }catch(e){ $('cuMsg').innerHTML = `<div class="msg err">${esc(e.message)}</div>`; }
-  finally{ $('btnCuLogin').disabled=false; }
-};
-$('btnCuLogout').onclick = async ()=>{ await api('/api/erp/custom-logout',{method:'POST'}).catch(()=>{}); customUser=null; refreshCustomUi(); };
+initCreators();
+
 api('/api/erp/ticket-meta').then(m=>{ build(m); $('btnLoadJson').disabled=false; }).catch(e=>{
   $('loading').innerHTML = `<div class="msg err">Không tải được cấu trúc form: ${esc(e.message)}</div>`;
 });
