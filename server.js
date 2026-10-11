@@ -206,16 +206,53 @@ function loadInstructionProjects() {
   }
 }
 
+function buildMasterBlock(m) {
+  const order = [['request_type', 'Request Type'], ['internal_request_type', 'Internal Request Type'], ['region', 'Region'], ['contact_role', 'Contact Role'], ['products', 'Products']];
+  const parts = order.filter(([k]) => m[k] && m[k].length).map(([k, label]) => `- ${label}:\n${m[k].map((v) => `  - ${v}`).join('\n')}`);
+  if (!parts.length) return '';
+  const stamp = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' }).format(new Date());
+  return `<!-- Danh sách lấy trực tiếp từ ERP lúc tải file (${stamp}) -->\n${parts.join('\n')}`;
+}
+
 app.get('/api/ticket-instructions', requireAuth, (req, res) => {
   res.json(loadInstructionProjects().map(({ code, label, name, file }) => ({ code, label, name, file })));
 });
 
-app.get('/api/ticket-instructions/:code', requireAuth, (req, res) => {
-  const p = loadInstructionProjects().find((x) => x.code === req.params.code);
-  if (!p || path.basename(p.file) !== p.file) return res.status(404).json({ error: 'Không có file hướng dẫn cho dự án này.' });
+/** Nội dung file hướng dẫn của dự án, đã thay khối master bằng danh sách lấy trực tiếp từ ERP (nếu kết nối được). */
+async function renderInstruction(p) {
   const full = path.join(INSTR_DIR, p.file);
-  if (!fs.existsSync(full)) return res.status(404).json({ error: 'File hướng dẫn chưa được tạo — chạy: node scripts/gen-ticket-instructions.js' });
-  res.download(full, p.file);
+  let text = fs.readFileSync(full, 'utf8');
+  let source = 'static';
+  if (erp.isConfigured()) {
+    try {
+      const m = await erp.getMasterLists();
+      const block = buildMasterBlock(m);
+      const a = text.indexOf('<!-- MASTER:BEGIN -->');
+      const b = text.indexOf('<!-- MASTER:END -->');
+      if (block && a >= 0 && b > a) {
+        text = text.slice(0, a) + block + text.slice(b + '<!-- MASTER:END -->'.length);
+        source = 'live';
+      }
+    } catch (e) { console.error('[ticket-instructions] không lấy được master từ ERP:', e.message); }
+  }
+  if (source === 'static') text = text.replace(/<!-- MASTER:(BEGIN|END) -->\n?/g, '');
+  return { text, source };
+}
+
+function findInstructionProject(code) {
+  const p = loadInstructionProjects().find((x) => x.code === code);
+  if (!p || path.basename(p.file) !== p.file) return null;
+  return fs.existsSync(path.join(INSTR_DIR, p.file)) ? p : null;
+}
+
+app.get('/api/ticket-instructions/:code', requireAuth, async (req, res) => {
+  const p = findInstructionProject(req.params.code);
+  if (!p) return res.status(404).json({ error: 'Không có file hướng dẫn cho dự án này (nếu chưa tạo: node scripts/gen-ticket-instructions.js).' });
+  const { text, source } = await renderInstruction(p);
+  res.setHeader('X-Masters', source);
+  res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${p.file}"`);
+  res.send(text);
 });
 
 /* ---------- API: TẠO TICKET trên ERP (ghi dữ liệu thật) ----------
@@ -224,6 +261,7 @@ app.get('/api/ticket-instructions/:code', requireAuth, (req, res) => {
    - POST /api/erp/tickets {fields, dry_run} : dry_run=true chỉ kiểm tra, không gửi sang ERP */
 const BLOCKED_WRITE_FIELDS = new Set(['name', 'owner', 'creation', 'modified', 'modified_by', 'docstatus', 'idx', 'doctype']);
 const recentCreates = new Map(); // chống bấm tạo trùng: project|subject -> thời điểm
+const createdTickets = new Map(); // mã ticket vừa tạo từ tool -> thời điểm (chỉ cho phép đính kèm vào các ticket này)
 
 app.get('/api/erp/ticket-meta', requireAuth, async (req, res) => {
   if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
@@ -243,7 +281,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     "defaults":{"MerapLion_eSales":"phuctm@hqsoft.com.vn", ...}}
    - creators  : danh sách hiển thị ở MỌI dự án để chọn.
    - defaults  : email mặc định theo từng dự án.
-   - serviceAccount: tài khoản đăng nhập ERP đã cấu hình trên Render (ERP_USER) — chọn email này thì tạo trực tiếp, không thay mặt. */
+   - serviceAccount: tài khoản đăng nhập ERP đã cấu hình trên Render (ERP_USER) — chọn email này thì tạo trực tiếp, không thay mặt.
+   - assignees / assignDefaults: người xử lý (Assign) để chọn, và người mặc định theo dự án (không có = không giao). */
 function loadProjectCreators() {
   let raw = process.env.ERP_PROJECT_CREATORS;
   try {
@@ -257,10 +296,16 @@ function loadProjectCreators() {
       const e = norm(v);
       if (creators.includes(e)) defaults[code] = e;
     }
-    return { serviceAccount: EMAIL_RE.test(serviceAccount) ? serviceAccount : '', creators, defaults };
+    const assignees = [...new Set((Array.isArray(j.assignees) ? j.assignees : []).map(norm).filter((x) => EMAIL_RE.test(x)))];
+    const assignDefaults = {};
+    for (const [code, v] of Object.entries(j.assignDefaults || {})) {
+      const e = norm(v);
+      if (assignees.includes(e)) assignDefaults[code] = e;
+    }
+    return { serviceAccount: EMAIL_RE.test(serviceAccount) ? serviceAccount : '', creators, defaults, assignees, assignDefaults };
   } catch (e) {
     console.error('[ticket-creators] không đọc được cấu hình:', e.message);
-    return { serviceAccount: '', creators: [], defaults: {} };
+    return { serviceAccount: '', creators: [], defaults: {}, assignees: [], assignDefaults: {} };
   }
 }
 {
@@ -319,6 +364,48 @@ app.post('/api/erp/ticket-defaults', requireAuth, async (req, res) => {
   }
 });
 
+/* Đính kèm ảnh/file vào ticket VỪA TẠO từ tool (tối đa 8 file, mỗi file 8 MB). Chỉ nhận mã ticket do tool tạo trong 2 giờ gần nhất. */
+const ATTACH_OK = /^(image\/(png|jpe?g|gif|webp|bmp)|application\/pdf|text\/(plain|csv)|application\/(msword|vnd\.openxmlformats-officedocument\.[a-z.]+|vnd\.ms-excel|zip))$/i;
+const attachUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024, files: 8 },
+  fileFilter: (req, file, cb) => cb(null, ATTACH_OK.test(file.mimetype || '')),
+});
+app.post('/api/erp/attachments', requireAuth, (req, res) => {
+  attachUpload.array('files', 8)(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'File quá lớn (tối đa 8 MB mỗi file).' : `Lỗi nhận file: ${err.message}` });
+    if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+    const ticket = String((req.body && req.body.ticket) || '').trim();
+    if (!/^[A-Za-z0-9._-]+$/.test(ticket)) return res.status(400).json({ error: 'Mã ticket không hợp lệ.' });
+    const at = createdTickets.get(ticket);
+    if (!at || Date.now() - at > 2 * 60 * 60 * 1000) return res.status(403).json({ error: 'Chỉ đính kèm được vào ticket vừa tạo từ tool (trong 2 giờ).' });
+    const files = req.files || [];
+    if (!files.length) return res.status(400).json({ error: 'Không có file hợp lệ (chỉ nhận ảnh, PDF, văn bản, Office, zip; tối đa 8 MB).' });
+    const results = [];
+    const imageUrls = [];
+    for (const f of files) {
+      // multer đọc tên file theo latin1 -> đổi lại UTF-8 để giữ tiếng Việt
+      const name = Buffer.from(f.originalname, 'latin1').toString('utf8').replace(/[\\/:*?"<>|\r\n]/g, '_').slice(0, 120) || 'file';
+      try {
+        const r = await erp.uploadAttachment(ticket, name, f.mimetype, f.buffer);
+        results.push({ name, ok: true, url: r.file_url || null });
+        if (r.file_url && /^image\//i.test(f.mimetype || '')) imageUrls.push(r.file_url);
+      } catch (e) {
+        console.error('[erp/attachments] lỗi:', e.message);
+        results.push({ name, ok: false, error: e.message });
+      }
+    }
+    // Tuỳ chọn: chèn ảnh vào mô tả ticket để hiện ngay trong nội dung (không chỉ ở mục Attachments)
+    let embedded = 0, embedWarning = null;
+    if (String((req.body && req.body.embed) || '') === '1' && imageUrls.length) {
+      try { embedded = await erp.embedImagesInDescription(ticket, imageUrls); }
+      catch (e) { console.error('[erp/attachments] không chèn được ảnh vào mô tả:', e.message); embedWarning = `Ảnh đã đính kèm nhưng chưa chèn được vào mô tả: ${e.message}`; }
+    }
+    console.log(`[erp/attachments] ${ticket}: ${results.filter((x) => x.ok).length}/${results.length} file, chèn mô tả ${embedded}`);
+    res.json({ results, embedded, embed_warning: embedWarning });
+  });
+});
+
 /* Gợi ý người liên hệ (Contact) theo email / tên lấy từ mục "Người liên hệ" của ticket. */
 app.post('/api/erp/contact-suggest', requireAuth, async (req, res) => {
   if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
@@ -369,7 +456,14 @@ app.post('/api/erp/tickets', requireAuth, async (req, res) => {
       return res.status(400).json({ error: `"${creatorEmail}" không phải người dùng đang hoạt động trên ERP.` });
     }
 
-    if (dryRun) return res.json({ dry_run: true, payload, rejected, autofilled, creator: creatorEmail, method: direct ? 'direct' : 'on-behalf' });
+    // Người xử lý (Assign): tuỳ chọn, chỉ nhận email trong danh sách assignees.
+    const assignTo = String((req.body && req.body.assign_to) || '').trim().toLowerCase();
+    if (assignTo) {
+      if (!cfg.assignees.includes(assignTo)) return res.status(400).json({ error: 'Người xử lý không nằm trong danh sách cho phép.' });
+      if (!(await erp.userExists(assignTo))) return res.status(400).json({ error: `"${assignTo}" không phải người dùng đang hoạt động trên ERP.` });
+    }
+
+    if (dryRun) return res.json({ dry_run: true, payload, rejected, autofilled, creator: creatorEmail, method: direct ? 'direct' : 'on-behalf', assign_to: assignTo || null });
 
     const key = `${creatorEmail}|${payload.project || ''}|${String(payload.subject || '').trim().toLowerCase()}`;
     const last = recentCreates.get(key);
@@ -385,8 +479,18 @@ app.post('/api/erp/tickets', requireAuth, async (req, res) => {
       ({ doc, method, warning } = await erp.createTicketOnBehalf(payload, creatorEmail));
     }
     recentCreates.set(key, Date.now());
-    console.log(`[erp/tickets] ${req.session && req.session.username ? req.session.username : 'user'} đã tạo ${doc.name} (${payload.project}), người tạo ${creatorEmail} (${method})`);
-    res.json({ ok: true, name: doc.name, url: `${erp.getBaseUrl()}/app/ticket/${encodeURIComponent(doc.name)}`, doc, creator: creatorEmail, method, warning, autofilled });
+    createdTickets.set(doc.name, Date.now());
+    let assignInfo = null, assignWarning = null;
+    if (assignTo) {
+      try {
+        assignInfo = await erp.assignTicket(doc.name, assignTo, String(payload.subject || ''));
+      } catch (e) {
+        console.error('[erp/assign] lỗi:', e.message);
+        assignWarning = `Ticket đã tạo nhưng chưa giao được cho ${assignTo}: ${e.message}`;
+      }
+    }
+    console.log(`[erp/tickets] ${req.session && req.session.username ? req.session.username : 'user'} đã tạo ${doc.name} (${payload.project}), người tạo ${creatorEmail} (${method})${assignTo ? ', giao ' + assignTo : ''}`);
+    res.json({ ok: true, name: doc.name, url: `${erp.getBaseUrl()}/app/ticket/${encodeURIComponent(doc.name)}`, doc, creator: creatorEmail, method, warning, autofilled, assigned_to: assignInfo ? assignTo : null, status_set: assignInfo ? assignInfo.statusSet : null, assign_warning: assignWarning });
   } catch (e) {
     console.error('[erp/tickets POST] lỗi:', e.message);
     res.status(502).json({ error: e.message });

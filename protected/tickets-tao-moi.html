@@ -36,6 +36,13 @@
   .locked{background:#EEF1F5!important;color:var(--ink);font-weight:600;}
   .sug{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center;}
   .sug button{font:inherit;font-size:12.5px;padding:3px 10px;border-radius:999px;border:1px solid var(--blueprint);background:#fff;color:var(--blueprint);cursor:pointer;}
+  .drop{border:2px dashed var(--grid-line-strong);border-radius:10px;padding:14px;text-align:center;background:#FAFBFD;color:var(--muted);font-size:13px;}
+  .drop.over{border-color:var(--amber);background:#FFF8EA;}
+  .thumbs{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+  .thumb{position:relative;width:110px;border:1px solid var(--grid-line-strong);border-radius:8px;padding:4px;background:#fff;font-size:11px;word-break:break-all;}
+  .thumb img{width:100%;height:70px;object-fit:cover;border-radius:5px;display:block;}
+  .thumb .ico{height:70px;display:flex;align-items:center;justify-content:center;font-size:26px;background:#EEF1F5;border-radius:5px;}
+  .thumb button{position:absolute;top:-8px;right:-8px;width:22px;height:22px;border-radius:50%;border:1px solid var(--danger);background:#fff;color:var(--danger);cursor:pointer;font-weight:700;line-height:1;padding:0;}
   .invalid{border-color:var(--danger)!important;outline:2px solid rgba(178,58,72,.35);}
   .hint{font-size:11.5px;color:var(--muted);margin-top:4px;}
   .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
@@ -60,6 +67,8 @@
   <h1 id="pageTitle">Tạo Ticket trên ERP</h1>
   <p class="sub">Form dựng tự động từ cấu trúc DocType <b>Ticket</b> trên ERP (đúng tên trường, bắt buộc, danh sách chọn). Bấm <b>Kiểm tra</b> để xem dữ liệu sẽ gửi mà chưa tạo; bấm <b>Tạo ticket</b> sẽ ghi ticket thật vào ERP bằng tài khoản <code>ERP_USER</code> của server.</p>
 
+  <div class="hint" id="buildInfo" style="margin:-8px 0 10px">Trang Tạo Ticket · bản 2026-10-11.2 (có khung ảnh đính kèm, Status mặc định Open)</div>
+
   <div class="panel" id="instrPanel">
     <h2 id="instrTitle">Hướng dẫn AI gen ticket</h2>
     <div id="instrBody" class="hint">Đang tải…</div>
@@ -69,7 +78,12 @@
     <h2>Người tạo ticket</h2>
     <select id="creator" style="max-width:420px" disabled><option>Đang tải…</option></select>
     <div id="creatorMsg" class="hint" style="margin-top:6px"></div>
-    <p class="hint" style="margin:6px 0 16px">Chỉ chọn trong danh sách email đã cấu hình. Ticket luôn được gửi bằng tài khoản ERP đã cấu hình trên Render; <b>người tạo (create by) ghi vào ticket ERP là email được chọn</b>. Mỗi dự án có email mặc định riêng.</p>
+    <p class="hint" style="margin:6px 0 16px">Người tạo (create by) ghi vào ticket ERP là email được chọn.</p>
+    <div id="assignBox" style="display:none">
+      <h2>Người xử lý (Assign)</h2>
+      <select id="assignTo" style="max-width:420px"><option value="">— Chưa giao —</option></select>
+      <p class="hint" style="margin:6px 0 16px">Chọn người xử lý thì sau khi tạo, ticket được giao cho người này và chuyển trạng thái Assign. Để "Chưa giao" thì ticket giữ trạng thái Open.</p>
+    </div>
     <h2>Nhập từ AI (JSON)</h2>
     <p class="hint" style="margin:0 0 8px">Dán nội dung do skill/AI sinh ra — có thể là <b>nguyên file .md</b> (chữ + khối <code>```json</code>) hoặc JSON trần, 1 hoặc nhiều ticket. Hoặc chọn / kéo thả file <code>.md .json .txt</code> vào ô bên dưới. Trang tự tìm JSON và điền vào form; bạn xem lại rồi mới tạo.</p>
     <div class="actions" style="margin-bottom:8px"><input type="file" id="aiFile" accept=".md,.markdown,.json,.txt,text/markdown,application/json,text/plain" style="max-width:360px"></div>
@@ -92,6 +106,16 @@
     <div id="loading" class="hint">Đang tải cấu trúc form từ ERP…</div>
     <div id="warn"></div>
     <div id="form" class="grid"></div>
+    <div style="margin-top:18px">
+      <label>Ảnh / file đính kèm <span class="hint">(tối đa 8 file, mỗi file 8 MB)</span></label>
+      <div class="drop" id="attDrop">
+        <b>Dán ảnh (Ctrl+V)</b> vào trang, hoặc kéo thả file vào đây, hoặc
+        <input type="file" id="attFile" multiple accept="image/*,.pdf,.txt,.csv,.doc,.docx,.xls,.xlsx,.zip" style="display:inline;width:auto;max-width:260px;border:0;background:none;padding:0">
+        <label style="display:flex;gap:6px;align-items:center;justify-content:center;margin:8px 0 0;font-weight:500;color:var(--ink)"><input type="checkbox" id="attEmbed" checked style="width:auto"> Chèn ảnh vào nội dung (mô tả) ticket</label>
+        <div class="hint" style="margin-top:4px">Ảnh được tải lên ERP và đính kèm vào ticket ngay sau khi tạo. Tạo 1 ticket: tự đính kèm. Tạo nhiều ticket từ JSON: tick cột <b>Ảnh</b> ở những ticket cần đính kèm.</div>
+      </div>
+      <div class="thumbs" id="attList"></div>
+    </div>
     <div class="actions" style="margin-top:20px">
       <button class="btn sec" id="btnCheck" disabled>Kiểm tra (không gửi)</button>
       <button class="btn" id="btnCreate" disabled>Tạo ticket</button>
@@ -173,7 +197,8 @@ function build(meta){
     const f = byLabel.get(label.toLowerCase());
     if(!f){ missingLabels.push(label); return; }
     state.fields[label] = f;
-    html += `<div class="${full||f.fieldtype==='Text Editor'?'full':''}"><label for="${fid(f)}">${esc(f.label)}${f.reqd?' <span class="req">*</span>':''}</label>${controlHtml(f)}${f.read_only?'<div class="hint">Tự điền bởi ERP</div>':''}</div>`;
+    const hideIt = label==='Status' || label==='Customer Name' || (LOCKED && label==='Customer');
+    html += `<div${hideIt?' id="wrap_'+f.fieldname+'" style="display:none"':''} class="${full||f.fieldtype==='Text Editor'?'full':''}"><label for="${fid(f)}">${esc(f.label)}${f.reqd?' <span class="req">*</span>':''}</label>${controlHtml(f)}${f.read_only?'<div class="hint">Tự điền bởi ERP</div>':''}</div>`;
   });
   $('form').innerHTML = html;
   $('loading').style.display='none';
@@ -181,11 +206,12 @@ function build(meta){
     $('warn').innerHTML = `<div class="msg info">Không tìm thấy trên DocType Ticket các trường: <b>${missingLabels.map(esc).join(', ')}</b> (nhãn khác với form hiển thị) — các trường này được bỏ qua.</div>`;
   }
   // Giá trị mặc định
+  { const sf = state.fields['Status']; if(sf){ const el=$(fid(sf)); if(el && el.options && [...el.options].some(o=>o.value==='Open')) el.value='Open'; } }
   Object.values(state.fields).forEach(f=>{ const el=$(fid(f)); if(el && f.default && f.fieldtype!=='Select') el.value=f.default; });
   const pf = state.fields['Project'];
   if(LOCKED && pf){
     const el = $(fid(pf)); el.value = LOCKED; el.readOnly = true; el.classList.add('locked'); el.removeAttribute('list');
-    const h = document.createElement('div'); h.className='hint'; h.textContent = 'Cố định theo dự án '+PROJECT_LABELS[LOCKED]+' — Customer lấy theo dự án này';
+    const h = document.createElement('div'); h.className='hint'; h.id='projHint'; h.textContent = 'Cố định theo dự án '+PROJECT_LABELS[LOCKED]+' — Customer tự động theo dự án';
     el.parentElement.appendChild(h);
   }
   // Gợi ý người liên hệ khi có/đổi email hoặc tên người báo
@@ -211,6 +237,7 @@ function build(meta){
     inp.addEventListener('change', ()=>{ /* chọn từ datalist */ });
   });
   ['btnCheck','btnCreate','btnReset'].forEach(b=>$(b).disabled=false);
+  if(LOCKED) applyAutofill();
 }
 
 function renderChips(f){
@@ -272,14 +299,22 @@ async function send(dry, force){
   if(bad){ show('err', 'Không thể gửi trường '+esc(bad.label)+': chưa đọc được cấu trúc bảng con "'+esc(bad.options)+'" từ ERP.'); return; }
   const btns=['btnCheck','btnCreate']; btns.forEach(b=>$(b).disabled=true);
   try{
-    const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,force:!!force,creator_email:$('creator').value})});
+    const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,force:!!force,creator_email:$('creator').value,assign_to:($('assignTo')||{}).value||''})});
     if(dry){
       show('info','Dữ liệu hợp lệ — <b>chưa tạo ticket</b>. Payload sẽ gửi sang ERP:<pre>'+esc(JSON.stringify(r.payload,null,2))+'</pre>'+(r.rejected&&r.rejected.length?'<br>Trường bị bỏ qua: '+esc(r.rejected.join(', ')):'')+autoText(r.autofilled));
     }else{
-      show(r.warning?'info':'ok',`Đã tạo ticket <b>${esc(r.name)}</b>${r.method?` — người tạo trên ERP: <b>${esc(r.creator)}</b> (${esc(r.method)})`:''}. <a href="${esc(r.url)}" target="_blank" rel="noopener">Mở trên ERP ↗</a>${r.warning?'<br><b>Lưu ý:</b> '+esc(r.warning):''}${autoText(r.autofilled)}`);
+      const hadFiles = attachments.length;
+      show((r.warning||r.assign_warning)?'info':'ok',`Đã tạo ticket <b>${esc(r.name)}</b>${r.method?` — người tạo trên ERP: <b>${esc(r.creator)}</b> (${esc(r.method)})`:''}. <a href="${esc(r.url)}" target="_blank" rel="noopener">Mở trên ERP ↗</a>${r.warning?'<br><b>Lưu ý:</b> '+esc(r.warning):''}${r.assigned_to?'<br>Đã giao cho <b>'+esc(r.assigned_to)+'</b>'+(r.status_set?' — trạng thái <b>'+esc(r.status_set)+'</b>':''):''}${r.assign_warning?'<br><b>Giao ticket:</b> '+esc(r.assign_warning):''}${autoText(r.autofilled)}`);
+      if(hadFiles){
+        const box = $('result').firstElementChild; box.insertAdjacentHTML('beforeend','<br>Đang tải '+hadFiles+' file đính kèm lên ERP…');
+        const u = await uploadAttachments(r.name);
+        box.innerHTML = box.innerHTML.replace(/<br>Đang tải [^<]*…/, '') + '<br>Đính kèm: đã tải <b>'+u.ok+'/'+hadFiles+'</b> file lên ticket' + (u.embedded?', đã chèn <b>'+u.embedded+'</b> ảnh vào nội dung.':'.') + (u.fail.length?'<br><b>Chưa tải được:</b> '+u.fail.map(esc).join('; ')+' (ticket đã tạo, hãy đính kèm tay file lỗi).':'');
+        if(u.fail.length) box.className='msg info';
+      }
     }
   }catch(e){
     if(e.status===409 && confirm(e.message+'\n\nVẫn tạo ticket mới?')) { btns.forEach(b=>$(b).disabled=false); return send(dry,true); }
+    if(e.data && Array.isArray(e.data.missing) && e.data.missing.some(m=>/customer/i.test(m))) revealCustomer('Server không tự lấy được Customer — chọn Customer bên dưới.');
     show('err', esc(e.message));
   }finally{ btns.forEach(b=>$(b).disabled=false); }
 }
@@ -330,6 +365,8 @@ function jsonToPayload(obj){
   Object.entries(obj).forEach(([k,v])=>{
     const f = fieldForKey(k);
     if(!f){ unknown.push(k); return; }
+    if(f===state.fields['Status']) return; // Status mặc định Open, bỏ qua trong JSON
+    if(LOCKED && f===state.fields['Customer']) return; // Customer luôn lấy theo Project, bỏ qua trong JSON
     if(f.read_only || v===null || v==='' || (Array.isArray(v)&&!v.length)) return;
     if(f.fieldtype==='Table MultiSelect'){
       const m = state.multi[f.fieldname];
@@ -350,7 +387,7 @@ function loadIntoForm(obj){
   document.getElementById('btnReset').click();
   Object.entries(obj).forEach(([k,v])=>{
     const f = fieldForKey(k); if(!f || f.read_only) return;
-    if(LOCKED && f===state.fields['Project']) return;
+    if(f===state.fields['Status'] || (LOCKED && (f===state.fields['Project'] || f===state.fields['Customer']))) return;
     const el = $(fid(f)); if(!el) return;
     if(f.fieldtype==='Table MultiSelect'){ const m=state.multi[f.fieldname]; m.values = asList(v); renderChips(f); return; }
     el.value = f.fieldtype==='Datetime' ? String(v).replace(' ','T') : String(v);
@@ -399,8 +436,23 @@ async function applyAutofill(){
       el.value = f.fieldtype==='Datetime' ? String(a.value).replace(' ','T') : a.value;
       done.push(`${esc(a.label)} = <b>${esc(a.value)}</b> <span class="hint">(${esc(a.source)})</span>`);
     });
+    updateCustomerUi();
     return done;
   }catch(_){ return []; }
+}
+/** Customer ẩn khi đã khoá dự án (API tự điền). Nếu không lấy được Customer thì hiện ô để chọn tay. */
+function revealCustomer(reason){
+  const cf = state.fields['Customer']; if(!cf) return;
+  ['Customer','Customer Name'].forEach(l=>{ const f=state.fields[l]; const w=f&&document.getElementById('wrap_'+f.fieldname); if(w && l==='Customer') w.style.display=''; });
+  const ph=$('projHint'); if(ph) ph.innerHTML = 'Cố định theo dự án '+esc(PROJECT_LABELS[LOCKED])+' — <span style="color:var(--danger)">'+esc(reason||'Không lấy được Customer tự động, hãy chọn Customer bên dưới.')+'</span>';
+}
+function updateCustomerUi(){
+  if(!LOCKED) return;
+  const cf = state.fields['Customer']; if(!cf) return;
+  const v = $(fid(cf)).value.trim();
+  const ph=$('projHint'); if(!ph) return;
+  if(v){ ph.textContent = 'Cố định theo dự án '+PROJECT_LABELS[LOCKED]+' — Customer tự động: '+v; }
+  else revealCustomer('Chưa lấy được Customer theo dự án — chọn Customer bên dưới (hoặc cấu hình customer cho dự án trong ERP_TICKET_DEFAULTS).');
 }
 /** Gợi ý Contact theo email / tên người báo (mục "Người liên hệ"). Chỉ hiện khi ô Contact còn trống. */
 async function refreshContactSuggest(){
@@ -437,28 +489,40 @@ function parseAiJson(text){
 
 function renderBulk(){
   const tbl = $('bulkTbl');
-  tbl.innerHTML = '<tr style="text-align:left;color:var(--muted)"><th style="padding:6px">#</th><th>Project</th><th>Subject</th><th>Priority</th><th>Trạng thái</th><th></th></tr>' +
+  tbl.innerHTML = '<tr style="text-align:left;color:var(--muted)"><th style="padding:6px">#</th><th>Project</th><th>Subject</th><th>Priority</th><th>Ảnh</th><th>Trạng thái</th><th></th></tr>' +
     queue.map((q,i)=>{
       const d = q.data;
       const col = q.status==='created'?'var(--success)':(q.status==='error'||q.status==='dup')?'var(--danger)':'var(--muted)';
-      return `<tr style="border-top:1px solid var(--grid-line-strong)"><td style="padding:6px">${i+1}</td><td>${esc(d.project||'')}</td><td>${esc(d.subject||'')}</td><td>${esc(d.priority||'')}</td><td style="color:${col}">${esc(q.msg||'chưa gửi')}</td><td><button class="btn sec" style="padding:4px 10px;font-size:12px" data-i="${i}">Mở trên form</button></td></tr>`;
+      return `<tr style="border-top:1px solid var(--grid-line-strong)"><td style="padding:6px">${i+1}</td><td>${esc(d.project||'')}</td><td>${esc(d.subject||'')}</td><td>${esc(d.priority||'')}</td><td><label style="display:flex;gap:4px;align-items:center;margin:0;font-weight:400"><input type="checkbox" style="width:auto" data-att="${i}"${q.attach?' checked':''}${q.status==='created'?' disabled':''}> gửi kèm</label></td><td style="color:${col}">${esc(q.msg||'chưa gửi')}</td><td><button class="btn sec" style="padding:4px 10px;font-size:12px" data-i="${i}">Mở trên form</button></td></tr>`;
     }).join('');
   tbl.querySelectorAll('button').forEach(b=>b.onclick=()=>loadIntoForm(queue[Number(b.dataset.i)].data));
+  tbl.querySelectorAll('input[data-att]').forEach(c=>c.onchange=()=>{ queue[Number(c.dataset.att)].attach = c.checked; });
 }
 
 async function bulkRun(dry){
+  if(!dry && attachments.length && !queue.some(q=>q.attach && q.status!=='created') && !confirm('Có '+attachments.length+' file đính kèm nhưng chưa tick "gửi kèm" ở ticket nào nên sẽ KHÔNG đính kèm vào ticket nào. Vẫn tạo các ticket?')) return;
   if(!$('creator').value){ $('aiMsg').innerHTML='<div class="msg err">Chọn người tạo ticket.</div>'; return; }
   const btns=['btnBulkCheck','btnBulkCreate','btnLoadJson']; btns.forEach(b=>$(b).disabled=true);
+  let allAttached = true, anyAttach = false;
   for(const q of queue){
     if(q.status==='created') continue;
     const {fields} = jsonToPayload(q.data);
     try{
-      const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,creator_email:$('creator').value})});
-      if(dry){ q.status='checked'; q.msg='✓ hợp lệ'; } else { q.status='created'; q.msg='✓ đã tạo '+r.name+(r.warning?' ⚠ '+r.warning:''); }
+      const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,creator_email:$('creator').value,assign_to:($('assignTo')||{}).value||''})});
+      if(dry){ q.status='checked'; q.msg='✓ hợp lệ'; } else {
+        q.status='created'; q.msg='✓ đã tạo '+r.name+(r.assigned_to?' → giao '+r.assigned_to:'')+(r.warning?' ⚠ '+r.warning:'')+(r.assign_warning?' ⚠ '+r.assign_warning:'');
+        if(q.attach && attachments.length){
+          anyAttach = true;
+          const u = await uploadAttachments(r.name, {keep:true});
+          q.msg += ' · ảnh '+u.ok+'/'+attachments.length+(u.fail.length?' ⚠ '+u.fail.join('; '):'');
+          if(u.fail.length) allAttached = false;
+        }
+      }
     }catch(e){ q.status = e.status===409?'dup':'error'; q.msg = '✗ '+e.message; }
     renderBulk();
   }
   btns.forEach(b=>$(b).disabled=false);
+  if(!dry && anyAttach && allAttached){ attachments.forEach(a=>a.url&&URL.revokeObjectURL(a.url)); attachments=[]; renderAttachments(); }
 }
 
 $('btnLoadJson').onclick = ()=>{
@@ -496,6 +560,58 @@ $('aiFile').addEventListener('change', e=>{ readAiFile(e.target.files[0]); e.tar
 $('btnBulkCheck').onclick = ()=>bulkRun(true);
 $('btnBulkCreate').onclick = ()=>{ if(confirm(`Tạo ${queue.filter(q=>q.status!=='created').length} ticket thật trên ERP?`)) bulkRun(false); };
 
+/* ===== Ảnh / file đính kèm: dán (Ctrl+V), kéo thả hoặc chọn file; tải lên ERP sau khi tạo ticket ===== */
+const ATT_MAX_FILES = 8, ATT_MAX_BYTES = 8*1024*1024;
+const ATT_OK = /^(image\/(png|jpe?g|gif|webp|bmp)|application\/pdf|text\/(plain|csv)|application\/(msword|vnd\.openxmlformats-officedocument\.[a-z.]+|vnd\.ms-excel|zip))$/i;
+let attachments = []; // [{file, url}]
+let attSeq = 0;
+function fmtSize(n){ return n>1048576 ? (n/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(n/1024))+' KB'; }
+function renderAttachments(){
+  $('attList').innerHTML = attachments.map((a,i)=>{
+    const isImg = a.file.type.startsWith('image/');
+    return `<div class="thumb">${isImg?`<img src="${a.url}" alt="">`:'<div class="ico">📄</div>'}<div>${esc(a.file.name)}</div><div class="hint">${fmtSize(a.file.size)}</div><button type="button" data-i="${i}" title="Bỏ file">×</button></div>`;
+  }).join('');
+  $('attList').querySelectorAll('button').forEach(b=>b.onclick=()=>{ const a=attachments.splice(Number(b.dataset.i),1)[0]; if(a&&a.url) URL.revokeObjectURL(a.url); renderAttachments(); });
+  if(typeof queue!=='undefined' && queue.length) renderBulk();
+}
+function addAttachments(files){
+  const msgs=[];
+  [...files].forEach(f=>{
+    if(attachments.length>=ATT_MAX_FILES){ msgs.push('Tối đa '+ATT_MAX_FILES+' file.'); return; }
+    if(!ATT_OK.test(f.type||'')){ msgs.push('"'+f.name+'": loại file không được hỗ trợ.'); return; }
+    if(f.size>ATT_MAX_BYTES){ msgs.push('"'+f.name+'" quá 8 MB.'); return; }
+    // ảnh dán từ clipboard thường tên "image.png" -> đặt tên rõ ràng, tăng dần
+    let file=f;
+    if(/^image\.(png|jpe?g|gif|webp)$/i.test(f.name)){
+      const ext=(f.name.split('.').pop()||'png').toLowerCase();
+      file=new File([f], 'anh-'+(++attSeq)+'-'+Date.now().toString(36)+'.'+ext, {type:f.type});
+    }
+    attachments.push({file, url: file.type.startsWith('image/') ? URL.createObjectURL(file) : ''});
+  });
+  renderAttachments();
+  if(msgs.length) $('result').innerHTML = `<div class="msg err">${msgs.map(esc).join('<br>')}</div>`;
+}
+document.addEventListener('paste', e=>{
+  const files=[...(e.clipboardData&&e.clipboardData.items||[])].filter(i=>i.kind==='file').map(i=>i.getAsFile()).filter(Boolean);
+  if(files.length){ e.preventDefault(); addAttachments(files); }
+});
+$('attFile').addEventListener('change', e=>{ addAttachments(e.target.files); e.target.value=''; });
+['dragenter','dragover'].forEach(ev=>$('attDrop').addEventListener(ev, e=>{ e.preventDefault(); $('attDrop').classList.add('over'); }));
+['dragleave','drop'].forEach(ev=>$('attDrop').addEventListener(ev, e=>{ e.preventDefault(); $('attDrop').classList.remove('over'); if(ev==='drop') addAttachments(e.dataTransfer.files); }));
+
+/** Tải các file đính kèm lên ERP cho ticket vừa tạo. Trả về {ok, fail:[...]}; thành công thì xoá khỏi danh sách. */
+async function uploadAttachments(ticketName, opts){
+  const fd = new FormData(); fd.append('ticket', ticketName); fd.append('embed', $('attEmbed') && $('attEmbed').checked ? '1' : '0');
+  attachments.forEach(a=>fd.append('files', a.file, a.file.name));
+  try{
+    const r = await api('/api/erp/attachments',{method:'POST',body:fd});
+    const ok=r.results.filter(x=>x.ok).length, fail=r.results.filter(x=>!x.ok).map(x=>x.name+': '+x.error);
+    if(!fail.length && !(opts&&opts.keep)){ attachments.forEach(a=>a.url&&URL.revokeObjectURL(a.url)); attachments=[]; renderAttachments(); }
+    if(r.embed_warning) fail.push(r.embed_warning);
+    return {ok, fail, embedded:r.embedded||0};
+  }catch(e){ return {ok:0, fail:[e.message], embedded:0}; }
+}
+
 /* ===== Tải file hướng dẫn AI (.md) của dự án ===== */
 (async function loadInstructions(){
   const body = $('instrBody');
@@ -532,15 +648,23 @@ async function initCreators(){
   catch(e){ sel.innerHTML = '<option value="">(không tải được danh sách)</option>'; $('creatorMsg').innerHTML = `<span style="color:var(--danger)">Không tải được danh sách người tạo: ${esc(e.message)}</span>`; return; }
   const def = (LOCKED && CREATOR_CFG.defaults[LOCKED]) || CREATOR_CFG.serviceAccount || CREATOR_CFG.creators[0] || '';
   if(!CREATOR_CFG.creators.length){ sel.innerHTML = '<option value="">(chưa cấu hình người tạo)</option>'; $('creatorMsg').innerHTML = '<span style="color:var(--danger)">Chưa có email người tạo nào trong ticket-creators.json.</span>'; return; }
-  sel.innerHTML = CREATOR_CFG.creators.map(e=>{
-    const tags = [e===def?'mặc định dự án':'', e===CREATOR_CFG.serviceAccount?'tài khoản Render — tạo trực tiếp':''].filter(Boolean);
-    return `<option value="${esc(e)}">${esc(e)}${tags.length?' ('+esc(tags.join(' · '))+')':''}</option>`;
-  }).join('');
+  sel.innerHTML = CREATOR_CFG.creators.map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join('');
   const key = 'ticketCreator:'+(LOCKED||'*');
   let saved = ''; try{ saved = localStorage.getItem(key) || ''; }catch(_){}
   sel.value = CREATOR_CFG.creators.includes(saved) ? saved : def;
   sel.disabled = false;
   sel.onchange = ()=>{ try{ localStorage.setItem(key, sel.value); }catch(_){} };
+  // Người xử lý (Assign): chỉ hiện khi có cấu hình danh sách
+  if((CREATOR_CFG.assignees||[]).length){
+    const as = $('assignTo');
+    as.innerHTML = '<option value="">— Chưa giao —</option>' + CREATOR_CFG.assignees.map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join('');
+    const akey = 'ticketAssign:'+(LOCKED||'*');
+    let asaved = null; try{ asaved = localStorage.getItem(akey); }catch(_){}
+    const adef = (LOCKED && (CREATOR_CFG.assignDefaults||{})[LOCKED]) || '';
+    as.value = (asaved!==null && (asaved==='' || CREATOR_CFG.assignees.includes(asaved))) ? asaved : adef;
+    as.onchange = ()=>{ try{ localStorage.setItem(akey, as.value); }catch(_){} };
+    $('assignBox').style.display = 'block';
+  }
 }
 initCreators();
 

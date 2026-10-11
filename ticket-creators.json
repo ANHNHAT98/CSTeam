@@ -17,5 +17,13 @@
     "ANKO_eSales_Support": "thaontt@hqsoft.com.vn",
     "HaiHa_eSales_Support": "thaontt@hqsoft.com.vn",
     "Jotun_VN_eSales": "thaontt@hqsoft.com.vn"
-  }
+  },
+  "assignees": [
+    "phuctm@hqsoft.com.vn",
+    "viltt@hqsoft.com.vn",
+    "nhuttm@hqsoft.com.vn",
+    "thaontt@hqsoft.com.vn",
+    "nhatha@hqsoft.com.vn"
+  ],
+  "assignDefaults": {}
 }

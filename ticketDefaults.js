@@ -128,6 +128,12 @@ async function applyTicketDefaults(payload, meta, erp, today) {
     set(f, v, 'mặc định cấu hình');
   }
 
+  // 2b) Status mặc định Open (trường Status ẩn trên tool): chỉ đặt khi trống và ERP có giá trị "Open"
+  const stf = findField(meta, 'Status');
+  if (stf && !stf.read_only && empty(stf) && String(stf.options || '').split('\n').map((x) => x.trim()).includes('Open')) {
+    payload[stf.fieldname] = 'Open';
+  }
+
   // 3) Estimated Deadline theo Priority
   const dl = findField(meta, 'Estimated Deadline');
   if (AUTO_DEADLINE && dl && !dl.read_only && empty(dl)) {

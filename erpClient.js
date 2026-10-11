@@ -284,6 +284,36 @@ async function getTicketMeta() {
   return metaCache.data;
 }
 
+let masterCache = { at: 0, data: null };
+/** Danh sách giá trị master của các trường chọn trên form Ticket, lấy trực tiếp từ ERP (cache 10 phút). */
+async function getMasterLists() {
+  if (masterCache.data && Date.now() - masterCache.at < 10 * 60 * 1000) return masterCache.data;
+  const meta = await getTicketMeta();
+  const WANT = [['request_type', 'Request Type'], ['internal_request_type', 'Internal Request Type'], ['region', 'Region'], ['contact_role', 'Contact Role'], ['products', 'Products']];
+  const out = {};
+  for (const [key, label] of WANT) {
+    const f = meta.fields.find((x) => x.label.trim().toLowerCase() === label.toLowerCase());
+    if (!f) continue;
+    try {
+      let values = [];
+      if (f.fieldtype === 'Select') {
+        values = String(f.options || '').split('\n').map((x) => x.trim()).filter(Boolean);
+      } else {
+        let doctype = f.options;
+        if (f.fieldtype === 'Table MultiSelect') {
+          const child = meta.children[f.options] || [];
+          const lf = child.find((x) => x.fieldtype === 'Link');
+          doctype = lf && lf.options;
+        }
+        if (doctype) values = (await searchLink(doctype, '', 200)).map((x) => x.value);
+      }
+      if (values.length) out[key] = values;
+    } catch (e) { console.error(`[erp/masters] ${label}:`, e.message); }
+  }
+  masterCache = { at: Date.now(), data: out };
+  return out;
+}
+
 const linkedCache = new Map(); // "DocType|name|field" -> {at, v}
 /** Đọc 1 trường của bản ghi liên kết (vd Project.customer). Cache 5 phút. */
 async function getLinkedValue(doctype, name, field) {
@@ -330,6 +360,89 @@ async function searchLink(doctype, txt = '', pageLength = 20) {
 async function createTicket(fields, ctxOverride = null) {
   const r = await erpPost('/api/resource/Ticket', fields, { ctx: ctxOverride || defaultCtx });
   return r.data || r;
+}
+
+/* ===================== ĐÍNH KÈM FILE/ẢNH vào Ticket =====================
+   Dùng API chuẩn của Frappe: POST /api/method/upload_file (multipart) với doctype + docname => file hiện ở mục Attachments của ticket. */
+async function uploadAttachment(ticketName, filename, mimeType, buffer) {
+  assertConfigured();
+  const ctx = defaultCtx;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const form = new FormData();
+    form.append('file', new Blob([buffer], { type: mimeType || 'application/octet-stream' }), filename);
+    form.append('doctype', 'Ticket');
+    form.append('docname', ticketName);
+    form.append('is_private', '1');
+    form.append('folder', 'Home/Attachments');
+    const headers = { Cookie: await ctx.cookie(), Accept: 'application/json' };
+    if (ctx.csrf) headers['X-Frappe-CSRF-Token'] = ctx.csrf;
+    const res = await fetch(`${ERP_BASE_URL}/api/method/upload_file`, { method: 'POST', headers, body: form });
+    if (res.ok) {
+      const j = await res.json().catch(() => ({}));
+      return j.message || j;
+    }
+    const text = await res.text().catch(() => '');
+    if (attempt < 2 && /csrf/i.test(text)) { await fetchCsrfToken(ctx); continue; }
+    if (attempt < 2 && res.status === 401) { ctx.reset(); continue; }
+    throw new Error(`Tải "${filename}" lên ERP lỗi HTTP ${res.status}: ${extractFrappeError(text)}`);
+  }
+  throw new Error(`Tải "${filename}" lên ERP thất bại.`);
+}
+
+/** Chèn ảnh (đã tải lên ERP) vào mô tả ticket: ngay sau mục "Ảnh chụp màn hình / File đính kèm", không có mục đó thì thêm cuối mô tả. */
+async function embedImagesInDescription(ticketName, urls) {
+  if (!urls.length) return 0;
+  const meta = await getTicketMeta();
+  const df = meta.fields.find((f) => f.fieldname === 'description' || f.label.trim().toLowerCase() === 'description');
+  if (!df) throw new Error('Ticket không có trường Description.');
+  const enc = encodeURIComponent(ticketName);
+  const doc = await erpFetch(`/api/resource/Ticket/${enc}`);
+  const cur = String((doc.data || doc)[df.fieldname] || '');
+  const attr = (u) => String(u).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const imgs = urls.map((u) => `<p><img src="${attr(u)}"></p>`).join('');
+  let html;
+  const h = cur.search(/<h4>\s*Ảnh chụp màn hình[^<]*<\/h4>/i);
+  if (h >= 0) {
+    const afterHead = cur.indexOf('</h4>', h) + 5;
+    const next = cur.indexOf('<h4>', afterHead);
+    let at = next >= 0 ? next : cur.length;
+    if (next < 0 && cur.endsWith('</div>')) at = cur.length - 6; // chèn trong khung soạn thảo, trước thẻ đóng
+    html = cur.slice(0, at) + imgs + cur.slice(at);
+  } else {
+    html = cur + '<h4>Ảnh đính kèm</h4>' + imgs;
+  }
+  await erpPost(`/api/resource/Ticket/${enc}`, { [df.fieldname]: html }, { method: 'PUT' });
+  return urls.length;
+}
+
+/* ===================== GIAO TICKET (Assign) =====================
+   Dùng chức năng "Assign To" của Frappe (frappe.desk.form.assign_to.add) bằng tài khoản ERP_USER; sau khi giao thành công
+   đặt Status = ERP_ASSIGN_STATUS (mặc định "Assign", để trống = không đổi) nếu Status của Ticket có giá trị đó. */
+const ASSIGN_STATUS = process.env.ERP_ASSIGN_STATUS === undefined ? 'Assign' : String(process.env.ERP_ASSIGN_STATUS).trim();
+
+async function assignTicket(ticketName, email, description = '') {
+  const r = await erpPost('/api/method/frappe.desk.form.assign_to.add', {
+    doctype: 'Ticket',
+    name: ticketName,
+    assign_to: JSON.stringify([email]), // Frappe nhận chuỗi JSON của danh sách user
+    description,
+    notify: 0,
+  });
+  let statusSet = null;
+  if (ASSIGN_STATUS) {
+    try {
+      const meta = await getTicketMeta();
+      const sf = meta.fields.find((f) => f.fieldname === 'status' || f.label.trim().toLowerCase() === 'status');
+      const options = sf ? String(sf.options || '').split('\n').map((x) => x.trim()) : [];
+      if (sf && options.includes(ASSIGN_STATUS)) {
+        await erpPost(`/api/resource/Ticket/${encodeURIComponent(ticketName)}`, { [sf.fieldname]: ASSIGN_STATUS }, { method: 'PUT' });
+        statusSet = ASSIGN_STATUS;
+      }
+    } catch (e) {
+      console.error('[erp/assign] đã giao nhưng không đổi được Status:', e.message);
+    }
+  }
+  return { assigned: true, statusSet, todo: r.message || null };
 }
 
 /* ===================== GHI NHẬN THAY NGƯỜI KHÁC (không cần mật khẩu) =====================
@@ -447,8 +560,12 @@ module.exports = {
   searchLink,
   createTicket,
   getLinkedValue,
+  getMasterLists,
   suggestContacts,
   userExists,
+  assignTicket,
+  uploadAttachment,
+  embedImagesInDescription,
   createTicketOnBehalf,
   makeCookieCtx,
   getBaseUrl: () => ERP_BASE_URL,

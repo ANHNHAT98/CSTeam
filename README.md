@@ -372,3 +372,34 @@ Ticket luôn gửi bằng tài khoản ERP đã cấu hình trên Render (`ERP_U
 - `serviceAccount`: tài khoản đăng nhập Render. Chọn email này thì tạo trực tiếp (không thay mặt). `ERP_USER` trên Render nên trùng email này (server cảnh báo trong log nếu khác).
 - Chọn email khác `serviceAccount` thì dùng cơ chế "thay mặt" (mục **Ghi nhận người tạo thay mặt** ở trên); email phải là user đang hoạt động trên ERP.
 - Server chặn mọi email ngoài danh sách. Có thể đặt biến `ERP_PROJECT_CREATORS` (cùng định dạng JSON) để ghi đè file.
+
+### Customer ẩn, tiêu đề ngắn, master lấy từ ERP
+
+- **Customer** không còn trong JSON/md và bị ẩn trên trang Tạo Ticket của từng dự án: API tự điền theo Project (theo `fetch_from` của ERP, trường `customer` của Project, hoặc `ERP_TICKET_DEFAULTS`). Khoá `customer` trong JSON (nếu AI vẫn trả) bị bỏ qua. Nếu không lấy được Customer, trang tự hiện ô Customer để chọn tay.
+- **Tiêu đề (subject)** theo mẫu `[DỰ ÁN] [Mức N] <Module/màn hình> - <mô tả ngắn>`, tối đa 80 ký tự, không chứa mã KH, số đơn, nguyên văn thông báo lỗi (xem mục A2b trong file md).
+- **Master trong file md** (Request Type, Internal Request Type, Region, Contact Role, Products): khi tải file từ trang, server thay khối `MASTER` bằng danh sách lấy trực tiếp từ ERP (cache 10 phút, header `X-Masters: live`); ERP không kết nối được thì dùng danh sách có sẵn trong file (`X-Masters: static`).
+
+### Status ẩn và giao ticket (Assign)
+
+- **Status** mặc định Open: ẩn trên trang Tạo Ticket, bỏ khỏi JSON/md (khoá `status` nếu AI trả vẫn bị bỏ qua). ERP tự đặt Open.
+- **Người xử lý (Assign):** ô chọn trên trang Tạo Ticket, danh sách `assignees` trong `ticket-creators.json` (mặc định theo dự án: `assignDefaults`, không đặt = "Chưa giao"). Sau khi tạo, server giao ticket qua `frappe.desk.form.assign_to.add` (bằng tài khoản `ERP_USER`) rồi đặt Status = `Assign` nếu Status của Ticket có giá trị đó. Đổi hoặc tắt việc đặt Status: biến `ERP_ASSIGN_STATUS` (rỗng = không đổi Status).
+- Giao lỗi (thiếu quyền, user không hợp lệ...) thì ticket vẫn được tạo, trang hiện cảnh báo "chưa giao được". Tạo hàng loạt dùng chung một người xử lý đã chọn cho cả lô.
+- Ví dụ cấu hình: `"assignees": ["a@hqsoft.com.vn","b@hqsoft.com.vn"], "assignDefaults": {"ABI_eSales_Support": "b@hqsoft.com.vn"}`.
+
+### Ảnh / file đính kèm vào ticket
+
+Trang Tạo Ticket cho **dán ảnh (Ctrl+V)**, kéo thả hoặc chọn file (ảnh, PDF, văn bản, Office, zip; tối đa 8 file, mỗi file 8 MB). Sau khi tạo ticket thành công, server tải file lên ERP bằng `POST /api/method/upload_file` (file riêng tư, gắn vào đúng ticket, hiện ở mục Attachments).
+
+- Tạo **1 ticket từ form**: ảnh tự đính kèm. Tạo **nhiều ticket từ JSON**: bảng có cột **Ảnh** — tick "gửi kèm" ở những ticket cần đính kèm (mặc định không tick, để tránh gắn nhầm ảnh).
+- `POST /api/erp/attachments` chỉ nhận mã ticket do tool vừa tạo trong 2 giờ gần nhất, chặn loại file lạ và file quá lớn.
+- Lỗi tải file không làm hỏng ticket: ticket vẫn được tạo, trang liệt kê file chưa tải được để đính kèm tay.
+- Tài khoản `ERP_USER` trên Render cần quyền đính kèm file vào Ticket. File do tài khoản này tải lên.
+- Quy trình dùng AI ngoài: gửi nội dung + ảnh cho AI (Project/Skill theo file md) → AI đọc ảnh để viết **Khối 1** (dán vào ERP) hoặc **Khối 2** (JSON dán vào tool). AI không trả lại được ảnh, nên ảnh gốc được dán/tải vào tool (Khối 2) hoặc đính kèm tay trong ERP (Khối 1). Mục F trong file md hướng dẫn AI trích tên màn hình, thông báo lỗi, dữ liệu hiển thị từ ảnh và mô tả từng ảnh ("Ảnh 1: …") ở mục 7.
+
+
+### Ảnh trong nội dung ticket, Status mặc định Open
+
+- **Chèn ảnh vào nội dung ticket:** khung "Ảnh / file đính kèm" có ô **Chèn ảnh vào nội dung (mô tả) ticket** (mặc định bật). Ảnh được tải lên ERP rồi chèn vào mô tả ngay sau mục "Ảnh chụp màn hình / File đính kèm" (không có mục này thì thêm cuối mô tả); tắt ô này thì chỉ đính kèm ở mục Attachments. Tạo nhiều ticket: chỉ ticket được tick cột "Ảnh" nhận ảnh.
+- **Status** luôn là Open: ô Status ẩn, được đặt Open khi dựng/nạp form và server cũng tự đặt Open nếu thiếu. **Customer Name** ẩn ở mọi trang.
+- Dòng "Trang Tạo Ticket · bản …" ở đầu trang giúp nhận biết đang chạy bản nào (trang không có dòng này, không có khung ảnh = đang chạy bản cũ, cần deploy lại).
+- Trong file md: Khối 1 có dòng "[Dán ảnh N tại đây]" dưới mỗi ảnh; JSON thì không có dòng này.
