@@ -414,9 +414,9 @@ Trang Tạo Ticket cho **dán ảnh (Ctrl+V)**, kéo thả hoặc chọn file (�
 
 `ticket-creators.json` có hai nhóm email:
 - `creators`: người tạo ticket (chọn ở "Người tạo ticket"). Cũng có thể chọn thêm làm đồng xử lý, nhưng **không** làm đổi Status.
-- `assignees`: **nhóm người xử lý** — hiện: `trungnh1@hqsoft.com.vn`, `tung161020146@gmail.com`, `thanhlt@hqsoft.com.vn`. Chỉ khi chọn thêm một người trong nhóm này (khác người tạo) thì ticket chuyển `Assign`; còn lại ticket giữ `Open`.
+- `assignees`: **nhóm người xử lý** — hiện: `trungnh1@hqsoft.com.vn`, `tungns@hqsoft.com.vn`, `thanhlt@hqsoft.com.vn`, `tinhcd@hqsoft.com.vn`, `namtn@hqsoft.com.vn` (địa chỉ `tung161020146@gmail.com` cũ được thay bằng `tungns@hqsoft.com.vn`). Chỉ khi chọn thêm một người trong nhóm này (khác người tạo) thì ticket chuyển `Assign`; còn lại ticket giữ `Open`.
 
-Ô chọn thêm chia hai nhóm: "Người xử lý (chuyển Assign)" và "Thành viên khác (giữ Open)". Muốn một người nào đó cũng làm chuyển Assign, thêm email vào `assignees`. Email phải là user đang hoạt động trên ERP (kể cả email gmail, nếu user ERP dùng đúng email đó).
+Ô chọn thêm chia hai nhóm: "Người xử lý (chuyển Assign)" và "Thành viên khác (giữ Open)". Muốn một người nào đó cũng làm chuyển Assign, thêm email vào `assignees`. Email phải là user đang hoạt động trên ERP (đúng email đăng ký trên ERP).
 
 ### Kiểm tra đang chạy đúng bản (tránh deploy thiếu file)
 

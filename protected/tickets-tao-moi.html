@@ -67,7 +67,7 @@
   <h1 id="pageTitle">Tạo Ticket trên ERP</h1>
   <p class="sub">Form dựng tự động từ cấu trúc DocType <b>Ticket</b> trên ERP (đúng tên trường, bắt buộc, danh sách chọn). Bấm <b>Kiểm tra</b> để xem dữ liệu sẽ gửi mà chưa tạo; bấm <b>Tạo ticket</b> sẽ ghi ticket thật vào ERP bằng tài khoản <code>ERP_USER</code> của server.</p>
 
-  <div class="hint" id="buildInfo" style="margin:-8px 0 10px">Trang Tạo Ticket · bản 2026-10-11.5</div>
+  <div class="hint" id="buildInfo" style="margin:-8px 0 10px">Trang Tạo Ticket · bản 2026-10-11.6</div>
 
   <div class="panel" id="instrPanel">
     <h2 id="instrTitle">Hướng dẫn AI gen ticket</h2>
@@ -643,7 +643,7 @@ async function uploadAttachments(ticketName, opts){
 })();
 
 /* ===== Đối chiếu phiên bản trang với server: khác nhau = deploy thiếu file ===== */
-const PAGE_BUILD = '2026-10-11.5';
+const PAGE_BUILD = '2026-10-11.6';
 (async function checkBuild(){
   const el = $('buildInfo'); if(!el) return;
   try{

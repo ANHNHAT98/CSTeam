@@ -6,7 +6,7 @@ const express = require('express');
 const session = require('express-session');
 const multer = require('multer');
 const erp = require('./erpClient');
-const BUILD = '2026-10-11.5'; // đối chiếu với trang Tạo Ticket để phát hiện deploy thiếu file
+const BUILD = '2026-10-11.6'; // đối chiếu với trang Tạo Ticket để phát hiện deploy thiếu file
 console.log(`[build] Ops Console ${BUILD}`);
 const { applyTicketDefaults } = require('./ticketDefaults');
 const jira = require('./jiraClient');
