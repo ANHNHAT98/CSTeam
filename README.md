@@ -376,7 +376,7 @@ Ticket luôn gửi bằng tài khoản ERP đã cấu hình trên Render (`ERP_U
 ### Customer ẩn, tiêu đề ngắn, master lấy từ ERP
 
 - **Customer** không còn trong JSON/md và bị ẩn trên trang Tạo Ticket của từng dự án: API tự điền theo Project (theo `fetch_from` của ERP, trường `customer` của Project, hoặc `ERP_TICKET_DEFAULTS`). Khoá `customer` trong JSON (nếu AI vẫn trả) bị bỏ qua. Nếu không lấy được Customer, trang tự hiện ô Customer để chọn tay.
-- **Tiêu đề (subject)** theo mẫu `[DỰ ÁN] [Mức N] <Module/màn hình> - <mô tả ngắn>`, tối đa 80 ký tự, không chứa mã KH, số đơn, nguyên văn thông báo lỗi (xem mục A2b trong file md).
+- **Tiêu đề (subject)** theo mẫu `[DỰ ÁN] [Mức N] <Module/màn hình> - <mô tả ngắn>`, tối đa 50 ký tự (gồm cả tiền tố), không chứa mã KH, số đơn, nguyên văn thông báo lỗi (xem mục A2b trong file md).
 - **Master trong file md** (Request Type, Internal Request Type, Region, Contact Role, Products): khi tải file từ trang, server thay khối `MASTER` bằng danh sách lấy trực tiếp từ ERP (cache 10 phút, header `X-Masters: live`); ERP không kết nối được thì dùng danh sách có sẵn trong file (`X-Masters: static`).
 
 ### Status ẩn và giao ticket (Assign)
@@ -403,3 +403,17 @@ Trang Tạo Ticket cho **dán ảnh (Ctrl+V)**, kéo thả hoặc chọn file (�
 - **Status** luôn là Open: ô Status ẩn, được đặt Open khi dựng/nạp form và server cũng tự đặt Open nếu thiếu. **Customer Name** ẩn ở mọi trang.
 - Dòng "Trang Tạo Ticket · bản …" ở đầu trang giúp nhận biết đang chạy bản nào (trang không có dòng này, không có khung ảnh = đang chạy bản cũ, cần deploy lại).
 - Trong file md: Khối 1 có dòng "[Dán ảnh N tại đây]" dưới mỗi ảnh; JSON thì không có dòng này.
+
+### Người xử lý (Assign) và Status
+
+- Ô **Người xử lý (Assign)** nằm dưới các trường của form (cùng khối New Ticket), vẫn giữ nguyên sau khi dán JSON. **Mặc định giao cho người tạo ticket** (đổi người tạo thì người mặc định đi theo); bấm "+ Thêm người xử lý khác…" để thêm email trong danh sách (`assignees` + `creators` trong `ticket-creators.json`), bấm × để bỏ.
+- **Status:** chỉ khi có người xử lý **khác người tạo** thì ticket chuyển sang `Assign` (đổi/tắt bằng `ERP_ASSIGN_STATUS`); chỉ giao cho người tạo hoặc không giao thì giữ `Open`.
+- API `POST /api/erp/tickets` nhận `assign_to` là mảng email; mỗi email phải nằm trong danh sách cho phép và là user đang hoạt động trên ERP (tối đa 10). Mục `assignDefaults` cũ trong `ticket-creators.json` không còn dùng.
+
+### Nhóm người xử lý và khi nào chuyển Assign (cập nhật)
+
+`ticket-creators.json` có hai nhóm email:
+- `creators`: người tạo ticket (chọn ở "Người tạo ticket"). Cũng có thể chọn thêm làm đồng xử lý, nhưng **không** làm đổi Status.
+- `assignees`: **nhóm người xử lý** — hiện: `trungnh1@hqsoft.com.vn`, `tung161020146@gmail.com`, `thanhlt@hqsoft.com.vn`. Chỉ khi chọn thêm một người trong nhóm này (khác người tạo) thì ticket chuyển `Assign`; còn lại ticket giữ `Open`.
+
+Ô chọn thêm chia hai nhóm: "Người xử lý (chuyển Assign)" và "Thành viên khác (giữ Open)". Muốn một người nào đó cũng làm chuyển Assign, thêm email vào `assignees`. Email phải là user đang hoạt động trên ERP (kể cả email gmail, nếu user ERP dùng đúng email đó).

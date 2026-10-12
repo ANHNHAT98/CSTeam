@@ -67,7 +67,7 @@
   <h1 id="pageTitle">Tạo Ticket trên ERP</h1>
   <p class="sub">Form dựng tự động từ cấu trúc DocType <b>Ticket</b> trên ERP (đúng tên trường, bắt buộc, danh sách chọn). Bấm <b>Kiểm tra</b> để xem dữ liệu sẽ gửi mà chưa tạo; bấm <b>Tạo ticket</b> sẽ ghi ticket thật vào ERP bằng tài khoản <code>ERP_USER</code> của server.</p>
 
-  <div class="hint" id="buildInfo" style="margin:-8px 0 10px">Trang Tạo Ticket · bản 2026-10-11.2 (có khung ảnh đính kèm, Status mặc định Open)</div>
+  <div class="hint" id="buildInfo" style="margin:-8px 0 10px">Trang Tạo Ticket · bản 2026-10-11.4 (Assign: nhóm người xử lý)</div>
 
   <div class="panel" id="instrPanel">
     <h2 id="instrTitle">Hướng dẫn AI gen ticket</h2>
@@ -79,11 +79,6 @@
     <select id="creator" style="max-width:420px" disabled><option>Đang tải…</option></select>
     <div id="creatorMsg" class="hint" style="margin-top:6px"></div>
     <p class="hint" style="margin:6px 0 16px">Người tạo (create by) ghi vào ticket ERP là email được chọn.</p>
-    <div id="assignBox" style="display:none">
-      <h2>Người xử lý (Assign)</h2>
-      <select id="assignTo" style="max-width:420px"><option value="">— Chưa giao —</option></select>
-      <p class="hint" style="margin:6px 0 16px">Chọn người xử lý thì sau khi tạo, ticket được giao cho người này và chuyển trạng thái Assign. Để "Chưa giao" thì ticket giữ trạng thái Open.</p>
-    </div>
     <h2>Nhập từ AI (JSON)</h2>
     <p class="hint" style="margin:0 0 8px">Dán nội dung do skill/AI sinh ra — có thể là <b>nguyên file .md</b> (chữ + khối <code>```json</code>) hoặc JSON trần, 1 hoặc nhiều ticket. Hoặc chọn / kéo thả file <code>.md .json .txt</code> vào ô bên dưới. Trang tự tìm JSON và điền vào form; bạn xem lại rồi mới tạo.</p>
     <div class="actions" style="margin-bottom:8px"><input type="file" id="aiFile" accept=".md,.markdown,.json,.txt,text/markdown,application/json,text/plain" style="max-width:360px"></div>
@@ -106,6 +101,13 @@
     <div id="loading" class="hint">Đang tải cấu trúc form từ ERP…</div>
     <div id="warn"></div>
     <div id="form" class="grid"></div>
+    <div id="assignBox" style="margin-top:18px">
+      <label>Người xử lý (Assign)</label>
+      <div class="chips" id="assignChips"></div>
+      <select id="assignAdd" style="max-width:420px;margin-top:8px"><option value="">+ Thêm người xử lý khác…</option></select>
+      <div class="hint" id="assignHint" style="margin-top:6px"></div>
+    </div>
+
     <div style="margin-top:18px">
       <label>Ảnh / file đính kèm <span class="hint">(tối đa 8 file, mỗi file 8 MB)</span></label>
       <div class="drop" id="attDrop">
@@ -299,12 +301,12 @@ async function send(dry, force){
   if(bad){ show('err', 'Không thể gửi trường '+esc(bad.label)+': chưa đọc được cấu trúc bảng con "'+esc(bad.options)+'" từ ERP.'); return; }
   const btns=['btnCheck','btnCreate']; btns.forEach(b=>$(b).disabled=true);
   try{
-    const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,force:!!force,creator_email:$('creator').value,assign_to:($('assignTo')||{}).value||''})});
+    const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,force:!!force,creator_email:$('creator').value,assign_to:assignList})});
     if(dry){
       show('info','Dữ liệu hợp lệ — <b>chưa tạo ticket</b>. Payload sẽ gửi sang ERP:<pre>'+esc(JSON.stringify(r.payload,null,2))+'</pre>'+(r.rejected&&r.rejected.length?'<br>Trường bị bỏ qua: '+esc(r.rejected.join(', ')):'')+autoText(r.autofilled));
     }else{
       const hadFiles = attachments.length;
-      show((r.warning||r.assign_warning)?'info':'ok',`Đã tạo ticket <b>${esc(r.name)}</b>${r.method?` — người tạo trên ERP: <b>${esc(r.creator)}</b> (${esc(r.method)})`:''}. <a href="${esc(r.url)}" target="_blank" rel="noopener">Mở trên ERP ↗</a>${r.warning?'<br><b>Lưu ý:</b> '+esc(r.warning):''}${r.assigned_to?'<br>Đã giao cho <b>'+esc(r.assigned_to)+'</b>'+(r.status_set?' — trạng thái <b>'+esc(r.status_set)+'</b>':''):''}${r.assign_warning?'<br><b>Giao ticket:</b> '+esc(r.assign_warning):''}${autoText(r.autofilled)}`);
+      show((r.warning||r.assign_warning)?'info':'ok',`Đã tạo ticket <b>${esc(r.name)}</b>${r.method?` — người tạo trên ERP: <b>${esc(r.creator)}</b> (${esc(r.method)})`:''}. <a href="${esc(r.url)}" target="_blank" rel="noopener">Mở trên ERP ↗</a>${r.warning?'<br><b>Lưu ý:</b> '+esc(r.warning):''}${(r.assigned_to&&r.assigned_to.length)?'<br>Đã giao cho <b>'+esc([].concat(r.assigned_to).join(', '))+'</b> — trạng thái <b>'+esc(r.status_set||'Open')+'</b>':''}${r.assign_warning?'<br><b>Giao ticket:</b> '+esc(r.assign_warning):''}${autoText(r.autofilled)}`);
       if(hadFiles){
         const box = $('result').firstElementChild; box.insertAdjacentHTML('beforeend','<br>Đang tải '+hadFiles+' file đính kèm lên ERP…');
         const u = await uploadAttachments(r.name);
@@ -508,9 +510,9 @@ async function bulkRun(dry){
     if(q.status==='created') continue;
     const {fields} = jsonToPayload(q.data);
     try{
-      const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,creator_email:$('creator').value,assign_to:($('assignTo')||{}).value||''})});
+      const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,creator_email:$('creator').value,assign_to:assignList})});
       if(dry){ q.status='checked'; q.msg='✓ hợp lệ'; } else {
-        q.status='created'; q.msg='✓ đã tạo '+r.name+(r.assigned_to?' → giao '+r.assigned_to:'')+(r.warning?' ⚠ '+r.warning:'')+(r.assign_warning?' ⚠ '+r.assign_warning:'');
+        q.status='created'; q.msg='✓ đã tạo '+r.name+((r.assigned_to&&r.assigned_to.length)?' → giao '+[].concat(r.assigned_to).join(', ')+(r.status_set?' ('+r.status_set+')':''):'')+(r.warning?' ⚠ '+r.warning:'')+(r.assign_warning?' ⚠ '+r.assign_warning:'');
         if(q.attach && attachments.length){
           anyAttach = true;
           const u = await uploadAttachments(r.name, {keep:true});
@@ -641,7 +643,26 @@ async function uploadAttachments(ticketName, opts){
 })();
 
 /* ===== Người tạo ticket: chỉ chọn trong danh sách email cấu hình (ticket-creators.json) ===== */
-let CREATOR_CFG = { serviceAccount:'', creators:[], defaults:{} };
+let CREATOR_CFG = { serviceAccount:'', creators:[], defaults:{}, assignees:[], assignable:[] };
+let assignList = [], lastCreator = '';
+/** Người xử lý khác người tạo -> ticket chuyển Status Assign; chỉ người tạo (hoặc không giao) -> giữ Open. */
+function renderAssign(){
+  const cr = ($('creator')||{}).value || '';
+  $('assignChips').innerHTML = assignList.map((e,i)=>`<span class="chip">${esc(e)}${e===cr?' <span class="hint">(người tạo)</span>':''}<button type="button" data-i="${i}" title="Bỏ">×</button></span>`).join('') || '<span class="hint">Chưa giao cho ai</span>';
+  $('assignChips').querySelectorAll('button').forEach(b=>b.onclick=()=>{ assignList.splice(Number(b.dataset.i),1); renderAssign(); });
+  const handlers = CREATOR_CFG.assignees || [];
+  const all = (CREATOR_CFG.assignable && CREATOR_CFG.assignable.length ? CREATOR_CFG.assignable : [...handlers, ...CREATOR_CFG.creators]);
+  const optH = handlers.filter(e=>!assignList.includes(e)), optC = all.filter(e=>!handlers.includes(e) && !assignList.includes(e));
+  const opt = e=>`<option value="${esc(e)}">${esc(e)}</option>`;
+  $('assignAdd').innerHTML = '<option value="">+ Thêm người xử lý khác…</option>'
+    + (optH.length ? `<optgroup label="Người xử lý (chuyển Assign)">${optH.map(opt).join('')}</optgroup>` : '')
+    + (optC.length ? `<optgroup label="Thành viên khác (giữ Open)">${optC.map(opt).join('')}</optgroup>` : '');
+  const trigger = assignList.filter(e=>e!==cr && handlers.includes(e));
+  $('assignHint').innerHTML = trigger.length
+    ? 'Có người xử lý <b>'+esc(trigger.join(', '))+'</b> → ticket chuyển trạng thái <b>Assign</b>.'
+    : 'Ticket giữ trạng thái <b>Open</b>. Chỉ khi chọn thêm một người trong nhóm <b>Người xử lý</b> thì mới chuyển sang <b>Assign</b>.';
+}
+$('assignAdd').onchange = ()=>{ const v=$('assignAdd').value; if(v && !assignList.includes(v)) assignList.push(v); renderAssign(); };
 async function initCreators(){
   const sel = $('creator');
   try{ CREATOR_CFG = await api('/api/erp/ticket-creators'); }
@@ -654,17 +675,16 @@ async function initCreators(){
   sel.value = CREATOR_CFG.creators.includes(saved) ? saved : def;
   sel.disabled = false;
   sel.onchange = ()=>{ try{ localStorage.setItem(key, sel.value); }catch(_){} };
-  // Người xử lý (Assign): chỉ hiện khi có cấu hình danh sách
-  if((CREATOR_CFG.assignees||[]).length){
-    const as = $('assignTo');
-    as.innerHTML = '<option value="">— Chưa giao —</option>' + CREATOR_CFG.assignees.map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join('');
-    const akey = 'ticketAssign:'+(LOCKED||'*');
-    let asaved = null; try{ asaved = localStorage.getItem(akey); }catch(_){}
-    const adef = (LOCKED && (CREATOR_CFG.assignDefaults||{})[LOCKED]) || '';
-    as.value = (asaved!==null && (asaved==='' || CREATOR_CFG.assignees.includes(asaved))) ? asaved : adef;
-    as.onchange = ()=>{ try{ localStorage.setItem(akey, as.value); }catch(_){} };
-    $('assignBox').style.display = 'block';
-  }
+  // Người xử lý (Assign): mặc định = người tạo; có thể thêm các email khác trong danh sách
+  assignList = sel.value ? [sel.value] : []; lastCreator = sel.value;
+  renderAssign();
+  const prevOnChange = sel.onchange;
+  sel.onchange = ()=>{
+    prevOnChange && prevOnChange();
+    const i = assignList.indexOf(lastCreator);
+    if(i>=0) assignList[i] = sel.value; else if(assignList.length===0) assignList=[sel.value];   // người xử lý mặc định đi theo người tạo
+    assignList = [...new Set(assignList)]; lastCreator = sel.value; renderAssign();
+  };
 }
 initCreators();
 

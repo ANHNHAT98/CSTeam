@@ -416,33 +416,38 @@ async function embedImagesInDescription(ticketName, urls) {
 }
 
 /* ===================== GIAO TICKET (Assign) =====================
-   Dùng chức năng "Assign To" của Frappe (frappe.desk.form.assign_to.add) bằng tài khoản ERP_USER; sau khi giao thành công
-   đặt Status = ERP_ASSIGN_STATUS (mặc định "Assign", để trống = không đổi) nếu Status của Ticket có giá trị đó. */
+   Dùng chức năng "Assign To" của Frappe (frappe.desk.form.assign_to.add) bằng tài khoản ERP_USER. Người xử lý mặc định là
+   người tạo ticket; chỉ khi có người xử lý KHÁC người tạo thì đặt Status = ERP_ASSIGN_STATUS (mặc định "Assign",
+   để trống = không đổi), ngược lại ticket giữ Status Open. */
 const ASSIGN_STATUS = process.env.ERP_ASSIGN_STATUS === undefined ? 'Assign' : String(process.env.ERP_ASSIGN_STATUS).trim();
 
-async function assignTicket(ticketName, email, description = '') {
+async function assignTicket(ticketName, emails, description = '') {
+  const list = [...new Set([].concat(emails).filter(Boolean))];
   const r = await erpPost('/api/method/frappe.desk.form.assign_to.add', {
     doctype: 'Ticket',
     name: ticketName,
-    assign_to: JSON.stringify([email]), // Frappe nhận chuỗi JSON của danh sách user
+    assign_to: JSON.stringify(list), // Frappe nhận chuỗi JSON của danh sách user
     description,
     notify: 0,
   });
-  let statusSet = null;
-  if (ASSIGN_STATUS) {
-    try {
-      const meta = await getTicketMeta();
-      const sf = meta.fields.find((f) => f.fieldname === 'status' || f.label.trim().toLowerCase() === 'status');
-      const options = sf ? String(sf.options || '').split('\n').map((x) => x.trim()) : [];
-      if (sf && options.includes(ASSIGN_STATUS)) {
-        await erpPost(`/api/resource/Ticket/${encodeURIComponent(ticketName)}`, { [sf.fieldname]: ASSIGN_STATUS }, { method: 'PUT' });
-        statusSet = ASSIGN_STATUS;
-      }
-    } catch (e) {
-      console.error('[erp/assign] đã giao nhưng không đổi được Status:', e.message);
+  return { assigned: true, todo: r.message || null };
+}
+
+/** Đặt Status = ERP_ASSIGN_STATUS (mặc định "Assign"). Chỉ gọi khi có người xử lý KHÁC người tạo. Trả về giá trị đã đặt hoặc null. */
+async function setAssignStatus(ticketName) {
+  if (!ASSIGN_STATUS) return null;
+  try {
+    const meta = await getTicketMeta();
+    const sf = meta.fields.find((f) => f.fieldname === 'status' || f.label.trim().toLowerCase() === 'status');
+    const options = sf ? String(sf.options || '').split('\n').map((x) => x.trim()) : [];
+    if (sf && options.includes(ASSIGN_STATUS)) {
+      await erpPost(`/api/resource/Ticket/${encodeURIComponent(ticketName)}`, { [sf.fieldname]: ASSIGN_STATUS }, { method: 'PUT' });
+      return ASSIGN_STATUS;
     }
+  } catch (e) {
+    console.error('[erp/assign] đã giao nhưng không đổi được Status:', e.message);
   }
-  return { assigned: true, statusSet, todo: r.message || null };
+  return null;
 }
 
 /* ===================== GHI NHẬN THAY NGƯỜI KHÁC (không cần mật khẩu) =====================
@@ -564,6 +569,7 @@ module.exports = {
   suggestContacts,
   userExists,
   assignTicket,
+  setAssignStatus,
   uploadAttachment,
   embedImagesInDescription,
   createTicketOnBehalf,

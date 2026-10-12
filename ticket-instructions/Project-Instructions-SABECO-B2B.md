@@ -29,7 +29,7 @@ Khi người dùng gửi kèm ảnh, thêm 1 dòng ngoài khối code: "Ảnh đ
 ## A. Template nội dung ticket (Khối 1)
 
 ````markdown
-## [SABECO-B2B] [Mức <1|2|3>] <Module> - <Mô tả lỗi ngắn gọn, tối đa 80 ký tự cả tiêu đề>
+## [SABECO-B2B] [Mức <1|2|3>] <Module> - <Mô tả lỗi ngắn gọn, tối đa 50 ký tự cả tiêu đề>
 
 ### 1. Thông tin chung
 - **Mức độ ưu tiên**: <Critical | Urgent | High | Medium | Low>
@@ -84,10 +84,11 @@ Tiêu đề phải khớp mức độ ưu tiên: Medium → `[Mức 3]`, High �
 
 ### A2b. Quy tắc viết tiêu đề (subject) — NGẮN GỌN
 - Cấu trúc: `[SABECO-B2B] [Mức N] <Module/màn hình> - <mô tả lỗi ngắn>`.
-- **Tối đa 80 ký tự cả tiêu đề**; phần mô tả sau dấu ` - ` chỉ khoảng 5-10 từ (động từ + đối tượng).
-- Mã màn hình viết liền sau tên module, không ngoặc (VD: `Hóa đơn bán hàng OM45400`).
+- **Tối đa 50 ký tự cả tiêu đề** (đã gồm tiền tố `[SABECO-B2B] [Mức N]`); phần mô tả sau dấu ` - ` chỉ khoảng 3-6 từ (danh từ + lỗi).
+- Thiếu chỗ thì bỏ mã màn hình khỏi tiêu đề và rút gọn tên module (HĐ, KH, ĐH...). Mã màn hình, chi tiết đầy đủ để ở phần mô tả.
+- Nếu còn chỗ, mã màn hình viết liền sau tên module, không ngoặc (VD: `Hóa đơn OM45400`).
 - **Không đưa vào tiêu đề**: mã khách hàng, số đơn hàng, tên khách, nguyên văn thông báo lỗi, giải thích nguyên nhân. Các chi tiết đó để ở phần mô tả (description).
-- Đúng: `[SABECO-B2B] [Mức 3] Hóa đơn bán hàng OM45400 - Lỗi hóa đơn điều chỉnh giảm`
+- Đúng: `[SABECO-B2B] [Mức 3] Hóa đơn - Lỗi điều chỉnh giảm`
 - Sai (quá dài): `[SABECO-B2B] - [Mức 3] Hóa đơn bán hàng (OM45400) - Lập hóa đơn điều chỉnh giảm báo "Đơn hàng đã tồn tại hóa đơn chưa bị hủy" khi Xử lý hoàn tất`
 
 ### A3. Deadline SLA (do tool tự tính, AI không tính)
@@ -112,7 +113,7 @@ Vì vậy AI **không tự tính ngày**: trong JSON để `estimated_deadline` 
   "tickets": [
     {
       "project": "Sabeco_B2B_Support",
-      "subject": "[SABECO-B2B] [Mức 3] Công nợ AR10100 - Báo cáo hiển thị sai số liệu",
+      "subject": "[SABECO-B2B] [Mức 3] Công nợ - Báo cáo sai số",
       "request_type": "Lỗi báo cáo, chức năng",
       "priority": "Medium",
       "products": ["eSales Backoffice"],
@@ -136,7 +137,7 @@ Vì vậy AI **không tự tính ngày**: trong JSON để `estimated_deadline` 
 | Khoá | Quy tắc |
 |---|---|
 | `project` | Luôn là `Sabeco_B2B_Support` |
-| `subject` | Đúng tiêu đề ở Khối 1 (bỏ tiền tố `## `), viết theo A2b: **tối đa 80 ký tự**, ngắn gọn, không chứa mã KH/số đơn/nguyên văn thông báo lỗi |
+| `subject` | Đúng tiêu đề ở Khối 1 (bỏ tiền tố `## `), viết theo A2b: **tối đa 50 ký tự**, ngắn gọn, không chứa mã KH/số đơn/nguyên văn thông báo lỗi |
 | `request_type` | **Bắt buộc có giá trị**, chọn **đúng nguyên văn** 1 giá trị trong mục C theo C1. Không được để `""` |
 | `priority` | Một trong `Critical`, `Urgent`, `High`, `Medium`, `Low`, khớp Khối 1 |
 | *(không có khoá `customer`)* | **Không đưa `customer` vào JSON.** Tool tự điền Customer theo Project SABECO-B2B qua API |
@@ -271,7 +272,7 @@ Suy luận theo thứ tự ưu tiên:
 
 ## E. Kiểm tra trước khi trả lời (tự rà lại, không in ra)
 - [ ] JSON có đủ 13 khoá: project, subject, request_type, priority, products, contact_role, raised_by, contact, contact_temp, region, internal_request_type, estimated_deadline, description (**không có `customer`, `status`, `assign_to`**).
-- [ ] `subject` ≤ 80 ký tự, theo A2b.
+- [ ] `subject` ≤ 50 ký tự (đếm cả `[SABECO-B2B] [Mức N]`), theo A2b.
 - [ ] `project` đúng `Sabeco_B2B_Support`; tiêu đề bắt đầu bằng `[SABECO-B2B]`.
 - [ ] `request_type` không rỗng và đúng nguyên văn một giá trị trong mục C.
 - [ ] `products` có ≥ 1 phần tử, mỗi phần tử đúng nguyên văn trong mục C.

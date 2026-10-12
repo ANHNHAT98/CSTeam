@@ -282,7 +282,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
    - creators  : danh sách hiển thị ở MỌI dự án để chọn.
    - defaults  : email mặc định theo từng dự án.
    - serviceAccount: tài khoản đăng nhập ERP đã cấu hình trên Render (ERP_USER) — chọn email này thì tạo trực tiếp, không thay mặt.
-   - assignees / assignDefaults: người xử lý (Assign) để chọn, và người mặc định theo dự án (không có = không giao). */
+   - assignees: nhóm NGƯỜI XỬ LÝ — chọn thêm người trong nhóm này (khác người tạo) thì ticket mới chuyển Status Assign.
+   - Người xử lý mặc định là người tạo ticket; có thể chọn thêm email trong creators + assignees, nhưng chỉ người thuộc assignees mới làm đổi Status. */
 function loadProjectCreators() {
   let raw = process.env.ERP_PROJECT_CREATORS;
   try {
@@ -297,15 +298,11 @@ function loadProjectCreators() {
       if (creators.includes(e)) defaults[code] = e;
     }
     const assignees = [...new Set((Array.isArray(j.assignees) ? j.assignees : []).map(norm).filter((x) => EMAIL_RE.test(x)))];
-    const assignDefaults = {};
-    for (const [code, v] of Object.entries(j.assignDefaults || {})) {
-      const e = norm(v);
-      if (assignees.includes(e)) assignDefaults[code] = e;
-    }
-    return { serviceAccount: EMAIL_RE.test(serviceAccount) ? serviceAccount : '', creators, defaults, assignees, assignDefaults };
+    const assignable = [...new Set([...assignees, ...creators])]; // danh sách được phép chọn làm người xử lý
+    return { serviceAccount: EMAIL_RE.test(serviceAccount) ? serviceAccount : '', creators, defaults, assignees, assignable };
   } catch (e) {
     console.error('[ticket-creators] không đọc được cấu hình:', e.message);
-    return { serviceAccount: '', creators: [], defaults: {}, assignees: [], assignDefaults: {} };
+    return { serviceAccount: '', creators: [], defaults: {}, assignees: [], assignable: [] };
   }
 }
 {
@@ -456,14 +453,19 @@ app.post('/api/erp/tickets', requireAuth, async (req, res) => {
       return res.status(400).json({ error: `"${creatorEmail}" không phải người dùng đang hoạt động trên ERP.` });
     }
 
-    // Người xử lý (Assign): tuỳ chọn, chỉ nhận email trong danh sách assignees.
-    const assignTo = String((req.body && req.body.assign_to) || '').trim().toLowerCase();
-    if (assignTo) {
-      if (!cfg.assignees.includes(assignTo)) return res.status(400).json({ error: 'Người xử lý không nằm trong danh sách cho phép.' });
-      if (!(await erp.userExists(assignTo))) return res.status(400).json({ error: `"${assignTo}" không phải người dùng đang hoạt động trên ERP.` });
+    // Người xử lý (Assign): danh sách email (mặc định = người tạo), chỉ nhận email trong danh sách cho phép.
+    const rawAssign = req.body && req.body.assign_to;
+    const assignList = [...new Set((Array.isArray(rawAssign) ? rawAssign : String(rawAssign || '').split(/[,;\s]+/)).map((x) => String(x || '').trim().toLowerCase()).filter(Boolean))];
+    if (assignList.length > 10) return res.status(400).json({ error: 'Tối đa 10 người xử lý.' });
+    for (const e of assignList) {
+      if (!cfg.assignable.includes(e)) return res.status(400).json({ error: `Người xử lý "${e}" không nằm trong danh sách cho phép.` });
+      if (!(await erp.userExists(e))) return res.status(400).json({ error: `"${e}" không phải người dùng đang hoạt động trên ERP.` });
     }
+    // Chỉ khi chọn thêm người thuộc NHÓM NGƯỜI XỬ LÝ (assignees, khác người tạo) thì chuyển Status sang Assign;
+    // chỉ người tạo, hoặc người tạo khác (không thuộc nhóm), hoặc không giao ai thì giữ Open.
+    const hasOtherAssignee = assignList.some((e) => e !== creatorEmail && cfg.assignees.includes(e));
 
-    if (dryRun) return res.json({ dry_run: true, payload, rejected, autofilled, creator: creatorEmail, method: direct ? 'direct' : 'on-behalf', assign_to: assignTo || null });
+    if (dryRun) return res.json({ dry_run: true, payload, rejected, autofilled, creator: creatorEmail, method: direct ? 'direct' : 'on-behalf', assign_to: assignList, will_set_status_assign: hasOtherAssignee });
 
     const key = `${creatorEmail}|${payload.project || ''}|${String(payload.subject || '').trim().toLowerCase()}`;
     const last = recentCreates.get(key);
@@ -480,17 +482,18 @@ app.post('/api/erp/tickets', requireAuth, async (req, res) => {
     }
     recentCreates.set(key, Date.now());
     createdTickets.set(doc.name, Date.now());
-    let assignInfo = null, assignWarning = null;
-    if (assignTo) {
+    let assignInfo = null, assignWarning = null, statusSet = null;
+    if (assignList.length) {
       try {
-        assignInfo = await erp.assignTicket(doc.name, assignTo, String(payload.subject || ''));
+        assignInfo = await erp.assignTicket(doc.name, assignList, String(payload.subject || ''));
+        if (hasOtherAssignee) statusSet = await erp.setAssignStatus(doc.name);
       } catch (e) {
         console.error('[erp/assign] lỗi:', e.message);
-        assignWarning = `Ticket đã tạo nhưng chưa giao được cho ${assignTo}: ${e.message}`;
+        assignWarning = `Ticket đã tạo nhưng chưa giao được cho ${assignList.join(', ')}: ${e.message}`;
       }
     }
-    console.log(`[erp/tickets] ${req.session && req.session.username ? req.session.username : 'user'} đã tạo ${doc.name} (${payload.project}), người tạo ${creatorEmail} (${method})${assignTo ? ', giao ' + assignTo : ''}`);
-    res.json({ ok: true, name: doc.name, url: `${erp.getBaseUrl()}/app/ticket/${encodeURIComponent(doc.name)}`, doc, creator: creatorEmail, method, warning, autofilled, assigned_to: assignInfo ? assignTo : null, status_set: assignInfo ? assignInfo.statusSet : null, assign_warning: assignWarning });
+    console.log(`[erp/tickets] ${req.session && req.session.username ? req.session.username : 'user'} đã tạo ${doc.name} (${payload.project}), người tạo ${creatorEmail} (${method})${assignList.length ? ', giao ' + assignList.join(', ') + (statusSet ? ' (Status ' + statusSet + ')' : '') : ''}`);
+    res.json({ ok: true, name: doc.name, url: `${erp.getBaseUrl()}/app/ticket/${encodeURIComponent(doc.name)}`, doc, creator: creatorEmail, method, warning, autofilled, assigned_to: assignInfo ? assignList : [], status_set: statusSet, assign_warning: assignWarning });
   } catch (e) {
     console.error('[erp/tickets POST] lỗi:', e.message);
     res.status(502).json({ error: e.message });
