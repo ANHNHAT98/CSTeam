@@ -6,6 +6,8 @@ const express = require('express');
 const session = require('express-session');
 const multer = require('multer');
 const erp = require('./erpClient');
+const BUILD = '2026-10-11.5'; // đối chiếu với trang Tạo Ticket để phát hiện deploy thiếu file
+console.log(`[build] Ops Console ${BUILD}`);
 const { applyTicketDefaults } = require('./ticketDefaults');
 const jira = require('./jiraClient');
 const supportCases = require('./supportCasesStore');
@@ -90,7 +92,10 @@ app.get('/merap/uat-runbook', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'merap-uat-runbook.html'));
 });
 
+app.get('/api/build', requireAuth, (req, res) => res.json({ build: BUILD }));
+
 app.get('/tickets/tao-moi', requirePageAuth, (req, res) => {
+  res.set('Cache-Control', 'no-store'); // luôn lấy bản trang mới nhất, không để trình duyệt giữ bản cũ
   res.sendFile(path.join(__dirname, 'protected', 'tickets-tao-moi.html'));
 });
 app.get('/tickets/tra-cuu-erp', requirePageAuth, (req, res) => {

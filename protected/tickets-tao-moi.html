@@ -67,7 +67,7 @@
   <h1 id="pageTitle">Tạo Ticket trên ERP</h1>
   <p class="sub">Form dựng tự động từ cấu trúc DocType <b>Ticket</b> trên ERP (đúng tên trường, bắt buộc, danh sách chọn). Bấm <b>Kiểm tra</b> để xem dữ liệu sẽ gửi mà chưa tạo; bấm <b>Tạo ticket</b> sẽ ghi ticket thật vào ERP bằng tài khoản <code>ERP_USER</code> của server.</p>
 
-  <div class="hint" id="buildInfo" style="margin:-8px 0 10px">Trang Tạo Ticket · bản 2026-10-11.4 (Assign: nhóm người xử lý)</div>
+  <div class="hint" id="buildInfo" style="margin:-8px 0 10px">Trang Tạo Ticket · bản 2026-10-11.5</div>
 
   <div class="panel" id="instrPanel">
     <h2 id="instrTitle">Hướng dẫn AI gen ticket</h2>
@@ -640,6 +640,17 @@ async function uploadAttachments(ticketName, opts){
         <div class="actions">${list.map(p=>`<a class="btn sec" href="/api/ticket-instructions/${encodeURIComponent(p.code)}" download="${esc(p.file)}">⬇ ${esc(p.name)}</a>`).join('')}</div>${how}`;
     }
   }catch(e){ body.innerHTML = `<span style="color:var(--danger)">Không tải được danh sách file hướng dẫn: ${esc(e.message)}</span>`; }
+})();
+
+/* ===== Đối chiếu phiên bản trang với server: khác nhau = deploy thiếu file ===== */
+const PAGE_BUILD = '2026-10-11.5';
+(async function checkBuild(){
+  const el = $('buildInfo'); if(!el) return;
+  try{
+    const r = await api('/api/build');
+    if(r.build === PAGE_BUILD) el.innerHTML = 'Trang Tạo Ticket · bản '+esc(PAGE_BUILD)+' · server cùng bản ✓';
+    else el.innerHTML = '<span style="color:var(--danger)"><b>⚠ Trang bản '+esc(PAGE_BUILD)+' nhưng server bản '+esc(r.build)+'</b> — deploy chưa đủ file, hãy cập nhật lại toàn bộ gói rồi tải lại trang (Ctrl+F5).</span>';
+  }catch(_){ el.innerHTML = '<span style="color:var(--danger)"><b>⚠ Server chưa có /api/build</b> (đang chạy bản server cũ) — hãy deploy lại toàn bộ gói rồi tải lại trang (Ctrl+F5).</span>'; }
 })();
 
 /* ===== Người tạo ticket: chỉ chọn trong danh sách email cấu hình (ticket-creators.json) ===== */

@@ -417,3 +417,7 @@ Trang Tạo Ticket cho **dán ảnh (Ctrl+V)**, kéo thả hoặc chọn file (�
 - `assignees`: **nhóm người xử lý** — hiện: `trungnh1@hqsoft.com.vn`, `tung161020146@gmail.com`, `thanhlt@hqsoft.com.vn`. Chỉ khi chọn thêm một người trong nhóm này (khác người tạo) thì ticket chuyển `Assign`; còn lại ticket giữ `Open`.
 
 Ô chọn thêm chia hai nhóm: "Người xử lý (chuyển Assign)" và "Thành viên khác (giữ Open)". Muốn một người nào đó cũng làm chuyển Assign, thêm email vào `assignees`. Email phải là user đang hoạt động trên ERP (kể cả email gmail, nếu user ERP dùng đúng email đó).
+
+### Kiểm tra đang chạy đúng bản (tránh deploy thiếu file)
+
+Đầu trang Tạo Ticket có dòng **"Trang Tạo Ticket · bản <mã> · server cùng bản ✓"**. Nếu trang báo "⚠ Trang bản X nhưng server bản Y", hoặc "Server chưa có /api/build", hoặc không có dòng này, tức là chưa deploy đủ file của gói mới (cần cập nhật **toàn bộ** thư mục, không chỉ vài file) rồi tải lại trang bằng Ctrl+F5. Log server khi khởi động có dòng `[build] Ops Console <mã>`. Trang Tạo Ticket được gửi với `Cache-Control: no-store`.
