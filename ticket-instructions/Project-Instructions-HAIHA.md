@@ -124,6 +124,7 @@ Vì vậy AI **không tự tính ngày**: trong JSON để `estimated_deadline` 
       "region": "",
       "internal_request_type": "",
       "estimated_deadline": "",
+      "first_responded_on": "",
       "description": "### Thông tin chung\n- **Mức độ ưu tiên**: Medium\n- **Module/Chức năng**: Công nợ (Danh mục công nợ - AR10100)\n\n### Mô tả lỗi\n...\n\n### Các bước tái hiện\n1. ...\n2. ...\n\n### Kết quả mong đợi\n...\n\n### Kết quả thực tế\n...\n\n### Log lỗi / Error message\n...\n\n### Ảnh chụp màn hình / File đính kèm\n...\n\n### Môi trường UAT HAIHA\n(Chưa cấu hình thông tin môi trường UAT)\n\n### Vai trò người liên hệ\n- **Vai trò**: HO"
     }
   ]
@@ -147,6 +148,7 @@ Vì vậy AI **không tự tính ngày**: trong JSON để `estimated_deadline` 
 | `contact`, `contact_temp` | Luôn `""`. Người dùng chọn người liên hệ trên tool (tool có gợi ý) |
 | `region`, `internal_request_type` | Điền theo master ở mục C nếu mục C có danh sách và nội dung có căn cứ; mục C chưa có master hoặc không có căn cứ thì `""` |
 | *(không có khoá `status`, `assign_to`)* | **Không đưa `status` và người xử lý (assign) vào JSON.** Status mặc định Open do ERP/tool tự đặt; người xử lý được chọn trên tool |
+| `first_responded_on` | Luôn `""`. Đây là KPI phản hồi lần đầu: người dùng ghi nhận trên tool (nút **Bây giờ**) khi đã phản hồi khách. Chỉ ghi `YYYY-MM-DD HH:mm:ss` khi nội dung nêu rõ thời điểm team đã phản hồi khách lần đầu; không có thì để `""`, không tự đoán giờ |
 | `estimated_deadline` | Luôn `""` (tool tự tính theo Priority, xem A3). Chỉ khi khách nêu hạn cụ thể thì ghi `YYYY-MM-DD HH:mm:ss` (giờ mặc định 17:30:00) |
 | `description` | Gộp các mục 1-9 của Khối 1 (mục 10 Deadline SLA không đưa vào) **đúng khung ở B3**, xuống dòng bằng `\n`. Dùng markdown đơn giản: `### tiêu đề`, `- gạch đầu dòng`, `**đậm**`. Tool tự đổi sang HTML hiển thị trên ERP. Không dùng bảng hay code block trong description |
 
@@ -271,7 +273,7 @@ Suy luận theo thứ tự ưu tiên:
 ---
 
 ## E. Kiểm tra trước khi trả lời (tự rà lại, không in ra)
-- [ ] JSON có đủ 13 khoá: project, subject, request_type, priority, products, contact_role, raised_by, contact, contact_temp, region, internal_request_type, estimated_deadline, description (**không có `customer`, `status`, `assign_to`**).
+- [ ] JSON có đủ 14 khoá: project, subject, request_type, priority, products, contact_role, raised_by, contact, contact_temp, region, internal_request_type, estimated_deadline, first_responded_on, description (**không có `customer`, `status`, `assign_to`**).
 - [ ] `subject` ≤ 50 ký tự (đếm cả `[HAIHA] [Mức N]`), theo A2b.
 - [ ] `project` đúng `HaiHa_eSales_Support`; tiêu đề bắt đầu bằng `[HAIHA]`.
 - [ ] `request_type` không rỗng và đúng nguyên văn một giá trị trong mục C.

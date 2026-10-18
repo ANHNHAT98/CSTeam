@@ -43,6 +43,10 @@
   .thumb img{width:100%;height:70px;object-fit:cover;border-radius:5px;display:block;}
   .thumb .ico{height:70px;display:flex;align-items:center;justify-content:center;font-size:26px;background:#EEF1F5;border-radius:5px;}
   .thumb button{position:absolute;top:-8px;right:-8px;width:22px;height:22px;border-radius:50%;border:1px solid var(--danger);background:#fff;color:var(--danger);cursor:pointer;font-weight:700;line-height:1;padding:0;}
+  .dtc{display:grid;grid-template-columns:minmax(150px,1.3fr) minmax(110px,1fr) auto;gap:8px;align-items:center;}
+  .dtc input{min-width:0;}
+  .dtc .dt-t.bad{border-color:var(--danger);outline:2px solid rgba(178,58,72,.35);}
+  .dtc .dt-x{width:30px;height:34px;border:1px solid var(--grid-line-strong);border-radius:8px;background:#fff;color:var(--danger);cursor:pointer;font-size:16px;line-height:1;padding:0;}
   .invalid{border-color:var(--danger)!important;outline:2px solid rgba(178,58,72,.35);}
   .hint{font-size:11.5px;color:var(--muted);margin-top:4px;}
   .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
@@ -67,7 +71,7 @@
   <h1 id="pageTitle">Tạo Ticket trên ERP</h1>
   <p class="sub">Form dựng tự động từ cấu trúc DocType <b>Ticket</b> trên ERP (đúng tên trường, bắt buộc, danh sách chọn). Bấm <b>Kiểm tra</b> để xem dữ liệu sẽ gửi mà chưa tạo; bấm <b>Tạo ticket</b> sẽ ghi ticket thật vào ERP bằng tài khoản <code>ERP_USER</code> của server.</p>
 
-  <div class="hint" id="buildInfo" style="margin:-8px 0 10px">Trang Tạo Ticket · bản 2026-10-11.6</div>
+  <div class="hint" id="buildInfo" style="margin:-8px 0 10px">Trang Tạo Ticket · bản 2026-10-11.10</div>
 
   <div class="panel" id="instrPanel">
     <h2 id="instrTitle">Hướng dẫn AI gen ticket</h2>
@@ -138,6 +142,7 @@ const WANTED = [
   ['Contact',false],['Contact (Temp)',false],
   ['Raised By (Email)',false],['Region',false],
   ['Contact Role',false],['Estimated Deadline',false],
+  ['First Responded On',false],
   ['Description',true]
 ];
 /* Mã dự án (đúng như dashboard) -> tên hiển thị. Trang mở từ menu Dự Án > ... > Tạo Ticket kèm ?project=<mã> sẽ khoá Project theo dự án đó. */
@@ -164,6 +169,55 @@ async function api(url, opts){
   return j;
 }
 
+/* ===== Ô ngày giờ: tách "Ngày" (lịch) và "Giờ" (nhập 24h HH:mm, có gợi ý) thay cho ô datetime-local (hay hiện giờ 12h SA/CH, khó chọn).
+   Mỗi ô giữ một <input hidden id="f_..."> có thuộc tính value dạng YYYY-MM-DDTHH:mm:ss, nên phần còn lại của trang vẫn đọc/ghi value như cũ. ===== */
+function normTime(s){
+  s = String(s||'').trim(); if(!s) return '';
+  const m = /^(\d{1,2})[:h.](\d{2})(?::(\d{2}))?$/.exec(s) || /^(\d{2})(\d{2})$/.exec(s) || /^(\d)(\d{2})$/.exec(s);
+  if(!m) return null;
+  const hh=+m[1], mm=+m[2], ss=m[3]!==undefined?+m[3]:0;
+  if(hh>23||mm>59||ss>59) return null;
+  return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0')+(ss?':'+String(ss).padStart(2,'0'):'');
+}
+function initDateTimeControls(){
+  document.querySelectorAll('.dtc').forEach(w=>{
+    const holder = w.querySelector('input[type=hidden]'), d = w.querySelector('.dt-d'), t = w.querySelector('.dt-t'), x = w.querySelector('.dt-x');
+    const isDeadline = (w.dataset.label||'').toLowerCase()==='estimated deadline';
+    const defTime = ()=> isDeadline ? '17:30' : nowVN().slice(11,16);   // hạn xử lý: 17:30; còn lại: giờ hiện tại
+    const mark = ()=>{ const bad = t.value.trim()!=='' && normTime(t.value)===null; t.classList.toggle('bad', bad); return !bad; };
+    const fire = ()=>holder.dispatchEvent(new Event('change'));
+    Object.defineProperty(holder,'value',{
+      configurable:true,
+      get(){
+        if(!d.value) return '';
+        const nt = normTime(t.value); if(nt===null) return '';
+        const tt = nt || defTime();
+        return d.value+'T'+(tt.length===5 ? tt+':00' : tt);
+      },
+      set(v){
+        const m = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2})(?::(\d{2}))?)?/.exec(String(v||''));
+        if(!m){ d.value=''; t.value=''; }
+        else{ d.value=m[1]; t.value = m[2] ? m[2]+((m[3]&&m[3]!=='00')?':'+m[3]:'') : defTime(); }
+        mark();
+      }
+    });
+    d.addEventListener('change', ()=>{ if(d.value && !t.value.trim()) t.value = defTime(); mark(); fire(); });   // chọn ngày xong tự điền giờ mặc định
+    t.addEventListener('input', mark);
+    t.addEventListener('blur', ()=>{ const n = normTime(t.value); if(n) t.value = n; mark(); });                // 1730 -> 17:30, 9h05 -> 09:05
+    t.addEventListener('change', fire);
+    x.onclick = ()=>{ d.value=''; t.value=''; mark(); fire(); };
+  });
+}
+(function(){ const dl=document.createElement('datalist'); dl.id='dl_times';
+  for(let h=7; h<=19; h++){ for(const m of ['00','30']){ if(h===19&&m==='30') continue; const o=document.createElement('option'); o.value=String(h).padStart(2,'0')+':'+m; dl.appendChild(o); } }
+  document.body.appendChild(dl); })();
+
+/** Giờ hiện tại theo múi giờ Việt Nam, dạng YYYY-MM-DDTHH:mm:ss, không phụ thuộc múi giờ trình duyệt. */
+function nowVN(){
+  const parts = new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date());
+  const g = t=>parts.find(x=>x.type===t).value;
+  return g('year')+'-'+g('month')+'-'+g('day')+'T'+g('hour')+':'+g('minute')+':'+g('second');
+}
 function fid(f){ return 'f_' + f.fieldname; }
 
 function controlHtml(f){
@@ -180,7 +234,7 @@ function controlHtml(f){
     case 'Text Editor': case 'Text': case 'Small Text': case 'Long Text': case 'HTML Editor': case 'Markdown Editor':
       return `<textarea id="${id}"${ro}></textarea>`;
     case 'Datetime':
-      return `<input id="${id}" type="datetime-local" step="1"${ro}>`;
+      return `<div class="dtc" data-label="${esc(f.label)}"><input type="hidden" id="${id}"><input type="date" class="dt-d" aria-label="Ngày"${ro}><input type="text" class="dt-t" inputmode="numeric" placeholder="Giờ HH:mm" maxlength="8" list="dl_times" autocomplete="off" aria-label="Giờ (24h)"${ro}><button type="button" class="dt-x" title="Xoá ngày giờ"${ro?' disabled':''}>×</button></div>`;
     case 'Date':
       return `<input id="${id}" type="date"${ro}>`;
     case 'Check':
@@ -203,10 +257,21 @@ function build(meta){
     html += `<div${hideIt?' id="wrap_'+f.fieldname+'" style="display:none"':''} class="${full||f.fieldtype==='Text Editor'?'full':''}"><label for="${fid(f)}">${esc(f.label)}${f.reqd?' <span class="req">*</span>':''}</label>${controlHtml(f)}${f.read_only?'<div class="hint">Tự điền bởi ERP</div>':''}</div>`;
   });
   $('form').innerHTML = html;
+  initDateTimeControls();
   $('loading').style.display='none';
   if(missingLabels.length){
     $('warn').innerHTML = `<div class="msg info">Không tìm thấy trên DocType Ticket các trường: <b>${missingLabels.map(esc).join(', ')}</b> (nhãn khác với form hiển thị) — các trường này được bỏ qua.</div>`;
   }
+  // First Responded On (KPI phản hồi lần đầu): nút "Bây giờ" điền giờ hiện tại theo múi giờ Việt Nam
+  { const fr = state.fields['First Responded On'];
+    if(fr){
+      const el = $(fid(fr)); const b = document.createElement('button');
+      b.type='button'; b.className='btn sec'; b.style.cssText='padding:4px 12px;font-size:12px;margin-top:6px'; b.textContent='Bây giờ';
+      b.onclick = ()=>{ el.value = nowVN(); el.dispatchEvent(new Event('change')); };
+      const h = document.createElement('div'); h.className='hint'; h.textContent='KPI phản hồi lần đầu (SLA First Response = First Responded On − Opening On). Để trống nếu chưa phản hồi khách.';
+      const anchor = el.closest('.dtc') || el;
+      anchor.insertAdjacentElement('afterend', h); h.insertAdjacentElement('afterend', b);
+    } }
   // Giá trị mặc định
   { const sf = state.fields['Status']; if(sf){ const el=$(fid(sf)); if(el && el.options && [...el.options].some(o=>o.value==='Open')) el.value='Open'; } }
   Object.values(state.fields).forEach(f=>{ const el=$(fid(f)); if(el && f.default && f.fieldtype!=='Select') el.value=f.default; });
@@ -287,6 +352,8 @@ function show(kind, html){ $('result').innerHTML = `<div class="msg ${kind}">${h
 
 async function send(dry, force){
   if(!$('creator').value){ show('err','Chọn người tạo ticket ở mục Người tạo ticket.'); return; }
+  const badTime = document.querySelector('.dt-t.bad');
+  if(badTime){ badTime.focus(); show('err','Giờ không hợp lệ — nhập dạng 24 giờ HH:mm, ví dụ 17:30 (hoặc để trống).'); return; }
   const fields = collect();
   document.querySelectorAll('.invalid').forEach(e=>e.classList.remove('invalid'));
   const miss = Object.values(state.fields).filter(f=>f.reqd && !f.read_only && !f.default && fields[f.fieldname]===undefined);
@@ -333,7 +400,7 @@ const JSON_KEYS = {
   request_type:'Request Type', customer_name:'Customer Name', project:'Project', priority:'Priority',
   customer:'Customer', products:'Products', contact:'Contact', contact_temp:'Contact (Temp)',
   raised_by:'Raised By (Email)', region:'Region', contact_role:'Contact Role',
-  estimated_deadline:'Estimated Deadline', description:'Description'
+  estimated_deadline:'Estimated Deadline', first_responded_on:'First Responded On', description:'Description'
 };
 let queue = []; // [{data, status, msg}]
 
@@ -643,12 +710,19 @@ async function uploadAttachments(ticketName, opts){
 })();
 
 /* ===== Đối chiếu phiên bản trang với server: khác nhau = deploy thiếu file ===== */
-const PAGE_BUILD = '2026-10-11.6';
+const PAGE_BUILD = '2026-10-11.10';
 (async function checkBuild(){
   const el = $('buildInfo'); if(!el) return;
+  el.addEventListener('click', async e=>{
+    if(!e.target || e.target.id!=='lnkRefresh') return; e.preventDefault();
+    if(!confirm('Tải lại cấu trúc form từ ERP? (tool sẽ gọi ERP, có thể làm phiên ERP của tài khoản tool bị đăng xuất nếu ERP chỉ cho 1 phiên)')) return;
+    e.target.textContent = 'Đang làm mới…';
+    try{ await api('/api/erp/refresh-cache',{method:'POST'}); location.reload(); }
+    catch(err){ e.target.textContent = '↻ Làm mới cấu trúc form từ ERP'; alert('Không làm mới được: '+err.message); }
+  });
   try{
     const r = await api('/api/build');
-    if(r.build === PAGE_BUILD) el.innerHTML = 'Trang Tạo Ticket · bản '+esc(PAGE_BUILD)+' · server cùng bản ✓';
+    if(r.build === PAGE_BUILD) el.innerHTML = 'Trang Tạo Ticket · bản '+esc(PAGE_BUILD)+' · server cùng bản ✓ · <a href="#" id="lnkRefresh">↻ Làm mới cấu trúc form từ ERP</a>';
     else el.innerHTML = '<span style="color:var(--danger)"><b>⚠ Trang bản '+esc(PAGE_BUILD)+' nhưng server bản '+esc(r.build)+'</b> — deploy chưa đủ file, hãy cập nhật lại toàn bộ gói rồi tải lại trang (Ctrl+F5).</span>';
   }catch(_){ el.innerHTML = '<span style="color:var(--danger)"><b>⚠ Server chưa có /api/build</b> (đang chạy bản server cũ) — hãy deploy lại toàn bộ gói rồi tải lại trang (Ctrl+F5).</span>'; }
 })();

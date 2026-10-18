@@ -6,9 +6,10 @@ const express = require('express');
 const session = require('express-session');
 const multer = require('multer');
 const erp = require('./erpClient');
-const BUILD = '2026-10-11.6'; // đối chiếu với trang Tạo Ticket để phát hiện deploy thiếu file
+const BUILD = '2026-10-11.10'; // đối chiếu với trang Tạo Ticket để phát hiện deploy thiếu file
 console.log(`[build] Ops Console ${BUILD}`);
 const { applyTicketDefaults } = require('./ticketDefaults');
+const weekly = require('./weeklyReport');
 const jira = require('./jiraClient');
 const supportCases = require('./supportCasesStore');
 const { hqEncrypt, hqDecrypt } = require('./hqPasswordCrypto');
@@ -93,6 +94,11 @@ app.get('/merap/uat-runbook', requirePageAuth, (req, res) => {
 });
 
 app.get('/api/build', requireAuth, (req, res) => res.json({ build: BUILD }));
+
+app.get('/duan/support-tuan', requirePageAuth, (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'protected', 'duan-support-tuan.html'));
+});
 
 app.get('/tickets/tao-moi', requirePageAuth, (req, res) => {
   res.set('Cache-Control', 'no-store'); // luôn lấy bản trang mới nhất, không để trình duyệt giữ bản cũ
@@ -180,7 +186,7 @@ app.get('/crs/pakd-bao-gia', requirePageAuth, (req, res) => {
 app.get('/api/erp/tickets', requireAuth, async (req, res) => {
   if (!erp.isConfigured()) {
     return res.status(501).json({
-      error: 'Server chưa cấu hình kết nối ERP (thiếu ERP_BASE_URL / ERP_USER / ERP_PASS).',
+      error: 'Server chưa cấu hình kết nối ERP (thiếu ERP_BASE_URL và ERP_API_KEY/ERP_API_SECRET hoặc ERP_USER/ERP_PASS).',
     });
   }
   try {
@@ -195,6 +201,42 @@ app.get('/api/erp/tickets', requireAuth, async (req, res) => {
     res.json(data);
   } catch (e) {
     console.error('[erp/tickets] lỗi:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+/* ---------- Dashboard Support Tuần của từng dự án ----------
+   GET /api/projects/weekly?project=<mã project ERP>&week=<YYYY-MM-DD bất kỳ trong tuần>&weeks=<số tuần xu hướng, mặc định 8>
+   Lấy ticket của dự án từ ERP (mở trong cửa sổ xu hướng, có cập nhật trong cửa sổ, và toàn bộ ticket còn tồn), rồi tính bằng weeklyReport.js. */
+const weeklyCache = new Map(); // key -> { at, data }
+app.get('/api/projects/weekly', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  const project = String(req.query.project || '');
+  const known = loadInstructionProjects().find((p) => p.code === project);
+  if (!known) return res.status(400).json({ error: 'Dự án không hợp lệ.' });
+  const weekParam = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.week || '')) ? String(req.query.week) : new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+  const weeks = Math.min(26, Math.max(2, Number(req.query.weeks) || 8));
+  const weekStart = weekly.mondayOf(weekParam);
+  const key = `${project}|${weekStart}|${weeks}`;
+  const hit = weeklyCache.get(key);
+  if (hit && Date.now() - hit.at < 3 * 60 * 1000 && !req.query.refresh) return res.json(hit.data);
+  try {
+    const trendStart = weekly.addDays(weekStart, -7 * (weeks - 1));
+    const weekEnd = weekly.addDays(weekStart, 6);
+    const limit = 5000;
+    // 3 truy vấn tuần tự (dùng chung 1 phiên ERP): mở trong cửa sổ · có cập nhật trong cửa sổ (gồm ticket cũ mới đóng) · toàn bộ ticket còn tồn
+    const a = await erp.fetchTickets({ projects: [project], openingFrom: trendStart, openingTo: weekEnd, limit });
+    const b = await erp.fetchTickets({ projects: [project], modifiedFrom: trendStart, limit });
+    const c = await erp.fetchTickets({ projects: [project], statuses: weekly.BACKLOG_STATUSES, limit });
+    const rows = [...(a.data || a), ...(b.data || b), ...(c.data || c)];
+    const data = weekly.buildWeeklyReport(rows, { project, weekStart, weeks });
+    data.projectName = known.name;
+    data.erpUrl = erp.getBaseUrl();
+    if ([a, b, c].some((x) => (x.data || x).length >= limit)) data.meta.warnings.push(`Một truy vấn chạm giới hạn ${limit} ticket — số liệu có thể thiếu.`);
+    weeklyCache.set(key, { at: Date.now(), data });
+    res.json(data);
+  } catch (e) {
+    console.error('[projects/weekly] lỗi:', e.message);
     res.status(502).json({ error: e.message });
   }
 });
@@ -267,6 +309,16 @@ app.get('/api/ticket-instructions/:code', requireAuth, async (req, res) => {
 const BLOCKED_WRITE_FIELDS = new Set(['name', 'owner', 'creation', 'modified', 'modified_by', 'docstatus', 'idx', 'doctype']);
 const recentCreates = new Map(); // chống bấm tạo trùng: project|subject -> thời điểm
 const createdTickets = new Map(); // mã ticket vừa tạo từ tool -> thời điểm (chỉ cho phép đính kèm vào các ticket này)
+
+app.post('/api/erp/refresh-cache', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  try {
+    const m = await erp.refreshCache();
+    res.json({ ok: true, fields: m.fields.length });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
 
 app.get('/api/erp/ticket-meta', requireAuth, async (req, res) => {
   if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
@@ -510,7 +562,7 @@ app.post('/api/erp/tickets', requireAuth, async (req, res) => {
 app.get('/api/erp/projects', requireAuth, async (req, res) => {
   if (!erp.isConfigured()) {
     return res.status(501).json({
-      error: 'Server chưa cấu hình kết nối ERP (thiếu ERP_BASE_URL / ERP_USER / ERP_PASS).',
+      error: 'Server chưa cấu hình kết nối ERP (thiếu ERP_BASE_URL và ERP_API_KEY/ERP_API_SECRET hoặc ERP_USER/ERP_PASS).',
     });
   }
   try {
@@ -529,7 +581,7 @@ app.get('/api/erp/projects', requireAuth, async (req, res) => {
 app.get('/api/erp/timesheet', requireAuth, async (req, res) => {
   if (!erp.isConfigured()) {
     return res.status(501).json({
-      error: 'Server chưa cấu hình kết nối ERP (thiếu ERP_BASE_URL / ERP_USER / ERP_PASS).',
+      error: 'Server chưa cấu hình kết nối ERP (thiếu ERP_BASE_URL và ERP_API_KEY/ERP_API_SECRET hoặc ERP_USER/ERP_PASS).',
     });
   }
   const { from_date, to_date, project } = req.query;

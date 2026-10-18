@@ -1,17 +1,26 @@
-// Client goi ERPNext (Frappe) bang phien dang nhap email/mat khau,
-// KHONG can API Key / API Secret (khong can quyen System Manager).
+// Client goi ERPNext (Frappe). Hai cach xac thuc:
+//  1) Dang nhap email/mat khau (ERP_USER/ERP_PASS) -> tao PHIEN dang nhap. Neu ERP chi cho 1 phien moi nguoi dung
+//     (System Settings > Deny Multiple Sessions) thi moi lan tool dang nhap se lam tai khoan do bi DANG XUAT o trinh duyet.
+//  2) API key/secret (ERP_API_KEY/ERP_API_SECRET) -> header "Authorization: token key:secret", KHONG tao phien dang nhap
+//     nen khong lam ai bi dang xuat. Uu tien dung cach nay neu co the (key tao trong ERP: User > API Access > Generate Keys).
 
 const ERP_BASE_URL = (process.env.ERP_BASE_URL || '').replace(/\/+$/, '');
 const ERP_USER = process.env.ERP_USER || '';
 const ERP_PASS = process.env.ERP_PASS || '';
+const ERP_API_KEY = (process.env.ERP_API_KEY || '').trim();
+const ERP_API_SECRET = (process.env.ERP_API_SECRET || '').trim();
+const TOKEN_AUTH = Boolean(ERP_API_KEY && ERP_API_SECRET);
+console.log(TOKEN_AUTH
+  ? '[erp] Xác thực ERP bằng API key/secret (không tạo phiên đăng nhập, không làm ai bị đăng xuất)'
+  : '[erp] Xác thực ERP bằng đăng nhập ERP_USER (tạo phiên — nếu ERP chỉ cho 1 phiên/người dùng, tài khoản này sẽ bị đăng xuất ở trình duyệt mỗi lần tool đăng nhập; nên dùng ERP_API_KEY/ERP_API_SECRET)');
 
 let cachedCookie = null;
 let loginPromise = null;
 
 function assertConfigured() {
-  if (!ERP_BASE_URL || !ERP_USER || !ERP_PASS) {
+  if (!ERP_BASE_URL || !(TOKEN_AUTH || (ERP_USER && ERP_PASS))) {
     const err = new Error(
-      'Chưa cấu hình ERP_BASE_URL / ERP_USER / ERP_PASS trên server (xem docker-compose.yml).'
+      'Chưa cấu hình ERP_BASE_URL và ERP_API_KEY/ERP_API_SECRET (hoặc ERP_USER/ERP_PASS) trên server (xem docker-compose.yml).'
     );
     err.code = 'NOT_CONFIGURED';
     throw err;
@@ -49,11 +58,13 @@ async function loginRequest(usr, pwd) {
 }
 
 async function erpLogin() {
+  console.log(`[erp] Đăng nhập ERP bằng ${ERP_USER} (tạo phiên mới)`);
   cachedCookie = await loginRequest(ERP_USER, ERP_PASS);
   return cachedCookie;
 }
 
 function ensureLoggedIn() {
+  if (TOKEN_AUTH) return Promise.resolve(null); // dùng API key/secret, không cần phiên
   if (cachedCookie) return Promise.resolve(cachedCookie);
   if (!loginPromise) {
     loginPromise = erpLogin().finally(() => {
@@ -63,15 +74,22 @@ function ensureLoggedIn() {
   return loginPromise;
 }
 
+/** Header xác thực: API token cho tài khoản mặc định (nếu cấu hình), ngược lại cookie phiên của ngữ cảnh. */
+async function authHeaders(ctx) {
+  if (TOKEN_AUTH && ctx === defaultCtx) return { Authorization: `token ${ERP_API_KEY}:${ERP_API_SECRET}` };
+  return { Cookie: await ctx.cookie() };
+}
+const isTokenCtx = (ctx) => TOKEN_AUTH && ctx === defaultCtx;
+
 async function erpFetch(pathWithQuery, { retry = true } = {}) {
   assertConfigured();
   await ensureLoggedIn();
 
   const res = await fetch(`${ERP_BASE_URL}${pathWithQuery}`, {
-    headers: { Cookie: cachedCookie, Accept: 'application/json' },
+    headers: { ...(await authHeaders(defaultCtx)), Accept: 'application/json' },
   });
 
-  if ((res.status === 401 || res.status === 403) && retry) {
+  if ((res.status === 401 || res.status === 403) && retry && !TOKEN_AUTH) {
     cachedCookie = null;
     await ensureLoggedIn();
     return erpFetch(pathWithQuery, { retry: false });
@@ -79,7 +97,7 @@ async function erpFetch(pathWithQuery, { retry = true } = {}) {
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    const err = new Error(`ERP API lỗi HTTP ${res.status}: ${text.slice(0, 300)}`);
+    const err = new Error(`ERP API lỗi HTTP ${res.status}${TOKEN_AUTH && (res.status === 401 || res.status === 403) ? ' (ERP từ chối API key/secret hoặc tài khoản của key thiếu quyền)' : ''}: ${text.slice(0, 300)}`);
     err.code = 'ERP_HTTP_ERROR';
     err.status = res.status;
     throw err;
@@ -174,8 +192,8 @@ async function fetchTimesheetReport({ from_date, to_date, project } = {}) {
 let cachedCsrf = null;
 
 const defaultCtx = {
-  label: ERP_USER,
-  async cookie() { await ensureLoggedIn(); return cachedCookie; },
+  label: ERP_USER || 'API key',
+  async cookie() { await ensureLoggedIn(); return cachedCookie || ''; },
   get csrf() { return cachedCsrf; },
   set csrf(v) { cachedCsrf = v; },
   reset() { cachedCookie = null; cachedCsrf = null; },
@@ -201,6 +219,7 @@ function makeCookieCtx(user, cookie) {
 }
 
 async function fetchCsrfToken(ctx) {
+  if (isTokenCtx(ctx)) return null; // xác thực bằng API token thì ERP không đòi CSRF
   // Frappe nhúng csrf_token trong trang /app khi dùng phiên đăng nhập bằng cookie.
   const res = await fetch(`${ERP_BASE_URL}/app`, { headers: { Cookie: await ctx.cookie(), Accept: 'text/html' } });
   const html = await res.text();
@@ -211,18 +230,18 @@ async function fetchCsrfToken(ctx) {
 
 async function erpPost(pathname, body, { ctx = defaultCtx, retry = true, csrfTried = false, method = 'POST' } = {}) {
   assertConfigured();
-  const headers = { Cookie: await ctx.cookie(), Accept: 'application/json', 'Content-Type': 'application/json' };
-  if (ctx.csrf) headers['X-Frappe-CSRF-Token'] = ctx.csrf;
+  const headers = { ...(await authHeaders(ctx)), Accept: 'application/json', 'Content-Type': 'application/json' };
+  if (ctx.csrf && !isTokenCtx(ctx)) headers['X-Frappe-CSRF-Token'] = ctx.csrf;
 
   const res = await fetch(`${ERP_BASE_URL}${pathname}`, { method, headers, body: JSON.stringify(body) });
 
-  if (res.status === 401 && retry) {
+  if (res.status === 401 && retry && !isTokenCtx(ctx)) {
     ctx.reset();
     return erpPost(pathname, body, { ctx, retry: false, csrfTried, method });
   }
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    if (!csrfTried && /csrf/i.test(text)) {
+    if (!csrfTried && !isTokenCtx(ctx) && /csrf/i.test(text)) {
       await fetchCsrfToken(ctx);
       return erpPost(pathname, body, { ctx, retry, csrfTried: true, method });
     }
@@ -254,7 +273,7 @@ let metaCache = { at: 0, data: null };
 
 /** Lấy cấu trúc DocType Ticket (tên trường thật, kiểu, bắt buộc, options) — cache 10 phút. */
 async function getTicketMeta() {
-  if (metaCache.data && Date.now() - metaCache.at < 10 * 60 * 1000) return metaCache.data;
+  if (metaCache.data && CACHE_MS > 0 && Date.now() - metaCache.at < CACHE_MS) return metaCache.data;
   const raw = await erpFetch('/api/method/frappe.desk.form.load.getdoctype?doctype=Ticket&with_parent=1');
   const docs = raw.docs || [];
   const simplify = (d) => (d.fields || [])
@@ -281,6 +300,7 @@ async function getTicketMeta() {
     }
   }
   metaCache = { at: Date.now(), data: { fields: mainFields, children } };
+  persistCache();
   return metaCache.data;
 }
 
@@ -319,10 +339,11 @@ const linkedCache = new Map(); // "DocType|name|field" -> {at, v}
 async function getLinkedValue(doctype, name, field) {
   const key = `${doctype}|${name}|${field}`;
   const hit = linkedCache.get(key);
-  if (hit && Date.now() - hit.at < 5 * 60 * 1000) return hit.v;
+  if (hit && CACHE_MS > 0 && Date.now() - hit.at < CACHE_MS) return hit.v;
   const r = await erpFetch(`/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`);
   const v = (r.data || r)[field] || '';
   linkedCache.set(key, { at: Date.now(), v });
+  persistCache();
   return v;
 }
 
@@ -374,16 +395,16 @@ async function uploadAttachment(ticketName, filename, mimeType, buffer) {
     form.append('docname', ticketName);
     form.append('is_private', '1');
     form.append('folder', 'Home/Attachments');
-    const headers = { Cookie: await ctx.cookie(), Accept: 'application/json' };
-    if (ctx.csrf) headers['X-Frappe-CSRF-Token'] = ctx.csrf;
+    const headers = { ...(await authHeaders(ctx)), Accept: 'application/json' };
+    if (ctx.csrf && !isTokenCtx(ctx)) headers['X-Frappe-CSRF-Token'] = ctx.csrf;
     const res = await fetch(`${ERP_BASE_URL}/api/method/upload_file`, { method: 'POST', headers, body: form });
     if (res.ok) {
       const j = await res.json().catch(() => ({}));
       return j.message || j;
     }
     const text = await res.text().catch(() => '');
-    if (attempt < 2 && /csrf/i.test(text)) { await fetchCsrfToken(ctx); continue; }
-    if (attempt < 2 && res.status === 401) { ctx.reset(); continue; }
+    if (attempt < 2 && !isTokenCtx(ctx) && /csrf/i.test(text)) { await fetchCsrfToken(ctx); continue; }
+    if (attempt < 2 && !isTokenCtx(ctx) && res.status === 401) { ctx.reset(); continue; }
     throw new Error(`Tải "${filename}" lên ERP lỗi HTTP ${res.status}: ${extractFrappeError(text)}`);
   }
   throw new Error(`Tải "${filename}" lên ERP thất bại.`);
@@ -457,6 +478,7 @@ async function setAssignStatus(ticketName) {
                     và ERP_USER là System Manager). ERP tự ghi owner = người đó và lưu vết "impersonated by".
    2) set-owner   : tạo bằng ERP_USER rồi cập nhật trường owner của ticket sang email đó (PUT), đọc lại để xác nhận. */
 const ONBEHALF_MODE = String(process.env.ERP_ONBEHALF_MODE || 'auto').trim().toLowerCase();
+console.log(`[erp] Ghi người tạo thay mặt: ${ONBEHALF_MODE}${ONBEHALF_MODE === 'set-owner' ? ' (không tạo phiên đăng nhập cho người tạo)' : ' (impersonate tạo phiên cho người tạo — nếu ERP chỉ cho 1 phiên/người dùng, người đó bị đăng xuất; đặt ERP_ONBEHALF_MODE=set-owner để tránh)'}`);
 
 function getSetCookies(res) {
   if (typeof res.headers.getSetCookie === 'function') return res.headers.getSetCookie();
@@ -485,8 +507,8 @@ async function userExists(email) {
 async function impersonateCookie(email) {
   const ctx = defaultCtx;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const headers = { Cookie: await ctx.cookie(), Accept: 'application/json', 'Content-Type': 'application/json' };
-    if (ctx.csrf) headers['X-Frappe-CSRF-Token'] = ctx.csrf;
+    const headers = { ...(await authHeaders(ctx)), Accept: 'application/json', 'Content-Type': 'application/json' };
+    if (ctx.csrf && !isTokenCtx(ctx)) headers['X-Frappe-CSRF-Token'] = ctx.csrf;
     const res = await fetch(`${ERP_BASE_URL}/api/method/frappe.core.doctype.user.user.impersonate`, {
       method: 'POST', headers,
       body: JSON.stringify({ user: email, reason: 'Ops Console: tạo ticket thay người dùng' }),
@@ -501,8 +523,8 @@ async function impersonateCookie(email) {
       return cookie;
     }
     const text = await res.text().catch(() => '');
-    if (attempt === 0 && /csrf/i.test(text)) { await fetchCsrfToken(ctx); continue; }
-    if (attempt === 0 && res.status === 401) { ctx.reset(); continue; }
+    if (attempt === 0 && !isTokenCtx(ctx) && /csrf/i.test(text)) { await fetchCsrfToken(ctx); continue; }
+    if (attempt === 0 && !isTokenCtx(ctx) && res.status === 401) { ctx.reset(); continue; }
     throw codedError('IMPERSONATE_FAILED', `Impersonate bị ERP từ chối (HTTP ${res.status}): ${extractFrappeError(text)}`);
   }
   throw codedError('IMPERSONATE_FAILED', 'Impersonate thất bại.');
@@ -557,6 +579,38 @@ async function createTicketOnBehalf(fields, email) {
   };
 }
 
+/* ===================== BỘ NHỚ ĐỆM TRÊN ĐĨA =====================
+   Cấu trúc form Ticket và "Customer của Project" ít thay đổi, nên lưu lại (mặc định 12 giờ, ERP_CACHE_HOURS=0 để tắt).
+   Nhờ vậy chỉ MỞ trang Tạo Ticket không cần gọi ERP, tức là không phải đăng nhập ERP (đăng nhập có thể làm tài khoản
+   ERP của người dùng bị đăng xuất nếu ERP chỉ cho 1 phiên/người dùng). Chỉ khi tạo ticket / tìm gợi ý mới gọi ERP. */
+const CACHE_MS = Number(process.env.ERP_CACHE_HOURS === undefined ? 12 : process.env.ERP_CACHE_HOURS) * 3600 * 1000;
+const CACHE_FILE = require('path').join(__dirname, 'data', 'erp-cache.json');
+function persistCache() {
+  if (CACHE_MS <= 0) return;
+  try {
+    const fsx = require('fs');
+    fsx.mkdirSync(require('path').dirname(CACHE_FILE), { recursive: true });
+    fsx.writeFileSync(CACHE_FILE, JSON.stringify({ meta: metaCache, linked: [...linkedCache] }));
+  } catch (e) { /* không ghi được thì bỏ qua, chỉ mất lợi ích đệm */ }
+}
+/** Xoá bộ nhớ đệm và tải lại cấu trúc form từ ERP (dùng khi ERP đổi trường). */
+async function refreshCache() {
+  metaCache = { at: 0, data: null };
+  masterCache = { at: 0, data: null };
+  linkedCache.clear();
+  try { require('fs').unlinkSync(CACHE_FILE); } catch (_) { /* chưa có file */ }
+  return getTicketMeta();
+}
+(function loadPersistedCache() {
+  if (CACHE_MS <= 0) return;
+  try {
+    const j = JSON.parse(require('fs').readFileSync(CACHE_FILE, 'utf8'));
+    if (j.meta && j.meta.data && Date.now() - j.meta.at < CACHE_MS) metaCache = j.meta;
+    for (const [k, v] of j.linked || []) if (v && Date.now() - v.at < CACHE_MS) linkedCache.set(k, v);
+    console.log(`[erp] Nạp bộ nhớ đệm: cấu trúc form ${metaCache.data ? 'có' : 'chưa có'}, ${linkedCache.size} giá trị liên kết (hiệu lực ${CACHE_MS / 3600000} giờ)`);
+  } catch (e) { /* chưa có file đệm */ }
+})();
+
 module.exports = {
   fetchTickets,
   fetchProjects,
@@ -566,6 +620,7 @@ module.exports = {
   createTicket,
   getLinkedValue,
   getMasterLists,
+  refreshCache,
   suggestContacts,
   userExists,
   assignTicket,
@@ -576,5 +631,6 @@ module.exports = {
   makeCookieCtx,
   getBaseUrl: () => ERP_BASE_URL,
   getUser: () => ERP_USER,
-  isConfigured: () => Boolean(ERP_BASE_URL && ERP_USER && ERP_PASS),
+  isConfigured: () => Boolean(ERP_BASE_URL && (TOKEN_AUTH || (ERP_USER && ERP_PASS))),
+  authMode: () => (TOKEN_AUTH ? 'api-token' : 'session'),
 };

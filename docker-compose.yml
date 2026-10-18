@@ -15,10 +15,17 @@ services:
       - ADMIN_PASS=admin123@
       # - COOKIE_SECURE=1   # bat khi da chay sau HTTPS reverse proxy
 
-      # --- Ket noi ERP (dang nhap bang email/mat khau, khong can API key) ---
+      # --- Ket noi ERP ---
       - ERP_BASE_URL=https://erp.hqsoft.vn
       - ERP_USER=email-dang-nhap-erp@hqsoft.vn
+      # Cach 1 (KHUYEN DUNG): API key/secret -> tool KHONG tao phien dang nhap, khong lam ai bi dang xuat khoi ERP.
+      #   Tao trong ERP: User > API Access > Generate Keys (can quyen System Manager).
+      # - ERP_API_KEY=api-key
+      # - ERP_API_SECRET=api-secret
+      # Cach 2: dang nhap email/mat khau (tao phien; neu ERP chi cho 1 phien/nguoi dung thi tai khoan nay bi dang xuat o trinh duyet)
       - ERP_PASS=mat-khau-erp-that
+      # Neu nguoi tao ticket (thay mat) bi dang xuat khoi ERP khi tao ticket, dung cach ghi owner khong tao phien:
+      # - ERP_ONBEHALF_MODE=set-owner
 
       # --- Ket noi Jira khach hang (du an ABI) - dung API token, khong dung mat khau ---
       # Tao token tai: https://id.atlassian.com/manage-profile/security/api-tokens

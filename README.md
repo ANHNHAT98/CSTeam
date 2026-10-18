@@ -267,6 +267,8 @@ Cấu hình trong `docker-compose.yml` (hoặc Environment Variables trên Rende
 | `ERP_BASE_URL` | Địa chỉ gốc ERP, mặc định `https://erp.hqsoft.vn` |
 | `ERP_USER` | Email đăng nhập ERP (tài khoản cá nhân hoặc service account) |
 | `ERP_PASS` | Mật khẩu tương ứng |
+| `ERP_API_KEY`, `ERP_API_SECRET` | **Khuyên dùng.** Xác thực bằng API key/secret thay cho mật khẩu: tool không tạo phiên đăng nhập nên không làm ai bị đăng xuất ERP (xem mục bên dưới). Có cặp này thì `ERP_PASS` không cần |
+| `ERP_CACHE_HOURS` | Số giờ lưu đệm cấu trúc form Ticket và Customer của Project (mặc định 12, `0` = tắt). Nhờ đệm, chỉ mở trang Tạo Ticket không gọi ERP. Lưu ở `data/erp-cache.json` |
 
 Server tự đăng nhập lại nếu phiên hết hạn, không cần thao tác gì thêm.
 
@@ -421,3 +423,46 @@ Trang Tạo Ticket cho **dán ảnh (Ctrl+V)**, kéo thả hoặc chọn file (�
 ### Kiểm tra đang chạy đúng bản (tránh deploy thiếu file)
 
 Đầu trang Tạo Ticket có dòng **"Trang Tạo Ticket · bản <mã> · server cùng bản ✓"**. Nếu trang báo "⚠ Trang bản X nhưng server bản Y", hoặc "Server chưa có /api/build", hoặc không có dòng này, tức là chưa deploy đủ file của gói mới (cần cập nhật **toàn bộ** thư mục, không chỉ vài file) rồi tải lại trang bằng Ctrl+F5. Log server khi khởi động có dòng `[build] Ops Console <mã>`. Trang Tạo Ticket được gửi với `Cache-Control: no-store`.
+
+### First Responded On (KPI phản hồi lần đầu)
+
+- Form Tạo Ticket có trường **First Responded On** (ngay cạnh Estimated Deadline) kèm nút **Bây giờ** (điền giờ hiện tại theo múi giờ Việt Nam). Trang SLA First Response tính Pass/Fail theo `first_responded_on` − `Opening On`, nên ticket đã được phản hồi ngay lúc tạo cần ghi trường này, nếu để trống thì KPI tính là chưa phản hồi.
+- JSON nhận khoá `first_responded_on` (`YYYY-MM-DD HH:mm:ss`). File md để `""` mặc định, chỉ ghi khi nội dung nêu rõ giờ team đã phản hồi khách. Tool không tự điền trường này.
+
+### Bị đăng xuất khỏi ERP khi dùng tool — nguyên nhân và cách xử lý
+
+**Nguyên nhân:** nếu ERP bật *System Settings > Deny Multiple Sessions* (mỗi người chỉ một phiên), mỗi lần server tool **đăng nhập** ERP bằng `ERP_USER` sẽ huỷ phiên ERP đang mở trên trình duyệt của chính tài khoản đó. Nguồn thứ hai: chế độ ghi người tạo thay mặt bằng *impersonate* tạo phiên mới cho người được chọn, nên người đó cũng bị đăng xuất.
+
+**Cách xử lý (làm lần lượt):**
+1. **Dùng API key/secret** (khuyên dùng): vào ERP > User của tài khoản dùng cho tool > mục *API Access* > *Generate Keys* (cần quyền System Manager), rồi đặt `ERP_API_KEY` và `ERP_API_SECRET` trên Render. Tool gửi `Authorization: token key:secret`, không đăng nhập, không tạo phiên. Log khởi động có dòng `[erp] Xác thực ERP bằng API key/secret`.
+2. Nếu người được chọn làm **người tạo** vẫn bị đăng xuất khi tạo ticket, đặt `ERP_ONBEHALF_MODE=set-owner` (tạo ticket rồi đổi owner, không tạo phiên cho người đó). Sau khi đổi, tạo thử một ticket và xem cột người tạo trên ERP; nếu ERP không cho đổi owner, trang hiện cảnh báo.
+3. Hoặc tắt *Deny Multiple Sessions* trong ERP; hoặc dùng một tài khoản dành riêng cho tool (không ai dùng trên trình duyệt) làm `ERP_USER`.
+4. Nếu chưa làm được: log server có dòng `[erp] Đăng nhập ERP bằng ... (tạo phiên mới)` cho biết đúng thời điểm tool đăng nhập (khi khởi động lại hoặc phiên hết hạn).
+
+#### Khi chưa có quyền tạo API key (chỉ đăng nhập ERP bằng tài khoản thường)
+
+- **Chỉ mở trang Tạo Ticket không còn đăng nhập ERP** (bộ nhớ đệm `ERP_CACHE_HOURS`, mặc định 12 giờ; lần đầu sau khi deploy vẫn cần hỏi ERP một lần). Cấu trúc form đổi thì bấm "↻ Làm mới cấu trúc form từ ERP" ở đầu trang (bước này gọi ERP).
+- Tool vẫn phải đăng nhập khi **tạo ticket, đính kèm, giao việc, tìm gợi ý** và khi tải dashboard; lúc đó nếu ERP chỉ cho 1 phiên/người dùng, phiên ERP của chính tài khoản đó trên trình duyệt sẽ bị đăng xuất. Cách dứt điểm duy nhất cần quản trị ERP (System Manager): tạo API key/secret cho tài khoản tool (hoặc một tài khoản riêng cho tool), hoặc tắt *Deny Multiple Sessions*.
+
+### Ô ngày giờ trên form (Estimated Deadline, First Responded On)
+
+Các trường ngày giờ không dùng ô `datetime-local` của trình duyệt nữa (hay hiện giờ 12 giờ SA/CH, khó chọn) mà tách thành:
+- **Ô ngày** (`dd/mm/yyyy`, bấm biểu tượng lịch để chọn);
+- **Ô giờ 24 giờ** (`HH:mm`, có gợi ý 07:00–19:00 mỗi 30 phút). Gõ nhanh được: `1730` → `17:30`, `9h05` → `09:05`, `17.45` → `17:45`; có thể thêm giây (`07:15:30`);
+- nút **×** xoá cả ngày và giờ.
+
+Chọn ngày xong thì giờ tự điền (Estimated Deadline: `17:30`; First Responded On: giờ hiện tại theo múi giờ Việt Nam). Giờ nhập sai (ví dụ `25:00`, `9h5`) báo đỏ và chặn Kiểm tra/Tạo ticket cho đến khi sửa. Giá trị gửi sang ERP luôn dạng `YYYY-MM-DD HH:mm:ss`. Nạp JSON hoặc tự điền deadline từ server cũng hiện đúng ngày và giờ trong hai ô này.
+
+### Dashboard Support Tuần theo dự án (`/duan/support-tuan`)
+
+Menu **Dự Án > Merap > Dashboard Support Tuần** mở `/duan/support-tuan?project=MerapLion_eSales`. Hiện mới gắn menu cho Merap; dự án khác dùng cùng trang, chỉ cần thêm liên kết `/duan/support-tuan?project=<mã project ERP>` vào menu của dự án đó (mã dự án như bảng ở mục "Tạo ticket theo từng dự án").
+
+**Dữ liệu:** `GET /api/projects/weekly?project=<mã>&week=<YYYY-MM-DD bất kỳ trong tuần>&weeks=8` lấy ticket của dự án từ ERP bằng 3 truy vấn (mở trong cửa sổ xu hướng · có cập nhật trong cửa sổ · toàn bộ ticket còn tồn đọng), rồi tính bằng `weeklyReport.js`. Kết quả được lưu đệm 3 phút; nút "Tải lại từ ERP" bỏ qua đệm. Tuần = Thứ 2 → Chủ nhật (giờ Việt Nam).
+
+**Chỉ số trên trang**
+- Ticket mới (theo `opening_date`), xử lý xong (theo `resolution_date`, hoặc `modified` nếu ticket đã Closed mà thiếu ngày), tồn đọng cuối tuần (mở tới cuối tuần và chưa xong tới thời điểm đó; tuần hiện tại dùng trạng thái hiện tại), kèm chênh lệch so với tuần trước.
+- Tỷ lệ đóng = ticket mở trong tuần đã Closed / ticket mở trong tuần.
+- SLA phản hồi (`first_responded_on` − `opening_date`) và SLA xử lý (`resolution_date` − `opening_date`) của ticket mở trong tuần: cùng ngưỡng, quy tắc giờ làm việc/24h và trọng số 70/30 với Dashboard Tổng Quan. **Khác một điểm:** ticket chưa có mốc phản hồi/xử lý mà còn trong ngưỡng được xếp "đang chờ" (chưa tính tỷ lệ); Dashboard Tổng Quan hiện tính các ticket này là trượt.
+- Biểu đồ: xu hướng 8 tuần (mới / xong / tồn), theo ngày trong tuần, trạng thái, mức ưu tiên, Request Type.
+- Bảng: tồn đọng cần chú ý (ưu tiên cao trước rồi lâu nhất trước), tải theo người xử lý (từ `_assign`), ticket mới và ticket xong trong tuần, ticket trượt SLA. Mã ticket liên kết sang ERP.
+- Chưa có: thống kê theo Product (trường này nằm trong bảng con, API danh sách ticket không trả về) và số giờ hỗ trợ (timesheet).
