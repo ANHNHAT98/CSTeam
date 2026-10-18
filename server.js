@@ -10,6 +10,7 @@ const BUILD = '2026-10-11.10'; // đối chiếu với trang Tạo Ticket để 
 console.log(`[build] Ops Console ${BUILD}`);
 const { applyTicketDefaults } = require('./ticketDefaults');
 const weekly = require('./weeklyReport');
+const { buildCustomerReport } = require('./customerReport');
 const jira = require('./jiraClient');
 const supportCases = require('./supportCasesStore');
 const { hqEncrypt, hqDecrypt } = require('./hqPasswordCrypto');
@@ -98,6 +99,11 @@ app.get('/api/build', requireAuth, (req, res) => res.json({ build: BUILD }));
 app.get('/duan/support-tuan', requirePageAuth, (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.sendFile(path.join(__dirname, 'protected', 'duan-support-tuan.html'));
+});
+
+app.get('/duan/bao-cao-khach-hang', requirePageAuth, (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'protected', 'duan-bao-cao-khach-hang.html'));
 });
 
 app.get('/tickets/tao-moi', requirePageAuth, (req, res) => {
@@ -237,6 +243,41 @@ app.get('/api/projects/weekly', requireAuth, async (req, res) => {
     res.json(data);
   } catch (e) {
     console.error('[projects/weekly] lỗi:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+/* ---------- Báo cáo khách hàng theo dự án (slide tổng hợp + tồn đọng, xuất PNG/Excel/PPTX) ----------
+   GET /api/projects/customer-report?project=<mã project ERP>&week=<YYYY-MM-DD>&weeks=<số tuần xu hướng, mặc định 8>
+   Cùng nguồn dữ liệu và định nghĩa với /api/projects/weekly, nhưng trả đủ danh sách ticket sau từng con số (customerReport.js). */
+const customerCache = new Map();
+app.get('/api/projects/customer-report', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  const project = String(req.query.project || '');
+  const known = loadInstructionProjects().find((p) => p.code === project);
+  if (!known) return res.status(400).json({ error: 'Dự án không hợp lệ.' });
+  const weekParam = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.week || '')) ? String(req.query.week) : new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+  const weeks = Math.min(26, Math.max(2, Number(req.query.weeks) || 8));
+  const weekStart = weekly.mondayOf(weekParam);
+  const key = `${project}|${weekStart}|${weeks}`;
+  const hit = customerCache.get(key);
+  if (hit && Date.now() - hit.at < 3 * 60 * 1000 && !req.query.refresh) return res.json(hit.data);
+  try {
+    const trendStart = weekly.addDays(weekStart, -7 * (weeks - 1));
+    const weekEnd = weekly.addDays(weekStart, 6);
+    const limit = 5000;
+    const a = await erp.fetchTickets({ projects: [project], openingFrom: trendStart, openingTo: weekEnd, limit });
+    const b = await erp.fetchTickets({ projects: [project], modifiedFrom: trendStart, limit });
+    const c = await erp.fetchTickets({ projects: [project], statuses: weekly.BACKLOG_STATUSES, limit });
+    const rows = [...(a.data || a), ...(b.data || b), ...(c.data || c)];
+    const data = buildCustomerReport(rows, { project, weekStart, weeks });
+    data.projectName = known.name;
+    data.erpUrl = erp.getBaseUrl();
+    if ([a, b, c].some((x) => (x.data || x).length >= limit)) data.meta.warnings.push(`Một truy vấn chạm giới hạn ${limit} ticket — số liệu có thể thiếu.`);
+    customerCache.set(key, { at: Date.now(), data });
+    res.json(data);
+  } catch (e) {
+    console.error('[projects/customer-report] lỗi:', e.message);
     res.status(502).json({ error: e.message });
   }
 });

@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dự án — Báo cáo khách hàng</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<style>
+  :root{--ink:#12233D;--blueprint:#1F4E79;--paper:#EEF2F6;--panel:#FFFFFF;--grid-line:rgba(31,78,121,.14);--grid-line-strong:rgba(31,78,121,.28);--amber:#E8A33D;--amber-deep:#C9821F;--success:#3F7D58;--danger:#B23A48;--muted:#5B7089;--radius:10px;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;min-height:100vh;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:32px 32px;}
+  .ops-topbar{background:#12233D;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:14px;}
+  .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;opacity:.9;}
+  .ops-topbar a:hover{opacity:1;text-decoration:underline;}
+  .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
+  .wrap{max-width:1340px;margin:0 auto;padding:28px 24px 80px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;line-height:1.6;}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
+  .controls button,.controls input,.controls select{font:inherit;font-size:13.5px;padding:8px 14px;border-radius:8px;border:1px solid var(--blueprint);background:#fff;color:var(--blueprint);cursor:pointer;font-weight:600;}
+  .controls input[type=date],.controls select{font-weight:500;color:var(--ink);}
+  .controls button.primary{background:var(--blueprint);color:#fff;}
+  .controls button.export{border-color:var(--success);color:var(--success);}
+  .controls button:disabled{opacity:.5;cursor:default;}
+  .controls label{font-size:13px;color:var(--ink);display:flex;align-items:center;gap:6px;}
+  .controls .stamp{color:var(--muted);font-size:12px;margin-left:6px;}
+  .msg{padding:12px 14px;border-radius:8px;font-size:13.5px;margin-bottom:14px;}
+  .msg.err{background:#FBE9EB;border:1px solid #E3A7AF;color:#8B2A36;} .msg.info{background:#EAF1F8;border:1px solid var(--grid-line-strong);}
+  #loading{color:var(--muted);padding:30px 0;text-align:center;}
+  .slide-label{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);margin:22px 0 6px;letter-spacing:.04em;text-transform:uppercase;}
+  .slide-scroll{overflow-x:auto;padding-bottom:4px;}
+
+  /* ---------- slide 1280 × 720 (16:9) ---------- */
+  .slide{width:1280px;min-height:720px;background:#fff;color:var(--ink);position:relative;box-shadow:0 2px 14px rgba(18,35,61,.12);font-family:'IBM Plex Sans',sans-serif;}
+  .s-head{background:#12233D;color:#fff;height:96px;padding:20px 40px;display:flex;justify-content:space-between;align-items:center;}
+  .s-head h2{margin:0;font-family:'Space Grotesk',sans-serif;font-size:28px;letter-spacing:.01em;}
+  .s-head .s-sub{font-size:15px;color:#C9D5E3;margin-top:4px;}
+  .s-head .s-brand{font-family:'Space Grotesk',sans-serif;font-size:20px;color:var(--amber);font-weight:700;text-align:right;}
+  .s-head .s-brand small{display:block;font-family:'IBM Plex Sans',sans-serif;font-size:12px;color:#C9D5E3;font-weight:500;}
+  .s-body{padding:22px 40px 0;}
+  .s-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;}
+  .s-kpi{border:1px solid var(--grid-line-strong);border-radius:10px;padding:12px 16px;border-top:5px solid var(--blueprint);height:118px;}
+  .s-kpi .l{font-size:13px;color:var(--muted);font-weight:600;}
+  .s-kpi .v{font-family:'Space Grotesk',sans-serif;font-size:40px;font-weight:700;line-height:1.15;margin-top:2px;}
+  .s-kpi .d{font-size:12.5px;color:var(--muted);}
+  .s-kpi.k-res{border-top-color:var(--success);} .s-kpi.k-back{border-top-color:var(--amber);} .s-kpi.k-sla{border-top-color:#6C5B9E;}
+  .s-charts{display:grid;grid-template-columns:1.55fr 1fr 1fr;gap:14px;margin-top:16px;}
+  .s-panel{border:1px solid var(--grid-line-strong);border-radius:10px;padding:12px 14px 8px;}
+  .s-panel h3{margin:0;font-size:14.5px;font-family:'Space Grotesk',sans-serif;}
+  .s-panel .ps{font-size:11.5px;color:var(--muted);margin:1px 0 4px;}
+  .s-chart{position:relative;height:330px;}
+  .s-foot{position:absolute;left:40px;right:40px;bottom:12px;font-size:11px;color:var(--muted);line-height:1.45;}
+  .up-good,.down-good{color:var(--success);font-weight:600;} .up-bad,.down-bad{color:var(--danger);font-weight:600;}
+
+  /* slide 2 */
+  .s2 .s-body{padding-bottom:56px;}
+  .wk-strip{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center;}
+  .wk-strip .t{font-size:13px;font-weight:600;margin-right:4px;}
+  .wk-chip{border:1px solid var(--grid-line-strong);border-radius:8px;padding:4px 10px;font-size:12.5px;background:#F5F8FB;}
+  .wk-chip b{font-family:'Space Grotesk',sans-serif;font-size:15px;color:var(--blueprint);margin-left:4px;}
+  table.bl{width:100%;border-collapse:collapse;font-size:12.5px;}
+  table.bl th{background:#1F4E79;color:#fff;text-align:left;padding:7px 8px;font-weight:600;white-space:nowrap;}
+  table.bl td{padding:5px 8px;border-bottom:1px solid var(--grid-line);vertical-align:top;}
+  table.bl td.n,table.bl th.n{text-align:right;white-space:nowrap;}
+  table.bl tr.grp td{background:#EAF1F8;font-weight:700;color:var(--blueprint);border-bottom:1px solid var(--grid-line-strong);}
+  table.bl td.mono{font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:nowrap;}
+  .tag{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid var(--grid-line-strong);white-space:nowrap;}
+  .p-Critical,.p-Urgent{background:#FBE9EB;color:var(--danger);border-color:#E3A7AF;} .p-High{background:#FFF1DC;color:var(--amber-deep);border-color:#EBC890;}
+  .old{color:var(--danger);font-weight:700;}
+  .empty{color:var(--muted);padding:40px 4px;font-size:15px;text-align:center;}
+</style>
+</head>
+<body>
+<div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb" id="crumb">/ dự án / báo cáo khách hàng</span></div>
+<div class="wrap">
+  <h1 id="title">Báo cáo khách hàng</h1>
+  <p class="sub">Slide 1: số liệu tổng hợp tình trạng ticket trong tuần. Slide 2: danh sách ticket tồn đọng, nhóm theo tuần tiếp nhận. Số liệu lấy trực tiếp từ ERP, cùng cách tính với Dashboard Support Tuần.</p>
+  <div class="controls">
+    <select id="selProject" title="Dự án"></select>
+    <button id="btnPrev" type="button">◀ Tuần trước</button>
+    <button id="btnThis" type="button" class="primary">Tuần này</button>
+    <button id="btnNext" type="button">Tuần sau ▶</button>
+    <input type="date" id="pickDate" title="Chọn một ngày bất kỳ để xem tuần chứa ngày đó">
+    <select id="selWeeks" title="Số tuần trên biểu đồ xu hướng"><option value="6">Xu hướng 6 tuần</option><option value="8" selected>Xu hướng 8 tuần</option><option value="12">Xu hướng 12 tuần</option></select>
+    <button id="btnReload" type="button">↻ Tải lại từ ERP</button>
+    <span class="stamp" id="stamp"></span>
+  </div>
+  <div class="controls">
+    <button id="btnPng" type="button" class="export" disabled>⬇ PNG slide 1</button>
+    <button id="btnPng2" type="button" class="export" disabled>⬇ PNG slide 2</button>
+    <button id="btnXlsx" type="button" class="export" disabled>⬇ Excel chi tiết</button>
+    <button id="btnPptx" type="button" class="export" disabled>⬇ PowerPoint (2 slide)</button>
+    <label><input type="checkbox" id="chkAssign"> Hiện người xử lý</label>
+  </div>
+  <div id="notice"></div>
+  <div id="loading">Đang lấy dữ liệu ticket từ ERP…</div>
+  <div id="content" style="display:none">
+    <div class="slide-label">Slide 1 · Tổng hợp tình trạng ticket</div>
+    <div class="slide-scroll"><div class="slide s1" id="slide1">
+      <div class="s-head"><div><h2 id="s1Title"></h2><div class="s-sub" id="s1Sub"></div></div><div class="s-brand">HQSOFT<small>Bộ phận hỗ trợ khách hàng</small></div></div>
+      <div class="s-body">
+        <div class="s-kpis" id="s1Kpis"></div>
+        <div class="s-charts">
+          <div class="s-panel"><h3 id="trendTitle">Xu hướng theo tuần</h3><p class="ps">Tiếp nhận, đã xử lý trong tuần và tồn đọng cuối tuần</p><div class="s-chart"><canvas id="cTrend"></canvas></div></div>
+          <div class="s-panel"><h3>Theo mức ưu tiên</h3><p class="ps">Ticket tiếp nhận trong tuần và đang tồn đọng</p><div class="s-chart"><canvas id="cPrio"></canvas></div></div>
+          <div class="s-panel"><h3>Thời gian tồn đọng</h3><p class="ps">Số ngày từ lúc tiếp nhận tới ngày chốt</p><div class="s-chart"><canvas id="cAge"></canvas></div></div>
+        </div>
+      </div>
+      <div class="s-foot" id="s1Foot"></div>
+    </div></div>
+
+    <div class="slide-label">Slide 2 · Ticket tồn đọng theo tuần</div>
+    <div class="slide-scroll"><div class="slide s2" id="slide2">
+      <div class="s-head"><div><h2 id="s2Title"></h2><div class="s-sub" id="s2Sub"></div></div><div class="s-brand">HQSOFT<small>Bộ phận hỗ trợ khách hàng</small></div></div>
+      <div class="s-body">
+        <div class="wk-strip" id="s2Weeks"></div>
+        <div id="s2Table"></div>
+      </div>
+      <div class="s-foot" id="s2Foot"></div>
+    </div></div>
+  </div>
+</div>
+
+<script>
+const FALLBACK_PROJECTS = [
+  {code:'MerapLion_eSales',label:'MERAP',name:'Merap'},{code:'ABI_eSales_Support',label:'ABI',name:'ABI'},{code:'ANVY_eSale_Support',label:'ANVY',name:'AnVy'},
+  {code:'Sabeco_PG',label:'SABECO-PG',name:'Sabeco PG'},{code:'Sabeco_B2B_Support',label:'SABECO-B2B',name:'Sabeco B2B'},{code:'FES_eSales',label:'FES',name:'FES'},
+  {code:'ANKO_eSales_Support',label:'ANKO',name:'ANKO'},{code:'HaiHa_eSales_Support',label:'HAIHA',name:'HAIHA'},{code:'Jotun_VN_eSales',label:'JOTUN',name:'JOTUN'}
+];
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const qp = new URLSearchParams(location.search);
+let projects = FALLBACK_PROJECTS;
+let project = qp.get('project') || 'MerapLion_eSales';
+const todayVN = () => new Date(Date.now() + 7*3600*1000).toISOString().slice(0,10);
+const mondayOf = iso => { const d = new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay()+6)%7)); return d.toISOString().slice(0,10); };
+const addDays = (iso, n) => { const d = new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); };
+let viewStart = mondayOf(/^\d{4}-\d{2}-\d{2}$/.test(qp.get('week')||'') ? qp.get('week') : todayVN());
+let charts = [], current = null, reqSeq = 0;
+
+const dm = iso => iso ? iso.slice(8,10)+'/'+iso.slice(5,7) : '';
+const dmy = iso => iso ? dm(iso)+'/'+iso.slice(0,4) : '';
+const dtVN = s => { s=String(s||''); return s.length>=16 ? s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4)+' '+s.slice(11,16) : (s.length>=10?dmy(s):s); };
+const pctTxt = v => v==null ? '—' : String(v).replace('.',',')+'%';
+const pname = () => (projects.find(p=>p.code===project)||{}).name || project;
+const plabel = () => (projects.find(p=>p.code===project)||{}).label || project;
+const showAssign = () => $('chkAssign').checked;
+const weekRange = w => 'Tuần '+w.number+' · '+dm(w.start)+' – '+dmy(w.end);
+
+async function api(url){
+  const r = await fetch(url); const j = await r.json().catch(()=>({error:'Phản hồi không hợp lệ (HTTP '+r.status+')'}));
+  if(r.status===401){ location.href='/?next='+encodeURIComponent(location.pathname+location.search); throw new Error('Phiên đăng nhập đã hết'); }
+  if(!r.ok) throw new Error(j.error || ('HTTP '+r.status));
+  return j;
+}
+
+/* ---------- dựng slide ---------- */
+function deltaTxt(cur, prev, upIsGood){
+  if(prev==null || cur==null) return '&nbsp;';
+  const d = cur - prev;
+  if(d===0) return 'Bằng tuần trước ('+prev+')';
+  const good = (d>0) === upIsGood;
+  return '<span class="'+(d>0?'up':'down')+'-'+(good?'good':'bad')+'">'+(d>0?'▲ +':'▼ ')+d+'</span> so với tuần trước ('+prev+')';
+}
+function kpis(d){
+  const s = d.summary, w = d.week;
+  return [
+    {cls:'', l:'Tiếp nhận trong tuần', v:s.opened, d:deltaTxt(s.opened, s.openedPrev, false), dText:plainDelta(s.opened, s.openedPrev)},
+    {cls:'k-res', l:'Đã xử lý trong tuần', v:s.resolved, d:deltaTxt(s.resolved, s.resolvedPrev, true), dText:plainDelta(s.resolved, s.resolvedPrev)},
+    {cls:'k-back', l:'Tồn đọng '+(w.isCurrent?'hiện tại':'cuối tuần'), v:s.backlog, d:deltaTxt(s.backlog, s.backlogPrev, false), dText:plainDelta(s.backlog, s.backlogPrev)},
+    {cls:'k-sla', l:'Đạt SLA phản hồi', v:pctTxt(s.frt.passRate), d:slaSub(s.frt), dText:slaSub(s.frt)},
+    {cls:'k-sla', l:'Đạt SLA xử lý', v:pctTxt(s.res.passRate), d:slaSub(s.res), dText:slaSub(s.res)},
+  ];
+}
+function plainDelta(cur, prev){ if(prev==null||cur==null) return ''; const d=cur-prev; return d===0 ? 'Bằng tuần trước ('+prev+')' : (d>0?'▲ +':'▼ ')+d+' so với tuần trước ('+prev+')'; }
+function slaSub(x){ return x.decided ? 'Đạt '+x.pass+'/'+x.decided+' ticket'+(x.pending?' · '+x.pending+' đang chờ':'') : (x.pending ? x.pending+' ticket đang chờ' : 'Chưa có ticket'); }
+
+const NOTE_SLA = 'Tiếp nhận / đã xử lý: theo ngày tiếp nhận / ngày hoàn tất trong tuần (T2 – CN). Tồn đọng: ticket đã tiếp nhận và chưa hoàn tất tại ngày chốt. SLA tính trên ticket tiếp nhận trong tuần: Critical/Urgent tính 24h liên tục, mức khác tính giờ làm việc T2 – T6 (08:00 – 17:30, trừ nghỉ trưa và ngày lễ); tỷ lệ đạt = đạt / (đạt + trượt), ticket còn trong ngưỡng là "đang chờ".';
+
+function render(d){
+  current = d;
+  const w = d.week, s = d.summary;
+  const snapTxt = 'Số liệu chốt ngày '+dmy(w.snapshotDay);
+  $('pickDate').value = w.start;
+  $('stamp').textContent = 'Cập nhật '+new Date(d.meta.generatedAt).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})+' · '+d.meta.rows+' ticket đã đọc từ ERP';
+  $('s1Title').textContent = 'BÁO CÁO TÌNH TRẠNG TICKET — '+pname().toUpperCase();
+  $('s1Sub').textContent = weekRange(w)+' · '+snapTxt;
+  $('s1Kpis').innerHTML = kpis(d).map(k=>'<div class="s-kpi '+k.cls+'"><div class="l">'+esc(k.l)+'</div><div class="v">'+esc(k.v)+'</div><div class="d">'+k.d+'</div></div>').join('');
+  $('trendTitle').textContent = 'Xu hướng '+d.trend.length+' tuần';
+  $('s1Foot').textContent = NOTE_SLA;
+
+  $('s2Title').textContent = 'DANH SÁCH TICKET TỒN ĐỌNG — '+pname().toUpperCase();
+  $('s2Sub').textContent = weekRange(w)+' · '+snapTxt+' · '+s.backlog+' ticket tồn đọng';
+  $('s2Weeks').innerHTML = s.backlogByOpenWeek.length ? '<span class="t">Theo tuần tiếp nhận:</span>'+s.backlogByOpenWeek.map(x=>'<span class="wk-chip" title="'+dmy(x.weekStart)+' – '+dmy(x.weekEnd)+'">Tuần '+x.week+' ('+dm(x.weekStart)+')<b>'+x.count+'</b></span>').join('') : '';
+  $('s2Table').innerHTML = backlogTableHtml(d);
+  $('s2Foot').textContent = 'Sắp xếp theo tuần tiếp nhận, trong mỗi tuần ưu tiên cao trước. Số ngày tồn tính từ ngày tiếp nhận tới ngày chốt; tô đỏ từ 14 ngày trở lên. Trạng thái là trạng thái hiện tại trên hệ thống.';
+  renderCharts(d);
+  $('notice').innerHTML = (d.meta.warnings||[]).map(x=>'<div class="msg info">'+esc(x)+'</div>').join('');
+  ['btnPng','btnPng2','btnXlsx','btnPptx'].forEach(id=>$(id).disabled=false);
+}
+
+function backlogHeads(){ return ['STT','Mã ticket','Tiêu đề','Ưu tiên','Trạng thái','Ngày tiếp nhận','Số ngày tồn'].concat(showAssign()?['Người xử lý']:[]); }
+function backlogTableHtml(d){
+  const rows = d.tickets.backlog;
+  if(!rows.length) return '<div class="empty">Không có ticket tồn đọng tại ngày chốt.</div>';
+  const heads = backlogHeads(); const n = heads.length; let html = '', i = 0, wk = null;
+  for(const t of rows){
+    if(t.openWeekStart !== wk){
+      wk = t.openWeekStart; const g = d.summary.backlogByOpenWeek.find(x=>x.weekStart===wk);
+      html += '<tr class="grp"><td colspan="'+n+'">Tuần '+esc(t.openWeek)+' ('+dm(wk)+' – '+dmy(addDays(wk,6))+') · '+(g?g.count:'')+' ticket</td></tr>';
+    }
+    html += '<tr><td class="n">'+(++i)+'</td><td class="mono">'+esc(t.name)+'</td><td>'+esc(t.subject)+'</td><td><span class="tag p-'+esc(t.priority)+'">'+esc(t.priority)+'</span></td><td>'+esc(t.status)+'</td><td class="mono">'+esc(dtVN(t.opening).slice(0,10))+'</td><td class="n'+(t.ageDays>=14?' old':'')+'">'+t.ageDays+'</td>'+(showAssign()?'<td>'+esc(t.assign||'—')+'</td>':'')+'</tr>';
+  }
+  return '<table class="bl"><thead><tr>'+heads.map(h=>'<th'+(h==='STT'||h==='Số ngày tồn'?' class="n"':'')+'>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+html+'</tbody></table>';
+}
+
+/* ---------- biểu đồ ---------- */
+const PRIO_ORDER = ['Critical','Urgent','High','Medium','Low'];
+function prioSeries(d){
+  const labels = [...new Set([...d.summary.openedByPriority, ...d.summary.backlogByPriority].map(x=>x.label))]
+    .sort((a,b)=>{ const ia=PRIO_ORDER.indexOf(a), ib=PRIO_ORDER.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib); });
+  const get = (arr,l) => (arr.find(x=>x.label===l)||{count:0}).count;
+  return { labels, opened: labels.map(l=>get(d.summary.openedByPriority,l)), backlog: labels.map(l=>get(d.summary.backlogByPriority,l)) };
+}
+const trendLabels = d => d.trend.map(t=>['Tuần '+t.week, dm(t.weekStart)]);
+function renderCharts(d){
+  charts.forEach(c=>c.destroy()); charts = [];
+  const base = { responsive:true, maintainAspectRatio:false, animation:false, devicePixelRatio:2,
+    plugins:{ legend:{ position:'bottom', labels:{ boxWidth:12, font:{ size:11.5 } } } },
+    scales:{ x:{ grid:{ display:false }, ticks:{ font:{ size:11 }, maxRotation:0, autoSkip:false } }, y:{ beginAtZero:true, ticks:{ precision:0, font:{ size:11 } }, grid:{ color:'rgba(31,78,121,.10)' } } } };
+  const labelPlugin = { id:'valueLabels', afterDatasetsDraw(chart){
+    const ctx = chart.ctx; ctx.save(); ctx.font = '600 11px "IBM Plex Sans", sans-serif'; ctx.fillStyle = '#12233D'; ctx.textAlign = 'center';
+    chart.data.datasets.forEach((ds,i)=>{ const meta = chart.getDatasetMeta(i); if(meta.hidden) return;
+      meta.data.forEach((el,j)=>{ const v = ds.data[j]; if(v==null || v===0) return; ctx.fillText(v, el.x, el.y - 5); }); });
+    ctx.restore(); } };
+  charts.push(new Chart($('cTrend'), { type:'bar', plugins:[labelPlugin], data:{ labels:trendLabels(d), datasets:[
+    { type:'line', label:'Tồn đọng cuối tuần', data:d.trend.map(t=>t.backlog), borderColor:'#E8A33D', backgroundColor:'#E8A33D', borderWidth:2.5, pointRadius:3, tension:.25, order:0 },
+    { label:'Tiếp nhận', data:d.trend.map(t=>t.opened), backgroundColor:'#1F4E79', order:1 },
+    { label:'Đã xử lý', data:d.trend.map(t=>t.closed), backgroundColor:'#3F7D58', order:1 },
+  ]}, options:base }));
+  const ps = prioSeries(d);
+  charts.push(new Chart($('cPrio'), { type:'bar', plugins:[labelPlugin], data:{ labels:ps.labels, datasets:[
+    { label:'Tiếp nhận trong tuần', data:ps.opened, backgroundColor:'#1F4E79' },
+    { label:'Đang tồn đọng', data:ps.backlog, backgroundColor:'#E8A33D' },
+  ]}, options:base }));
+  charts.push(new Chart($('cAge'), { type:'bar', plugins:[labelPlugin], data:{ labels:d.summary.backlogByAge.map(x=>{ const i = x.label.lastIndexOf(' '); return [x.label.slice(0,i), x.label.slice(i+1)]; }), datasets:[
+    { label:'Ticket tồn đọng', data:d.summary.backlogByAge.map(x=>x.count), backgroundColor:['#8EA3BA','#4F6D8F','#E8A33D','#D9663F','#B23A48'] },
+  ]}, options:{ ...base, plugins:{ legend:{ display:false } } } }));
+}
+
+/* ---------- tải dữ liệu ---------- */
+async function load(refresh){
+  const seq = ++reqSeq;
+  history.replaceState(null,'','?project='+encodeURIComponent(project)+'&week='+viewStart);
+  document.title = 'Báo cáo khách hàng — '+pname();
+  $('title').textContent = 'Báo cáo khách hàng — '+pname();
+  $('crumb').textContent = '/ dự án / '+pname().toLowerCase()+' / báo cáo khách hàng';
+  $('pickDate').value = viewStart;
+  $('loading').style.display = ''; $('loading').textContent = 'Đang lấy dữ liệu ticket từ ERP…';
+  ['btnPng','btnPng2','btnXlsx','btnPptx'].forEach(id=>$(id).disabled=true);
+  try{
+    const d = await api('/api/projects/customer-report?project='+encodeURIComponent(project)+'&week='+viewStart+'&weeks='+$('selWeeks').value+(refresh?'&refresh=1':''));
+    if(seq!==reqSeq) return;
+    $('loading').style.display = 'none'; $('content').style.display = '';
+    render(d);
+  }catch(e){
+    if(seq!==reqSeq) return;
+    $('loading').style.display = 'none';
+    $('notice').innerHTML = '<div class="msg err">Không lấy được dữ liệu: '+esc(e.message)+'</div>';
+  }
+}
+
+/* ---------- xuất file ---------- */
+const fileBase = () => 'BaoCao_'+plabel()+'_Tuan'+String(current.week.number).padStart(2,'0')+'_'+current.week.start.slice(0,4);
+function download(blob, name){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+async function withBusy(btn, fn){ const t = btn.textContent; btn.disabled = true; btn.textContent = 'Đang xuất…'; try{ await fn(); }catch(e){ alert('Xuất file lỗi: '+e.message); } finally{ btn.disabled = false; btn.textContent = t; } }
+
+async function exportPng(el, suffix){
+  if(document.fonts && document.fonts.ready) await document.fonts.ready;
+  const canvas = await html2canvas(el, { scale:2, backgroundColor:'#ffffff', useCORS:true });
+  const blob = await new Promise(r=>canvas.toBlob(r,'image/png'));
+  download(blob, fileBase()+suffix+'.png');
+}
+
+/* Excel: sheet "Tổng hợp" ghi đúng các con số trên slide 1, cột "Kiểm tra" là công thức đếm lại từ sheet chi tiết. */
+function buildWorkbook(d){
+  const s = d.summary, w = d.week, A = showAssign();
+  const SH = { opened:'Tiếp nhận trong tuần', resolved:'Đã xử lý trong tuần', backlog:'Tồn đọng', trend:'Xu hướng' };
+  const q = n => "'"+n+"'";
+  const hours = m => m==null ? '' : Math.round(m/60*10)/10;
+  const wb = XLSX.utils.book_new();
+
+  // ----- chi tiết: tiếp nhận -----
+  const hO = ['STT','Mã ticket','Tiêu đề','Ưu tiên','Loại yêu cầu','Trạng thái hiện tại','Ngày tiếp nhận','Phản hồi đầu lúc','Hoàn tất lúc','Ngưỡng SLA (giờ)','Thời gian phản hồi (giờ)','SLA phản hồi','Thời gian xử lý (giờ)','SLA xử lý'].concat(A?['Người xử lý']:[]);
+  const rO = s.opened ? d.tickets.opened.map((t,i)=>[i+1,t.name,t.subject,t.priority,t.requestType,t.status,dtVN(t.opening),dtVN(t.firstResponded),dtVN(t.resolvedAt),t.frt?hours(t.frt.threshold):'',t.frt?hours(t.frt.minutes):'',t.frt?t.frt.result:'',t.res?hours(t.res.minutes):'',t.res?t.res.result:''].concat(A?[t.assign]:[])) : [];
+  // ----- chi tiết: đã xử lý -----
+  const hR = ['STT','Mã ticket','Tiêu đề','Ưu tiên','Loại yêu cầu','Ngày tiếp nhận','Hoàn tất lúc','Thời gian xử lý (giờ)'].concat(A?['Người xử lý']:[]);
+  const rR = d.tickets.resolved.map((t,i)=>[i+1,t.name,t.subject,t.priority,t.requestType,dtVN(t.opening),dtVN(t.resolvedAt),hours(t.resolveMinutes)].concat(A?[t.assign]:[]));
+  // ----- chi tiết: tồn đọng -----
+  const hB = ['STT','Tuần tiếp nhận','Mã ticket','Tiêu đề','Ưu tiên','Trạng thái hiện tại','Ngày tiếp nhận','Số ngày tồn','Nhóm thời gian tồn'].concat(A?['Người xử lý']:[]);
+  const ageLabel = a => (d.summary.backlogByAge.map(x=>x.label))[a<=3?0:a<=7?1:a<=14?2:a<=30?3:4];
+  const rB = d.tickets.backlog.map((t,i)=>[i+1,'Tuần '+t.openWeek+' ('+dm(t.openWeekStart)+' – '+dmy(addDays(t.openWeekStart,6))+')',t.name,t.subject,t.priority,t.status,dtVN(t.opening),t.ageDays,ageLabel(t.ageDays)].concat(A?[t.assign]:[]));
+
+  // ----- tổng hợp -----
+  const O = q(SH.opened), R = q(SH.resolved), B = q(SH.backlog);
+  const S = [
+    ['BÁO CÁO TÌNH TRẠNG TICKET — '+pname().toUpperCase()],
+    ['Kỳ báo cáo', weekRange(w)],
+    ['Ngày chốt số liệu', dmy(w.snapshotDay)],
+    ['Xuất lúc', new Date().toLocaleString('vi-VN')],
+    [],
+    ['Chỉ số (slide 1)','Giá trị','Tuần trước','Sheet chi tiết','Kiểm tra (công thức đếm từ sheet chi tiết)'],
+    ['Tiếp nhận trong tuần', s.opened, s.openedPrev, SH.opened, {f:'COUNTA('+O+'!B:B)-1'}],
+    ['Đã xử lý trong tuần', s.resolved, s.resolvedPrev, SH.resolved, {f:'COUNTA('+R+'!B:B)-1'}],
+    ['Tồn đọng '+(w.isCurrent?'hiện tại':'cuối tuần'), s.backlog, s.backlogPrev, SH.backlog, {f:'COUNTA('+B+'!C:C)-1'}],
+    ['SLA phản hồi — Đạt', s.frt.pass, '', SH.opened, {f:'COUNTIF('+O+'!L:L,"Đạt")'}],
+    ['SLA phản hồi — Trượt', s.frt.fail, '', SH.opened, {f:'COUNTIF('+O+'!L:L,"Trượt")'}],
+    ['SLA phản hồi — Đang chờ', s.frt.pending, '', SH.opened, {f:'COUNTIF('+O+'!L:L,"Đang chờ")'}],
+    ['Tỷ lệ đạt SLA phản hồi (%)', s.frt.passRate==null?'':s.frt.passRate, '', SH.opened, {f:'IFERROR(ROUND(E10/(E10+E11)*100,1),"")'}],
+    ['SLA xử lý — Đạt', s.res.pass, '', SH.opened, {f:'COUNTIF('+O+'!N:N,"Đạt")'}],
+    ['SLA xử lý — Trượt', s.res.fail, '', SH.opened, {f:'COUNTIF('+O+'!N:N,"Trượt")'}],
+    ['SLA xử lý — Đang chờ', s.res.pending, '', SH.opened, {f:'COUNTIF('+O+'!N:N,"Đang chờ")'}],
+    ['Tỷ lệ đạt SLA xử lý (%)', s.res.passRate==null?'':s.res.passRate, '', SH.opened, {f:'IFERROR(ROUND(E14/(E14+E15)*100,1),"")'}],
+    [],
+  ];
+  const ps = prioSeries(d);
+  S.push(['Theo mức ưu tiên','Tiếp nhận trong tuần','Đang tồn đọng','','Kiểm tra (tiếp nhận / tồn đọng)']);
+  ps.labels.forEach((l,i)=>S.push([l, ps.opened[i], ps.backlog[i], '', {f:'COUNTIF('+O+'!D:D,"'+l+'")&" / "&COUNTIF('+B+'!E:E,"'+l+'")'}]));
+  S.push([]);
+  S.push(['Thời gian tồn đọng','Số ticket','','','Kiểm tra']);
+  s.backlogByAge.forEach(x=>S.push([x.label, x.count, '', '', {f:'COUNTIF('+B+'!I:I,"'+x.label+'")'}]));
+  S.push([]);
+  S.push(['Tồn đọng theo tuần tiếp nhận','Số ticket','','','Kiểm tra']);
+  s.backlogByOpenWeek.forEach(x=>{ const lbl = 'Tuần '+x.week+' ('+dm(x.weekStart)+' – '+dmy(x.weekEnd)+')'; S.push([lbl, x.count, '', '', {f:'COUNTIF('+B+'!B:B,"'+lbl+'")'}]); });
+  S.push([]);
+  S.push(['Ghi chú', NOTE_SLA]);
+
+  const shS = XLSX.utils.aoa_to_sheet(S.map(r=>r.map(c=>c)));
+  // aoa_to_sheet không nhận {f}, gán công thức sau khi tạo
+  S.forEach((r,ri)=>r.forEach((c,ci)=>{ if(c && typeof c==='object' && c.f){ shS[XLSX.utils.encode_cell({r:ri,c:ci})] = { t:c.f.includes('&')?'s':'n', f:c.f }; } }));
+  shS['!cols'] = [{wch:38},{wch:22},{wch:16},{wch:24},{wch:44}];
+  XLSX.utils.book_append_sheet(wb, shS, 'Tổng hợp');
+
+  const add = (name, head, rows, cols) => { const sh = XLSX.utils.aoa_to_sheet([head, ...rows]); sh['!cols'] = cols.map(w=>({wch:w})); sh['!autofilter'] = { ref: XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(rows.length,1),c:head.length-1}}) }; XLSX.utils.book_append_sheet(wb, sh, name); };
+  add(SH.opened, hO, rO, [5,16,60,10,26,16,17,17,17,12,14,12,14,12,30]);
+  add(SH.resolved, hR, rR, [5,16,60,10,26,17,17,14,30]);
+  add(SH.backlog, hB, rB, [5,26,16,60,10,16,17,11,16,30]);
+  add(SH.trend, ['Tuần','Từ ngày','Đến ngày','Tiếp nhận','Đã xử lý','Tồn đọng cuối tuần'], d.trend.map(t=>['Tuần '+t.week, dmy(t.weekStart), dmy(t.weekEnd), t.opened, t.closed, t.backlog==null?'':t.backlog]), [10,12,12,11,11,18]);
+  return wb;
+}
+function exportXlsx(){ XLSX.writeFile(buildWorkbook(current), fileBase()+'.xlsx'); }
+
+/* PowerPoint: dựng lại bằng shape/biểu đồ/bảng gốc của PowerPoint (chỉnh sửa được), khổ 16:9 (13,333 × 7,5 in). */
+function buildPptx(d){
+  const pptx = new PptxGenJS(); pptx.layout = 'LAYOUT_WIDE'; pptx.author = 'HQSOFT'; pptx.title = 'Báo cáo tình trạng ticket — '+pname();
+  const F = 'Arial', NAVY = '12233D', BLUE = '1F4E79', AMBER = 'E8A33D', GREEN = '3F7D58', MUTED = '5B7089', LINE = 'C9D5E3';
+  const w = d.week, s = d.summary, snapTxt = 'Số liệu chốt ngày '+dmy(w.snapshotDay);
+  const header = (slide, title, sub) => {
+    slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:13.333, h:1.0, fill:{ color:NAVY }, line:{ color:NAVY } });
+    slide.addText(title, { x:0.42, y:0.14, w:10, h:0.48, fontFace:F, fontSize:22, bold:true, color:'FFFFFF', margin:0 });
+    slide.addText(sub, { x:0.42, y:0.6, w:10, h:0.3, fontFace:F, fontSize:12, color:'C9D5E3', margin:0 });
+    slide.addText([{ text:'HQSOFT', options:{ fontSize:16, bold:true, color:AMBER, breakLine:true } }, { text:'Bộ phận hỗ trợ khách hàng', options:{ fontSize:9.5, color:'C9D5E3' } }], { x:9.9, y:0.2, w:3.0, h:0.6, fontFace:F, align:'right', margin:0 });
+  };
+  const footer = (slide, text) => slide.addText(text, { x:0.42, y:6.95, w:12.5, h:0.45, fontFace:F, fontSize:8.5, color:MUTED, margin:0, valign:'bottom' });
+
+  // ----- slide 1 -----
+  const s1 = pptx.addSlide(); s1.background = { color:'FFFFFF' };
+  header(s1, 'BÁO CÁO TÌNH TRẠNG TICKET — '+pname().toUpperCase(), weekRange(w)+' · '+snapTxt);
+  const tileColors = [BLUE, GREEN, AMBER, '6C5B9E', '6C5B9E'];
+  const tw = 2.35, gap = 0.15, ty = 1.25, th = 1.25;
+  kpis(d).forEach((k,i)=>{
+    const x = 0.42 + i*(tw+gap);
+    s1.addShape(pptx.ShapeType.rect, { x, y:ty, w:tw, h:th, fill:{ color:'FFFFFF' }, line:{ color:LINE, width:0.75 } });
+    s1.addShape(pptx.ShapeType.rect, { x, y:ty, w:tw, h:0.06, fill:{ color:tileColors[i] }, line:{ color:tileColors[i] } });
+    s1.addText(k.l, { x:x+0.12, y:ty+0.12, w:tw-0.24, h:0.28, fontFace:F, fontSize:11, bold:true, color:MUTED, margin:0 });
+    s1.addText(String(k.v), { x:x+0.12, y:ty+0.4, w:tw-0.24, h:0.5, fontFace:F, fontSize:28, bold:true, color:NAVY, margin:0 });
+    s1.addText(k.dText||'', { x:x+0.12, y:ty+0.92, w:tw-0.24, h:0.26, fontFace:F, fontSize:9, color:MUTED, margin:0 });
+  });
+  const cy = 2.7, ch = 4.15;
+  const panel = (x, wdt, title, sub) => {
+    s1.addShape(pptx.ShapeType.rect, { x, y:cy, w:wdt, h:ch, fill:{ color:'FFFFFF' }, line:{ color:LINE, width:0.75 } });
+    s1.addText(title, { x:x+0.12, y:cy+0.08, w:wdt-0.24, h:0.28, fontFace:F, fontSize:12, bold:true, color:NAVY, margin:0 });
+    s1.addText(sub, { x:x+0.12, y:cy+0.36, w:wdt-0.24, h:0.22, fontFace:F, fontSize:8.5, color:MUTED, margin:0 });
+  };
+  const chartBase = { fontFace:F, catAxisLabelFontSize:8, valAxisLabelFontSize:8, catAxisLabelFontFace:F, valAxisLabelFontFace:F, showLegend:true, legendPos:'b', legendFontSize:8.5, legendFontFace:F,
+    valGridLine:{ color:'E3E9F0', size:0.5 }, catGridLine:{ style:'none' }, dataLabelFontSize:8, dataLabelFontFace:F, valAxisMinVal:0 };
+  const p1w = 5.4, p2w = 3.4, p3w = 3.4, px1 = 0.42, px2 = px1+p1w+gap, px3 = px2+p2w+gap;
+  panel(px1, p1w, 'Xu hướng '+d.trend.length+' tuần', 'Tiếp nhận, đã xử lý trong tuần và tồn đọng cuối tuần');
+  panel(px2, p2w, 'Theo mức ưu tiên', 'Ticket tiếp nhận trong tuần và đang tồn đọng');
+  panel(px3, p3w, 'Thời gian tồn đọng', 'Số ngày từ lúc tiếp nhận tới ngày chốt');
+  const tl = d.trend.map(t=>'T'+t.week);
+  s1.addChart([
+    { type:pptx.ChartType.bar, data:[ { name:'Tiếp nhận', labels:tl, values:d.trend.map(t=>t.opened) }, { name:'Đã xử lý', labels:tl, values:d.trend.map(t=>t.closed) } ],
+      options:{ barGrouping:'clustered', chartColors:[BLUE, GREEN] } },
+    { type:pptx.ChartType.line, data:[ { name:'Tồn đọng cuối tuần', labels:tl, values:d.trend.map(t=>t.backlog==null?0:t.backlog) } ],
+      options:{ chartColors:[AMBER], lineSize:2, lineDataSymbol:'circle', lineDataSymbolSize:5 } },
+  ], { ...chartBase, x:px1+0.05, y:cy+0.6, w:p1w-0.1, h:ch-0.68, showValue:true });
+  const ps = prioSeries(d);
+  s1.addChart(pptx.ChartType.bar, [ { name:'Tiếp nhận trong tuần', labels:ps.labels.length?ps.labels:['—'], values:ps.labels.length?ps.opened:[0] }, { name:'Đang tồn đọng', labels:ps.labels.length?ps.labels:['—'], values:ps.labels.length?ps.backlog:[0] } ],
+    { ...chartBase, x:px2+0.05, y:cy+0.6, w:p2w-0.1, h:ch-0.68, barDir:'col', barGrouping:'clustered', chartColors:[BLUE, AMBER], showValue:true });
+  s1.addChart(pptx.ChartType.bar, [ { name:'Ticket tồn đọng', labels:s.backlogByAge.map(x=>x.label), values:s.backlogByAge.map(x=>x.count) } ],
+    { ...chartBase, x:px3+0.05, y:cy+0.6, w:p3w-0.1, h:ch-0.68, barDir:'col', showLegend:false, chartColors:['8EA3BA','4F6D8F','E8A33D','D9663F','B23A48'], showValue:true });
+  footer(s1, NOTE_SLA);
+
+  // ----- slide 2: bảng tồn đọng; danh sách dài thì chia sang các slide tiếp theo, mỗi slide lặp lại tiêu đề + dòng đầu bảng -----
+  const heads = backlogHeads(); const A = showAssign();
+  const colW = A ? [0.45,1.25,4.6,0.95,1.05,1.15,0.85,2.2] : [0.5,1.4,6.4,1.0,1.15,1.2,0.85];
+  const maxSubj = A ? 62 : 88;
+  const cut = (t, n) => { t = String(t||''); return t.length > n ? t.slice(0, n-1)+'…' : t; };
+  const hcell = t => ({ text:t, options:{ bold:true, color:'FFFFFF', fill:{ color:BLUE }, align:(t==='STT'||t==='Số ngày tồn')?'right':'left' } });
+  const body = [];
+  if(!d.tickets.backlog.length) body.push([{ text:'Không có ticket tồn đọng tại ngày chốt.', options:{ colspan:heads.length, align:'center', color:MUTED } }]);
+  let i = 0, wk = null;
+  for(const t of d.tickets.backlog){
+    if(t.openWeekStart !== wk){
+      wk = t.openWeekStart; const g = s.backlogByOpenWeek.find(x=>x.weekStart===wk);
+      body.push([{ text:'Tuần '+t.openWeek+' ('+dm(wk)+' – '+dmy(addDays(wk,6))+') · '+(g?g.count:'')+' ticket', options:{ colspan:heads.length, bold:true, color:BLUE, fill:{ color:'EAF1F8' } } }]);
+    }
+    const prColor = /^(critical|urgent)$/i.test(t.priority) ? 'B23A48' : /^high$/i.test(t.priority) ? 'C9821F' : NAVY;
+    body.push([
+      { text:String(++i), options:{ align:'right' } }, { text:t.name }, { text:cut(t.subject, maxSubj) }, { text:t.priority, options:{ color:prColor, bold:prColor!==NAVY } },
+      { text:t.status }, { text:dtVN(t.opening).slice(0,10) }, { text:String(t.ageDays), options:{ align:'right', color:t.ageDays>=14?'B23A48':NAVY, bold:t.ageDays>=14 } },
+    ].concat(A?[{ text:cut(t.assign||'—', 34) }]:[]));
+  }
+  const wkTxt = s.backlogByOpenWeek.map(x=>'Tuần '+x.week+' ('+dm(x.weekStart)+'): '+x.count).join('   ·   ');
+  const FIRST = 21, NEXT = 23, ROW_H = 0.235;
+  const pages = []; let k = 0;
+  while(k < body.length || !pages.length){
+    let end = Math.min(body.length, k + (pages.length ? NEXT : FIRST));
+    if(end < body.length && end - k > 1 && body[end-1].length === 1) end--; // không để dòng "Tuần ..." nằm cuối slide
+    pages.push(body.slice(k, end)); k = end;
+  }
+  pages.forEach((chunk, pi) => {
+    const sl = pptx.addSlide(); sl.background = { color:'FFFFFF' };
+    header(sl, 'DANH SÁCH TICKET TỒN ĐỌNG — '+pname().toUpperCase()+(pages.length>1?' ('+(pi+1)+'/'+pages.length+')':''), weekRange(w)+' · '+snapTxt+' · '+s.backlog+' ticket tồn đọng');
+    let y = 1.2;
+    if(pi===0 && wkTxt){ sl.addText('Theo tuần tiếp nhận:   '+wkTxt, { x:0.42, y:1.1, w:12.5, h:0.5, fontFace:F, fontSize:9.5, color:NAVY, margin:0, valign:'middle' }); y = 1.68; }
+    sl.addTable([heads.map(hcell), ...chunk], { x:0.42, y, w:12.5, colW, rowH:ROW_H, fontFace:F, fontSize:8.5, color:NAVY, border:{ type:'solid', pt:0.5, color:'D5DEE8' }, valign:'middle', margin:0.04 });
+    footer(sl, 'Sắp xếp theo tuần tiếp nhận, trong mỗi tuần ưu tiên cao trước. Số ngày tồn tính từ ngày tiếp nhận tới ngày chốt; tô đỏ từ 14 ngày trở lên. Trạng thái là trạng thái hiện tại trên hệ thống.');
+  });
+  return pptx;
+}
+async function exportPptx(){ await buildPptx(current).writeFile({ fileName:fileBase()+'.pptx' }); }
+
+/* ---------- sự kiện ---------- */
+function go(start){ viewStart = start; load(false); }
+$('btnPrev').onclick = () => go(addDays(viewStart,-7));
+$('btnNext').onclick = () => go(addDays(viewStart,7));
+$('btnThis').onclick = () => go(mondayOf(todayVN()));
+$('pickDate').onchange = e => { if(e.target.value) go(mondayOf(e.target.value)); };
+$('selWeeks').onchange = () => load(false);
+$('btnReload').onclick = () => load(true);
+$('selProject').onchange = e => { project = e.target.value; load(false); };
+$('chkAssign').onchange = () => { if(current) render(current); };
+$('btnPng').onclick = e => withBusy(e.target, () => exportPng($('slide1'), '_Slide1'));
+$('btnPng2').onclick = e => withBusy(e.target, () => exportPng($('slide2'), '_Slide2'));
+$('btnXlsx').onclick = e => withBusy(e.target, async () => exportXlsx());
+$('btnPptx').onclick = e => withBusy(e.target, exportPptx);
+
+(async function init(){
+  try{ const list = await api('/api/ticket-instructions'); if(Array.isArray(list) && list.length) projects = list; }catch(_){}
+  if(!projects.some(p=>p.code===project)) project = projects[0].code;
+  $('selProject').innerHTML = projects.map(p=>'<option value="'+esc(p.code)+'"'+(p.code===project?' selected':'')+'>'+esc(p.name)+'</option>').join('');
+  load(false);
+})();
+</script>
+</body>
+</html>
