@@ -44,14 +44,27 @@
   .s-head .s-sub{font-size:15px;color:#C9D5E3;margin-top:4px;}
   .s-head .s-brand{font-family:'Space Grotesk',sans-serif;font-size:20px;color:var(--amber);font-weight:700;text-align:right;}
   .s-head .s-brand small{display:block;font-family:'IBM Plex Sans',sans-serif;font-size:12px;color:#C9D5E3;font-weight:500;}
+  .s1 .s-body{padding:18px 40px 0;}
   .s-body{padding:22px 40px 0;}
-  .s-kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;}
-  .s-kpi{border:1px solid var(--grid-line-strong);border-radius:10px;padding:12px 16px;border-top:5px solid var(--blueprint);height:118px;}
-  .s-kpi .l{font-size:13px;color:var(--muted);font-weight:600;}
-  .s-kpi .v{font-family:'Space Grotesk',sans-serif;font-size:40px;font-weight:700;line-height:1.15;margin-top:2px;}
-  .s-kpi .d{font-size:12.5px;color:var(--muted);}
+  .s-kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;}
+  .s-kpi{border:1px solid var(--grid-line-strong);border-radius:10px;padding:10px 14px;border-top:5px solid var(--blueprint);height:106px;}
+  .s-kpi .l{font-size:12.5px;color:var(--muted);font-weight:600;white-space:nowrap;}
+  .s-kpi .v{font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:700;line-height:1.15;margin-top:2px;}
+  .s-kpi .d{font-size:11.5px;color:var(--muted);line-height:1.35;}
   .s-kpi.k-res{border-top-color:var(--success);} .s-kpi.k-back{border-top-color:var(--amber);} .s-kpi.k-sla{border-top-color:#6C5B9E;}
+  .s-kpi.k-carry{border-top-color:#4F6D8F;} .s-kpi.k-over{border-top-color:var(--danger);}
+  .s-kpi .v.good{color:var(--success);} .s-kpi .v.warn{color:var(--amber-deep);} .s-kpi .v.bad{color:var(--danger);}
+  .s-status{margin-top:12px;border:1px solid var(--grid-line-strong);border-radius:10px;padding:9px 14px 11px;}
+  .s-status .st-top{display:flex;align-items:baseline;gap:10px;}
+  .s-status h3{margin:0;font-size:14.5px;font-family:'Space Grotesk',sans-serif;}
+  .s-status .ps{font-size:11.5px;color:var(--muted);margin:0;}
+  .st-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:7px;}
+  .st-box{border:1px solid var(--grid-line-strong);border-left:5px solid var(--c);border-radius:8px;padding:0 12px;height:46px;display:flex;justify-content:space-between;align-items:center;}
+  .st-box .sl{font-size:13.5px;font-weight:600;color:var(--ink);}
+  .st-box .sv{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;color:var(--ink);}
+  .st-box.zero .sv{color:#A9B6C5;}
   .s-charts{display:grid;grid-template-columns:1.55fr 1fr 1fr;gap:14px;margin-top:16px;}
+  .s1 .s-charts{margin-top:12px;} .s1 .s-chart{height:252px;}
   .s-panel{border:1px solid var(--grid-line-strong);border-radius:10px;padding:12px 14px 8px;}
   .s-panel h3{margin:0;font-size:14.5px;font-family:'Space Grotesk',sans-serif;}
   .s-panel .ps{font-size:11.5px;color:var(--muted);margin:1px 0 4px;}
@@ -107,6 +120,7 @@
       <div class="s-head"><div><h2 id="s1Title"></h2><div class="s-sub" id="s1Sub"></div></div><div class="s-brand">HQSOFT<small>Bộ phận hỗ trợ khách hàng</small></div></div>
       <div class="s-body">
         <div class="s-kpis" id="s1Kpis"></div>
+        <div class="s-status"><div class="st-top"><h3>Trạng thái ticket tiếp nhận trong tuần</h3><p class="ps" id="stNote"></p></div><div class="st-grid" id="s1Status"></div></div>
         <div class="s-charts">
           <div class="s-panel"><h3 id="trendTitle">Xu hướng theo tuần</h3><p class="ps">Tiếp nhận, đã xử lý trong tuần và tồn đọng cuối tuần</p><div class="s-chart"><canvas id="cTrend"></canvas></div></div>
           <div class="s-panel"><h3>Theo mức ưu tiên</h3><p class="ps">Ticket tiếp nhận trong tuần và đang tồn đọng</p><div class="s-chart"><canvas id="cPrio"></canvas></div></div>
@@ -171,18 +185,28 @@ function deltaTxt(cur, prev, upIsGood){
 }
 function kpis(d){
   const s = d.summary, w = d.week;
+  const slaTone = v => v==null ? '' : v>=95 ? 'good' : v>=80 ? 'warn' : 'bad';
+  const slaD = 'Phản hồi '+pctTxt(s.frt.passRate)+' · Xử lý '+pctTxt(s.res.passRate);
+  const carryD = s.carriedOver==null ? '&nbsp;' : 'Còn '+s.carriedOverStillOpen+' chưa xử lý';
+  const overD = s.backlog ? 'Trong '+s.backlog+' ticket tồn đọng' : 'Không có ticket tồn đọng';
   return [
+    {cls:'k-sla', l:'Đạt SLA', v:pctTxt(s.sla.passRate), tone:slaTone(s.sla.passRate), d:slaD, dText:slaD},
     {cls:'', l:'Tiếp nhận trong tuần', v:s.opened, d:deltaTxt(s.opened, s.openedPrev, false), dText:plainDelta(s.opened, s.openedPrev)},
     {cls:'k-res', l:'Đã xử lý trong tuần', v:s.resolved, d:deltaTxt(s.resolved, s.resolvedPrev, true), dText:plainDelta(s.resolved, s.resolvedPrev)},
+    {cls:'k-over', l:'Quá hạn SLA', v:s.overdue, tone:s.overdue?'bad':'good', d:overD, dText:overD},
+    {cls:'k-carry', l:'Tồn từ tuần trước', v:s.carriedOver==null?'—':s.carriedOver, d:carryD, dText:carryD.replace('&nbsp;','')},
     {cls:'k-back', l:'Tồn đọng '+(w.isCurrent?'hiện tại':'cuối tuần'), v:s.backlog, d:deltaTxt(s.backlog, s.backlogPrev, false), dText:plainDelta(s.backlog, s.backlogPrev)},
-    {cls:'k-sla', l:'Đạt SLA phản hồi', v:pctTxt(s.frt.passRate), d:slaSub(s.frt), dText:slaSub(s.frt)},
-    {cls:'k-sla', l:'Đạt SLA xử lý', v:pctTxt(s.res.passRate), d:slaSub(s.res), dText:slaSub(s.res)},
   ];
+}
+const STATUS_COLORS = { Open:'#1F4E79', Working:'#2E86AB', Reviewing:'#6C5B9E', Waiting:'#E8A33D', Pending:'#D9663F', Closed:'#3F7D58' };
+function statusNote(s){
+  const other = (s.openedOtherStatus||[]).map(x=>x.label+': '+x.count).join(', ');
+  return s.opened+' ticket theo trạng thái hiện tại · Open gồm cả Assign và Re-open'+(other?' · Trạng thái khác: '+other:'');
 }
 function plainDelta(cur, prev){ if(prev==null||cur==null) return ''; const d=cur-prev; return d===0 ? 'Bằng tuần trước ('+prev+')' : (d>0?'▲ +':'▼ ')+d+' so với tuần trước ('+prev+')'; }
 function slaSub(x){ return x.decided ? 'Đạt '+x.pass+'/'+x.decided+' ticket'+(x.pending?' · '+x.pending+' đang chờ':'') : (x.pending ? x.pending+' ticket đang chờ' : 'Chưa có ticket'); }
 
-const NOTE_SLA = 'Tiếp nhận / đã xử lý: theo ngày tiếp nhận / ngày hoàn tất trong tuần (T2 – CN). Tồn đọng: ticket đã tiếp nhận và chưa hoàn tất tại ngày chốt. SLA tính trên ticket tiếp nhận trong tuần: Critical/Urgent tính 24h liên tục, mức khác tính giờ làm việc T2 – T6 (08:00 – 17:30, trừ nghỉ trưa và ngày lễ); tỷ lệ đạt = đạt / (đạt + trượt), ticket còn trong ngưỡng là "đang chờ".';
+const NOTE_SLA = 'Tiếp nhận / đã xử lý: theo ngày tiếp nhận / ngày hoàn tất trong tuần (T2 – CN). Tồn đọng: ticket đã tiếp nhận và chưa hoàn tất tại ngày chốt. SLA tính trên ticket tiếp nhận trong tuần: Critical/Urgent tính 24h liên tục, mức khác tính giờ làm việc T2 – T6 (08:00 – 17:30, trừ nghỉ trưa và ngày lễ); tỷ lệ đạt = đạt / (đạt + trượt), ticket còn trong ngưỡng là "đang chờ"; "Đạt SLA" gộp cả phản hồi và xử lý. Quá hạn SLA: ticket tồn đọng đã vượt ngưỡng xử lý tại ngày chốt. Tồn từ tuần trước: số ticket tồn đọng cuối tuần trước.';
 
 function render(d){
   current = d;
@@ -192,7 +216,9 @@ function render(d){
   $('stamp').textContent = 'Cập nhật '+new Date(d.meta.generatedAt).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})+' · '+d.meta.rows+' ticket đã đọc từ ERP';
   $('s1Title').textContent = 'BÁO CÁO TÌNH TRẠNG TICKET — '+pname().toUpperCase();
   $('s1Sub').textContent = weekRange(w)+' · '+snapTxt;
-  $('s1Kpis').innerHTML = kpis(d).map(k=>'<div class="s-kpi '+k.cls+'"><div class="l">'+esc(k.l)+'</div><div class="v">'+esc(k.v)+'</div><div class="d">'+k.d+'</div></div>').join('');
+  $('s1Kpis').innerHTML = kpis(d).map(k=>'<div class="s-kpi '+k.cls+'"><div class="l">'+esc(k.l)+'</div><div class="v '+(k.tone||'')+'">'+esc(k.v)+'</div><div class="d">'+k.d+'</div></div>').join('');
+  $('stNote').textContent = statusNote(s);
+  $('s1Status').innerHTML = s.openedByStatusBox.map(b=>'<div class="st-box'+(b.count?'':' zero')+'" style="--c:'+(STATUS_COLORS[b.label]||'#1F4E79')+'" title="'+esc(b.statuses.join(', '))+'"><span class="sl">'+esc(b.label)+'</span><span class="sv">'+b.count+'</span></div>').join('');
   $('trendTitle').textContent = 'Xu hướng '+d.trend.length+' tuần';
   $('s1Foot').textContent = NOTE_SLA;
 
@@ -304,9 +330,9 @@ function buildWorkbook(d){
   const hR = ['STT','Mã ticket','Tiêu đề','Ưu tiên','Loại yêu cầu','Ngày tiếp nhận','Hoàn tất lúc','Thời gian xử lý (giờ)'].concat(A?['Người xử lý']:[]);
   const rR = d.tickets.resolved.map((t,i)=>[i+1,t.name,t.subject,t.priority,t.requestType,dtVN(t.opening),dtVN(t.resolvedAt),hours(t.resolveMinutes)].concat(A?[t.assign]:[]));
   // ----- chi tiết: tồn đọng -----
-  const hB = ['STT','Tuần tiếp nhận','Mã ticket','Tiêu đề','Ưu tiên','Trạng thái hiện tại','Ngày tiếp nhận','Số ngày tồn','Nhóm thời gian tồn'].concat(A?['Người xử lý']:[]);
+  const hB = ['STT','Tuần tiếp nhận','Mã ticket','Tiêu đề','Ưu tiên','Trạng thái hiện tại','Ngày tiếp nhận','Số ngày tồn','Nhóm thời gian tồn','Quá hạn SLA','Từ tuần trước'].concat(A?['Người xử lý']:[]);
   const ageLabel = a => (d.summary.backlogByAge.map(x=>x.label))[a<=3?0:a<=7?1:a<=14?2:a<=30?3:4];
-  const rB = d.tickets.backlog.map((t,i)=>[i+1,'Tuần '+t.openWeek+' ('+dm(t.openWeekStart)+' – '+dmy(addDays(t.openWeekStart,6))+')',t.name,t.subject,t.priority,t.status,dtVN(t.opening),t.ageDays,ageLabel(t.ageDays)].concat(A?[t.assign]:[]));
+  const rB = d.tickets.backlog.map((t,i)=>[i+1,'Tuần '+t.openWeek+' ('+dm(t.openWeekStart)+' – '+dmy(addDays(t.openWeekStart,6))+')',t.name,t.subject,t.priority,t.status,dtVN(t.opening),t.ageDays,ageLabel(t.ageDays),t.overdue?'Có':'Không',t.fromPrevWeek?'Có':'Không'].concat(A?[t.assign]:[]));
 
   // ----- tổng hợp -----
   const O = q(SH.opened), R = q(SH.resolved), B = q(SH.backlog);
@@ -328,8 +354,16 @@ function buildWorkbook(d){
     ['SLA xử lý — Trượt', s.res.fail, '', SH.opened, {f:'COUNTIF('+O+'!N:N,"Trượt")'}],
     ['SLA xử lý — Đang chờ', s.res.pending, '', SH.opened, {f:'COUNTIF('+O+'!N:N,"Đang chờ")'}],
     ['Tỷ lệ đạt SLA xử lý (%)', s.res.passRate==null?'':s.res.passRate, '', SH.opened, {f:'IFERROR(ROUND(E14/(E14+E15)*100,1),"")'}],
+    ['Đạt SLA — gộp phản hồi + xử lý (%)', s.sla.passRate==null?'':s.sla.passRate, '', SH.opened, {f:'IFERROR(ROUND((E10+E14)/(E10+E11+E14+E15)*100,1),"")'}],
+    ['Quá hạn SLA (trong tồn đọng)', s.overdue, '', SH.backlog, {f:'COUNTIF('+B+'!J:J,"Có")'}],
+    ['Tồn từ tuần trước (tồn cuối tuần trước)', s.carriedOver==null?'':s.carriedOver, '', SH.trend, ''],
+    ['Tồn từ tuần trước — còn chưa xử lý tại ngày chốt', s.carriedOverStillOpen, '', SH.backlog, {f:'COUNTIF('+B+'!K:K,"Có")'}],
     [],
   ];
+  S.push(['Trạng thái ticket tiếp nhận trong tuần','Số ticket','Gồm trạng thái','','Kiểm tra']);
+  s.openedByStatusBox.forEach(b=>S.push([b.label, b.count, b.statuses.join(', '), SH.opened, {f:b.statuses.map(x=>'COUNTIF('+O+'!F:F,"'+x+'")').join('+')}]));
+  (s.openedOtherStatus||[]).forEach(x=>S.push(['Khác: '+x.label, x.count, '', SH.opened, '']));
+  S.push([]);
   const ps = prioSeries(d);
   S.push(['Theo mức ưu tiên','Tiếp nhận trong tuần','Đang tồn đọng','','Kiểm tra (tiếp nhận / tồn đọng)']);
   ps.labels.forEach((l,i)=>S.push([l, ps.opened[i], ps.backlog[i], '', {f:'COUNTIF('+O+'!D:D,"'+l+'")&" / "&COUNTIF('+B+'!E:E,"'+l+'")'}]));
@@ -351,7 +385,7 @@ function buildWorkbook(d){
   const add = (name, head, rows, cols) => { const sh = XLSX.utils.aoa_to_sheet([head, ...rows]); sh['!cols'] = cols.map(w=>({wch:w})); sh['!autofilter'] = { ref: XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(rows.length,1),c:head.length-1}}) }; XLSX.utils.book_append_sheet(wb, sh, name); };
   add(SH.opened, hO, rO, [5,16,60,10,26,16,17,17,17,12,14,12,14,12,30]);
   add(SH.resolved, hR, rR, [5,16,60,10,26,17,17,14,30]);
-  add(SH.backlog, hB, rB, [5,26,16,60,10,16,17,11,16,30]);
+  add(SH.backlog, hB, rB, [5,26,16,60,10,16,17,11,16,12,14,30]);
   add(SH.trend, ['Tuần','Từ ngày','Đến ngày','Tiếp nhận','Đã xử lý','Tồn đọng cuối tuần'], d.trend.map(t=>['Tuần '+t.week, dmy(t.weekStart), dmy(t.weekEnd), t.opened, t.closed, t.backlog==null?'':t.backlog]), [10,12,12,11,11,18]);
   return wb;
 }
@@ -373,17 +407,30 @@ function buildPptx(d){
   // ----- slide 1 -----
   const s1 = pptx.addSlide(); s1.background = { color:'FFFFFF' };
   header(s1, 'BÁO CÁO TÌNH TRẠNG TICKET — '+pname().toUpperCase(), weekRange(w)+' · '+snapTxt);
-  const tileColors = [BLUE, GREEN, AMBER, '6C5B9E', '6C5B9E'];
-  const tw = 2.35, gap = 0.15, ty = 1.25, th = 1.25;
+  const tileColors = { '':BLUE, 'k-res':GREEN, 'k-back':AMBER, 'k-sla':'6C5B9E', 'k-carry':'4F6D8F', 'k-over':'B23A48' };
+  const toneColors = { good:GREEN, warn:'C9821F', bad:'B23A48' };
+  const gap = 0.15, tw = (12.5 - 5*0.12)/6, ty = 1.18, th = 1.12;
   kpis(d).forEach((k,i)=>{
-    const x = 0.42 + i*(tw+gap);
+    const x = 0.42 + i*(tw+0.12), c = tileColors[k.cls] || BLUE;
     s1.addShape(pptx.ShapeType.rect, { x, y:ty, w:tw, h:th, fill:{ color:'FFFFFF' }, line:{ color:LINE, width:0.75 } });
-    s1.addShape(pptx.ShapeType.rect, { x, y:ty, w:tw, h:0.06, fill:{ color:tileColors[i] }, line:{ color:tileColors[i] } });
-    s1.addText(k.l, { x:x+0.12, y:ty+0.12, w:tw-0.24, h:0.28, fontFace:F, fontSize:11, bold:true, color:MUTED, margin:0 });
-    s1.addText(String(k.v), { x:x+0.12, y:ty+0.4, w:tw-0.24, h:0.5, fontFace:F, fontSize:28, bold:true, color:NAVY, margin:0 });
-    s1.addText(k.dText||'', { x:x+0.12, y:ty+0.92, w:tw-0.24, h:0.26, fontFace:F, fontSize:9, color:MUTED, margin:0 });
+    s1.addShape(pptx.ShapeType.rect, { x, y:ty, w:tw, h:0.06, fill:{ color:c }, line:{ color:c } });
+    s1.addText(k.l, { x:x+0.1, y:ty+0.12, w:tw-0.2, h:0.24, fontFace:F, fontSize:10, bold:true, color:MUTED, margin:0 });
+    s1.addText(String(k.v), { x:x+0.1, y:ty+0.36, w:tw-0.2, h:0.44, fontFace:F, fontSize:24, bold:true, color:toneColors[k.tone]||NAVY, margin:0 });
+    s1.addText(k.dText||'', { x:x+0.1, y:ty+0.8, w:tw-0.2, h:0.28, fontFace:F, fontSize:7.5, color:MUTED, margin:0, valign:'top' });
   });
-  const cy = 2.7, ch = 4.15;
+  // trạng thái ticket tiếp nhận trong tuần
+  const sy = 2.42, sh = 0.92;
+  s1.addShape(pptx.ShapeType.rect, { x:0.42, y:sy, w:12.5, h:sh, fill:{ color:'FFFFFF' }, line:{ color:LINE, width:0.75 } });
+  s1.addText([{ text:'Trạng thái ticket tiếp nhận trong tuần   ', options:{ fontSize:12, bold:true, color:NAVY } }, { text:statusNote(s), options:{ fontSize:8.5, color:MUTED } }], { x:0.54, y:sy+0.06, w:12.2, h:0.26, fontFace:F, margin:0 });
+  const bw = (12.26 - 5*0.12)/6;
+  s.openedByStatusBox.forEach((b,i)=>{
+    const x = 0.54 + i*(bw+0.12), c = (STATUS_COLORS[b.label]||'#1F4E79').slice(1);
+    s1.addShape(pptx.ShapeType.rect, { x, y:sy+0.38, w:bw, h:0.44, fill:{ color:'FFFFFF' }, line:{ color:LINE, width:0.75 } });
+    s1.addShape(pptx.ShapeType.rect, { x, y:sy+0.38, w:0.06, h:0.44, fill:{ color:c }, line:{ color:c } });
+    s1.addText(b.label, { x:x+0.16, y:sy+0.38, w:bw-0.9, h:0.44, fontFace:F, fontSize:11, bold:true, color:NAVY, margin:0, valign:'middle' });
+    s1.addText(String(b.count), { x:x+bw-0.8, y:sy+0.38, w:0.7, h:0.44, fontFace:F, fontSize:18, bold:true, color:b.count?NAVY:'A9B6C5', margin:0, valign:'middle', align:'right' });
+  });
+  const cy = 3.46, ch = 3.42;
   const panel = (x, wdt, title, sub) => {
     s1.addShape(pptx.ShapeType.rect, { x, y:cy, w:wdt, h:ch, fill:{ color:'FFFFFF' }, line:{ color:LINE, width:0.75 } });
     s1.addText(title, { x:x+0.12, y:cy+0.08, w:wdt-0.24, h:0.28, fontFace:F, fontSize:12, bold:true, color:NAVY, margin:0 });

@@ -17,6 +17,8 @@ const SLA_THRESHOLD = { critical: 60, urgent: 240, high: 480, medium: 4320 };
 const SLA_DEFAULT_THRESHOLD = 7200;
 const AGE_BUCKETS = [[0, 3, '0–3 ngày'], [4, 7, '4–7 ngày'], [8, 14, '8–14 ngày'], [15, 30, '15–30 ngày'], [31, Infinity, 'Trên 30 ngày']];
 const DAY_MS = 86400000;
+// Ô trạng thái trên slide 1 (ticket tiếp nhận trong tuần, theo trạng thái hiện tại). Assign và Re-open gộp vào Open.
+const STATUS_BOXES = [['Open', ['Open', 'Assign', 'Re-open']], ['Working', ['Working']], ['Reviewing', ['Reviewing']], ['Waiting', ['Waiting']], ['Pending', ['Pending']], ['Closed', ['Closed']]];
 
 const isoDay = (d) => d.toISOString().slice(0, 10);
 const dayOf = (s) => (/^\d{4}-\d{2}-\d{2}/.test(String(s || '')) ? String(s).slice(0, 10) : '');
@@ -88,6 +90,9 @@ function buildCustomerReport(rows, { project = '', weekStart, weeks = 8, now = v
   const seen = new Set(); const T = [];
   for (const r of rows || []) { if (!r || !r.name || seen.has(r.name)) continue; seen.add(r.name); T.push(normalize(r)); }
   const inWeek = (day) => day && day >= ws && day <= we;
+  // Mốc tính quá hạn cho ticket tồn đọng: cuối ngày chốt (tuần đã qua) hoặc hiện tại (tuần này).
+  const snapEnd = snapDay >= today ? now : parseNaive(`${snapDay} 23:59:59`);
+  const isOverdue = (t) => Boolean(t.openDt) && slaMinutes(t.priority, t.openDt, snapEnd) >= thresholdOf(t.priority);
   const ageDays = (t) => Math.max(0, Math.round((new Date(`${snapDay}T00:00:00Z`) - new Date(`${t.openDay}T00:00:00Z`)) / DAY_MS));
 
   const out = (t, extra = {}) => ({
@@ -104,7 +109,7 @@ function buildCustomerReport(rows, { project = '', weekStart, weeks = 8, now = v
     .map((t) => out(t, { resolveMinutes: t.openDt && t.resolvedDt ? Math.round(slaMinutes(t.priority, t.openDt, t.resolvedDt)) : null }));
   const backlog = T.filter((t) => isBacklogAt(t, snapDay, today))
     .sort((a, b) => String(a.openWeekStart).localeCompare(String(b.openWeekStart)) || prioRank(a.priority) - prioRank(b.priority) || String(a.opening).localeCompare(String(b.opening)))
-    .map((t) => out(t, { ageDays: ageDays(t) }));
+    .map((t) => out(t, { ageDays: ageDays(t), overdue: isOverdue(t), fromPrevWeek: t.openDay < ws }));
 
   const backlogByOpenWeek = [];
   for (const t of backlog) {
@@ -119,6 +124,12 @@ function buildCustomerReport(rows, { project = '', weekStart, weeks = 8, now = v
     warnings.push('Số liệu chi tiết lệch với Dashboard Support Tuần — báo lại để kiểm tra.');
   }
 
+  const frt = slaSummary(opened, 'frt'); const res = slaSummary(opened, 'res');
+  const slaPass = frt.pass + res.pass; const slaDecided = frt.decided + res.decided;
+  const known = new Set(STATUS_BOXES.flatMap(([, st]) => st));
+  const openedByStatusBox = STATUS_BOXES.map(([label, st]) => ({ label, statuses: st, count: opened.filter((t) => st.includes(t.status)).length }));
+  const openedOtherStatus = countBy(opened.filter((t) => !known.has(t.status)), (t) => t.status);
+
   return {
     project,
     week: { ...base.week },
@@ -126,7 +137,12 @@ function buildCustomerReport(rows, { project = '', weekStart, weeks = 8, now = v
       opened: opened.length, resolved: resolved.length, backlog: backlog.length,
       openedPrev: prev ? prev.opened : null, resolvedPrev: prev ? prev.closed : null, backlogPrev: prev ? prev.backlog : null,
       openedStillOpen: opened.filter((t) => BACKLOG_STATUSES.includes(t.status)).length,
-      frt: slaSummary(opened, 'frt'), res: slaSummary(opened, 'res'),
+      frt, res,
+      sla: { pass: slaPass, decided: slaDecided, passRate: slaDecided ? round1((slaPass / slaDecided) * 100) : null },
+      carriedOver: prev ? prev.backlog : null,
+      carriedOverStillOpen: backlog.filter((t) => t.fromPrevWeek).length,
+      overdue: backlog.filter((t) => t.overdue).length,
+      openedByStatusBox, openedOtherStatus,
       openedByPriority: countBy(opened, (t) => t.priority, PRIORITY_ORDER),
       backlogByPriority: countBy(backlog, (t) => t.priority, PRIORITY_ORDER),
       openedByStatus: countBy(opened, (t) => t.status, [...BACKLOG_STATUSES, 'Closed']),
@@ -140,4 +156,4 @@ function buildCustomerReport(rows, { project = '', weekStart, weeks = 8, now = v
   };
 }
 
-module.exports = { buildCustomerReport, AGE_BUCKETS };
+module.exports = { buildCustomerReport, AGE_BUCKETS, STATUS_BOXES };
