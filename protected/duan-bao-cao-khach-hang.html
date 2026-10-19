@@ -46,8 +46,8 @@
   .s-head .s-brand small{display:block;font-family:'IBM Plex Sans',sans-serif;font-size:12px;color:#C9D5E3;font-weight:500;}
   .s1 .s-body{padding:18px 40px 0;}
   .s-body{padding:22px 40px 0;}
-  .s-kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;}
-  .s-kpi{border:1px solid var(--grid-line-strong);border-radius:10px;padding:10px 14px;border-top:5px solid var(--blueprint);height:106px;}
+  .s-kpis{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;}
+  .s-kpi{border:1px solid var(--grid-line-strong);border-radius:10px;padding:10px 12px;border-top:5px solid var(--blueprint);height:106px;}
   .s-kpi .l{font-size:12.5px;color:var(--muted);font-weight:600;white-space:nowrap;}
   .s-kpi .v{font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:700;line-height:1.15;margin-top:2px;}
   .s-kpi .d{font-size:11.5px;color:var(--muted);line-height:1.35;}
@@ -87,6 +87,10 @@
   .tag{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid var(--grid-line-strong);white-space:nowrap;}
   .p-Critical,.p-Urgent{background:#FBE9EB;color:var(--danger);border-color:#E3A7AF;} .p-High{background:#FFF1DC;color:var(--amber-deep);border-color:#EBC890;}
   .old{color:var(--danger);font-weight:700;}
+  table.bl tr.overdue td{background:#FDECEE;}
+  table.bl tr.overdue td:first-child{box-shadow:inset 4px 0 0 var(--danger);}
+  .tag.ov{background:var(--danger);color:#fff;border-color:var(--danger);margin-left:6px;}
+  .wk-chip.ov{background:#FDECEE;border-color:#E3A7AF;color:#8B2A36;} .wk-chip.ov b{color:var(--danger);}
   .empty{color:var(--muted);padding:40px 4px;font-size:15px;text-align:center;}
 </style>
 </head>
@@ -186,11 +190,11 @@ function deltaTxt(cur, prev, upIsGood){
 function kpis(d){
   const s = d.summary, w = d.week;
   const slaTone = v => v==null ? '' : v>=95 ? 'good' : v>=80 ? 'warn' : 'bad';
-  const slaD = 'Phản hồi '+pctTxt(s.frt.passRate)+' · Xử lý '+pctTxt(s.res.passRate);
   const carryD = s.carriedOver==null ? '&nbsp;' : 'Còn '+s.carriedOverStillOpen+' chưa xử lý';
   const overD = s.backlog ? 'Trong '+s.backlog+' ticket tồn đọng' : 'Không có ticket tồn đọng';
   return [
-    {cls:'k-sla', l:'Đạt SLA', v:pctTxt(s.sla.passRate), tone:slaTone(s.sla.passRate), d:slaD, dText:slaD},
+    {cls:'k-sla', l:'SLA First Response', v:pctTxt(s.frt.passRate), tone:slaTone(s.frt.passRate), d:slaSub(s.frt), dText:slaSub(s.frt)},
+    {cls:'k-sla', l:'SLA Resolution Time', v:pctTxt(s.res.passRate), tone:slaTone(s.res.passRate), d:slaSub(s.res), dText:slaSub(s.res)},
     {cls:'', l:'Tiếp nhận trong tuần', v:s.opened, d:deltaTxt(s.opened, s.openedPrev, false), dText:plainDelta(s.opened, s.openedPrev)},
     {cls:'k-res', l:'Đã xử lý trong tuần', v:s.resolved, d:deltaTxt(s.resolved, s.resolvedPrev, true), dText:plainDelta(s.resolved, s.resolvedPrev)},
     {cls:'k-over', l:'Quá hạn SLA', v:s.overdue, tone:s.overdue?'bad':'good', d:overD, dText:overD},
@@ -206,7 +210,7 @@ function statusNote(s){
 function plainDelta(cur, prev){ if(prev==null||cur==null) return ''; const d=cur-prev; return d===0 ? 'Bằng tuần trước ('+prev+')' : (d>0?'▲ +':'▼ ')+d+' so với tuần trước ('+prev+')'; }
 function slaSub(x){ return x.decided ? 'Đạt '+x.pass+'/'+x.decided+' ticket'+(x.pending?' · '+x.pending+' đang chờ':'') : (x.pending ? x.pending+' ticket đang chờ' : 'Chưa có ticket'); }
 
-const NOTE_SLA = 'Tiếp nhận / đã xử lý: theo ngày tiếp nhận / ngày hoàn tất trong tuần (T2 – CN). Tồn đọng: ticket đã tiếp nhận và chưa hoàn tất tại ngày chốt. SLA tính trên ticket tiếp nhận trong tuần: Critical/Urgent tính 24h liên tục, mức khác tính giờ làm việc T2 – T6 (08:00 – 17:30, trừ nghỉ trưa và ngày lễ); tỷ lệ đạt = đạt / (đạt + trượt), ticket còn trong ngưỡng là "đang chờ"; "Đạt SLA" gộp cả phản hồi và xử lý. Quá hạn SLA: ticket tồn đọng đã vượt ngưỡng xử lý tại ngày chốt. Tồn từ tuần trước: số ticket tồn đọng cuối tuần trước.';
+const NOTE_SLA = 'Tiếp nhận / đã xử lý: theo ngày tiếp nhận / ngày hoàn tất trong tuần (T2 – CN). Tồn đọng: ticket đã tiếp nhận và chưa hoàn tất tại ngày chốt. SLA tính trên ticket tiếp nhận trong tuần: Critical/Urgent tính 24h liên tục, mức khác tính giờ làm việc T2 – T6 (08:00 – 17:30, trừ nghỉ trưa và ngày lễ); tỷ lệ đạt = đạt / (đạt + trượt), ticket còn trong ngưỡng là "đang chờ"; First Response = phản hồi đầu, Resolution Time = thời gian xử lý. Quá hạn SLA: ticket tồn đọng đã vượt ngưỡng xử lý tại ngày chốt. Tồn từ tuần trước: số ticket tồn đọng cuối tuần trước.';
 
 function render(d){
   current = d;
@@ -224,9 +228,9 @@ function render(d){
 
   $('s2Title').textContent = 'DANH SÁCH TICKET TỒN ĐỌNG — '+pname().toUpperCase();
   $('s2Sub').textContent = weekRange(w)+' · '+snapTxt+' · '+s.backlog+' ticket tồn đọng';
-  $('s2Weeks').innerHTML = s.backlogByOpenWeek.length ? '<span class="t">Theo tuần tiếp nhận:</span>'+s.backlogByOpenWeek.map(x=>'<span class="wk-chip" title="'+dmy(x.weekStart)+' – '+dmy(x.weekEnd)+'">Tuần '+x.week+' ('+dm(x.weekStart)+')<b>'+x.count+'</b></span>').join('') : '';
+  $('s2Weeks').innerHTML = s.backlogByOpenWeek.length ? '<span class="t">Theo tuần tiếp nhận:</span>'+s.backlogByOpenWeek.map(x=>'<span class="wk-chip" title="'+dmy(x.weekStart)+' – '+dmy(x.weekEnd)+'">Tuần '+x.week+' ('+dm(x.weekStart)+')<b>'+x.count+'</b></span>').join('')+'<span class="wk-chip ov">Quá hạn SLA (dòng tô đỏ)<b>'+s.overdue+'</b></span>' : '';
   $('s2Table').innerHTML = backlogTableHtml(d);
-  $('s2Foot').textContent = 'Sắp xếp theo tuần tiếp nhận, trong mỗi tuần ưu tiên cao trước. Số ngày tồn tính từ ngày tiếp nhận tới ngày chốt; tô đỏ từ 14 ngày trở lên. Trạng thái là trạng thái hiện tại trên hệ thống.';
+  $('s2Foot').textContent = 'Sắp xếp theo tuần tiếp nhận, trong mỗi tuần ưu tiên cao trước. Dòng tô đỏ, nhãn "Quá hạn": ticket đã vượt ngưỡng SLA xử lý tại ngày chốt. Số ngày tồn tính từ ngày tiếp nhận tới ngày chốt; tô đỏ từ 14 ngày trở lên. Trạng thái là trạng thái hiện tại trên hệ thống.';
   renderCharts(d);
   $('notice').innerHTML = (d.meta.warnings||[]).map(x=>'<div class="msg info">'+esc(x)+'</div>').join('');
   ['btnPng','btnPng2','btnXlsx','btnPptx'].forEach(id=>$(id).disabled=false);
@@ -242,7 +246,7 @@ function backlogTableHtml(d){
       wk = t.openWeekStart; const g = d.summary.backlogByOpenWeek.find(x=>x.weekStart===wk);
       html += '<tr class="grp"><td colspan="'+n+'">Tuần '+esc(t.openWeek)+' ('+dm(wk)+' – '+dmy(addDays(wk,6))+') · '+(g?g.count:'')+' ticket</td></tr>';
     }
-    html += '<tr><td class="n">'+(++i)+'</td><td class="mono">'+esc(t.name)+'</td><td>'+esc(t.subject)+'</td><td><span class="tag p-'+esc(t.priority)+'">'+esc(t.priority)+'</span></td><td>'+esc(t.status)+'</td><td class="mono">'+esc(dtVN(t.opening).slice(0,10))+'</td><td class="n'+(t.ageDays>=14?' old':'')+'">'+t.ageDays+'</td>'+(showAssign()?'<td>'+esc(t.assign||'—')+'</td>':'')+'</tr>';
+    html += '<tr'+(t.overdue?' class="overdue" title="Quá hạn SLA xử lý tại ngày chốt"':'')+'><td class="n">'+(++i)+'</td><td class="mono">'+esc(t.name)+'</td><td>'+esc(t.subject)+'</td><td><span class="tag p-'+esc(t.priority)+'">'+esc(t.priority)+'</span></td><td>'+esc(t.status)+(t.overdue?'<span class="tag ov">Quá hạn</span>':'')+'</td><td class="mono">'+esc(dtVN(t.opening).slice(0,10))+'</td><td class="n'+(t.ageDays>=14?' old':'')+'">'+t.ageDays+'</td>'+(showAssign()?'<td>'+esc(t.assign||'—')+'</td>':'')+'</tr>';
   }
   return '<table class="bl"><thead><tr>'+heads.map(h=>'<th'+(h==='STT'||h==='Số ngày tồn'?' class="n"':'')+'>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+html+'</tbody></table>';
 }
@@ -346,15 +350,14 @@ function buildWorkbook(d){
     ['Tiếp nhận trong tuần', s.opened, s.openedPrev, SH.opened, {f:'COUNTA('+O+'!B:B)-1'}],
     ['Đã xử lý trong tuần', s.resolved, s.resolvedPrev, SH.resolved, {f:'COUNTA('+R+'!B:B)-1'}],
     ['Tồn đọng '+(w.isCurrent?'hiện tại':'cuối tuần'), s.backlog, s.backlogPrev, SH.backlog, {f:'COUNTA('+B+'!C:C)-1'}],
-    ['SLA phản hồi — Đạt', s.frt.pass, '', SH.opened, {f:'COUNTIF('+O+'!L:L,"Đạt")'}],
+    ['SLA First Response (phản hồi) — Đạt', s.frt.pass, '', SH.opened, {f:'COUNTIF('+O+'!L:L,"Đạt")'}],
     ['SLA phản hồi — Trượt', s.frt.fail, '', SH.opened, {f:'COUNTIF('+O+'!L:L,"Trượt")'}],
     ['SLA phản hồi — Đang chờ', s.frt.pending, '', SH.opened, {f:'COUNTIF('+O+'!L:L,"Đang chờ")'}],
-    ['Tỷ lệ đạt SLA phản hồi (%)', s.frt.passRate==null?'':s.frt.passRate, '', SH.opened, {f:'IFERROR(ROUND(E10/(E10+E11)*100,1),"")'}],
-    ['SLA xử lý — Đạt', s.res.pass, '', SH.opened, {f:'COUNTIF('+O+'!N:N,"Đạt")'}],
+    ['SLA First Response — tỷ lệ đạt (%)', s.frt.passRate==null?'':s.frt.passRate, '', SH.opened, {f:'IFERROR(ROUND(E10/(E10+E11)*100,1),"")'}],
+    ['SLA Resolution Time (xử lý) — Đạt', s.res.pass, '', SH.opened, {f:'COUNTIF('+O+'!N:N,"Đạt")'}],
     ['SLA xử lý — Trượt', s.res.fail, '', SH.opened, {f:'COUNTIF('+O+'!N:N,"Trượt")'}],
     ['SLA xử lý — Đang chờ', s.res.pending, '', SH.opened, {f:'COUNTIF('+O+'!N:N,"Đang chờ")'}],
-    ['Tỷ lệ đạt SLA xử lý (%)', s.res.passRate==null?'':s.res.passRate, '', SH.opened, {f:'IFERROR(ROUND(E14/(E14+E15)*100,1),"")'}],
-    ['Đạt SLA — gộp phản hồi + xử lý (%)', s.sla.passRate==null?'':s.sla.passRate, '', SH.opened, {f:'IFERROR(ROUND((E10+E14)/(E10+E11+E14+E15)*100,1),"")'}],
+    ['SLA Resolution Time — tỷ lệ đạt (%)', s.res.passRate==null?'':s.res.passRate, '', SH.opened, {f:'IFERROR(ROUND(E14/(E14+E15)*100,1),"")'}],
     ['Quá hạn SLA (trong tồn đọng)', s.overdue, '', SH.backlog, {f:'COUNTIF('+B+'!J:J,"Có")'}],
     ['Tồn từ tuần trước (tồn cuối tuần trước)', s.carriedOver==null?'':s.carriedOver, '', SH.trend, ''],
     ['Tồn từ tuần trước — còn chưa xử lý tại ngày chốt', s.carriedOverStillOpen, '', SH.backlog, {f:'COUNTIF('+B+'!K:K,"Có")'}],
@@ -409,12 +412,12 @@ function buildPptx(d){
   header(s1, 'BÁO CÁO TÌNH TRẠNG TICKET — '+pname().toUpperCase(), weekRange(w)+' · '+snapTxt);
   const tileColors = { '':BLUE, 'k-res':GREEN, 'k-back':AMBER, 'k-sla':'6C5B9E', 'k-carry':'4F6D8F', 'k-over':'B23A48' };
   const toneColors = { good:GREEN, warn:'C9821F', bad:'B23A48' };
-  const gap = 0.15, tw = (12.5 - 5*0.12)/6, ty = 1.18, th = 1.12;
-  kpis(d).forEach((k,i)=>{
-    const x = 0.42 + i*(tw+0.12), c = tileColors[k.cls] || BLUE;
+  const KP = kpis(d), gap = 0.15, tw = (12.5 - (KP.length-1)*0.1)/KP.length, ty = 1.18, th = 1.12;
+  KP.forEach((k,i)=>{
+    const x = 0.42 + i*(tw+0.1), c = tileColors[k.cls] || BLUE;
     s1.addShape(pptx.ShapeType.rect, { x, y:ty, w:tw, h:th, fill:{ color:'FFFFFF' }, line:{ color:LINE, width:0.75 } });
     s1.addShape(pptx.ShapeType.rect, { x, y:ty, w:tw, h:0.06, fill:{ color:c }, line:{ color:c } });
-    s1.addText(k.l, { x:x+0.1, y:ty+0.12, w:tw-0.2, h:0.24, fontFace:F, fontSize:10, bold:true, color:MUTED, margin:0 });
+    s1.addText(k.l, { x:x+0.1, y:ty+0.12, w:tw-0.2, h:0.24, fontFace:F, fontSize:9.5, bold:true, color:MUTED, margin:0 });
     s1.addText(String(k.v), { x:x+0.1, y:ty+0.36, w:tw-0.2, h:0.44, fontFace:F, fontSize:24, bold:true, color:toneColors[k.tone]||NAVY, margin:0 });
     s1.addText(k.dText||'', { x:x+0.1, y:ty+0.8, w:tw-0.2, h:0.28, fontFace:F, fontSize:7.5, color:MUTED, margin:0, valign:'top' });
   });
@@ -458,8 +461,8 @@ function buildPptx(d){
 
   // ----- slide 2: bảng tồn đọng; danh sách dài thì chia sang các slide tiếp theo, mỗi slide lặp lại tiêu đề + dòng đầu bảng -----
   const heads = backlogHeads(); const A = showAssign();
-  const colW = A ? [0.45,1.25,4.6,0.95,1.05,1.15,0.85,2.2] : [0.5,1.4,6.4,1.0,1.15,1.2,0.85];
-  const maxSubj = A ? 62 : 88;
+  const colW = A ? [0.45,1.25,4.2,0.95,1.45,1.15,0.85,2.2] : [0.5,1.4,6.0,1.0,1.55,1.2,0.85];
+  const maxSubj = A ? 56 : 82;
   const cut = (t, n) => { t = String(t||''); return t.length > n ? t.slice(0, n-1)+'…' : t; };
   const hcell = t => ({ text:t, options:{ bold:true, color:'FFFFFF', fill:{ color:BLUE }, align:(t==='STT'||t==='Số ngày tồn')?'right':'left' } });
   const body = [];
@@ -471,12 +474,14 @@ function buildPptx(d){
       body.push([{ text:'Tuần '+t.openWeek+' ('+dm(wk)+' – '+dmy(addDays(wk,6))+') · '+(g?g.count:'')+' ticket', options:{ colspan:heads.length, bold:true, color:BLUE, fill:{ color:'EAF1F8' } } }]);
     }
     const prColor = /^(critical|urgent)$/i.test(t.priority) ? 'B23A48' : /^high$/i.test(t.priority) ? 'C9821F' : NAVY;
-    body.push([
+    const row = [
       { text:String(++i), options:{ align:'right' } }, { text:t.name }, { text:cut(t.subject, maxSubj) }, { text:t.priority, options:{ color:prColor, bold:prColor!==NAVY } },
-      { text:t.status }, { text:dtVN(t.opening).slice(0,10) }, { text:String(t.ageDays), options:{ align:'right', color:t.ageDays>=14?'B23A48':NAVY, bold:t.ageDays>=14 } },
-    ].concat(A?[{ text:cut(t.assign||'—', 34) }]:[]));
+      { text:t.overdue ? t.status+' · Quá hạn' : t.status, options:t.overdue?{ color:'B23A48', bold:true }:{} }, { text:dtVN(t.opening).slice(0,10) }, { text:String(t.ageDays), options:{ align:'right', color:t.ageDays>=14?'B23A48':NAVY, bold:t.ageDays>=14 } },
+    ].concat(A?[{ text:cut(t.assign||'—', 34) }]:[]);
+    if(t.overdue) row.forEach(c=>{ c.options = { ...(c.options||{}), fill:{ color:'FDECEE' } }; });
+    body.push(row);
   }
-  const wkTxt = s.backlogByOpenWeek.map(x=>'Tuần '+x.week+' ('+dm(x.weekStart)+'): '+x.count).join('   ·   ');
+  const wkTxt = s.backlogByOpenWeek.length ? s.backlogByOpenWeek.map(x=>'Tuần '+x.week+' ('+dm(x.weekStart)+'): '+x.count).join('   ·   ')+'   ·   Quá hạn SLA (dòng tô đỏ): '+s.overdue : '';
   const FIRST = 21, NEXT = 23, ROW_H = 0.235;
   const pages = []; let k = 0;
   while(k < body.length || !pages.length){
@@ -490,7 +495,7 @@ function buildPptx(d){
     let y = 1.2;
     if(pi===0 && wkTxt){ sl.addText('Theo tuần tiếp nhận:   '+wkTxt, { x:0.42, y:1.1, w:12.5, h:0.5, fontFace:F, fontSize:9.5, color:NAVY, margin:0, valign:'middle' }); y = 1.68; }
     sl.addTable([heads.map(hcell), ...chunk], { x:0.42, y, w:12.5, colW, rowH:ROW_H, fontFace:F, fontSize:8.5, color:NAVY, border:{ type:'solid', pt:0.5, color:'D5DEE8' }, valign:'middle', margin:0.04 });
-    footer(sl, 'Sắp xếp theo tuần tiếp nhận, trong mỗi tuần ưu tiên cao trước. Số ngày tồn tính từ ngày tiếp nhận tới ngày chốt; tô đỏ từ 14 ngày trở lên. Trạng thái là trạng thái hiện tại trên hệ thống.');
+    footer(sl, 'Sắp xếp theo tuần tiếp nhận, trong mỗi tuần ưu tiên cao trước. Dòng tô đỏ, nhãn "Quá hạn": ticket đã vượt ngưỡng SLA xử lý tại ngày chốt. Số ngày tồn tính từ ngày tiếp nhận tới ngày chốt; tô đỏ từ 14 ngày trở lên. Trạng thái là trạng thái hiện tại trên hệ thống.');
   });
   return pptx;
 }
