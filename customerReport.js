@@ -9,6 +9,7 @@
    để trang xuất được file Excel chi tiết đối chiếu đúng từng con số trên slide. */
 
 const weekly = require('./weeklyReport');
+const { HOLIDAYS } = require('./ticketDefaults');
 const { slaMinutes, mondayOf, addDays, isoWeekNumber, BACKLOG_STATUSES } = weekly;
 
 const PRIORITY_ORDER = ['Critical', 'Urgent', 'High', 'Medium', 'Low'];
@@ -35,6 +36,32 @@ function parseAssign(v) {
 }
 const prioRank = (p) => { const i = PRIORITY_ORDER.findIndex((x) => x.toLowerCase() === String(p).toLowerCase()); return i < 0 ? 99 : i; };
 const round1 = (x) => Math.round(x * 10) / 10;
+
+/* Hạn SLA xử lý = thời điểm ticket dùng hết ngưỡng SLA theo mức ưu tiên (ngược lại của slaMinutes trong weeklyReport.js):
+   Critical/Urgent cộng liên tục, mức khác chỉ cộng giờ làm việc T2–T6 08:00–12:00, 13:30–17:30, trừ ngày lễ. */
+const WORK_WINDOWS = [[8 * 60, 12 * 60], [13 * 60 + 30, 17 * 60 + 30]];
+const isP1 = (p) => ['critical', 'urgent'].includes(String(p || '').trim().toLowerCase());
+function slaDueAt(priority, start) {
+  if (!start) return null;
+  let left = thresholdOf(priority);
+  if (isP1(priority)) return new Date(start.getTime() + left * 60000);
+  const day = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
+  for (let guard = 0; guard < 400; guard++) {
+    const dow = day.getUTCDay();
+    if (dow >= 1 && dow <= 5 && !HOLIDAYS.has(isoDay(day))) {
+      for (const [a, b] of WORK_WINDOWS) {
+        const ws = new Date(Math.max(day.getTime() + a * 60000, start.getTime())); const we = new Date(day.getTime() + b * 60000);
+        if (we <= ws) continue;
+        const avail = (we - ws) / 60000;
+        if (avail >= left) return new Date(ws.getTime() + left * 60000);
+        left -= avail;
+      }
+    }
+    day.setUTCDate(day.getUTCDate() + 1);
+  }
+  return null;
+}
+const fmtNaive = (d) => (d ? d.toISOString().slice(0, 16).replace('T', ' ') : '');
 
 function normalize(r) {
   const status = String(r.status || '').trim();
@@ -109,7 +136,7 @@ function buildCustomerReport(rows, { project = '', weekStart, weeks = 8, now = v
     .map((t) => out(t, { resolveMinutes: t.openDt && t.resolvedDt ? Math.round(slaMinutes(t.priority, t.openDt, t.resolvedDt)) : null }));
   const backlog = T.filter((t) => isBacklogAt(t, snapDay, today))
     .sort((a, b) => String(a.openWeekStart).localeCompare(String(b.openWeekStart)) || prioRank(a.priority) - prioRank(b.priority) || String(a.opening).localeCompare(String(b.opening)))
-    .map((t) => out(t, { ageDays: ageDays(t), overdue: isOverdue(t), fromPrevWeek: t.openDay < ws }));
+    .map((t) => out(t, { ageDays: ageDays(t), slaDue: fmtNaive(slaDueAt(t.priority, t.openDt)), overdue: isOverdue(t), fromPrevWeek: t.openDay < ws }));
 
   const backlogByOpenWeek = [];
   for (const t of backlog) {
