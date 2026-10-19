@@ -113,6 +113,14 @@
     padding:4px 6px;margin-bottom:4px;display:flex;align-items:center;gap:6px;
   }
   .side-group-label::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--blueprint);flex-shrink:0;}
+  /* Menu thu gọn: mặc định chỉ hiện tên nhóm, bấm vào mới mở danh sách chức năng */
+  .side-group{margin-bottom:4px;}
+  .side-group-label.toggle{cursor:pointer;border-radius:6px;padding:8px 6px;margin-bottom:0;user-select:none;}
+  .side-group-label.toggle:hover{background:rgba(31,78,121,.05);}
+  .side-group-label .chevron{margin-left:auto;font-size:9px;color:var(--muted);transition:transform .15s;}
+  .side-group:not(.open) > .side-group-label .chevron{transform:rotate(-90deg);}
+  .side-group-body{padding:2px 0 8px 8px;}
+  .side-group:not(.open) > .side-group-body{display:none;}
 
   .side-leaf{
     display:block;text-decoration:none;color:var(--ink);font-size:12.5px;
@@ -250,7 +258,7 @@
     <div class="side-group">
       <div class="side-group-label">Dự Án</div>
 
-      <div class="side-branch open">
+      <div class="side-branch">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>ABI</span>
         </button>
@@ -264,7 +272,7 @@
         </div>
       </div>
 
-      <div class="side-branch open">
+      <div class="side-branch">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>Merap</span>
         </button>
@@ -276,7 +284,7 @@
           <a class="side-leaf sub" href="/tickets/support-cases?project=Merap" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch open">
+      <div class="side-branch">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>AnVy</span>
         </button>
@@ -289,7 +297,7 @@
           <a class="side-leaf sub" href="/tickets/support-cases?project=Anvy" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch open">
+      <div class="side-branch">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>Sabeco PG</span>
         </button>
@@ -300,7 +308,7 @@
           <a class="side-leaf sub" href="/tickets/support-cases?project=Sabeco_PG" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch open">
+      <div class="side-branch">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>Sabeco B2B</span>
         </button>
@@ -311,7 +319,7 @@
           <a class="side-leaf sub" href="/tickets/support-cases?project=Sabeco_B2B" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch open">
+      <div class="side-branch">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>FES</span>
         </button>
@@ -322,7 +330,7 @@
           <a class="side-leaf sub" href="/tickets/support-cases?project=FES" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch open">
+      <div class="side-branch">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>ANKO</span>
         </button>
@@ -333,7 +341,7 @@
           <a class="side-leaf sub" href="/tickets/support-cases?project=ANKO" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch open">
+      <div class="side-branch">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>HAIHA</span>
         </button>
@@ -344,7 +352,7 @@
           <a class="side-leaf sub" href="/tickets/support-cases?project=HAIHA" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch open">
+      <div class="side-branch">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>JOTUN</span>
         </button>
@@ -588,6 +596,18 @@ logoutBtn.addEventListener('click', async ()=>{
 });
 
 /* ---------- menu: mở/đóng nhánh + active theo URL hiện tại ---------- */
+// Bọc chức năng con của từng nhóm vào .side-group-body để thu gọn/mở nhóm bằng cách bấm tên nhóm.
+document.querySelectorAll('.side-nav .side-group').forEach(g=>{
+  const label = g.querySelector(':scope > .side-group-label'); if(!label) return;
+  const body = document.createElement('div'); body.className = 'side-group-body';
+  while(label.nextSibling) body.appendChild(label.nextSibling);
+  g.appendChild(body);
+  label.classList.add('toggle'); label.setAttribute('role','button'); label.tabIndex = 0;
+  label.insertAdjacentHTML('beforeend','<span class="chevron">▾</span>');
+  const toggle = () => g.classList.toggle('open');
+  label.addEventListener('click', toggle);
+  label.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); } });
+});
 document.querySelectorAll('.side-branch-head:not(.static)').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     btn.closest('.side-branch').classList.toggle('open');
@@ -597,6 +617,11 @@ document.querySelectorAll('.side-leaf[data-path]').forEach(a=>{
   const hrefUrl = new URL(a.getAttribute('href'), window.location.origin);
   const sameQuery = hrefUrl.search === window.location.search;
   if (a.dataset.path === window.location.pathname && (hrefUrl.search === '' || sameQuery)) a.classList.add('active');
+});
+// Mặc định tất cả nhóm đóng; chỉ mở nhóm/nhánh chứa chức năng đang xem (trừ trang chủ, để thấy đủ danh sách nhóm).
+if (window.location.pathname !== '/') document.querySelectorAll('.side-leaf.active').forEach(a=>{
+  for (let el = a.parentElement; el && !el.classList.contains('side-nav'); el = el.parentElement)
+    if (el.classList.contains('side-group') || el.classList.contains('side-branch')) el.classList.add('open');
 });
 
 /* ---------- Dashboard Tổng Quan: gọi lại API /api/erp/tickets đã có ---------- */
