@@ -1,0 +1,15 @@
+{
+  "note": "Bảng đơn giá nhân công master (VNĐ) dùng cho trang Crs → Lợi Nhuận Crs, áp dụng cho cả nguồn ERP và SynergyHub. Chi phí = số giờ × perHour. Sửa file này khi đổi đơn giá, không cần sửa code. Thứ tự dòng = thứ tự cột trong bảng kết quả.",
+  "rates": [
+    { "designation": "Thực tập",        "perHour": 15000,  "perDay": 120000,  "perMonth": 2640000 },
+    { "designation": "Học việc",        "perHour": 30000,  "perDay": 240000,  "perMonth": 5280000 },
+    { "designation": "CTV parttime",    "perHour": 45000,  "perDay": 360000,  "perMonth": 7920000 },
+    { "designation": "CTV Fulltime",    "perHour": 80000,  "perDay": 640000,  "perMonth": 14080000 },
+    { "designation": "Fresher",         "perHour": 100000, "perDay": 800000,  "perMonth": 17600000 },
+    { "designation": "Junior",          "perHour": 150000, "perDay": 1200000, "perMonth": 26400000 },
+    { "designation": "Middle",          "perHour": 180000, "perDay": 1440000, "perMonth": 31680000 },
+    { "designation": "Senior",          "perHour": 200000, "perDay": 1600000, "perMonth": 35200000 },
+    { "designation": "Leader/PM",       "perHour": 250000, "perDay": 2000000, "perMonth": 44000000 },
+    { "designation": "Deputy/Manager",  "perHour": 400000, "perDay": 3200000, "perMonth": 70400000 }
+  ]
+}

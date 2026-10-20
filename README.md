@@ -121,6 +121,11 @@ Module hiện có:
   `synergyhub.api.projects.get_filtered_projects`, giờ công từ
   `synergyhub.api.reports.get_detail_time_log_report`, gọi bằng tài khoản ERP đã cấu hình;
   logic đọc/dò cột ở `synergyhub.js`, API `/api/synergyhub/projects` và `/api/synergyhub/time-logs`).
+  Đơn giá nhân công lấy từ **bảng master `rate-master.json`** (Thực tập, Học việc, CTV parttime,
+  CTV Fulltime, Fresher, Junior, Middle, Senior, Leader/PM, Deputy/Manager) cho cả 3 nguồn timesheet —
+  không đọc sheet Monitor trong file PAKD nữa. Đổi đơn giá chỉ cần sửa file này. Chức danh trong
+  timesheet được nhận diện theo tiền tố (vd "Middle Business Analyst" → Middle); chức danh không khớp
+  thì hỏi chọn cấp bậc ở Bước 3.
 - **Dự Án → AnVy → Ticket Slide**: dán/nhập ticket, tự tạo slide + xuất
   PNG/PPTX (`/anvy/ticket-slide`).
 - **Ticket dự án → Tra cứu ERP**: gọi trực tiếp erp.hqsoft.vn lấy ticket theo

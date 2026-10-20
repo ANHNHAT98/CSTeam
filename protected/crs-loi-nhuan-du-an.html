@@ -184,7 +184,11 @@
 
   <div class="panel">
     <h2>Bước 2 — Nạp file PAKD dự án</h2>
-    <div class="panel-sub">File PAKD phải có sheet <code class="tag">Monitor</code> (bảng đơn giá theo cấp bậc) và 1 sheet chứa chữ "PAKD" (bảng Doanh thu/Chi phí/Lợi nhuận).</div>
+    <div class="panel-sub">File PAKD phải có 1 sheet chứa chữ "PAKD" (bảng Doanh thu/Chi phí/Lợi nhuận).</div>
+    <details style="margin:0 0 12px;"><summary style="cursor:pointer;font-size:13px;color:var(--blueprint);font-weight:600;">Bảng đơn giá master đang áp dụng (VNĐ) — dùng cho cả ERP và SynergyHub</summary>
+      <div id="rateMasterNote" class="panel-sub" style="margin:6px 0;">Đơn giá lấy từ <code class="tag">rate-master.json</code> trên server, không lấy từ sheet Monitor của file PAKD.</div>
+      <div id="rateMasterTbl" style="overflow-x:auto;"></div>
+    </details>
     <div class="dropzone" id="dzPakd">
       <div class="ic">📊</div><b>File PAKD dự án</b><p>.xlsx — ví dụ MerapLion_PL08_PAKD.xlsx</p>
       <input type="file" id="fPakd" accept=".xlsx">
@@ -231,9 +235,7 @@
 
 <script>
 /* ============ Cấu hình cố định theo template HQSOFT ============ */
-const TIER_KEYWORDS = ['Fresher','Junior','Middle','Senior']; // nhận diện qua tiền tố Designation
-const RATE_SHEET_NAME = 'Monitor';
-const RATE_ROW_START = 2, RATE_ROW_END = 11; // Monitor!J2:K11
+// Đơn giá lấy từ bảng MASTER của tool (rate-master.json qua /api/crs/rate-master), không đọc sheet Monitor trong file PAKD nữa.
 // Không còn hard-code số dòng (PROFIT_ROW) — sheet PAKD của mỗi dự án có thể lệch vài dòng
 // so với dòng tiêu chuẩn, nên các dòng Doanh thu/Chi phí/Lợi nhuận được DÒ ĐỘNG bên dưới
 // (resolveProfitRows) theo nhãn cột A (A/B/C/D/E/F/G) và nhãn cột B ("Doanh thu thuần",
@@ -247,7 +249,9 @@ let erpProjectsLoaded = false;
 let tierMap = {};      // designation -> tier label (vd 'Middle')
 let unresolvedDesigs = []; // designation chưa map được, chờ user chọn
 let monthTierHours = {};   // { '2025-07': { Fresher: 80, Senior: 16 } }
-let rateTable = {};        // { Fresher: 100000, Junior: 150000, ... }
+let rateTable = {};        // { Fresher: 100000, Junior: 150000, ... } — từ bảng master
+let rateMaster = null;     // [{designation, perHour, perDay, perMonth}]
+let tierMatchers = [];     // [{alias RegExp, tier, len}] để nhận diện cấp bậc từ Designation
 let calcResult = null;
 
 /* ---------- upload UI (dùng chung cho 2 dropzone) ---------- */
@@ -533,10 +537,11 @@ function readWorkbook(file){
 }
 
 /* ---------- Bước 1: đọc & đối chiếu ---------- */
-document.getElementById('parseBtn').addEventListener('click', () => {
+document.getElementById('parseBtn').addEventListener('click', async () => {
   try{
     setStatus('Đang đọc dữ liệu…','');
-    rateTable = readRateTable(pakdWb);
+    if (!rateMaster) await loadRateMaster();
+    if (!rateMaster) throw new Error('Chưa tải được bảng đơn giá master — tải lại trang rồi thử lại.');
     const rows = readTimesheetRows();
     if (!rows.length) throw new Error('Không đọc được dòng dữ liệu nào từ Timesheet (kiểm tra lại file/khoảng ngày-dự án đã chọn).');
 
@@ -559,18 +564,34 @@ document.getElementById('parseBtn').addEventListener('click', () => {
   }
 });
 
-function readRateTable(wb){
-  const ws = wb.Sheets[RATE_SHEET_NAME];
-  if (!ws) throw new Error(`File PAKD không có sheet "${RATE_SHEET_NAME}" (bảng đơn giá).`);
-  const table = {};
-  for (let r = RATE_ROW_START; r <= RATE_ROW_END; r++){
-    const label = ws[`J${r}`] ? ws[`J${r}`].v : null;
-    const rate = ws[`K${r}`] ? ws[`K${r}`].v : null;
-    if (label && typeof rate === 'number') table[String(label).trim()] = rate;
+const nrm = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/gi,'d').toLowerCase().replace(/\s+/g,' ').trim();
+const escRe = s => s.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&');
+/* Tải bảng đơn giá master; dựng bộ nhận diện cấp bậc: mỗi tên cấp bậc (và từng vế của "Leader/PM", "Deputy/Manager") là 1 tiền tố hợp lệ của Designation. */
+async function loadRateMaster(){
+  try{
+    const res = await fetch('/api/crs/rate-master'); const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    rateMaster = data.rates; rateTable = {}; tierMatchers = [];
+    rateMaster.forEach(r => {
+      rateTable[r.designation] = r.perHour;
+      const aliases = new Set([nrm(r.designation), ...nrm(r.designation).split('/').map(x=>x.trim()).filter(Boolean)]);
+      aliases.forEach(al => tierMatchers.push({ tier: r.designation, len: al.length, re: new RegExp('^' + escRe(al) + '(?![a-z0-9])') }));
+    });
+    tierMatchers.sort((a,b) => b.len - a.len); // tiền tố dài nhất thắng
+    renderRateMaster();
+  }catch(err){
+    rateMaster = null;
+    const el = document.getElementById('rateMasterNote'); if (el) { el.textContent = 'Không tải được bảng đơn giá master: ' + err.message; el.style.color = 'var(--danger)'; }
+    console.error(err);
   }
-  if (!Object.keys(table).length) throw new Error('Không đọc được bảng đơn giá ở Monitor!J2:K11 — kiểm tra lại cấu trúc file PAKD.');
-  return table;
 }
+function renderRateMaster(){
+  const el = document.getElementById('rateMasterTbl');
+  if (!el || !rateMaster) return;
+  el.innerHTML = '<table><thead><tr><th>Designation</th><th class="num">Per Hour</th><th class="num">Per Day</th><th class="num">Per Month</th></tr></thead><tbody>'
+    + rateMaster.map(r => `<tr><td>${escapeHtml(r.designation)}</td><td class="num">${r.perHour.toLocaleString('vi-VN')}</td><td class="num">${r.perDay ? r.perDay.toLocaleString('vi-VN') : ''}</td><td class="num">${r.perMonth ? r.perMonth.toLocaleString('vi-VN') : ''}</td></tr>`).join('') + '</tbody></table>';
+}
+loadRateMaster();
 
 function findHeaderRow(aoa){
   for (let r=0; r<Math.min(aoa.length,10); r++){
@@ -613,8 +634,8 @@ function detectTiers(rows){
   const tiers = {};
   const unresolved = [];
   uniqueDesigs.forEach(d=>{
-    const found = TIER_KEYWORDS.find(kw => d.startsWith(kw));
-    if (found) tiers[d] = found;
+    const nd = nrm(d); const m = tierMatchers.find(x => x.re.test(nd));
+    if (m) tiers[d] = m.tier;
     else unresolved.push(d);
   });
   return { tiers, unresolved };
@@ -703,7 +724,7 @@ function runCalculation(rows){
   });
 
   const months = Object.keys(monthTierHours).sort();
-  // Lấy tiersUsed theo ĐÚNG thứ tự cấp bậc trong bảng đơn giá Monitor (rateTable),
+  // Lấy tiersUsed theo ĐÚNG thứ tự cấp bậc trong bảng đơn giá master (rateTable),
   // thay vì thứ tự xuất hiện ngẫu nhiên trong timesheet — tránh việc mỗi lần tính
   // ra thứ tự cột khác nhau khiến header và số giờ theo tháng bị lệch cột.
   const usedTierSet = new Set(Object.values(tierMap));

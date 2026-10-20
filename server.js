@@ -224,6 +224,21 @@ app.get('/api/erp/tickets', requireAuth, async (req, res) => {
   }
 });
 
+/* ---------- Bảng đơn giá nhân công master (rate-master.json) cho trang Lợi Nhuận Crs — dùng chung cho nguồn ERP, SynergyHub và upload file ---------- */
+app.get('/api/crs/rate-master', requireAuth, (req, res) => {
+  try {
+    const j = JSON.parse(fs.readFileSync(path.join(__dirname, 'rate-master.json'), 'utf8'));
+    const rates = (Array.isArray(j.rates) ? j.rates : [])
+      .map((r) => ({ designation: String(r.designation || '').trim(), perHour: Number(r.perHour), perDay: Number(r.perDay) || null, perMonth: Number(r.perMonth) || null }))
+      .filter((r) => r.designation && Number.isFinite(r.perHour) && r.perHour > 0);
+    if (!rates.length) return res.status(500).json({ error: 'rate-master.json không có dòng đơn giá hợp lệ (cần designation và perHour > 0).' });
+    res.json({ rates });
+  } catch (e) {
+    console.error('[crs/rate-master] lỗi:', e.message);
+    res.status(500).json({ error: 'Không đọc được rate-master.json: ' + e.message });
+  }
+});
+
 /* ---------- SynergyHub: danh sách dự án + giờ công (cho trang Lợi nhuận Crs) ----------
    Cùng máy chủ ERP nên dùng tài khoản ERP đã cấu hình. Cấu trúc phản hồi được tự dò (synergyhub.js) và trả kèm `diagnostics`.
    GET /api/synergyhub/projects[?raw=1]

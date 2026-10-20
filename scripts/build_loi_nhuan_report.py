@@ -227,7 +227,7 @@ def main():
 
     note_row = total_row + 2
     ws_m.cell(row=note_row, column=1,
-              value='Đơn giá áp dụng (VNĐ/giờ, lấy từ sheet Monitor của file PAKD lúc xuất file này):').font = \
+              value='Đơn giá áp dụng (VNĐ/giờ, lấy từ bảng đơn giá master của tool lúc xuất file này):').font = \
         Font(name='Times New Roman', italic=True)
     for i, t in enumerate(tiers_used):
         ws_m.cell(row=note_row + 1 + i, column=1, value=t)
