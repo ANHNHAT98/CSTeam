@@ -71,5 +71,55 @@
         "Senior": 15.0
       }
     }
+  },
+  "complaint": {
+    "code": "CS03",
+    "name": "CSAT khách hàng phụ trách",
+    "matrixName": "CSAT khách hàng phụ trách",
+    "projects": [
+      "ABI_eSales_Support",
+      "Sabeco_PG",
+      "Sabeco_B2B_Support"
+    ],
+    "channels": [
+      "Email",
+      "Call",
+      "Chat",
+      "Khác"
+    ],
+    "progressComplaintPenalty": 20,
+    "repeatPenaltyByCount": {
+      "1": 5,
+      "2": 10,
+      "3+": 15
+    },
+    "thresholds": {
+      "Fresher": {
+        "min": 78.0,
+        "target": 88.0,
+        "max": 95.0
+      },
+      "Junior": {
+        "min": 80.0,
+        "target": 90.0,
+        "max": 96.0
+      },
+      "Middle": {
+        "min": 82.0,
+        "target": 92.0,
+        "max": 97.0
+      },
+      "Senior": {
+        "min": 85.0,
+        "target": 93.0,
+        "max": 98.0
+      }
+    },
+    "weights": {
+      "Fresher": 10.0,
+      "Junior": 10.0,
+      "Middle": 20.0,
+      "Senior": 20.0
+    }
   }
 }

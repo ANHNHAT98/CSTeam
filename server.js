@@ -12,6 +12,7 @@ const { applyTicketDefaults } = require('./ticketDefaults');
 const weekly = require('./weeklyReport');
 const { buildCustomerReport } = require('./customerReport');
 const kpiSla = require('./kpiSla');
+const kpiComplaint = require('./kpiComplaint');
 const synergyhub = require('./synergyhub');
 const { buildMonthlyCustomerReport, monthStartOf, monthEndOf, addMonths, isMonthKey } = require('./customerReportMonthly');
 const jira = require('./jiraClient');
@@ -165,6 +166,11 @@ app.get('/kpiteam/loi-nhuan-thang', requirePageAuth, (req, res) => {
 app.get(['/kpiteam/sla-phan-hoi', '/kpiteam/sla-hoan-tat'], requirePageAuth, (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.sendFile(path.join(__dirname, 'protected', 'kpiteam-sla-danh-gia.html')); // 1 trang dùng chung, tự nhận CS01/CS02 theo đường dẫn
+});
+
+app.get('/kpiteam/complaint', requirePageAuth, (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'protected', 'kpiteam-complaint.html'));
 });
 
 app.get('/kpiteam/bao-cao-tuan', requirePageAuth, (req, res) => {
@@ -425,6 +431,45 @@ app.get('/api/kpi/sla-member', requireAuth, async (req, res) => {
     console.error('[kpi/sla-member] lỗi:', e.message);
     res.status(502).json({ error: e.message });
   }
+});
+
+/* ---------- KPI Team: CS03 Complaint khách hàng — ghi nhận tay theo tháng, chấm KPI theo thành viên + level + dự án ----------
+   GET    /api/kpi/complaint-score?member=<email>&level=&month=<YYYY-MM>&projects=[...]  → Actual/Progress/KPI Completion + complaint của thành viên + tổng hợp cả team trong tháng
+   POST   /api/kpi/complaints        {date, member, project, type: progress|repeat, issue, channel, note}   → thêm
+   PUT    /api/kpi/complaints/:id    (cùng dữ liệu)                                                         → sửa
+   DELETE /api/kpi/complaints/:id                                                                          → xoá
+   Dữ liệu lưu qua listStore.js (GitHub nếu đã cấu hình, ngược lại ./data/kpi-complaints.json). Cách tính: kpiComplaint.js + kpi-sla-config.json ("complaint"). */
+function complaintCtx() { return { config: kpiSla.loadConfig(), allowedMembers: loadProjectCreators().creators }; }
+app.get('/api/kpi/complaint-score', requireAuth, async (req, res) => {
+  try {
+    const config = kpiSla.loadConfig(); const c = config.complaint;
+    const member = String(req.query.member || '').trim().toLowerCase();
+    if (!loadProjectCreators().creators.includes(member)) return res.status(400).json({ error: 'Thành viên không nằm trong danh sách người tạo ticket.' });
+    const level = String(req.query.level || '');
+    if (!config.levels.includes(level)) return res.status(400).json({ error: 'Level không hợp lệ.' });
+    const month = kpiSla.isMonthKey(req.query.month) ? String(req.query.month) : new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 7);
+    const requested = parseJsonArrayParam(req.query.projects);
+    const projects = (requested.length ? requested : c.projects).filter((p) => c.projects.includes(p));
+    if (!projects.length) return res.status(400).json({ error: 'Chưa chọn dự án hợp lệ (chỉ ABI và Sabeco).' });
+    const all = await kpiComplaint.store.readAll();
+    const out = kpiComplaint.scoreMember(all, { month, member, level, projects, config });
+    out.overview = kpiComplaint.overview(all, { month, projects, config });
+    out.config = { levels: config.levels, projects: c.projects, channels: c.channels, types: kpiComplaint.TYPES, thresholds: c.thresholds, weights: c.weights, progressComplaintPenalty: c.progressComplaintPenalty, repeatPenaltyByCount: c.repeatPenaltyByCount, name: c.matrixName };
+    out.githubBacked = kpiComplaint.store.isGithubBacked();
+    res.json(out);
+  } catch (e) { console.error('[kpi/complaint-score] lỗi:', e.message); res.status(502).json({ error: e.message }); }
+});
+app.post('/api/kpi/complaints', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, ...(await kpiComplaint.add(req.body || {}, complaintCtx())) }); }
+  catch (e) { console.error('[kpi/complaints:post] lỗi:', e.message); res.status(400).json({ error: e.message }); }
+});
+app.put('/api/kpi/complaints/:id', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, ...(await kpiComplaint.update(req.params.id, req.body || {}, complaintCtx())) }); }
+  catch (e) { console.error('[kpi/complaints:put] lỗi:', e.message); res.status(400).json({ error: e.message }); }
+});
+app.delete('/api/kpi/complaints/:id', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, ...(await kpiComplaint.remove(req.params.id)) }); }
+  catch (e) { console.error('[kpi/complaints:delete] lỗi:', e.message); res.status(400).json({ error: e.message }); }
 });
 
 /* ---------- File hướng dẫn AI (.md) cho từng dự án: nhân viên tải về để tạo Project/Skill gen ticket ----------
