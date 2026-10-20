@@ -250,7 +250,7 @@
     <div class="side-group">
       <div class="side-group-label">Dự Án</div>
 
-      <div class="side-branch open">
+      <div class="side-branch">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>ABI</span>
         </button>
@@ -265,7 +265,7 @@
         </div>
       </div>
 
-      <div class="side-branch open">
+      <div class="side-branch">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>Merap</span>
         </button>
@@ -278,7 +278,7 @@
           <a class="side-leaf sub" href="/tickets/support-cases?project=Merap" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch open">
+      <div class="side-branch">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>AnVy</span>
         </button>
@@ -292,7 +292,7 @@
           <a class="side-leaf sub" href="/tickets/support-cases?project=Anvy" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch open">
+      <div class="side-branch">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>Sabeco</span>
         </button>
@@ -308,7 +308,7 @@
           <a class="side-leaf sub" href="/tickets/support-cases?project=Sabeco" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch open">
+      <div class="side-branch">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>FES</span>
         </button>
@@ -320,7 +320,7 @@
           <a class="side-leaf sub" href="/tickets/support-cases?project=FES" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch open">
+      <div class="side-branch">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>ANKO</span>
         </button>
@@ -332,7 +332,7 @@
           <a class="side-leaf sub" href="/tickets/support-cases?project=ANKO" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch open">
+      <div class="side-branch">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>HAIHA</span>
         </button>
@@ -344,7 +344,7 @@
           <a class="side-leaf sub" href="/tickets/support-cases?project=HAIHA" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch open">
+      <div class="side-branch">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>JOTUN</span>
         </button>
@@ -597,7 +597,11 @@ document.querySelectorAll('.side-branch-head:not(.static)').forEach(btn=>{
 document.querySelectorAll('.side-leaf[data-path]').forEach(a=>{
   const hrefUrl = new URL(a.getAttribute('href'), window.location.origin);
   const sameQuery = hrefUrl.search === window.location.search;
-  if (a.dataset.path === window.location.pathname && (hrefUrl.search === '' || sameQuery)) a.classList.add('active');
+  if (a.dataset.path === window.location.pathname && (hrefUrl.search === '' || sameQuery)) {
+    a.classList.add('active');
+    const branch = a.closest('.side-branch');
+    if (branch) branch.classList.add('open'); // mặc định đóng hết; chỉ mở nhánh chứa trang đang xem
+  }
 });
 
 /* ---------- Dashboard Tổng Quan: gọi lại API /api/erp/tickets đã có ---------- */

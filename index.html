@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HQSOFT Ops Console — Dashboard Tổng Quan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#12233D;
+    --blueprint:#1F4E79;
+    --blueprint-deep:#0F2138;
+    --paper:#EEF2F6;
+    --panel:#FFFFFF;
+    --grid-line:rgba(31,78,121,.14);
+    --grid-line-strong:rgba(31,78,121,.28);
+    --amber:#E8A33D;
+    --amber-deep:#C9821F;
+    --success:#3F7D58;
+    --danger:#B23A48;
+    --muted:#5B7089;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans',sans-serif;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size:32px 32px;
+    min-height:100vh;
+  }
+  a{color:inherit;}
+  .brand-mark{
+    width:34px;height:34px;border-radius:8px;background:var(--blueprint);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Space Grotesk',sans-serif;font-weight:700;color:#fff;font-size:15px;
+    box-shadow:0 2px 0 var(--blueprint-deep);
+  }
+  .wrap{max-width:1240px;margin:0 auto;padding:0 28px 80px;}
+
+  /* ---- top bar ---- */
+  .topbar{
+    display:flex;align-items:center;justify-content:flex-end;
+    padding:10px 28px;border-bottom:1px solid var(--grid-line-strong);
+    background:rgba(238,242,246,.85);backdrop-filter:blur(6px);
+    position:sticky;top:0;z-index:20;
+  }
+  .logout-btn{
+    display:none;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:12px;
+    color:var(--muted);background:transparent;border:1px solid var(--grid-line-strong);border-radius:7px;
+    padding:6px 12px;cursor:pointer;
+  }
+  .logout-btn:hover{color:var(--danger);border-color:var(--danger);}
+  .logout-btn.show{display:inline-flex;}
+
+  /* ---- login gate ---- */
+  .login-gate{
+    position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+    overflow:hidden;
+    background:#EDE6D8 url('/img/login-bg.jpg') center center / cover no-repeat;
+  }
+  .login-card{
+    width:100%;max-width:360px;background:rgba(255,255,255,.97);border-radius:12px;padding:30px 28px 26px;
+    box-shadow:0 20px 60px rgba(0,0,0,.28);position:relative;z-index:1;
+    backdrop-filter:blur(2px);
+  }
+  @media(max-width:900px){
+    .login-gate{justify-content:center;background-position:65% center;}
+  }
+  .login-card .brand-mark{margin-bottom:14px;}
+  .login-card h2{font-family:'Space Grotesk',sans-serif;font-size:19px;margin:0 0 20px;}
+  .login-field{margin-bottom:12px;}
+  .login-field label{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--muted);display:block;margin-bottom:5px;}
+  .login-field input{
+    width:100%;padding:10px 11px;border-radius:7px;border:1px solid var(--grid-line-strong);
+    font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;background:#fbfcfe;
+  }
+  .login-field input:focus{outline:2px solid var(--blueprint);outline-offset:1px;}
+  .login-err{font-size:12px;color:var(--danger);font-family:'IBM Plex Mono',monospace;min-height:16px;margin:2px 0 10px;}
+  .login-card .btn-primary{width:100%;justify-content:center;margin-top:4px;}
+
+  /* ---- app shell + left side menu (sát lề, full height, tự cuộn) ---- */
+  .shell{display:flex;align-items:stretch;min-height:100vh;}
+  .content-col{flex:1;min-width:0;}
+
+  .side-nav{
+    flex:0 0 250px;width:250px;height:100vh;position:sticky;top:0;align-self:flex-start;
+    background:var(--panel);border-right:1px solid var(--grid-line-strong);
+    display:flex;flex-direction:column;padding:18px 0 14px;
+  }
+  @media(max-width:860px){
+    .shell{flex-direction:column;}
+    .side-nav{width:100%;height:auto;max-height:280px;position:relative;border-right:none;border-bottom:1px solid var(--grid-line-strong);}
+  }
+  .side-nav-head{
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.08em;color:var(--muted);
+    text-transform:uppercase;padding:0 18px 12px;flex:0 0 auto;
+  }
+  .side-nav-scroll{flex:1;overflow-y:auto;padding:0 14px;}
+  .side-nav-scroll::-webkit-scrollbar{width:6px;}
+  .side-nav-scroll::-webkit-scrollbar-thumb{background:var(--grid-line-strong);border-radius:3px;}
+
+  .side-group{margin-bottom:16px;}
+  .side-group-label{
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12.5px;color:var(--ink);
+    padding:4px 6px;margin-bottom:4px;display:flex;align-items:center;gap:6px;
+  }
+  .side-group-label::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--blueprint);flex-shrink:0;}
+
+  .side-leaf{
+    display:block;text-decoration:none;color:var(--ink);font-size:12.5px;
+    padding:8px 10px;border-radius:6px;margin-bottom:2px;
+  }
+  .side-leaf:hover{background:rgba(31,78,121,.05);}
+  .side-leaf.active{background:rgba(31,78,121,.08);color:var(--blueprint);font-weight:600;}
+  .side-leaf.sub{font-size:12px;color:var(--muted);}
+  .side-leaf.sub.active{color:var(--blueprint);font-weight:600;}
+
+  .side-branch-head{
+    display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12.5px;color:var(--ink);
+    padding:8px 6px;cursor:pointer;border-radius:6px;text-align:left;
+  }
+  .side-branch-head:hover{background:rgba(31,78,121,.05);}
+  .side-branch-head .chevron{font-size:9px;color:var(--muted);transition:transform .15s;width:10px;flex-shrink:0;}
+  .side-branch:not(.open) > .side-branch-head .chevron{transform:rotate(-90deg);}
+  .side-branch-children{overflow:hidden;max-height:400px;transition:max-height .2s ease;padding-left:14px;}
+  .side-branch:not(.open) .side-branch-children{max-height:0;}
+  .side-branch-head.static{cursor:default;color:var(--muted);font-weight:500;}
+  .side-branch-head.static:hover{background:none;}
+  .side-branch.empty .side-branch-head .chevron{visibility:hidden;}
+
+  .whoami{
+    flex:0 0 auto;margin:10px 18px 0;padding-top:12px;border-top:1px dashed var(--grid-line-strong);
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);
+  }
+  .whoami b{color:var(--ink);display:block;font-size:12.5px;margin-bottom:2px;}
+
+  /* ---- hero ---- */
+  .hero{padding:32px 0 28px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.08em;
+    color:var(--blueprint);text-transform:uppercase;display:flex;align-items:center;gap:8px;margin-bottom:14px;
+  }
+  .eyebrow::before{content:"";width:18px;height:1px;background:var(--blueprint);display:inline-block;}
+  h1{
+    font-family:'Space Grotesk',sans-serif;font-weight:700;
+    font-size:clamp(30px,4vw,44px);line-height:1.08;margin:0 0 16px;letter-spacing:-.01em;
+    max-width:780px;
+  }
+  h1 em{font-style:normal;color:var(--blueprint);}
+  .hero p{max-width:620px;color:var(--muted);font-size:15.5px;line-height:1.65;margin:0 0 26px;}
+
+  .panel{
+    background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);
+    padding:22px 22px 24px;position:relative;margin-bottom:20px;
+  }
+  .panel-title{
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15.5px;margin:0 0 4px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .panel-sub{color:var(--muted);font-size:12.5px;margin:0 0 16px;}
+  code.tag{
+    font-family:'IBM Plex Mono',monospace;background:rgba(31,78,121,.08);color:var(--blueprint);
+    padding:1px 6px;border-radius:4px;font-size:11.5px;
+  }
+
+  .btn{
+    appearance:none;border:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-weight:600;
+    font-size:14px;padding:12px 18px;border-radius:8px;display:inline-flex;align-items:center;gap:8px;
+  }
+  .btn-primary{background:var(--amber);color:#3A2405;box-shadow:0 2px 0 var(--amber-deep);}
+  .btn-primary:disabled{background:#D8DEE6;color:#8B98A6;box-shadow:none;cursor:not-allowed;}
+  .btn-primary:not(:disabled):hover{transform:translateY(-1px);}
+  .status{font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);}
+  .status.ok{color:var(--success);}
+  .status.err{color:var(--danger);}
+
+  table{border-collapse:collapse;width:100%;font-size:13px;}
+  thead th{
+    text-align:left;padding:8px 4px;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:11px;
+    color:var(--muted);border-bottom:1px solid var(--grid-line-strong);text-transform:uppercase;letter-spacing:.03em;
+  }
+  tbody td{padding:8px 4px;border-bottom:1px solid var(--grid-line);}
+  tbody td:last-child{font-family:'IBM Plex Mono',monospace;text-align:right;}
+
+  /* ---- dashboard tổng quan ---- */
+  .dash-actions{display:flex;align-items:center;gap:14px;margin-bottom:20px;}
+  .dash-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;}
+  @media(max-width:800px){.dash-grid{grid-template-columns:1fr;}}
+  .dash-kpi{margin-bottom:0;}
+  .dash-kpi .label{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+  .dash-kpi .value{font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:700;margin-top:8px;color:var(--blueprint);}
+  .dash-kpi .value.muted{color:var(--muted);font-size:20px;}
+  .dash-kpi .note{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;}
+
+  .dash-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media(max-width:800px){.dash-cols{grid-template-columns:1fr;}}
+
+  footer{margin-top:20px;padding-top:20px;border-top:1px solid var(--grid-line-strong);color:var(--muted);font-size:11.5px;font-family:'IBM Plex Mono',monospace;display:flex;justify-content:space-between;}
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN GATE ================= -->
+<div class="login-gate" id="loginGate">
+  <div class="login-card">
+    <div class="brand-mark">HQ</div>
+    <h2>Đăng nhập Ops Console</h2>
+    <form id="loginForm">
+      <div class="login-field">
+        <label>TÀI KHOẢN</label>
+        <input type="text" id="loginUser" autocomplete="username" required>
+      </div>
+      <div class="login-field">
+        <label>MẬT KHẨU</label>
+        <input type="password" id="loginPass" autocomplete="current-password" required>
+      </div>
+      <div class="login-err" id="loginErr"></div>
+      <button type="submit" class="btn btn-primary">Đăng nhập</button>
+    </form>
+  </div>
+</div>
+
+<div class="shell">
+
+<!-- ================= LEFT SIDE MENU (sát lề, full height, tự cuộn) ================= -->
+<aside class="side-nav">
+  <div class="side-nav-head">Chức năng</div>
+
+  <div class="side-nav-scroll">
+    <div class="side-group">
+      <div class="side-group-label">Tổng quan</div>
+      <a class="side-leaf" href="/" data-path="/">Dashboard</a>
+    </div>
+
+    <div class="side-group">
+      <div class="side-group-label">Crs</div>
+      <a class="side-leaf" href="/crs/pakd-bao-gia" data-path="/crs/pakd-bao-gia">PAKD và Báo Giá</a>
+      <a class="side-leaf" href="/crs/loi-nhuan-du-an" data-path="/crs/loi-nhuan-du-an">Lợi Nhuận Crs</a>
+    </div>
+
+    <div class="side-group">
+      <div class="side-group-label">Dự Án</div>
+
+      <div class="side-branch">
+        <button class="side-branch-head" type="button">
+          <span class="chevron">▾</span><span>ABI</span>
+        </button>
+        <div class="side-branch-children">
+          <a class="side-leaf sub" href="/abi/dashboard-ticket" data-path="/abi/dashboard-ticket">Dashboard Ticket</a>
+          <a class="side-leaf sub" href="/tickets/sla-jira-abi" data-path="/tickets/sla-jira-abi">SLA Jira</a>
+          <a class="side-leaf sub" href="/duan/support-tuan?project=ABI_eSales_Support" data-path="/duan/support-tuan">Dashboard Support Tuần</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=ABI_eSales_Support" data-path="/duan/bao-cao-khach-hang">Báo cáo tuần khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-thang-khach-hang?project=ABI_eSales_Support" data-path="/duan/bao-cao-thang-khach-hang">Báo cáo tháng khách hàng</a>
+          <a class="side-leaf sub" href="/tickets/tao-moi?project=ABI_eSales_Support" data-path="/tickets/tao-moi">Tạo Ticket</a>
+          <a class="side-leaf sub" href="/tickets/support-cases?project=ABI" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
+        </div>
+      </div>
+
+      <div class="side-branch">
+        <button class="side-branch-head" type="button">
+          <span class="chevron">▾</span><span>Merap</span>
+        </button>
+        <div class="side-branch-children">
+          <a class="side-leaf sub" href="/merap/uat-runbook" data-path="/merap/uat-runbook">Cấu Hình PROD về UAT</a>
+          <a class="side-leaf sub" href="/duan/support-tuan?project=MerapLion_eSales" data-path="/duan/support-tuan">Dashboard Support Tuần</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=MerapLion_eSales" data-path="/duan/bao-cao-khach-hang">Báo cáo tuần khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-thang-khach-hang?project=MerapLion_eSales" data-path="/duan/bao-cao-thang-khach-hang">Báo cáo tháng khách hàng</a>
+          <a class="side-leaf sub" href="/tickets/tao-moi?project=MerapLion_eSales" data-path="/tickets/tao-moi">Tạo Ticket</a>
+          <a class="side-leaf sub" href="/tickets/support-cases?project=Merap" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
+        </div>
+      </div>
+      <div class="side-branch">
+        <button class="side-branch-head" type="button">
+          <span class="chevron">▾</span><span>AnVy</span>
+        </button>
+        <div class="side-branch-children">
+          <a class="side-leaf sub" href="/anvy/ticket-slide" data-path="/anvy/ticket-slide">Ticket Slide</a>
+          <a class="side-leaf sub" href="/anvy/uat-runbook" data-path="/anvy/uat-runbook">Runbook UAT (PROD→UAT)</a>
+          <a class="side-leaf sub" href="/duan/support-tuan?project=ANVY_eSale_Support" data-path="/duan/support-tuan">Dashboard Support Tuần</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=ANVY_eSale_Support" data-path="/duan/bao-cao-khach-hang">Báo cáo tuần khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-thang-khach-hang?project=ANVY_eSale_Support" data-path="/duan/bao-cao-thang-khach-hang">Báo cáo tháng khách hàng</a>
+          <a class="side-leaf sub" href="/tickets/tao-moi?project=ANVY_eSale_Support" data-path="/tickets/tao-moi">Tạo Ticket</a>
+          <a class="side-leaf sub" href="/tickets/support-cases?project=Anvy" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
+        </div>
+      </div>
+      <div class="side-branch">
+        <button class="side-branch-head" type="button">
+          <span class="chevron">▾</span><span>Sabeco</span>
+        </button>
+        <div class="side-branch-children">
+          <a class="side-leaf sub" href="/duan/support-tuan?project=Sabeco_PG" data-path="/duan/support-tuan">Dashboard Support Tuần (PG)</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=Sabeco_PG" data-path="/duan/bao-cao-khach-hang">Báo cáo tuần khách hàng (PG)</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-thang-khach-hang?project=Sabeco_PG" data-path="/duan/bao-cao-thang-khach-hang">Báo cáo tháng khách hàng (PG)</a>
+          <a class="side-leaf sub" href="/duan/support-tuan?project=Sabeco_B2B_Support" data-path="/duan/support-tuan">Dashboard Support Tuần (B2B)</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=Sabeco_B2B_Support" data-path="/duan/bao-cao-khach-hang">Báo cáo tuần khách hàng (B2B)</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-thang-khach-hang?project=Sabeco_B2B_Support" data-path="/duan/bao-cao-thang-khach-hang">Báo cáo tháng khách hàng (B2B)</a>
+          <a class="side-leaf sub" href="/tickets/tao-moi?project=Sabeco_PG" data-path="/tickets/tao-moi">Tạo Ticket (PG)</a>
+          <a class="side-leaf sub" href="/tickets/tao-moi?project=Sabeco_B2B_Support" data-path="/tickets/tao-moi">Tạo Ticket (B2B)</a>
+          <a class="side-leaf sub" href="/tickets/support-cases?project=Sabeco" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
+        </div>
+      </div>
+      <div class="side-branch">
+        <button class="side-branch-head" type="button">
+          <span class="chevron">▾</span><span>FES</span>
+        </button>
+        <div class="side-branch-children">
+          <a class="side-leaf sub" href="/duan/support-tuan?project=FES_eSales" data-path="/duan/support-tuan">Dashboard Support Tuần</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=FES_eSales" data-path="/duan/bao-cao-khach-hang">Báo cáo tuần khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-thang-khach-hang?project=FES_eSales" data-path="/duan/bao-cao-thang-khach-hang">Báo cáo tháng khách hàng</a>
+          <a class="side-leaf sub" href="/tickets/tao-moi?project=FES_eSales" data-path="/tickets/tao-moi">Tạo Ticket</a>
+          <a class="side-leaf sub" href="/tickets/support-cases?project=FES" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
+        </div>
+      </div>
+      <div class="side-branch">
+        <button class="side-branch-head" type="button">
+          <span class="chevron">▾</span><span>ANKO</span>
+        </button>
+        <div class="side-branch-children">
+          <a class="side-leaf sub" href="/duan/support-tuan?project=ANKO_eSales_Support" data-path="/duan/support-tuan">Dashboard Support Tuần</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=ANKO_eSales_Support" data-path="/duan/bao-cao-khach-hang">Báo cáo tuần khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-thang-khach-hang?project=ANKO_eSales_Support" data-path="/duan/bao-cao-thang-khach-hang">Báo cáo tháng khách hàng</a>
+          <a class="side-leaf sub" href="/tickets/tao-moi?project=ANKO_eSales_Support" data-path="/tickets/tao-moi">Tạo Ticket</a>
+          <a class="side-leaf sub" href="/tickets/support-cases?project=ANKO" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
+        </div>
+      </div>
+      <div class="side-branch">
+        <button class="side-branch-head" type="button">
+          <span class="chevron">▾</span><span>HAIHA</span>
+        </button>
+        <div class="side-branch-children">
+          <a class="side-leaf sub" href="/duan/support-tuan?project=HaiHa_eSales_Support" data-path="/duan/support-tuan">Dashboard Support Tuần</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=HaiHa_eSales_Support" data-path="/duan/bao-cao-khach-hang">Báo cáo tuần khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-thang-khach-hang?project=HaiHa_eSales_Support" data-path="/duan/bao-cao-thang-khach-hang">Báo cáo tháng khách hàng</a>
+          <a class="side-leaf sub" href="/tickets/tao-moi?project=HaiHa_eSales_Support" data-path="/tickets/tao-moi">Tạo Ticket</a>
+          <a class="side-leaf sub" href="/tickets/support-cases?project=HAIHA" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
+        </div>
+      </div>
+      <div class="side-branch">
+        <button class="side-branch-head" type="button">
+          <span class="chevron">▾</span><span>JOTUN</span>
+        </button>
+        <div class="side-branch-children">
+          <a class="side-leaf sub" href="/duan/support-tuan?project=Jotun_VN_eSales" data-path="/duan/support-tuan">Dashboard Support Tuần</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=Jotun_VN_eSales" data-path="/duan/bao-cao-khach-hang">Báo cáo tuần khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-thang-khach-hang?project=Jotun_VN_eSales" data-path="/duan/bao-cao-thang-khach-hang">Báo cáo tháng khách hàng</a>
+          <a class="side-leaf sub" href="/tickets/tao-moi?project=Jotun_VN_eSales" data-path="/tickets/tao-moi">Tạo Ticket</a>
+          <a class="side-leaf sub" href="/tickets/support-cases?project=JOTUN" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-group">
+      <div class="side-group-label">Ticket dự án</div>
+      <a class="side-leaf" href="/tickets/tra-cuu-erp" data-path="/tickets/tra-cuu-erp">Tra cứu ERP</a>
+      <a class="side-leaf" href="/tickets/sla-first-response" data-path="/tickets/sla-first-response">SLA Phản Hồi Đầu Tiên</a>
+      <a class="side-leaf" href="/tickets/sla-resolution" data-path="/tickets/sla-resolution">SLA Xử Lý Hoàn Tất</a>
+    </div>
+
+    <div class="side-group">
+      <div class="side-group-label">Hotfix</div>
+      <a class="side-leaf" href="/hotfix/gop-sql" data-path="/hotfix/gop-sql">Gom Sql và Back up SQL</a>
+      <a class="side-leaf" href="/hotfix/gom-build" data-path="/hotfix/gom-build">Gom build</a>
+      <a class="side-leaf" href="/hotfix/backup-build" data-path="/hotfix/backup-build">Backup build</a>
+    </div>
+
+    <div class="side-group">
+      <div class="side-group-label">Khác</div>
+      <a class="side-leaf" href="/khac/ma-hoa-password-window" data-path="/khac/ma-hoa-password-window">Mã hóa Password Window</a>
+      <a class="side-leaf" href="/khac/ma-hoa-password-macos" data-path="/khac/ma-hoa-password-macos">Mã hóa Password MacOS</a>
+    </div>
+
+    <div class="side-group">
+      <div class="side-group-label">KPI Team</div>
+      <a class="side-leaf" href="/kpiteam/loi-nhuan-thang" data-path="/kpiteam/loi-nhuan-thang">Lợi nhuận tháng</a>
+      <a class="side-leaf" href="/kpiteam/bao-cao-tuan" data-path="/kpiteam/bao-cao-tuan">Báo Cáo Tuần</a>
+    </div>
+  </div>
+
+  <div class="whoami" id="whoamiBox"></div>
+</aside>
+
+<div class="content-col">
+
+<div class="topbar">
+  <button class="logout-btn" id="logoutBtn">⎋ Đăng xuất</button>
+</div>
+
+<div class="wrap">
+<main class="main-col">
+
+  <div class="hero">
+    <div class="eyebrow">Tổng quan</div>
+    <h1>Dashboard hoạt động Ticket &amp; Dự án</h1>
+    <p>Tổng hợp trực tiếp từ ERP (erp.hqsoft.vn) — số ticket đang mở theo dự án/trạng thái, cùng SLA First Response &amp; Resolution theo Priority.</p>
+  </div>
+
+  <div class="dash-actions">
+    <button class="btn btn-primary" id="loadDashBtn">⟳ Tải dữ liệu ERP</button>
+    <span class="status" id="dashStatus"></span>
+  </div>
+
+  <div class="dash-grid">
+    <div class="panel dash-kpi">
+      <div class="label">Tổng ticket đang mở</div>
+      <div class="value" id="kpiOpenTotal">—</div>
+      <div class="note">5 dự án · trạng thái chưa Closed</div>
+    </div>
+    <div class="panel dash-kpi">
+      <div class="label">First Response Time (SLA) — % Pass tháng này</div>
+      <div class="value" id="kpiFrt">—</div>
+      <div class="note" id="kpiFrtNote">Pass nếu W = First Responded On − Opening On &lt; ngưỡng theo Priority</div>
+    </div>
+    <div class="panel dash-kpi">
+      <div class="label">Resolution Time (SLA) — % Pass tháng này</div>
+      <div class="value" id="kpiRes">—</div>
+      <div class="note" id="kpiResNote">Pass nếu W = Resolution Date − Opening On &lt; ngưỡng theo Priority</div>
+    </div>
+  </div>
+
+  <div class="dash-cols">
+    <div class="panel">
+      <div class="panel-title">Theo dự án</div>
+      <div class="panel-sub">Số ticket đang mở, nhóm theo project</div>
+      <table id="byProjectTable"><thead><tr><th>Project</th><th style="text-align:right;">Số ticket</th></tr></thead><tbody id="byProjectBody"></tbody></table>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Theo trạng thái</div>
+      <div class="panel-sub">Số ticket đang mở, nhóm theo status</div>
+      <table id="byStatusTable"><thead><tr><th>Status</th><th style="text-align:right;">Số ticket</th></tr></thead><tbody id="byStatusBody"></tbody></table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">SLA — So sánh 3 tháng gần nhất</div>
+    <div class="panel-sub" id="slaTrendSub">Pass/Fail theo công thức: W = (First Responded On hoặc Resolution Date) − Opening On (phút); Fail nếu chưa có mốc thời gian đó (W=1.1) hoặc W ≥ ngưỡng theo Priority (Critical 60 / Urgent 240 / High 480 / Medium 4320 / khác 7200 phút). Trọng số = Actual 1 (P1&amp;P2) × 70% + Actual 2 (P3-P5) × 30% — giữ nguyên % thực tế (không làm tròn về 0) để theo dõi xu hướng cải thiện dần tới ngưỡng 90%. Lọc theo Opening On.</div>
+    <div class="dash-cols">
+      <div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;">First Response Time (SLA)</div>
+        <canvas id="slaTrendChartFrt" height="180"></canvas>
+      </div>
+      <div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;">Resolution Time (SLA)</div>
+        <canvas id="slaTrendChartRes" height="180"></canvas>
+      </div>
+    </div>
+    <table id="slaTrendTable" style="margin-top:14px;">
+      <thead>
+        <tr>
+          <th rowspan="2">Tháng</th>
+          <th colspan="4" style="text-align:center;">First Response</th>
+          <th colspan="4" style="text-align:center;">Resolution</th>
+        </tr>
+        <tr>
+          <th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Pass</th><th style="text-align:right;">Trọng số</th>
+          <th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Pass</th><th style="text-align:right;">Trọng số</th>
+        </tr>
+      </thead>
+      <tbody id="slaTrendBody"></tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">SLA — Tháng hiện tại theo dự án (First Response &amp; Resolution)</div>
+    <div class="panel-sub" id="slaMonthSub">Lọc theo Opening On rơi vào tháng hiện tại, gộp theo dự án.</div>
+    <div id="slaMonthCharts"></div>
+    <table id="slaMonthTable" style="margin-top:14px;">
+      <thead>
+        <tr>
+          <th rowspan="2">Project</th>
+          <th colspan="4" style="text-align:center;">First Response</th>
+          <th colspan="4" style="text-align:center;">Resolution</th>
+        </tr>
+        <tr>
+          <th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Pass</th><th style="text-align:right;">Trọng số</th>
+          <th style="text-align:right;">Tổng</th><th style="text-align:right;">Pass</th><th style="text-align:right;">% Pass</th><th style="text-align:right;">Trọng số</th>
+        </tr>
+      </thead>
+      <tbody id="slaMonthBody"></tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">SLA — Xu hướng theo tuần (tháng hiện tại)</div>
+    <div class="panel-sub" id="frtWeekSub">Mỗi tuần tính từ Thứ 2 → Chủ Nhật (% Pass, theo công thức Priority), chỉ tính ticket có Opening On trong tháng hiện tại.</div>
+    <div class="dash-cols">
+      <div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;">First Response Time (SLA)</div>
+        <canvas id="frtWeekChart" height="180"></canvas>
+      </div>
+      <div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;">Resolution (SLA)</div>
+        <canvas id="resWeekChart" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>HQSOFT Ops Console — internal use only</span>
+    <span>xử lý hoàn toàn phía trình duyệt, không lưu trữ dữ liệu</span>
+  </footer>
+
+</main>
+</div>
+</div>
+</div>
+
+<script>
+/* ============ AUTH — tài khoản dùng chung cho cả team ============
+   Server kiểm tra theo biến môi trường ADMIN_USER / ADMIN_PASS, không lưu
+   danh sách tài khoản động nào cả, nên không có gì để "mất" khi server
+   restart — chỉ cần đúng 1 cặp user/pass là vào được, mọi lúc. */
+
+const loginGate = document.getElementById('loginGate');
+const loginForm = document.getElementById('loginForm');
+const loginErr  = document.getElementById('loginErr');
+const logoutBtn = document.getElementById('logoutBtn');
+const whoamiBox = document.getElementById('whoamiBox');
+
+async function api(path, opts){
+  const res = await fetch(path, Object.assign({
+    headers: {'Content-Type':'application/json'},
+    credentials: 'same-origin',
+  }, opts));
+  let data = {};
+  try{ data = await res.json(); }catch(e){}
+  if (!res.ok) throw new Error(data.error || `Lỗi ${res.status}`);
+  return data;
+}
+
+function showApp(username){
+  loginGate.style.display = 'none';
+  logoutBtn.classList.add('show');
+  whoamiBox.innerHTML = `<b>${username}</b>Đăng nhập lúc ${new Date().toLocaleTimeString('vi-VN')}`;
+  if (typeof loadDashboard === 'function') loadDashboard();
+}
+function showGate(){
+  loginGate.style.display = 'flex';
+  logoutBtn.classList.remove('show');
+}
+
+// Nếu bị chuyển về đây kèm ?next=/duong-dan (do phiên hết hạn khi đang xem 1
+// chức năng), sau khi xác nhận còn/đang đăng nhập thì quay lại đúng chỗ đó
+// thay vì bắt bấm menu lại từ đầu.
+function redirectToNextIfAny(){
+  const next = new URLSearchParams(window.location.search).get('next');
+  if (next && next.startsWith('/')) {
+    window.location.href = next;
+    return true;
+  }
+  return false;
+}
+
+(async function tryRestoreSession(){
+  try{
+    const data = await api('/api/me');
+    if (redirectToNextIfAny()) return;
+    showApp(data.username);
+  }catch(e){
+    showGate();
+  }
+})();
+
+loginForm.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  try{
+    const data = await api('/api/login', {method:'POST', body: JSON.stringify({username, password})});
+    loginErr.textContent = '';
+    loginForm.reset();
+    if (redirectToNextIfAny()) return;
+    showApp(data.username);
+  }catch(err){
+    loginErr.textContent = err.message || 'Sai tài khoản hoặc mật khẩu.';
+  }
+});
+logoutBtn.addEventListener('click', async ()=>{
+  try{ await api('/api/logout', {method:'POST'}); }catch(e){}
+  showGate();
+});
+
+/* ---------- menu: mở/đóng nhánh + active theo URL hiện tại ---------- */
+document.querySelectorAll('.side-branch-head:not(.static)').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    btn.closest('.side-branch').classList.toggle('open');
+  });
+});
+document.querySelectorAll('.side-leaf[data-path]').forEach(a=>{
+  const hrefUrl = new URL(a.getAttribute('href'), window.location.origin);
+  const sameQuery = hrefUrl.search === window.location.search;
+  if (a.dataset.path === window.location.pathname && (hrefUrl.search === '' || sameQuery)) {
+    a.classList.add('active');
+    const branch = a.closest('.side-branch');
+    if (branch) branch.classList.add('open'); // mặc định đóng hết; chỉ mở nhánh chứa trang đang xem
+  }
+});
+
+/* ---------- Dashboard Tổng Quan: gọi lại API /api/erp/tickets đã có ---------- */
+const ALL_PROJECTS = ['MerapLion_eSales', 'ABI_eSales_Support', 'ANVY_eSale_Support', 'Sabeco_PG', 'Sabeco_B2B_Support', 'FES_eSales', 'ANKO_eSales_Support', 'HaiHa_eSales_Support', 'Jotun_VN_eSales'];
+const OPEN_STATUSES = ['Open','Assign','Working','Reviewing','Waiting','Pending','Re-open'];
+
+// Ngưỡng SLA phản hồi đầu (phút) theo Priority — đúng công thức đã xác nhận,
+// giống hệt module "Ticket dự án > SLA Phản Hồi Đầu Tiên".
+const SLA_THRESHOLD = { critical: 60, urgent: 240, high: 480, medium: 4320 };
+const SLA_DEFAULT_THRESHOLD = 7200;
+
+const loadDashBtn = document.getElementById('loadDashBtn');
+const dashStatus = document.getElementById('dashStatus');
+
+function setDashStatus(msg, cls){
+  dashStatus.textContent = msg;
+  dashStatus.className = 'status ' + (cls||'');
+}
+
+async function fetchTickets(projects, statuses, openingFrom, openingTo){
+  const qs = new URLSearchParams();
+  qs.set('projects', JSON.stringify(projects));
+  qs.set('statuses', JSON.stringify(statuses));
+  if (openingFrom) qs.set('opening_from', openingFrom);
+  if (openingTo) qs.set('opening_to', openingTo);
+  const res = await fetch('/api/erp/tickets?' + qs.toString(), {credentials:'same-origin'});
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || ('Lỗi HTTP ' + res.status));
+  return Array.isArray(data.data) ? data.data : [];
+}
+
+function toIsoDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+async function loadDashboard(){
+  loadDashBtn.disabled = true;
+  setDashStatus('Đang tải dữ liệu từ ERP…','');
+  try{
+    const { start: last3Start, end: last3End } = getLast3MonthsRange();
+    const [openRows, slaRows] = await Promise.all([
+      fetchTickets(ALL_PROJECTS, OPEN_STATUSES),
+      // Chỉ cần đúng 3 tháng gần nhất cho toàn bộ tính SLA (First Response & Resolution) —
+      // lọc theo opening_date ngay trên ERP để không bao giờ bị cắt bớt dữ liệu (limit_page_length)
+      // dù các dự án có rất nhiều lịch sử ticket từ trước.
+      fetchTickets(ALL_PROJECTS, [], toIsoDate(last3Start), toIsoDate(last3End)),
+    ]);
+    renderDashboard(openRows);
+    renderSla(slaRows);
+    setDashStatus(`Xong — ${openRows.length} ticket đang mở / ${slaRows.length} ticket trong 3 tháng gần nhất (cập nhật ${new Date().toLocaleTimeString('vi-VN')}).`, 'ok');
+  }catch(err){
+    console.error(err);
+    setDashStatus('Lỗi: ' + err.message, 'err');
+  }finally{
+    loadDashBtn.disabled = false;
+  }
+}
+
+function renderDashboard(rows){
+  document.getElementById('kpiOpenTotal').textContent = rows.length;
+
+  const byProject = {};
+  const byStatus = {};
+  rows.forEach(r => {
+    byProject[r.project] = (byProject[r.project]||0) + 1;
+    byStatus[r.status] = (byStatus[r.status]||0) + 1;
+  });
+
+  document.getElementById('byProjectBody').innerHTML = ALL_PROJECTS.map(p => `
+    <tr><td>${p}</td><td>${byProject[p]||0}</td></tr>`).join('');
+
+  const statusRows = Object.keys(byStatus).sort((a,b)=>byStatus[b]-byStatus[a]);
+  document.getElementById('byStatusBody').innerHTML = statusRows.map(s => `
+    <tr><td>${s}</td><td>${byStatus[s]}</td></tr>`).join('') || '<tr><td colspan="2" style="color:var(--muted);">Không có dữ liệu</td></tr>';
+}
+
+/* ---------- SLA (First Response & Resolution) — tự đoán field theo tên ---------- */
+function guessField(fields, keywords){
+  const lower = fields.map(f => f.toLowerCase());
+  for (const kw of keywords){
+    const idx = lower.findIndex(f => f.includes(kw));
+    if (idx >= 0) return fields[idx];
+  }
+  return null;
+}
+function priorityThreshold(priorityRaw){
+  const p = String(priorityRaw||'').trim().toLowerCase();
+  if (p in SLA_THRESHOLD) return SLA_THRESHOLD[p];
+  return SLA_DEFAULT_THRESHOLD;
+}
+function priorityGroup(priorityRaw){
+  const p = String(priorityRaw||'').trim().toLowerCase();
+  return (p === 'critical' || p === 'urgent') ? 1 : 2; // Nhóm 1 = P1&P2, Nhóm 2 = P3-P5
+}
+
+const FRT_KEYWORDS = ['first_responded_on','first_response','first_respond'];
+const RES_KEYWORDS = ['resolution_date','resolution','resolved_on'];
+
+/* Tính Pass/Fail cho từng ticket theo 1 mốc thời gian đích (First Responded On hoặc
+   Resolution Date) so với Opening On — dùng chung 1 hàm cho cả 2 chỉ số SLA. */
+/* Thời gian tính SLA (phút):
+   - Critical & Urgent: tính FULL 24 giờ/ngày (thời gian trôi thực tế, kể cả đêm/cuối tuần).
+   - Priority còn lại: chỉ tính giờ làm việc T2–T6, 08:00–17:30, trừ nghỉ trưa 12:00–13:30 và ngày nghỉ lễ (HOLIDAYS)
+     (tức 08:00–12:00 và 13:30–17:30; ngoài khung này không tính). */
+/* Ngày nghỉ lễ (rơi vào T2–T6) — KHÔNG tính giờ cho Priority thường (không áp dụng Critical/Urgent vì tính full 24h).
+   Cần bổ sung hằng năm khi có lịch nghỉ chính thức mới (định dạng YYYY-MM-DD).
+   Nguồn: Bộ luật Lao động 2019 (Đ.112), TB 9441/TB-BNV (Tết & Quốc khánh 2026), Nghị quyết 80-NQ/TW (Ngày Văn hóa 24/11). */
+const HOLIDAYS = new Set([
+  // 2025
+  '2025-01-01',                                                                   // Tết Dương lịch
+  '2025-01-27','2025-01-28','2025-01-29','2025-01-30','2025-01-31',               // Tết Nguyên đán Ất Tỵ
+  '2025-04-07',                                                                   // Giỗ Tổ Hùng Vương (10/3 ÂL)
+  '2025-04-30','2025-05-01',                                                      // 30/4, 1/5
+  '2025-09-01','2025-09-02',                                                      // Quốc khánh
+  // 2026
+  '2026-01-01',                                                                   // Tết Dương lịch
+  '2026-02-16','2026-02-17','2026-02-18','2026-02-19','2026-02-20',               // Tết Nguyên đán Bính Ngọ
+  '2026-04-27',                                                                   // Nghỉ bù Giỗ Tổ (10/3 ÂL = CN 26/4)
+  '2026-04-30','2026-05-01',                                                      // 30/4, 1/5
+  '2026-09-01','2026-09-02',                                                      // Quốc khánh (1/9 liền kề + 2/9)
+  '2026-11-24',                                                                   // Ngày Văn hóa Việt Nam (đã chốt, không hoán đổi)
+  // 2027 (Công văn 10065/VPCP-KGVX ngày 02/10/2026 + Luật/NQ 28/2026/QH16)
+  '2027-01-01',                                                                   // Tết Dương lịch (T6)
+  '2027-02-04','2027-02-05','2027-02-08','2027-02-09','2027-02-10',               // Tết Đinh Mùi 4–10/2 (T5,T6,T2,T3,T4; mùng 1 = T7 6/2)
+  '2027-04-16',                                                                   // Giỗ Tổ Hùng Vương 10/3 ÂL (T6)
+  '2027-04-30',                                                                   // Ngày Chiến thắng (T6)
+  '2027-05-03',                                                                   // Nghỉ bù 1/5 (T7) -> T2 3/5
+  '2027-09-02','2027-09-03',                                                      // Quốc khánh 2/9 + 3/9 liền kề sau
+  '2027-11-24',                                                                   // Ngày Văn hóa Việt Nam (T4)
+  // Tuỳ công ty — thêm vào nếu có hoán đổi/nghỉ thêm, VD: '2026-08-31' (nghỉ hoán đổi, làm bù T7 22/8)
+]);
+function isoLocal(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+const WORK_WINDOWS = [[8*60, 12*60], [13*60+30, 17*60+30]]; // phút trong ngày
+function businessMinutesBetween(start, end){
+  if (!(end > start)) return 0;
+  let total = 0;
+  const day = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const lastDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  while (day <= lastDay){
+    const dow = day.getDay(); // 0=CN, 6=T7
+    if (dow >= 1 && dow <= 5 && !HOLIDAYS.has(isoLocal(day))){
+      for (const [s, e] of WORK_WINDOWS){
+        const ws = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, s);
+        const we = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, e);
+        const a = ws > start ? ws : start;
+        const b = we < end ? we : end;
+        if (b > a) total += (b - a) / 60000;
+      }
+    }
+    day.setDate(day.getDate() + 1);
+  }
+  return total;
+}
+function slaElapsedMinutes(priorityRaw, start, end){
+  const p = String(priorityRaw||'').trim().toLowerCase();
+  if (p === 'critical' || p === 'urgent') return (end.getTime() - start.getTime()) / 60000;
+  return businessMinutesBetween(start, end);
+}
+
+function computeSlaItems(rows, targetKeywords){
+  if (!rows.length) return { items: [], fields: null, missing: true };
+  const fields = Object.keys(rows[0]);
+  const priorityField = guessField(fields, ['priority']);
+  const openingField = guessField(fields, ['opening_date','opening_on','creation','opening']);
+  const targetField = guessField(fields, targetKeywords);
+
+  if (!priorityField || !openingField || !targetField){
+    return { items: [], fields: { priorityField, openingField, targetField }, missing: true };
+  }
+
+  const items = rows.map(t => {
+    const project = t.project || '(không có project)';
+    const priority = t[priorityField];
+    const openingRaw = t[openingField];
+    const targetRaw = t[targetField];
+    const openDate = openingRaw ? new Date(openingRaw) : null;
+
+    let w, result;
+    if (!targetRaw){
+      w = 1.1; result = 'Fail';
+    } else {
+      const targetDate = new Date(targetRaw);
+      if (!openDate || isNaN(openDate.getTime()) || isNaN(targetDate.getTime())){ w = 1.1; result = 'Fail'; }
+      else {
+        w = slaElapsedMinutes(priority, openDate, targetDate); // Critical/Urgent: 24h; còn lại: giờ làm việc T2–T6
+        result = (w < priorityThreshold(priority)) ? 'Pass' : 'Fail';
+      }
+    }
+    return { project, priority, openDate, w, result };
+  });
+
+  return { items, fields: { priorityField, openingField, targetField }, missing: false };
+}
+
+/* Trọng số KPI 70/30: Nhóm 1 (P1&P2) chiếm tối đa 70%, Nhóm 2 (P3-P5) chiếm tối đa 30%.
+   Không có ticket nào thuộc 1 nhóm -> coi nhóm đó đạt 100%. Actual1 <95%→0, Actual2 <80%→0. */
+function weightedSlaScore(items){
+  const g1 = items.filter(it => priorityGroup(it.priority) === 1);
+  const g2 = items.filter(it => priorityGroup(it.priority) === 2);
+  const actual1 = g1.length ? (g1.filter(it => it.result === 'Pass').length / g1.length * 100) : 100;
+  const actual2 = g2.length ? (g2.filter(it => it.result === 'Pass').length / g2.length * 100) : 100;
+  // Không "làm tròn về 0" khi dưới ngưỡng (95%/80%) như 2 trang SLA riêng — ở dashboard cần
+  // thấy đúng % thực tế để theo dõi xu hướng cải thiện dần, kể cả khi chưa đạt 90%.
+  const applied1 = actual1 * 0.7;
+  const applied2 = actual2 * 0.3;
+  return { total: items.length, pass: items.filter(it => it.result === 'Pass').length, weighted: applied1 + applied2 };
+}
+function passRate(items){
+  return items.length ? (items.filter(it => it.result === 'Pass').length / items.length * 100) : 0;
+}
+
+function renderGroupTable(bodyId, groupRows, emptyColspan){
+  document.getElementById(bodyId).innerHTML = groupRows.length ? groupRows.map(g => {
+    const rate = g.total ? (g.pass/g.total*100).toFixed(1) : '0.0';
+    return `<tr><td>${g.project}</td><td style="text-align:right;">${g.total}</td><td style="text-align:right;color:var(--success);">${g.pass}</td><td style="text-align:right;color:var(--danger);">${g.total-g.pass}</td><td style="text-align:right;">${rate}%</td></tr>`;
+  }).join('') : `<tr><td colspan="${emptyColspan}" style="color:var(--muted);">Không có ticket nào trong khoảng này</td></tr>`;
+}
+
+function getCurrentMonthRange(){
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1, 0,0,0,0);
+  const end = new Date(now.getFullYear(), now.getMonth()+1, 0, 23,59,59,999);
+  return { start, end };
+}
+function fmtDdMm(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'); }
+function mondayOf(d){
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dow = (x.getDay()+6)%7; // Mon=0..Sun=6
+  x.setDate(x.getDate()-dow);
+  x.setHours(0,0,0,0);
+  return x;
+}
+
+function getLast3MonthsRange(){
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth()-2, 1, 0,0,0,0); // đầu tháng, cách nay 2 tháng
+  const end = new Date(now.getFullYear(), now.getMonth()+1, 0, 23,59,59,999); // cuối tháng hiện tại
+  return { start, end };
+}
+function monthKeyLabel(d){
+  return { key: d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'), label: 'Tháng '+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear() };
+}
+
+let slaTrendChartFrtInst = null;
+let slaTrendChartResInst = null;
+let slaMonthChartInsts = [];
+let frtWeekChartInst = null;
+let resWeekChartInst = null;
+
+function destroyAllCharts(){
+  [slaTrendChartFrtInst, slaTrendChartResInst, frtWeekChartInst, resWeekChartInst, ...slaMonthChartInsts].forEach(c => { if (c) c.destroy(); });
+  slaTrendChartFrtInst = null; slaTrendChartResInst = null; slaMonthChartInsts = []; frtWeekChartInst = null; resWeekChartInst = null;
+}
+
+function renderSla(rows){
+  const { items: frtItems, fields: frtFields, missing: frtMissing } = computeSlaItems(rows, FRT_KEYWORDS);
+  const { items: resItems, fields: resFields, missing: resMissing } = computeSlaItems(rows, RES_KEYWORDS);
+
+  if (!rows.length){
+    document.getElementById('kpiFrt').textContent = '—';
+    document.getElementById('kpiRes').textContent = '—';
+    document.getElementById('slaTrendSub').textContent = 'Không có dữ liệu.';
+    document.getElementById('slaMonthSub').textContent = 'Không có dữ liệu.';
+    document.getElementById('slaTrendBody').innerHTML = '';
+    document.getElementById('slaMonthBody').innerHTML = '';
+    destroyAllCharts();
+    return;
+  }
+
+  // 2 chỉ số độc lập nhau — nếu 1 bên không dò được field thì chỉ báo lỗi riêng bên đó,
+  // không xoá luôn dữ liệu của bên còn lại đang hoạt động bình thường.
+  if (frtMissing) document.getElementById('kpiFrt').textContent = '—';
+  if (resMissing) document.getElementById('kpiRes').textContent = '—';
+  if (frtMissing && resMissing){
+    const msg = 'Không tự nhận diện được đủ field (Priority/Opening On/First Responded On/Resolution Date) từ ERP — xem chi tiết & xác nhận field tại Ticket dự án → SLA Phản Hồi Đầu Tiên / SLA Xử Lý Hoàn Tất.';
+    document.getElementById('slaTrendSub').textContent = msg;
+    document.getElementById('slaMonthSub').textContent = msg;
+    document.getElementById('slaTrendBody').innerHTML = '';
+    document.getElementById('slaMonthBody').innerHTML = '';
+    destroyAllCharts();
+    return;
+  }
+
+  /* ---- So sánh 3 tháng gần nhất (theo Opening On) — cả First Response & Resolution ---- */
+  const monthGroups = {}; // key -> { key, label, frt:{items[]}, res:{items[]} }
+  frtItems.forEach(it => {
+    if (!it.openDate) return;
+    const { key, label } = monthKeyLabel(it.openDate);
+    if (!monthGroups[key]) monthGroups[key] = { key, label, frt: [], res: [] };
+    monthGroups[key].frt.push(it);
+  });
+  resItems.forEach(it => {
+    if (!it.openDate) return;
+    const { key, label } = monthKeyLabel(it.openDate);
+    if (!monthGroups[key]) monthGroups[key] = { key, label, frt: [], res: [] };
+    monthGroups[key].res.push(it);
+  });
+  const monthRows = Object.values(monthGroups).sort((a,b) => a.key.localeCompare(b.key));
+
+  document.getElementById('slaTrendSub').textContent =
+    `W = mốc thời gian đích − Opening On (phút); Fail nếu chưa có mốc đó hoặc vượt ngưỡng theo Priority. Field dùng: Priority=${frtFields.priorityField}, Opening=${frtFields.openingField}, First Responded=${frtFields.targetField}, Resolution=${resFields.targetField}. Phạm vi: 3 tháng gần nhất (theo Opening On).`;
+
+  document.getElementById('slaTrendBody').innerHTML = monthRows.length ? monthRows.map(m => {
+    const f = weightedSlaScore(m.frt);
+    const r = weightedSlaScore(m.res);
+    const fRate = m.frt.length ? (f.pass/f.total*100).toFixed(1) : '0.0';
+    const rRate = m.res.length ? (r.pass/r.total*100).toFixed(1) : '0.0';
+    return `<tr><td>${m.label}</td>
+      <td style="text-align:right;">${f.total}</td><td style="text-align:right;color:var(--success);">${f.pass}</td><td style="text-align:right;">${fRate}%</td><td style="text-align:right;font-weight:700;">${f.weighted.toFixed(1)}%</td>
+      <td style="text-align:right;">${r.total}</td><td style="text-align:right;color:var(--success);">${r.pass}</td><td style="text-align:right;">${rRate}%</td><td style="text-align:right;font-weight:700;">${r.weighted.toFixed(1)}%</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="9" style="color:var(--muted);">Không có ticket nào trong 3 tháng gần nhất</td></tr>';
+
+  function buildTrendChart(canvasId, existingInst, label, color, dataValues, labels){
+    if (existingInst) existingInst.destroy();
+    return new Chart(document.getElementById(canvasId), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label, data: dataValues, borderColor: color, backgroundColor: color, tension: 0.25, pointRadius: 4 },
+          { label: 'Ngưỡng 90%', data: labels.map(()=>90), borderColor:'#dc2626', borderDash:[6,4], borderWidth:2, pointRadius:0 },
+        ],
+      },
+      options: { responsive:true, plugins:{ legend:{ display:true } }, scales:{ y:{ min:0, max:100, ticks:{ callback:v => v+'%' } } } },
+    });
+  }
+
+  slaTrendChartFrtInst = buildTrendChart('slaTrendChartFrt', slaTrendChartFrtInst, 'First Response — Trọng số',
+    '#2E6F95', monthRows.map(m => weightedSlaScore(m.frt).weighted.toFixed(1)), monthRows.map(m => m.label));
+  slaTrendChartResInst = buildTrendChart('slaTrendChartRes', slaTrendChartResInst, 'Resolution — Trọng số',
+    '#B5533C', monthRows.map(m => weightedSlaScore(m.res).weighted.toFixed(1)), monthRows.map(m => m.label));
+
+  /* ---- Tháng hiện tại (lọc theo Opening On), gộp theo dự án — cả First Response & Resolution ---- */
+  const { start, end } = getCurrentMonthRange();
+  const frtMonthItems = frtItems.filter(it => it.openDate && it.openDate >= start && it.openDate <= end);
+  const resMonthItems = resItems.filter(it => it.openDate && it.openDate >= start && it.openDate <= end);
+  document.getElementById('slaMonthSub').textContent =
+    `Từ ${fmtDdMm(start)} đến ${fmtDdMm(end)}/${end.getFullYear()} (theo Opening On) — ${frtMonthItems.length} ticket.`;
+
+  const byProject = ALL_PROJECTS.map(p => {
+    const f = weightedSlaScore(frtMonthItems.filter(it => it.project === p));
+    const r = weightedSlaScore(resMonthItems.filter(it => it.project === p));
+    return { project: p, frt: f, res: r };
+  });
+
+  document.getElementById('slaMonthBody').innerHTML = byProject.map(g => {
+    const fRate = g.frt.total ? (g.frt.pass/g.frt.total*100).toFixed(1) : '0.0';
+    const rRate = g.res.total ? (g.res.pass/g.res.total*100).toFixed(1) : '0.0';
+    return `<tr><td>${g.project}</td>
+      <td style="text-align:right;">${g.frt.total}</td><td style="text-align:right;color:var(--success);">${g.frt.pass}</td><td style="text-align:right;">${fRate}%</td><td style="text-align:right;font-weight:700;">${g.frt.weighted.toFixed(1)}%</td>
+      <td style="text-align:right;">${g.res.total}</td><td style="text-align:right;color:var(--success);">${g.res.pass}</td><td style="text-align:right;">${rRate}%</td><td style="text-align:right;font-weight:700;">${g.res.weighted.toFixed(1)}%</td>
+    </tr>`;
+  }).join('');
+
+  /* Tách biểu đồ theo nhóm tối đa 5 dự án/biểu đồ cho dễ nhìn (VD 9 dự án -> 5 + 4). */
+  slaMonthChartInsts.forEach(c => { if (c) c.destroy(); });
+  slaMonthChartInsts = [];
+  const MAX_PER_CHART = 5;
+  const chartCount = Math.max(1, Math.ceil(byProject.length / MAX_PER_CHART));
+  const chunkSize = Math.ceil(byProject.length / chartCount);
+  const chartsWrap = document.getElementById('slaMonthCharts');
+  chartsWrap.innerHTML = '';
+  for (let i = 0; i < chartCount; i++){
+    const part = byProject.slice(i * chunkSize, (i + 1) * chunkSize);
+    if (!part.length) continue;
+    const box = document.createElement('div');
+    box.style.cssText = 'margin-bottom:' + (i < chartCount - 1 ? '18px' : '0') + ';';
+    if (chartCount > 1){
+      const ttl = document.createElement('div');
+      ttl.style.cssText = 'font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:4px;';
+      ttl.textContent = 'Nhóm ' + (i + 1) + '/' + chartCount + ' — ' + part.length + ' dự án';
+      box.appendChild(ttl);
+    }
+    const cv = document.createElement('canvas');
+    cv.height = 90;
+    box.appendChild(cv);
+    chartsWrap.appendChild(box);
+    slaMonthChartInsts.push(new Chart(cv, {
+      type: 'bar',
+      data: {
+        labels: part.map(g => g.project),
+        datasets: [
+          { label: 'First Response — Trọng số', data: part.map(g => Number(g.frt.weighted.toFixed(1))), backgroundColor:'#2E6F95' },
+          { label: 'Resolution — Trọng số', data: part.map(g => Number(g.res.weighted.toFixed(1))), backgroundColor:'#B5533C' },
+        ],
+      },
+      options: { responsive:true, scales:{ y:{ min:0, suggestedMax:100, ticks:{ callback:v => v+'%' } } } },
+    }));
+  }
+
+  /* ---- KPI đầu trang: % Pass thuần theo đúng công thức Priority (không nhân trọng số
+     70/30 — chỉ dùng trọng số 70/30 ở 2 bảng chi tiết bên dưới), toàn bộ 5 dự án, tháng hiện tại ---- */
+  document.getElementById('kpiFrt').textContent = frtMissing ? '—' : passRate(frtMonthItems).toFixed(1) + '%';
+  document.getElementById('kpiRes').textContent = resMissing ? '—' : passRate(resMonthItems).toFixed(1) + '%';
+  document.getElementById('kpiFrtNote').textContent = frtMissing
+    ? 'Không dò được field First Responded On từ ERP.'
+    : `Pass nếu W = First Responded On − Opening On < ngưỡng theo Priority (${frtMonthItems.length} ticket tháng này)`;
+  document.getElementById('kpiResNote').textContent = resMissing
+    ? 'Không dò được field Resolution Date từ ERP.'
+    : `Pass nếu W = Resolution Date − Opening On < ngưỡng theo Priority (${resMonthItems.length} ticket tháng này)`;
+
+  /* ---- Theo tuần trong tháng hiện tại (Thứ 2 -> Chủ Nhật) — cả First Response & Resolution ---- */
+  function groupByWeek(items){
+    const groups = {};
+    items.forEach(it => {
+      const mon = mondayOf(it.openDate);
+      const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+      const key = mon.toISOString().slice(0,10);
+      const label = fmtDdMm(mon) + '–' + fmtDdMm(sun);
+      if (!groups[key]) groups[key] = { key, label, total:0, pass:0 };
+      groups[key].total++;
+      if (it.result === 'Pass') groups[key].pass++;
+    });
+    return Object.values(groups).sort((a,b) => a.key.localeCompare(b.key));
+  }
+  const frtWeekRows = groupByWeek(frtMonthItems);
+  const resWeekRows = groupByWeek(resMonthItems);
+
+  function buildWeekChart(canvasId, existingInst, label, color, weekRows){
+    if (existingInst) existingInst.destroy();
+    if (!weekRows.length){
+      return null; // không có dữ liệu tuần nào — bỏ qua, giữ canvas trống
+    }
+    return new Chart(document.getElementById(canvasId), {
+      type: 'line',
+      data: {
+        labels: weekRows.map(w => w.label),
+        datasets: [
+          { label, data: weekRows.map(w => w.total ? (w.pass/w.total*100).toFixed(1) : 0), borderColor: color, backgroundColor: color, tension:0.25, pointRadius:4 },
+          { label: 'Ngưỡng 90%', data: weekRows.map(()=>90), borderColor:'#dc2626', borderDash:[6,4], borderWidth:2, pointRadius:0 },
+        ],
+      },
+      options: { responsive:true, plugins:{ legend:{ display:true } }, scales:{ y:{ min:0, max:100, ticks:{ callback:v => v+'%' } } } },
+    });
+  }
+  frtWeekChartInst = buildWeekChart('frtWeekChart', frtWeekChartInst, 'First Response — % Pass', '#2E6F95', frtWeekRows);
+  resWeekChartInst = buildWeekChart('resWeekChart', resWeekChartInst, 'Resolution — % Pass', '#B5533C', resWeekRows);
+}
+
+loadDashBtn.addEventListener('click', loadDashboard);
+</script>
+</body>
+</html>
