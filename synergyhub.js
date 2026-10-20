@@ -97,7 +97,7 @@ const DESIGNATION = ['designation', 'employee_designation', 'position', 'job_tit
 const EMPLOYEE = ['employee_name', 'employee', 'full_name', 'member', 'member_name', 'user_name', 'user', 'nhan_vien', 'owner'];
 const HOURS = ['hours', 'hour', 'total_hours', 'logged_hours', 'log_hours', 'spent_hours', 'working_hours', 'work_hours', 'time_logged', 'hrs', 'so_gio'];
 const HOURS_WEAK = ['duration', 'time_spent', 'time'];
-const DATE = ['from_time', 'start_time', 'log_date', 'work_date', 'logged_date', 'date', 'posting_date', 'start_date', 'time_log_date', 'started_at', 'created_at', 'creation'];
+const DATE = ['log_date', 'work_date', 'logged_date', 'time_log_date', 'date', 'posting_date', 'start_date', 'started_at', 'created_at', 'creation', 'from_time', 'start_time']; // from_time/start_time thường chỉ là giờ trong ngày → để cuối
 
 /** Giờ công → [{designation, employee, hours, monthKey}] + diagnostics. */
 function normalizeTimeLogs(msg, range = {}) {
@@ -117,7 +117,10 @@ function normalizeTimeLogs(msg, range = {}) {
   diagnostics.sample = objs[0] || null;
   const dKey = firstKeyPresent(objs, DESIGNATION); const eKey = firstKeyPresent(objs, EMPLOYEE);
   const hKey = firstKeyPresent(objs, HOURS) || hoursKeyLike(objs) || firstKeyPresent(objs, HOURS_WEAK);
-  const tKey = firstKeyPresent(objs, DATE) || dateKeyByValue(objs);
+  // cột ngày: thử lần lượt từng ứng viên TRÊN TỪNG DÒNG, lấy cột đầu tiên cho ra ngày hợp lệ (tránh chọn nhầm cột chỉ có giờ như from_time = "08:30:00")
+  const dateCands = [...new Set([...DATE.filter((n) => objs.some((o) => o[n] !== undefined && !isEmpty(o[n]))), dateKeyByValue(objs)].filter(Boolean))];
+  const monthOfRow = (o) => { for (const k of dateCands) { const m = monthKeyOf(o[k]); if (m) return m; } return ''; };
+  const tKey = dateCands.find((k) => objs.some((o) => monthKeyOf(o[k]))) || dateCands[0] || null;
   diagnostics.detected = { designation: dKey, employee: eKey, hours: hKey, date: tKey, hoursIsWeakGuess: Boolean(hKey && HOURS_WEAK.includes(hKey)) };
   diagnostics.missing = { designation: 0, hours: 0, date: 0 };
   // Báo cáo không có cột ngày (chỉ có tổng giờ): nếu khoảng ngày nằm trong 1 tháng thì gán cả vào tháng đó
@@ -131,7 +134,7 @@ function normalizeTimeLogs(msg, range = {}) {
     if (label === 'total' || label === 'tổng' || label === 'tong') continue;
     diagnostics.sourceRows++;
     const hours = hKey ? toHours(o[hKey]) : 0;
-    const monthKey = tKey ? monthKeyOf(o[tKey]) : fallbackMonth;
+    const monthKey = monthOfRow(o) || (tKey ? '' : fallbackMonth);
     const designation = String((dKey ? o[dKey] : null) ?? (eKey ? o[eKey] : '') ?? '').trim(); // thiếu chức danh → dùng tên nhân viên để người dùng map cấp bậc
     if (!designation) diagnostics.missing.designation++;
     if (!hours) diagnostics.missing.hours++;
