@@ -138,6 +138,13 @@ const FALLBACK_PROJECTS = [
 let CS_PROJECTS = FALLBACK_PROJECTS.map(p=>p.code); // thay bằng danh sách dự án của tool khi tải xong
 const LEVELS = ['Fresher','Junior','Middle','Senior'];
 let projectNames = {}, creators = [], scope = [], data = null, reqSeq = 0, editingId = null;
+/* Dự án mặc định theo thành viên = đúng cấu hình của chức năng Tạo Ticket (ticket-creators.json → "defaults": dự án → người tạo mặc định).
+   Thành viên không phụ trách dự án nào theo cấu hình đó thì tích tất cả dự án. Muốn thêm dự án thì tích thêm trên trang (không lưu lại, đổi thành viên là về mặc định). */
+let memberDefaults = {};
+function defaultScopeFor(member){
+  const d = CS_PROJECTS.filter(c => (memberDefaults[c] || []).includes(member));
+  return d.length ? d : CS_PROJECTS.slice();
+}
 const todayVN = () => new Date(Date.now()+7*3600*1000).toISOString().slice(0,10);
 const addMonths = (key, n) => { const [y,m] = key.split('-').map(Number); return new Date(Date.UTC(y, m-1+n, 1)).toISOString().slice(0,7); };
 const qp = new URLSearchParams(location.search);
@@ -162,7 +169,7 @@ function renderScope(){
   $('scope').querySelectorAll('input').forEach(i=>i.onchange=()=>{
     const sel = [...$('scope').querySelectorAll('input:checked')].map(x=>x.dataset.p);
     if(!sel.length){ i.checked = true; return; }
-    scope = sel; const s = store.get(); s.scope = scope; store.set(s); load();
+    scope = sel; load();
   });
 }
 
@@ -177,7 +184,7 @@ function renderRef(){
     + rows.map((r,i)=>'<tr><td><b>'+r[0]+'</b></td><td class="mono">'+(th?rng[i]:'—')+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>').join('')+'</tbody></table>';
   if(cfg){
     $('thTbl').innerHTML = '<table><thead><tr><th>Level</th><th class="n">Min</th><th class="n">Target</th><th class="n">Max</th><th class="n">Trọng số</th></tr></thead><tbody>'
-      + LEVELS.map(l=>'<tr'+(l===level?' class="me"':'')+'><td>'+l+'</td>'+(cfg.thresholds[l]?'<td class="n">'+fmt(cfg.thresholds[l].min,0)+'%</td><td class="n">'+fmt(cfg.thresholds[l].target,0)+'%</td><td class="n">'+fmt(cfg.thresholds[l].max,0)+'%</td><td class="n">'+fmt(cfg.weights[l],0)+'</td>':'<td class="n" colspan="4" style="color:#8EA3BA">Không áp dụng</td>')+'</tr>').join('')+'</tbody></table>';
+      + LEVELS.map(l=>'<tr'+(l===level?' class="me"':'')+'><td>'+l+'</td>'+(cfg.thresholds[l]?'<td class="n">'+fmt(cfg.thresholds[l].min,0)+'%</td><td class="n">'+fmt(cfg.thresholds[l].target,0)+'%</td><td class="n">'+fmt(cfg.thresholds[l].max,0)+'%</td><td class="n">'+fmt(cfg.weights[l],0)+'%</td>':'<td class="n" colspan="4" style="color:#8EA3BA">Không áp dụng</td>')+'</tr>').join('')+'</tbody></table>';
     const p = cfg.repeatPenaltyByCount;
     $('penTbl').innerHTML = '<table><thead><tr><th>Complaint</th><th class="n">Điểm trừ</th></tr></thead><tbody>'
       + '<tr><td>1 complaint về tiến độ công việc từ Manager</td><td class="n">− '+fmt(cfg.progressComplaintPenalty,0)+'%</td></tr>'
@@ -200,7 +207,7 @@ function howText(d){
   else if(r.tier===3) t += 'Actual '+fmt(r.actual,0)+'% ≥ Max '+fmt(th.max,0)+'% → Progress = <b>150%</b> (trần)';
   else if(r.tier===2) t += th.max>th.target ? 'Progress = 100% + 50% × ('+fmt(r.actual,0)+' − '+fmt(th.target,0)+') ÷ ('+fmt(th.max,0)+' − '+fmt(th.target,0)+') = <b>'+fmt(r.progress)+'%</b>' : 'Đạt Target → Progress = <b>100%</b>';
   else t += 'Progress = 50% + 50% × ('+fmt(r.actual,0)+' − '+fmt(th.min,0)+') ÷ ('+fmt(th.target,0)+' − '+fmt(th.min,0)+') = <b>'+fmt(r.progress)+'%</b>';
-  return t+'<br>KPI Completion = '+fmt(r.progress)+'% × '+fmt(k.weight,0)+' = <b>'+fmt(r.points,2)+'</b> điểm';
+  return t+'<br>KPI Completion = '+fmt(r.progress)+'% × '+fmt(k.weight,0)+'% = <b>'+fmt(r.points,2)+'%</b>';
 }
 function render(d){
   const r = d.result, k = d.kpi;
@@ -214,7 +221,7 @@ function render(d){
       +'<div class="kpi bad"><div class="l">Issue bị phản hồi lặp lại</div><div class="v">'+r.repeatGroups.length+'</div><div class="d">'+r.repeatFeedbacks+' phản hồi · − '+fmt(r.repeatPenalty,0)+'%</div></div>'
       +'<div class="kpi act"><div class="l">Actual</div><div class="v '+tone+'">'+fmt(r.actual,0)+'%</div><div class="d">Min '+fmt(k.thresholds.min,0)+' · Target '+fmt(k.thresholds.target,0)+' · Max '+fmt(k.thresholds.max,0)+'</div></div>'
       +'<div class="kpi score"><div class="l">Progress</div><div class="v '+tone+'">'+fmt(r.progress)+'%</div><div class="d">'+esc(r.band)+'</div></div>'
-      +'<div class="kpi score"><div class="l">KPI Completion</div><div class="v '+tone+'">'+fmt(r.points,2)+'</div><div class="d">/ '+fmt(k.weight,0)+' điểm (trọng số)</div></div>'
+      +'<div class="kpi score"><div class="l">KPI Completion</div><div class="v '+tone+'">'+fmt(r.points,2)+'%</div><div class="d">trên trọng số '+fmt(k.weight,0)+'%</div></div>'
       +'<div class="kpi"><div class="l">Tổng điểm trừ</div><div class="v">'+fmt(r.penalty,0)+'%</div><div class="d">Actual = 100% − điểm trừ</div></div>'
       +'</div><div class="how">'+howText(d)+'</div>';
   }
@@ -223,7 +230,7 @@ function render(d){
   $('ovTbl').innerHTML = d.overview.length ? '<table><thead><tr><th>Thành viên</th><th class="n">Complaint</th><th class="n">Tiến độ</th><th class="n">Lặp lại</th><th class="n">Điểm trừ</th><th class="n">Actual</th></tr></thead><tbody>'
     + d.overview.map(o=>'<tr class="click'+(o.member===d.member?' me':'')+'" data-m="'+esc(o.member)+'"><td>'+esc(shortName(o.member))+'</td><td class="n">'+o.complaints+'</td><td class="n">'+o.progressCount+'</td><td class="n">'+o.repeatFeedbacks+'</td><td class="n">− '+fmt(o.penalty,0)+'%</td><td class="n">'+fmt(o.actual,0)+'%</td></tr>').join('')+'</tbody></table><div class="hint" style="margin-top:6px">Chỉ liệt kê thành viên có complaint; bấm một dòng để xem thành viên đó. Thành viên không có complaint: Actual 100%.</div>'
     : '<div class="empty">Tháng này chưa ghi nhận complaint nào trong phạm vi dự án đã chọn.</div>';
-  $('ovTbl').querySelectorAll('tr.click').forEach(tr=>tr.onclick=()=>{ $('selMember').value = tr.dataset.m; $('fMember').value = tr.dataset.m; persist(); load(); });
+  $('ovTbl').querySelectorAll('tr.click').forEach(tr=>tr.onclick=()=>{ $('selMember').value = tr.dataset.m; $('fMember').value = tr.dataset.m; scope = defaultScopeFor(tr.dataset.m); persist(); load(); });
   // danh sách complaint của thành viên
   $('listTitle').textContent = 'Complaint đã ghi nhận — '+shortName(d.member)+' · tháng '+mFmt(d.month)+' ('+d.entries.length+')';
   $('listTbl').innerHTML = d.entries.length ? '<table><thead><tr><th>Ngày</th><th>Dự án</th><th>Loại</th><th>Ticket / issue</th><th>Kênh</th><th>Ghi chú</th><th></th></tr></thead><tbody>'
@@ -262,7 +269,7 @@ async function load(){
 function defaultDate(){ const t = todayVN(); return t.slice(0,7)===month ? t : month+'-01'; }
 function resetForm(){
   editingId = null; $('formTitle').textContent = 'Ghi nhận complaint mới'; $('btnSave').textContent = '＋ Lưu complaint'; $('btnCancel').style.display = 'none';
-  $('fDate').value = defaultDate(); $('fMember').value = $('selMember').value; $('fIssue').value = ''; $('fNote').value = '';
+  $('fDate').value = defaultDate(); $('fMember').value = $('selMember').value; if(scope.length) $('fProject').value = scope[0]; $('fIssue').value = ''; $('fNote').value = '';
 }
 function startEdit(id){
   const e = data.entries.find(x=>x.id===id); if(!e) return;
@@ -278,7 +285,8 @@ async function saveEntry(){
     const r = await api(editingId ? '/api/kpi/complaints/'+encodeURIComponent(editingId) : '/api/kpi/complaints', { method: editingId?'PUT':'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
     const savedMonth = r.entry.month;
     if(savedMonth !== month){ month = savedMonth; }
-    $('selMember').value = r.entry.member;
+    if($('selMember').value !== r.entry.member){ $('selMember').value = r.entry.member; scope = defaultScopeFor(r.entry.member); }
+    if(!scope.includes(r.entry.project)) scope = scope.concat(r.entry.project);
     await load();
     $('formMsg').innerHTML = '<div class="msg ok">Đã lưu complaint ('+esc(shortName(r.entry.member))+', '+esc(dmy(r.entry.date))+').'+(r.commitUrl?' <a href="'+esc(r.commitUrl)+'" target="_blank" rel="noopener">Xem commit ↗</a>':'')+'</div>';
   }catch(e){ $('formMsg').innerHTML = '<div class="msg err">Không lưu được: '+esc(e.message)+'</div>'; }
@@ -301,7 +309,7 @@ function exportXlsx(){
   const d = data, r = d.result, k = d.kpi, c = cfg;
   const S = [['CS03: Complaint khách hàng — Đánh giá KPI theo tháng'],['Thành viên', d.member],['Level', d.level],['Kỳ đánh giá', mFmt(d.month)],['Dự án', d.projects.map(pName).join(', ')],['Xuất lúc', new Date().toLocaleString('vi-VN')],[],
     ['Chỉ số','Giá trị'],['Complaint tiến độ (số)', r.progressCount],['Điểm trừ tiến độ (%)', r.progressPenalty],['Issue bị phản hồi lặp lại (số)', r.repeatGroups.length],['Phản hồi lặp lại (số)', r.repeatFeedbacks],['Điểm trừ lặp lại (%)', r.repeatPenalty],['Tổng điểm trừ (%)', r.penalty],['Actual (%)', r.actual]];
-  if(k.applicable) S.push(['Min (%)',k.thresholds.min],['Target (%)',k.thresholds.target],['Max (%)',k.thresholds.max],['Progress (%)', r.progress],['Mức', r.band],['Trọng số (điểm)',k.weight],['KPI Completion (điểm)', r.points]);
+  if(k.applicable) S.push(['Min (%)',k.thresholds.min],['Target (%)',k.thresholds.target],['Max (%)',k.thresholds.max],['Progress (%)', r.progress],['Mức', r.band],['Trọng số (%)',k.weight],['KPI Completion (%)', r.points]);
   else S.push(['Ghi chú','KPI không áp dụng cho level này']);
   S.push([],['Issue lặp lại','Dự án','Số phản hồi','Điểm trừ (%)']); r.repeatGroups.forEach(g=>S.push([g.issue,pName(g.project),g.count,g.penalty]));
   const wb = XLSX.utils.book_new();
@@ -320,7 +328,7 @@ $('pickMonth').onchange = e => { if(/^\d{4}-\d{2}$/.test(e.target.value)) go(e.t
 $('btnReload').onclick = () => load();
 $('btnXlsx').onclick = () => exportXlsx();
 $('selLevel').onchange = () => { renderRef(); persist(); load(); };
-$('selMember').onchange = () => { const s = store.get(); $('selLevel').value = (s.levels&&s.levels[$('selMember').value]) || 'Junior'; persist(); load(); };
+$('selMember').onchange = () => { const s = store.get(); $('selLevel').value = (s.levels&&s.levels[$('selMember').value]) || 'Junior'; scope = defaultScopeFor($('selMember').value); persist(); load(); };
 $('fType').onchange = updateIssueHint;
 $('btnSave').onclick = saveEntry;
 $('btnCancel').onclick = resetForm;
@@ -332,15 +340,14 @@ $('btnCancel').onclick = resetForm;
   }catch(_){}
   FALLBACK_PROJECTS.forEach(p=>{ if(!projectNames[p.code]) projectNames[p.code] = p.name; });
   const s = store.get();
-  scope = CS_PROJECTS.slice(); // mặc định tất cả dự án
-  if(Array.isArray(s.scope)){ const sc = s.scope.filter(c=>CS_PROJECTS.includes(c)); if(sc.length) scope = sc; }
   $('selLevel').innerHTML = LEVELS.map(l=>'<option>'+l+'</option>').join('');
-  try{ const c = await api('/api/erp/ticket-creators'); creators = c.creators || []; }
+  try{ const c = await api('/api/erp/ticket-creators'); creators = c.creators || []; memberDefaults = c.defaultMembers || {}; }
   catch(e){ $('notice').innerHTML = '<div class="msg err">Không tải được danh sách thành viên: '+esc(e.message)+'</div>'; }
   const memOpts = creators.length ? creators.map(e=>'<option value="'+esc(e)+'">'+esc(e)+'</option>').join('') : '<option value="">(chưa có thành viên)</option>';
   $('selMember').innerHTML = memOpts; $('fMember').innerHTML = memOpts;
   if(s.member && creators.includes(s.member)) $('selMember').value = s.member;
   $('selLevel').value = (s.levels && s.levels[$('selMember').value]) || 'Junior';
+  scope = defaultScopeFor($('selMember').value);
   $('fProject').innerHTML = CS_PROJECTS.map(c=>'<option value="'+c+'">'+esc(pName(c))+'</option>').join('');
   $('fType').innerHTML = '<option value="progress">Complaint về tiến độ công việc (từ Manager)</option><option value="repeat">Phản hồi lặp lại của 1 issue/ticket</option>';
   $('fChannel').innerHTML = ['Email','Call','Chat','Zalo','Khác'].map(c=>'<option>'+c+'</option>').join('');

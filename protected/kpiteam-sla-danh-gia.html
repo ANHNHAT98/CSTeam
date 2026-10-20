@@ -122,9 +122,16 @@ const FALLBACK_PROJECTS = [
   {code:'Sabeco_PG',label:'SABECO-PG',name:'Sabeco PG'},{code:'Sabeco_B2B_Support',label:'SABECO-B2B',name:'Sabeco B2B'},{code:'FES_eSales',label:'FES',name:'FES'},
   {code:'ANKO_eSales_Support',label:'ANKO',name:'ANKO'},{code:'HaiHa_eSales_Support',label:'HAIHA',name:'HAIHA'},{code:'Jotun_VN_eSales',label:'JOTUN',name:'JOTUN'}
 ];
-const DEFAULT_PROJECTS = ['ANVY_eSale_Support','MerapLion_eSales'];
 const LEVELS = ['Fresher','Junior','Middle','Senior'];
 let projects = FALLBACK_PROJECTS, creators = [], scope = [], data = null, reqSeq = 0;
+/* Dự án mặc định theo thành viên = đúng cấu hình của chức năng Tạo Ticket (ticket-creators.json → "defaults": dự án → người tạo mặc định).
+   Thành viên không phụ trách dự án nào theo cấu hình đó thì tích tất cả dự án. Muốn thêm dự án thì tích thêm trên trang (không lưu lại, đổi thành viên là về mặc định). */
+let memberDefaults = {};
+function defaultScopeFor(member){
+  const all = projects.map(p=>p.code);
+  const d = all.filter(c => (memberDefaults[c] || []).includes(member));
+  return d.length ? d : all;
+}
 const todayMonth = () => new Date(Date.now()+7*3600*1000).toISOString().slice(0,7);
 const addMonths = (key, n) => { const [y,m] = key.split('-').map(Number); return new Date(Date.UTC(y, m-1+n, 1)).toISOString().slice(0,7); };
 const qp = new URLSearchParams(location.search);
@@ -150,7 +157,7 @@ function renderScope(){
   $('scope').querySelectorAll('input').forEach(i=>i.onchange=()=>{
     const sel = [...$('scope').querySelectorAll('input:checked')].map(x=>x.dataset.p);
     if(!sel.length){ i.checked = true; return; }
-    scope = sel; const s = store.get(); s.scope = scope; store.set(s); load(false);
+    scope = sel; load(false);
   });
 }
 
@@ -162,7 +169,7 @@ function howText(r, th, weight){
   else if(r.tier===3) prog = 'Actual '+fmt(a)+'% ≥ Max '+fmt(th.max,0)+'% → Progress = <b>150%</b> (trần)';
   else if(r.tier===2) prog = th.max>th.target ? 'Progress = 100% + 50% × ('+fmt(a)+' − '+fmt(th.target,0)+') ÷ ('+fmt(th.max,0)+' − '+fmt(th.target,0)+') = <b>'+fmt(r.progress)+'%</b>' : 'Đạt Target → Progress = <b>100%</b>';
   else prog = 'Progress = 50% + 50% × ('+fmt(a)+' − '+fmt(th.min,0)+') ÷ ('+fmt(th.target,0)+' − '+fmt(th.min,0)+') = <b>'+fmt(r.progress)+'%</b>';
-  return base+'<br>'+prog+'<br>KPI Completion = '+fmt(r.progress)+'% × '+fmt(weight,0)+' = <b>'+fmt(r.points,2)+'</b> điểm';
+  return base+'<br>'+prog+'<br>KPI Completion = '+fmt(r.progress)+'% × '+fmt(weight,0)+'% = <b>'+fmt(r.points,2)+'%</b>';
 }
 const resCls = r => r==='Đạt' ? 'ok' : 'bad';
 
@@ -179,7 +186,7 @@ function render(d){
       +'<div class="kpi bad"><div class="l">Trượt SLA</div><div class="v">'+r.fail+'</div><div class="d">'+(r.missingLog?'Gồm '+r.missingLog+' ticket thiếu log':'&nbsp;')+'</div></div>'
       +'<div class="kpi act"><div class="l">Actual</div><div class="v '+tone+'">'+(r.actual==null?'—':fmt(r.actual)+'%')+'</div><div class="d">Min '+fmt(k.thresholds.min,0)+' · Target '+fmt(k.thresholds.target,0)+' · Max '+fmt(k.thresholds.max,0)+'</div></div>'
       +'<div class="kpi score"><div class="l">Progress</div><div class="v '+tone+'">'+(r.progress==null?'—':fmt(r.progress)+'%')+'</div><div class="d">'+esc(r.band||'Chưa có ticket để tính')+'</div></div>'
-      +'<div class="kpi score"><div class="l">KPI Completion</div><div class="v '+tone+'">'+(r.points==null?'—':fmt(r.points,2))+'</div><div class="d">/ '+fmt(k.weight,0)+' điểm (trọng số)</div></div>'
+      +'<div class="kpi score"><div class="l">KPI Completion</div><div class="v '+tone+'">'+(r.points==null?'—':fmt(r.points,2)+'%')+'</div><div class="d">trên trọng số '+fmt(k.weight,0)+'%</div></div>'
       +'</div>'
       + (r.actual==null ? '<div class="how">Chưa có ticket nào có kết quả SLA (đúng hoặc trượt) trong phạm vi đã chọn nên chưa tính được Actual.</div>' : '<div class="how">'+howText(r, k.thresholds, k.weight)+'</div>');
   }
@@ -218,7 +225,7 @@ function renderRef(){
   if(lastCfg){
     const w = lastCfg.weights;
     $('thTbl').innerHTML = '<table><thead><tr><th>Level</th><th class="n">Min</th><th class="n">Target</th><th class="n">Max</th><th class="n">Trọng số</th></tr></thead><tbody>'
-      + lastCfg.levels.map(l=>'<tr'+(l===level?' class="me"':'')+'><td>'+l+'</td>'+(lastCfg.thresholds[l]?'<td class="n">'+fmt(lastCfg.thresholds[l].min,0)+'%</td><td class="n">'+fmt(lastCfg.thresholds[l].target,0)+'%</td><td class="n">'+fmt(lastCfg.thresholds[l].max,0)+'%</td><td class="n">'+fmt(w[l],0)+'</td>':'<td class="n" colspan="4" style="color:#8EA3BA">Không áp dụng</td>')+'</tr>').join('')+'</tbody></table>';
+      + lastCfg.levels.map(l=>'<tr'+(l===level?' class="me"':'')+'><td>'+l+'</td>'+(lastCfg.thresholds[l]?'<td class="n">'+fmt(lastCfg.thresholds[l].min,0)+'%</td><td class="n">'+fmt(lastCfg.thresholds[l].target,0)+'%</td><td class="n">'+fmt(lastCfg.thresholds[l].max,0)+'%</td><td class="n">'+fmt(w[l],0)+'%</td>':'<td class="n" colspan="4" style="color:#8EA3BA">Không áp dụng</td>')+'</tr>').join('')+'</tbody></table>';
   }
 }
 
@@ -255,7 +262,7 @@ function exportXlsx(){
     ['Ticket trong phạm vi', r.total], ['Đúng SLA', r.pass], ['Trượt SLA', r.fail], ['Trong đó thiếu log (chưa có mốc)', r.missingLog], ['Mẫu số (đúng + trượt)', r.decided],
     ['Actual (%)', r.actual==null?'':Math.round(r.actual*100)/100],
   ];
-  if(k.applicable) S.push(['Min (%)',k.thresholds.min],['Target (%)',k.thresholds.target],['Max (%)',k.thresholds.max],['Progress (%)', r.progress==null?'':Math.round(r.progress*100)/100],['Mức', r.band],['Trọng số (điểm)',k.weight],['KPI Completion (điểm)', r.points==null?'':Math.round(r.points*100)/100]);
+  if(k.applicable) S.push(['Min (%)',k.thresholds.min],['Target (%)',k.thresholds.target],['Max (%)',k.thresholds.max],['Progress (%)', r.progress==null?'':Math.round(r.progress*100)/100],['Mức', r.band],['Trọng số (%)',k.weight],['KPI Completion (%)', r.points==null?'':Math.round(r.points*100)/100]);
   else S.push(['Ghi chú','KPI không áp dụng cho level này']);
   const s1 = XLSX.utils.aoa_to_sheet(S); s1['!cols'] = [{wch:34},{wch:40}]; XLSX.utils.book_append_sheet(wb, s1, 'Tổng hợp');
   const s2 = XLSX.utils.aoa_to_sheet([['STT','Mã ticket','Dự án','Ưu tiên','Tiêu đề','Người tạo','Người xử lý','Trạng thái','Tiếp nhận',KPI.date,'Thời gian (giờ)','Ngưỡng (giờ)','Kết quả','Ghi chú'],
@@ -275,22 +282,20 @@ $('btnReload').onclick = () => load(true);
 $('btnXlsx').onclick = () => exportXlsx();
 $('selBy').onchange = () => { const s = store.get(); s.by = $('selBy').value; store.set(s); load(false); };
 $('selLevel').onchange = () => { renderRef(); const s = store.get(); s.levels = s.levels||{}; s.levels[$('selMember').value] = $('selLevel').value; store.set(s); load(false); };
-$('selMember').onchange = () => { const s = store.get(); s.member = $('selMember').value; store.set(s); $('selLevel').value = (s.levels&&s.levels[$('selMember').value]) || 'Junior'; load(false); };
+$('selMember').onchange = () => { const s = store.get(); s.member = $('selMember').value; store.set(s); scope = defaultScopeFor(s.member); $('selLevel').value = (s.levels&&s.levels[$('selMember').value]) || 'Junior'; load(false); };
 
 (async function init(){
   try{ const list = await api('/api/ticket-instructions'); if(Array.isArray(list) && list.length) projects = list; }catch(_){}
   const s = store.get();
-  scope = (Array.isArray(s.scope)?s.scope:DEFAULT_PROJECTS).filter(c=>projects.some(p=>p.code===c));
-  if(!scope.length) scope = DEFAULT_PROJECTS.filter(c=>projects.some(p=>p.code===c));
-  if(!scope.length) scope = [projects[0].code];
   $('selLevel').innerHTML = LEVELS.map(l=>'<option>'+l+'</option>').join('');
   if(s.by) $('selBy').value = s.by;
   try{
-    const c = await api('/api/erp/ticket-creators'); creators = c.creators || [];
+    const c = await api('/api/erp/ticket-creators'); creators = c.creators || []; memberDefaults = c.defaultMembers || {};
   }catch(e){ $('notice').innerHTML = '<div class="msg err">Không tải được danh sách thành viên: '+esc(e.message)+'</div>'; }
   $('selMember').innerHTML = creators.length ? creators.map(e=>'<option value="'+esc(e)+'">'+esc(e)+'</option>').join('') : '<option value="">(chưa có thành viên)</option>';
   if(s.member && creators.includes(s.member)) $('selMember').value = s.member;
   $('selLevel').value = (s.levels && s.levels[$('selMember').value]) || 'Junior';
+  scope = defaultScopeFor($('selMember').value);
   renderRef();
   load(false);
 })();

@@ -173,9 +173,11 @@ app.get('/kpiteam/complaint', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'kpiteam-complaint.html'));
 });
 
-app.get('/kpiteam/bao-cao-tuan', requirePageAuth, (req, res) => {
+app.get('/bao-cao/tuan-erp', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'kpiteam-bao-cao-tuan.html'));
 });
+// URL cũ (trước khi chuyển sang chức năng "Báo Cáo") — giữ để các đường dẫn đã lưu vẫn dùng được
+app.get('/kpiteam/bao-cao-tuan', requirePageAuth, (req, res) => res.redirect(301, '/bao-cao/tuan-erp'));
 
 /* ---------- API: mã hóa/giải mã password Windows (key hệ thống giữ ở server) ---------- */
 app.post('/api/khac/mahoa-password', requireAuth, (req, res) => {
@@ -581,17 +583,19 @@ function loadProjectCreators() {
     const norm = (x) => String(x || '').trim().toLowerCase();
     const serviceAccount = norm(j.serviceAccount);
     const creators = [...new Set([...(Array.isArray(j.creators) ? j.creators : []).map(norm), serviceAccount].filter((x) => EMAIL_RE.test(x)))];
-    const defaults = {};
+    // defaults: dự án → 1 email, hoặc MẢNG email. Phần tử đầu = người tạo mặc định ở trang Tạo Ticket;
+    // cả mảng = các thành viên "phụ trách" dự án (dùng để tích sẵn dự án ở các trang KPI CS01/CS02/CS03).
+    const defaults = {}; const defaultMembers = {};
     for (const [code, v] of Object.entries(j.defaults || {})) {
-      const e = norm(v);
-      if (creators.includes(e)) defaults[code] = e;
+      const list = [...new Set((Array.isArray(v) ? v : [v]).map(norm).filter((e) => creators.includes(e)))];
+      if (list.length) { defaults[code] = list[0]; defaultMembers[code] = list; }
     }
     const assignees = [...new Set((Array.isArray(j.assignees) ? j.assignees : []).map(norm).filter((x) => EMAIL_RE.test(x)))];
     const assignable = [...new Set([...assignees, ...creators])]; // danh sách được phép chọn làm người xử lý
-    return { serviceAccount: EMAIL_RE.test(serviceAccount) ? serviceAccount : '', creators, defaults, assignees, assignable };
+    return { serviceAccount: EMAIL_RE.test(serviceAccount) ? serviceAccount : '', creators, defaults, defaultMembers, assignees, assignable };
   } catch (e) {
     console.error('[ticket-creators] không đọc được cấu hình:', e.message);
-    return { serviceAccount: '', creators: [], defaults: {}, assignees: [], assignable: [] };
+    return { serviceAccount: '', creators: [], defaults: {}, defaultMembers: {}, assignees: [], assignable: [] };
   }
 }
 {

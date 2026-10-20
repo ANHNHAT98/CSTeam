@@ -181,6 +181,10 @@ Module hiện có:
   qua `listStore.js` (GitHub nếu đã cấu hình `GITHUB_TOKEN`/`GITHUB_REPO` — mỗi lần lưu là 1 commit — ngược lại
   ghi `data/kpi-complaints.json`, cần mount volume `./data`).
 
+**Cấu hình người tạo ticket / thành viên KPI** (`ticket-creators.json`, hoặc biến môi trường `ERP_PROJECT_CREATORS` cùng định dạng — nếu biến này có giá trị thì file bị bỏ qua):
+`creators` = người tạo ticket (cũng là danh sách thành viên ở các trang KPI CS01/CS02/CS03 và nhóm "Thành viên khác" ở ô Người xử lý);
+`defaults` = dự án → 1 email hoặc **mảng email** (phần tử đầu là người tạo mặc định ở Tạo Ticket; cả mảng là thành viên được tích sẵn dự án đó ở các trang KPI).
+
 ## Mã hóa Password Window — chi tiết kỹ thuật
 
 Thuật toán và key hệ thống được **reverse-engineer trực tiếp từ file gốc**
