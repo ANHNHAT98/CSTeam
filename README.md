@@ -116,6 +116,11 @@ Module hiện có:
   (`/duan/bao-cao-khach-hang`), bản tháng cùng thông số nhưng kỳ là cả tháng, xu hướng
   theo tháng, tồn đọng nhóm theo tháng tiếp nhận (`/duan/bao-cao-thang-khach-hang`;
   logic ở `customerReportMonthly.js`, API `/api/projects/customer-report-monthly`).
+  Bước 1 của trang Lợi Nhuận Crs có 3 nguồn timesheet: upload file, lấy từ ERP (báo cáo
+  Detail Timesheet) hoặc **SynergyHub** (tab "SynergyHub": danh sách dự án lấy từ
+  `synergyhub.api.projects.get_filtered_projects`, giờ công từ
+  `synergyhub.api.reports.get_detail_time_log_report`, gọi bằng tài khoản ERP đã cấu hình;
+  logic đọc/dò cột ở `synergyhub.js`, API `/api/synergyhub/projects` và `/api/synergyhub/time-logs`).
 - **Dự Án → AnVy → Ticket Slide**: dán/nhập ticket, tự tạo slide + xuất
   PNG/PPTX (`/anvy/ticket-slide`).
 - **Ticket dự án → Tra cứu ERP**: gọi trực tiếp erp.hqsoft.vn lấy ticket theo

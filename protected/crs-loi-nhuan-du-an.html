@@ -133,10 +133,11 @@
 
   <div class="panel">
     <h2>Bước 1 — Lấy Timesheet</h2>
-    <div class="panel-sub">Upload file Detail Timesheet Report (.xlsx, sheet "Query Report") hoặc lấy trực tiếp từ ERP theo dự án + khoảng ngày.</div>
+    <div class="panel-sub">Upload file Detail Timesheet Report (.xlsx, sheet "Query Report") hoặc lấy trực tiếp từ ERP / SynergyHub theo dự án + khoảng ngày.</div>
     <div class="ts-tabs">
       <button type="button" class="ts-tab active" id="tsTabUpload">📁 Upload file</button>
       <button type="button" class="ts-tab" id="tsTabErp">🔌 Lấy trực tiếp từ ERP</button>
+      <button type="button" class="ts-tab" id="tsTabSh">🌐 SynergyHub</button>
     </div>
 
     <div class="ts-pane" id="tsPaneUpload">
@@ -157,6 +158,26 @@
         </div>
         <button class="btn btn-ghost" id="erpFetchBtn" type="button">⬇ Lấy dữ liệu từ ERP</button>
         <div class="status" id="erpStatus"></div>
+        <div id="erpSummary" style="display:none;margin-top:10px;font-size:13px;line-height:1.7;"></div>
+      </div>
+    </div>
+
+    <div class="ts-pane" id="tsPaneSh" style="display:none;">
+      <div class="erp-box">
+        <label class="erp-label">Dự án SynergyHub</label>
+        <input type="text" id="shSearch" placeholder="Gõ để lọc dự án theo tên…" style="width:100%;margin-bottom:6px;padding:9px 12px;border-radius:8px;border:1px solid var(--grid-line-strong);font:inherit;font-size:13.5px;">
+        <label id="shTypeWrap" style="display:none;font-size:12.5px;margin-bottom:6px;"><input type="checkbox" id="shOnlyCr" checked> Chỉ hiện dự án Change Request</label>
+        <select id="shProjectSelect"><option value="">— đang tải danh sách dự án SynergyHub —</option></select>
+        <div class="erp-date-row">
+          <div><label class="erp-label">Từ ngày</label><input type="date" id="shFromDate"></div>
+          <div><label class="erp-label">Đến ngày</label><input type="date" id="shToDate"></div>
+        </div>
+        <label class="erp-label" style="margin-top:8px;">Trạng thái duyệt time log</label>
+        <select id="shApproval"><option value="">Tất cả</option><option value="Approved">Approved (đã duyệt)</option><option value="Pending">Pending (chờ duyệt)</option><option value="Rejected">Rejected (từ chối)</option></select>
+        <button class="btn btn-ghost" id="shFetchBtn" type="button" style="margin-top:10px;">⬇ Lấy giờ công từ SynergyHub</button>
+        <div class="status" id="shStatus"></div>
+        <div id="shSummary" style="display:none;margin-top:10px;font-size:13px;line-height:1.7;"></div>
+        <details id="shDiag" style="display:none;margin-top:8px;font-size:12px;"><summary style="cursor:pointer;color:var(--muted);">Chi tiết dữ liệu SynergyHub trả về (để kiểm tra khi số liệu lạ)</summary><pre id="shDiagPre" style="white-space:pre-wrap;word-break:break-word;background:#F5F8FB;border:1px solid var(--grid-line-strong);border-radius:8px;padding:10px;max-height:260px;overflow:auto;"></pre></details>
       </div>
     </div>
   </div>
@@ -254,21 +275,21 @@ function readTimesheetRows(){
   return tsWb ? readTimesheet(tsWb).rows : (tsRows || []);
 }
 
-/* ---------- chuyển tab Upload file / Lấy từ ERP ---------- */
+/* ---------- chuyển tab Upload file / Lấy từ ERP / SynergyHub ---------- */
 const tsTabUpload = document.getElementById('tsTabUpload');
 const tsTabErp = document.getElementById('tsTabErp');
+const tsTabSh = document.getElementById('tsTabSh');
 const tsPaneUpload = document.getElementById('tsPaneUpload');
 const tsPaneErp = document.getElementById('tsPaneErp');
-
-tsTabUpload.addEventListener('click', () => {
-  tsTabUpload.classList.add('active'); tsTabErp.classList.remove('active');
-  tsPaneUpload.style.display = ''; tsPaneErp.style.display = 'none';
-});
-tsTabErp.addEventListener('click', () => {
-  tsTabErp.classList.add('active'); tsTabUpload.classList.remove('active');
-  tsPaneErp.style.display = ''; tsPaneUpload.style.display = 'none';
-  if (!erpProjectsLoaded) loadErpProjects();
-});
+const tsPaneSh = document.getElementById('tsPaneSh');
+function showTsTab(which){
+  [[tsTabUpload, tsPaneUpload, 'upload'], [tsTabErp, tsPaneErp, 'erp'], [tsTabSh, tsPaneSh, 'sh']].forEach(([tab, pane, k]) => {
+    tab.classList.toggle('active', k === which); pane.style.display = k === which ? '' : 'none';
+  });
+}
+tsTabUpload.addEventListener('click', () => showTsTab('upload'));
+tsTabErp.addEventListener('click', () => { showTsTab('erp'); if (!erpProjectsLoaded) loadErpProjects(); });
+tsTabSh.addEventListener('click', () => { showTsTab('sh'); if (!shProjectsLoaded) loadShProjects(); });
 
 /* Danh sách chủ dự án (project_owner) thuộc team Crs — dùng để lọc combobox dự án
    khi lấy Timesheet trực tiếp từ ERP, theo yêu cầu chỉ hiện dự án của team mình. */
@@ -324,15 +345,107 @@ document.getElementById('erpFetchBtn').addEventListener('click', async () => {
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
     const rows = parseQueryReportResponse(data);
     if (!rows.length) throw new Error('ERP trả về nhưng không đọc được dòng dữ liệu nào (kiểm tra lại dự án/khoảng ngày).');
-    tsRows = rows;
-    tsWb = null; // ưu tiên dữ liệu vừa lấy qua API
     statusEl.textContent = `Đã lấy ${rows.length} dòng timesheet từ ERP (dự án ${project}, ${from_date} → ${to_date}).`;
     statusEl.className = 'status ok';
-    updateParseBtn();
+    acceptTimesheetRows(rows, 'ERP', 'erpSummary');
   }catch(err){
     console.error(err);
     statusEl.textContent = 'Lỗi: ' + err.message;
     statusEl.className = 'status err';
+  }
+});
+
+/* Nhận dòng timesheet lấy qua API (ERP hoặc SynergyHub): lưu lại, hiện tóm tắt, tự tính nếu đã có PAKD. */
+function acceptTimesheetRows(rows, sourceLabel, summaryId){
+  tsRows = rows;
+  tsWb = null; // ưu tiên dữ liệu vừa lấy qua API
+  renderErpSummary(rows, summaryId);
+  updateParseBtn();
+  if (pakdWb) document.getElementById('parseBtn').click(); // đã có PAKD → tính luôn
+  else setStatus(`Đã có dữ liệu timesheet từ ${sourceLabel}. Bước tiếp theo: nạp file PAKD ở Bước 2 — tool sẽ tự đọc & tính lợi nhuận.`, 'ok');
+}
+
+/* Tóm tắt dữ liệu vừa lấy từ ERP / SynergyHub: tổng giờ, giờ theo chức danh, theo tháng + cảnh báo dòng bị bỏ qua. */
+function renderErpSummary(rows, id = 'erpSummary'){
+  const box = document.getElementById(id);
+  const byDesig = {}, byMonth = {}; let total = 0;
+  rows.forEach(r => { byDesig[r.designation] = (byDesig[r.designation]||0) + r.hours; byMonth[r.monthKey] = (byMonth[r.monthKey]||0) + r.hours; total += r.hours; });
+  const skipped = Math.max(0, (rows.sourceRows || rows.length) - rows.length);
+  const fmtH = h => (Math.round(h*100)/100).toLocaleString('vi-VN');
+  box.innerHTML = `<b>Tổng ${fmtH(total)} giờ</b> · ${rows.length} dòng hợp lệ`
+    + (skipped ? ` · <span style="color:var(--danger)">${skipped} dòng bị bỏ qua (thiếu Designation / Hours / From Time)</span>` : '')
+    + `<br><span style="color:var(--muted)">Theo chức danh:</span> ` + Object.entries(byDesig).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${escapeHtml(k)}: ${fmtH(v)}h`).join(' · ')
+    + `<br><span style="color:var(--muted)">Theo tháng:</span> ` + Object.entries(byMonth).sort().map(([k,v])=>`${k}: ${fmtH(v)}h`).join(' · ');
+  box.style.display = 'block';
+}
+
+/* ---------- SynergyHub: danh sách dự án + giờ công (server gọi bằng tài khoản ERP) ---------- */
+let shProjectsLoaded = false, shProjects = [];
+function renderShOptions(){
+  const sel = document.getElementById('shProjectSelect');
+  const q = document.getElementById('shSearch').value.trim().toLowerCase();
+  const onlyCr = document.getElementById('shTypeWrap').style.display !== 'none' && document.getElementById('shOnlyCr').checked;
+  const list = shProjects.filter(p => (!q || p.label.toLowerCase().includes(q)) && (!onlyCr || /change request|cr/i.test(p.type)));
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— chọn dự án (' + list.length + '/' + shProjects.length + ') —</option>' + list.map(p => `<option value="${escapeHtml(p.value)}">${escapeHtml(p.label)}${p.status ? ' · ' + escapeHtml(p.status) : ''}</option>`).join('');
+  if (list.some(p => p.value === cur)) sel.value = cur;
+  else if (list.length === 1) sel.value = list[0].value;
+}
+function showShDiag(obj){
+  const d = document.getElementById('shDiag');
+  document.getElementById('shDiagPre').textContent = JSON.stringify(obj, null, 2);
+  d.style.display = 'block';
+}
+async function loadShProjects(){
+  const st = document.getElementById('shStatus');
+  st.textContent = 'Đang tải danh sách dự án từ SynergyHub…'; st.className = 'status';
+  try{
+    const res = await fetch('/api/synergyhub/projects'); const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    shProjects = data.projects || [];
+    if (!shProjects.length){ showShDiag(data.diagnostics); throw new Error('SynergyHub trả về nhưng không đọc được dự án nào — xem "Chi tiết dữ liệu SynergyHub trả về" bên dưới.'); }
+    const hasType = shProjects.some(p => p.type);
+    document.getElementById('shTypeWrap').style.display = hasType ? '' : 'none';
+    if (hasType && !shProjects.some(p => /change request|cr/i.test(p.type))) document.getElementById('shOnlyCr').checked = false;
+    shProjectsLoaded = true; renderShOptions();
+    st.textContent = `Đã tải ${shProjects.length} dự án từ SynergyHub.`; st.className = 'status ok';
+  }catch(err){
+    console.error(err);
+    document.getElementById('shProjectSelect').innerHTML = '<option value="">— không tải được danh sách dự án —</option>';
+    st.textContent = 'Lỗi tải danh sách dự án: ' + err.message; st.className = 'status err';
+  }
+}
+document.getElementById('shSearch').addEventListener('input', renderShOptions);
+document.getElementById('shOnlyCr').addEventListener('change', renderShOptions);
+document.getElementById('shFetchBtn').addEventListener('click', async () => {
+  const project = document.getElementById('shProjectSelect').value;
+  const from_date = document.getElementById('shFromDate').value;
+  const to_date = document.getElementById('shToDate').value;
+  const approval_status = document.getElementById('shApproval').value;
+  const st = document.getElementById('shStatus');
+  if (!project || !from_date || !to_date){ st.textContent = 'Chọn đủ dự án + từ ngày + đến ngày trước.'; st.className = 'status err'; return; }
+  st.textContent = 'Đang lấy giờ công từ SynergyHub…'; st.className = 'status';
+  try{
+    const qs = new URLSearchParams({ project, from_date, to_date, approval_status });
+    const res = await fetch('/api/synergyhub/time-logs?' + qs.toString());
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    const d = data.diagnostics || {};
+    showShDiag(d);
+    const rows = data.rows || [];
+    if (!rows.length){
+      const why = !d.detected || !d.detected.hours ? 'không nhận ra cột số giờ' : !d.detected.date ? 'không nhận ra cột ngày' : d.sourceRows ? `${d.sourceRows} dòng đều thiếu chức danh/giờ/ngày` : 'không có dòng giờ công nào trong khoảng ngày đã chọn';
+      throw new Error(`Không đọc được dòng giờ công nào (${why}). Xem "Chi tiết dữ liệu SynergyHub trả về" bên dưới.`);
+    }
+    st.textContent = `Đã lấy ${rows.length} dòng giờ công từ SynergyHub (dự án ${project}, ${from_date} → ${to_date}${approval_status ? ', ' + approval_status : ''}).`
+      + (d.designationMissing ? ' Lưu ý: SynergyHub không có cột chức danh — mỗi nhân viên được xem như 1 chức danh, bạn sẽ chọn cấp bậc cho từng người ở bước xác nhận.' : '')
+      + (d.skipped ? ` ${d.skipped} dòng bị bỏ qua (thiếu giờ/ngày/chức danh).` : '')
+      + (d.detected && d.detected.hoursIsWeakGuess ? ` Cột giờ đang lấy là "${d.detected.hours}" — kiểm tra đơn vị là giờ.` : '');
+    st.className = 'status ok';
+    acceptTimesheetRows(rows, 'SynergyHub', 'shSummary');
+  }catch(err){
+    console.error(err);
+    st.textContent = 'Lỗi: ' + err.message; st.className = 'status err';
   }
 });
 
@@ -351,10 +464,12 @@ function parseQueryReportResponse(data){
   const ftIdx = columns.findIndex(c => labelOf(c).trim() === 'From Time');
 
   const rows = [];
+  let sourceRows = 0;
   result.forEach(r => {
     let desig, hours, ft;
     if (Array.isArray(r)){
       if (String(r[0] ?? '').trim() === 'Total') return;
+      sourceRows++;
       desig = desigIdx >= 0 ? r[desigIdx] : null;
       hours = hoursIdx >= 0 ? Number(r[hoursIdx]) || 0 : 0;
       ft = ftIdx >= 0 ? r[ftIdx] : null;
@@ -363,6 +478,7 @@ function parseQueryReportResponse(data){
       const hoursField = hoursIdx >= 0 ? fieldOf(columns[hoursIdx]) : 'hours';
       const ftField = ftIdx >= 0 ? fieldOf(columns[ftIdx]) : 'from_time';
       if (String(r.designation ?? Object.values(r)[0] ?? '').trim() === 'Total') return;
+      sourceRows++;
       desig = r[desigField] ?? r.designation;
       hours = Number(r[hoursField] ?? r.hours) || 0;
       ft = r[ftField] ?? r.from_time;
@@ -374,6 +490,7 @@ function parseQueryReportResponse(data){
     if (isNaN(d.getTime())) return;
     rows.push({ designation: String(desig).trim(), hours, monthKey: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` });
   });
+  rows.sourceRows = sourceRows; // số dòng ERP trả về (không tính dòng Total) — để báo dòng bị bỏ qua
   return rows;
 }
 function setStatus(msg, cls){
@@ -385,11 +502,13 @@ wireUpload('dzPakd','fPakd','pillPakd','namePakd','xPakd', (file)=>{
   if (!file){ pakdWb=null; pakdFile=null; return; }
   pakdFileName = file.name;
   pakdFile = file; // giữ lại file gốc (bytes) để gửi lên server lúc xuất — đảm bảo giữ nguyên màu/style
-  readWorkbook(file).then(wb => { pakdWb = wb; updateParseBtn(); });
+  readWorkbook(file).then(wb => { pakdWb = wb; updateParseBtn(); if (tsRows && tsRows.length) document.getElementById('parseBtn').click(); }); // đã có timesheet ERP → tính luôn
 });
 wireUpload('dzTs','fTs','pillTs','nameTs','xTs', (file)=>{
   if (!file){ tsWb=null; return; }
   tsRows = null; // ưu tiên dữ liệu file vừa upload, bỏ dữ liệu lấy qua API (nếu có)
+  document.getElementById('erpSummary').style.display = 'none';
+  document.getElementById('shSummary').style.display = 'none';
   readWorkbook(file).then(wb => { tsWb = wb; updateParseBtn(); });
 });
 

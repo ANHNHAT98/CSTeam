@@ -615,6 +615,7 @@ module.exports = {
   fetchTickets,
   fetchProjects,
   fetchTimesheetReport,
+  callMethod: (name, params) => erpPost(`/api/method/${name}`, params || {}), // gọi hàm whitelisted bất kỳ (SynergyHub...) bằng tài khoản ERP đã cấu hình
   getTicketMeta,
   searchLink,
   createTicket,

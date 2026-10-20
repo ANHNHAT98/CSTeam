@@ -12,6 +12,7 @@ const { applyTicketDefaults } = require('./ticketDefaults');
 const weekly = require('./weeklyReport');
 const { buildCustomerReport } = require('./customerReport');
 const kpiSla = require('./kpiSla');
+const synergyhub = require('./synergyhub');
 const { buildMonthlyCustomerReport, monthStartOf, monthEndOf, addMonths, isMonthKey } = require('./customerReportMonthly');
 const jira = require('./jiraClient');
 const supportCases = require('./supportCasesStore');
@@ -221,6 +222,43 @@ app.get('/api/erp/tickets', requireAuth, async (req, res) => {
     console.error('[erp/tickets] lỗi:', e.message);
     res.status(502).json({ error: e.message });
   }
+});
+
+/* ---------- SynergyHub: danh sách dự án + giờ công (cho trang Lợi nhuận Crs) ----------
+   Cùng máy chủ ERP nên dùng tài khoản ERP đã cấu hình. Cấu trúc phản hồi được tự dò (synergyhub.js) và trả kèm `diagnostics`.
+   GET /api/synergyhub/projects[?raw=1]
+   GET /api/synergyhub/time-logs?project=<tên dự án>&from_date=YYYY-MM-DD&to_date=YYYY-MM-DD[&approval_status=][&raw=1] */
+function shError(res, what, e) {
+  console.error(`[synergyhub/${what}] lỗi:`, e.message);
+  res.status(502).json({ error: `SynergyHub (${what}): ${e.message}` });
+}
+app.get('/api/synergyhub/projects', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  try {
+    // chỉ gửi tham số phân trang (Frappe bỏ qua tham số hàm không khai báo); KHÔNG gửi bộ lọc rỗng vì có thể bị hiểu là "lọc theo chuỗi rỗng"
+    const body = await erp.callMethod(synergyhub.METHODS.projects, { page: 1, page_size: 1000, limit: 1000, per_page: 1000, page_length: 1000 });
+    const out = synergyhub.normalizeProjects(body.message !== undefined ? body.message : body);
+    if (req.query.raw) out.raw = body;
+    res.json(out);
+  } catch (e) { shError(res, 'projects', e); }
+});
+app.get('/api/synergyhub/time-logs', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  const project = String(req.query.project || '').trim();
+  const from_date = String(req.query.from_date || ''); const to_date = String(req.query.to_date || '');
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  if (!project || project.length > 300 || !DATE_RE.test(from_date) || !DATE_RE.test(to_date)) {
+    return res.status(400).json({ error: 'Thiếu hoặc sai tham số project / from_date / to_date (YYYY-MM-DD).' });
+  }
+  try {
+    // đúng bộ tham số mà giao diện SynergyHub gửi (các ô để trống thì gửi chuỗi rỗng)
+    const body = await erp.callMethod(synergyhub.METHODS.timeLogs, {
+      from_date, to_date, employee: '', department: '', project, activity_type: '', approval_status: String(req.query.approval_status || ''),
+    });
+    const out = synergyhub.normalizeTimeLogs(body.message !== undefined ? body.message : body);
+    if (req.query.raw) out.raw = body;
+    res.json(out);
+  } catch (e) { shError(res, 'time-logs', e); }
 });
 
 /* ---------- Dashboard Support Tuần của từng dự án ----------
