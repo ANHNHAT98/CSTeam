@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dự án — Báo cáo khách hàng</title>
+<title>Dự án — Báo cáo tuần khách hàng</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -95,9 +95,9 @@
 </style>
 </head>
 <body>
-<div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb" id="crumb">/ dự án / báo cáo khách hàng</span></div>
+<div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb" id="crumb">/ dự án / báo cáo tuần khách hàng</span></div>
 <div class="wrap">
-  <h1 id="title">Báo cáo khách hàng</h1>
+  <h1 id="title">Báo cáo tuần khách hàng</h1>
   <p class="sub">Slide 1: số liệu tổng hợp tình trạng ticket trong tuần. Slide 2: danh sách ticket tồn đọng, nhóm theo tuần tiếp nhận. Số liệu lấy trực tiếp từ ERP, cùng cách tính với Dashboard Support Tuần.</p>
   <div class="controls">
     <select id="selProject" title="Dự án"></select>
@@ -290,9 +290,9 @@ function renderCharts(d){
 async function load(refresh){
   const seq = ++reqSeq;
   history.replaceState(null,'','?project='+encodeURIComponent(project)+'&week='+viewStart);
-  document.title = 'Báo cáo khách hàng — '+pname();
-  $('title').textContent = 'Báo cáo khách hàng — '+pname();
-  $('crumb').textContent = '/ dự án / '+pname().toLowerCase()+' / báo cáo khách hàng';
+  document.title = 'Báo cáo tuần khách hàng — '+pname();
+  $('title').textContent = 'Báo cáo tuần khách hàng — '+pname();
+  $('crumb').textContent = '/ dự án / '+pname().toLowerCase()+' / báo cáo tuần khách hàng';
   $('pickDate').value = viewStart;
   $('loading').style.display = ''; $('loading').textContent = 'Đang lấy dữ liệu ticket từ ERP…';
   ['btnPng','btnPng2','btnXlsx','btnPptx'].forEach(id=>$(id).disabled=true);

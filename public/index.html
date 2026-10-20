@@ -113,14 +113,6 @@
     padding:4px 6px;margin-bottom:4px;display:flex;align-items:center;gap:6px;
   }
   .side-group-label::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--blueprint);flex-shrink:0;}
-  /* Menu thu gọn: mặc định chỉ hiện tên nhóm, bấm vào mới mở danh sách chức năng */
-  .side-group{margin-bottom:4px;}
-  .side-group-label.toggle{cursor:pointer;border-radius:6px;padding:8px 6px;margin-bottom:0;user-select:none;}
-  .side-group-label.toggle:hover{background:rgba(31,78,121,.05);}
-  .side-group-label .chevron{margin-left:auto;font-size:9px;color:var(--muted);transition:transform .15s;}
-  .side-group:not(.open) > .side-group-label .chevron{transform:rotate(-90deg);}
-  .side-group-body{padding:2px 0 8px 8px;}
-  .side-group:not(.open) > .side-group-body{display:none;}
 
   .side-leaf{
     display:block;text-decoration:none;color:var(--ink);font-size:12.5px;
@@ -258,7 +250,7 @@
     <div class="side-group">
       <div class="side-group-label">Dự Án</div>
 
-      <div class="side-branch">
+      <div class="side-branch open">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>ABI</span>
         </button>
@@ -266,25 +258,27 @@
           <a class="side-leaf sub" href="/abi/dashboard-ticket" data-path="/abi/dashboard-ticket">Dashboard Ticket</a>
           <a class="side-leaf sub" href="/tickets/sla-jira-abi" data-path="/tickets/sla-jira-abi">SLA Jira</a>
           <a class="side-leaf sub" href="/duan/support-tuan?project=ABI_eSales_Support" data-path="/duan/support-tuan">Dashboard Support Tuần</a>
-          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=ABI_eSales_Support" data-path="/duan/bao-cao-khach-hang">Báo cáo khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=ABI_eSales_Support" data-path="/duan/bao-cao-khach-hang">Báo cáo tuần khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-thang-khach-hang?project=ABI_eSales_Support" data-path="/duan/bao-cao-thang-khach-hang">Báo cáo tháng khách hàng</a>
           <a class="side-leaf sub" href="/tickets/tao-moi?project=ABI_eSales_Support" data-path="/tickets/tao-moi">Tạo Ticket</a>
           <a class="side-leaf sub" href="/tickets/support-cases?project=ABI" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
 
-      <div class="side-branch">
+      <div class="side-branch open">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>Merap</span>
         </button>
         <div class="side-branch-children">
           <a class="side-leaf sub" href="/merap/uat-runbook" data-path="/merap/uat-runbook">Cấu Hình PROD về UAT</a>
           <a class="side-leaf sub" href="/duan/support-tuan?project=MerapLion_eSales" data-path="/duan/support-tuan">Dashboard Support Tuần</a>
-          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=MerapLion_eSales" data-path="/duan/bao-cao-khach-hang">Báo cáo khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=MerapLion_eSales" data-path="/duan/bao-cao-khach-hang">Báo cáo tuần khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-thang-khach-hang?project=MerapLion_eSales" data-path="/duan/bao-cao-thang-khach-hang">Báo cáo tháng khách hàng</a>
           <a class="side-leaf sub" href="/tickets/tao-moi?project=MerapLion_eSales" data-path="/tickets/tao-moi">Tạo Ticket</a>
           <a class="side-leaf sub" href="/tickets/support-cases?project=Merap" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch">
+      <div class="side-branch open">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>AnVy</span>
         </button>
@@ -292,73 +286,72 @@
           <a class="side-leaf sub" href="/anvy/ticket-slide" data-path="/anvy/ticket-slide">Ticket Slide</a>
           <a class="side-leaf sub" href="/anvy/uat-runbook" data-path="/anvy/uat-runbook">Runbook UAT (PROD→UAT)</a>
           <a class="side-leaf sub" href="/duan/support-tuan?project=ANVY_eSale_Support" data-path="/duan/support-tuan">Dashboard Support Tuần</a>
-          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=ANVY_eSale_Support" data-path="/duan/bao-cao-khach-hang">Báo cáo khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=ANVY_eSale_Support" data-path="/duan/bao-cao-khach-hang">Báo cáo tuần khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-thang-khach-hang?project=ANVY_eSale_Support" data-path="/duan/bao-cao-thang-khach-hang">Báo cáo tháng khách hàng</a>
           <a class="side-leaf sub" href="/tickets/tao-moi?project=ANVY_eSale_Support" data-path="/tickets/tao-moi">Tạo Ticket</a>
           <a class="side-leaf sub" href="/tickets/support-cases?project=Anvy" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch">
+      <div class="side-branch open">
         <button class="side-branch-head" type="button">
-          <span class="chevron">▾</span><span>Sabeco PG</span>
+          <span class="chevron">▾</span><span>Sabeco</span>
         </button>
         <div class="side-branch-children">
-          <a class="side-leaf sub" href="/duan/support-tuan?project=Sabeco_PG" data-path="/duan/support-tuan">Dashboard Support Tuần</a>
-          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=Sabeco_PG" data-path="/duan/bao-cao-khach-hang">Báo cáo khách hàng</a>
-          <a class="side-leaf sub" href="/tickets/tao-moi?project=Sabeco_PG" data-path="/tickets/tao-moi">Tạo Ticket</a>
-          <a class="side-leaf sub" href="/tickets/support-cases?project=Sabeco_PG" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
+          <a class="side-leaf sub" href="/duan/support-tuan?project=Sabeco_PG" data-path="/duan/support-tuan">Dashboard Support Tuần (PG)</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=Sabeco_PG" data-path="/duan/bao-cao-khach-hang">Báo cáo tuần khách hàng (PG)</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-thang-khach-hang?project=Sabeco_PG" data-path="/duan/bao-cao-thang-khach-hang">Báo cáo tháng khách hàng (PG)</a>
+          <a class="side-leaf sub" href="/duan/support-tuan?project=Sabeco_B2B_Support" data-path="/duan/support-tuan">Dashboard Support Tuần (B2B)</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=Sabeco_B2B_Support" data-path="/duan/bao-cao-khach-hang">Báo cáo tuần khách hàng (B2B)</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-thang-khach-hang?project=Sabeco_B2B_Support" data-path="/duan/bao-cao-thang-khach-hang">Báo cáo tháng khách hàng (B2B)</a>
+          <a class="side-leaf sub" href="/tickets/tao-moi?project=Sabeco_PG" data-path="/tickets/tao-moi">Tạo Ticket (PG)</a>
+          <a class="side-leaf sub" href="/tickets/tao-moi?project=Sabeco_B2B_Support" data-path="/tickets/tao-moi">Tạo Ticket (B2B)</a>
+          <a class="side-leaf sub" href="/tickets/support-cases?project=Sabeco" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch">
-        <button class="side-branch-head" type="button">
-          <span class="chevron">▾</span><span>Sabeco B2B</span>
-        </button>
-        <div class="side-branch-children">
-          <a class="side-leaf sub" href="/duan/support-tuan?project=Sabeco_B2B_Support" data-path="/duan/support-tuan">Dashboard Support Tuần</a>
-          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=Sabeco_B2B_Support" data-path="/duan/bao-cao-khach-hang">Báo cáo khách hàng</a>
-          <a class="side-leaf sub" href="/tickets/tao-moi?project=Sabeco_B2B_Support" data-path="/tickets/tao-moi">Tạo Ticket</a>
-          <a class="side-leaf sub" href="/tickets/support-cases?project=Sabeco_B2B" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
-        </div>
-      </div>
-      <div class="side-branch">
+      <div class="side-branch open">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>FES</span>
         </button>
         <div class="side-branch-children">
           <a class="side-leaf sub" href="/duan/support-tuan?project=FES_eSales" data-path="/duan/support-tuan">Dashboard Support Tuần</a>
-          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=FES_eSales" data-path="/duan/bao-cao-khach-hang">Báo cáo khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=FES_eSales" data-path="/duan/bao-cao-khach-hang">Báo cáo tuần khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-thang-khach-hang?project=FES_eSales" data-path="/duan/bao-cao-thang-khach-hang">Báo cáo tháng khách hàng</a>
           <a class="side-leaf sub" href="/tickets/tao-moi?project=FES_eSales" data-path="/tickets/tao-moi">Tạo Ticket</a>
           <a class="side-leaf sub" href="/tickets/support-cases?project=FES" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch">
+      <div class="side-branch open">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>ANKO</span>
         </button>
         <div class="side-branch-children">
           <a class="side-leaf sub" href="/duan/support-tuan?project=ANKO_eSales_Support" data-path="/duan/support-tuan">Dashboard Support Tuần</a>
-          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=ANKO_eSales_Support" data-path="/duan/bao-cao-khach-hang">Báo cáo khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=ANKO_eSales_Support" data-path="/duan/bao-cao-khach-hang">Báo cáo tuần khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-thang-khach-hang?project=ANKO_eSales_Support" data-path="/duan/bao-cao-thang-khach-hang">Báo cáo tháng khách hàng</a>
           <a class="side-leaf sub" href="/tickets/tao-moi?project=ANKO_eSales_Support" data-path="/tickets/tao-moi">Tạo Ticket</a>
           <a class="side-leaf sub" href="/tickets/support-cases?project=ANKO" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch">
+      <div class="side-branch open">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>HAIHA</span>
         </button>
         <div class="side-branch-children">
           <a class="side-leaf sub" href="/duan/support-tuan?project=HaiHa_eSales_Support" data-path="/duan/support-tuan">Dashboard Support Tuần</a>
-          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=HaiHa_eSales_Support" data-path="/duan/bao-cao-khach-hang">Báo cáo khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=HaiHa_eSales_Support" data-path="/duan/bao-cao-khach-hang">Báo cáo tuần khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-thang-khach-hang?project=HaiHa_eSales_Support" data-path="/duan/bao-cao-thang-khach-hang">Báo cáo tháng khách hàng</a>
           <a class="side-leaf sub" href="/tickets/tao-moi?project=HaiHa_eSales_Support" data-path="/tickets/tao-moi">Tạo Ticket</a>
           <a class="side-leaf sub" href="/tickets/support-cases?project=HAIHA" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
       </div>
-      <div class="side-branch">
+      <div class="side-branch open">
         <button class="side-branch-head" type="button">
           <span class="chevron">▾</span><span>JOTUN</span>
         </button>
         <div class="side-branch-children">
           <a class="side-leaf sub" href="/duan/support-tuan?project=Jotun_VN_eSales" data-path="/duan/support-tuan">Dashboard Support Tuần</a>
-          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=Jotun_VN_eSales" data-path="/duan/bao-cao-khach-hang">Báo cáo khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-khach-hang?project=Jotun_VN_eSales" data-path="/duan/bao-cao-khach-hang">Báo cáo tuần khách hàng</a>
+          <a class="side-leaf sub" href="/duan/bao-cao-thang-khach-hang?project=Jotun_VN_eSales" data-path="/duan/bao-cao-thang-khach-hang">Báo cáo tháng khách hàng</a>
           <a class="side-leaf sub" href="/tickets/tao-moi?project=Jotun_VN_eSales" data-path="/tickets/tao-moi">Tạo Ticket</a>
           <a class="side-leaf sub" href="/tickets/support-cases?project=JOTUN" data-path="/tickets/support-cases">Case Hỗ Trợ</a>
         </div>
@@ -596,18 +589,6 @@ logoutBtn.addEventListener('click', async ()=>{
 });
 
 /* ---------- menu: mở/đóng nhánh + active theo URL hiện tại ---------- */
-// Bọc chức năng con của từng nhóm vào .side-group-body để thu gọn/mở nhóm bằng cách bấm tên nhóm.
-document.querySelectorAll('.side-nav .side-group').forEach(g=>{
-  const label = g.querySelector(':scope > .side-group-label'); if(!label) return;
-  const body = document.createElement('div'); body.className = 'side-group-body';
-  while(label.nextSibling) body.appendChild(label.nextSibling);
-  g.appendChild(body);
-  label.classList.add('toggle'); label.setAttribute('role','button'); label.tabIndex = 0;
-  label.insertAdjacentHTML('beforeend','<span class="chevron">▾</span>');
-  const toggle = () => g.classList.toggle('open');
-  label.addEventListener('click', toggle);
-  label.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); } });
-});
 document.querySelectorAll('.side-branch-head:not(.static)').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     btn.closest('.side-branch').classList.toggle('open');
@@ -617,11 +598,6 @@ document.querySelectorAll('.side-leaf[data-path]').forEach(a=>{
   const hrefUrl = new URL(a.getAttribute('href'), window.location.origin);
   const sameQuery = hrefUrl.search === window.location.search;
   if (a.dataset.path === window.location.pathname && (hrefUrl.search === '' || sameQuery)) a.classList.add('active');
-});
-// Mặc định tất cả nhóm đóng; chỉ mở nhóm/nhánh chứa chức năng đang xem (trừ trang chủ, để thấy đủ danh sách nhóm).
-if (window.location.pathname !== '/') document.querySelectorAll('.side-leaf.active').forEach(a=>{
-  for (let el = a.parentElement; el && !el.classList.contains('side-nav'); el = el.parentElement)
-    if (el.classList.contains('side-group') || el.classList.contains('side-branch')) el.classList.add('open');
 });
 
 /* ---------- Dashboard Tổng Quan: gọi lại API /api/erp/tickets đã có ---------- */

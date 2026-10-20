@@ -183,4 +183,4 @@ function buildCustomerReport(rows, { project = '', weekStart, weeks = 8, now = v
   };
 }
 
-module.exports = { buildCustomerReport, AGE_BUCKETS, STATUS_BOXES };
+module.exports = { buildCustomerReport, AGE_BUCKETS, STATUS_BOXES, PRIORITY_ORDER, normalize, slaOne, slaSummary, slaDueAt, thresholdOf, countBy, prioRank, fmtNaive, parseNaive, vnNow, isBacklogAt };

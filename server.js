@@ -11,6 +11,7 @@ console.log(`[build] Ops Console ${BUILD}`);
 const { applyTicketDefaults } = require('./ticketDefaults');
 const weekly = require('./weeklyReport');
 const { buildCustomerReport } = require('./customerReport');
+const { buildMonthlyCustomerReport, monthStartOf, monthEndOf, addMonths, isMonthKey } = require('./customerReportMonthly');
 const jira = require('./jiraClient');
 const supportCases = require('./supportCasesStore');
 const { hqEncrypt, hqDecrypt } = require('./hqPasswordCrypto');
@@ -104,6 +105,11 @@ app.get('/duan/support-tuan', requirePageAuth, (req, res) => {
 app.get('/duan/bao-cao-khach-hang', requirePageAuth, (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.sendFile(path.join(__dirname, 'protected', 'duan-bao-cao-khach-hang.html'));
+});
+
+app.get('/duan/bao-cao-thang-khach-hang', requirePageAuth, (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'protected', 'duan-bao-cao-thang-khach-hang.html'));
 });
 
 app.get('/tickets/tao-moi', requirePageAuth, (req, res) => {
@@ -278,6 +284,40 @@ app.get('/api/projects/customer-report', requireAuth, async (req, res) => {
     res.json(data);
   } catch (e) {
     console.error('[projects/customer-report] lỗi:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+/* ---------- Báo cáo THÁNG khách hàng theo dự án (cùng thông số với báo cáo tuần, kỳ = tháng; xuất PNG/Excel/PPTX) ----------
+   GET /api/projects/customer-report-monthly?project=<mã project ERP>&month=<YYYY-MM>&months=<số tháng xu hướng, mặc định 6>
+   Cùng nguồn dữ liệu và định nghĩa với /api/projects/customer-report, chỉ đổi kỳ từ tuần sang tháng (customerReportMonthly.js). */
+const customerMonthlyCache = new Map();
+app.get('/api/projects/customer-report-monthly', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  const project = String(req.query.project || '');
+  const known = loadInstructionProjects().find((p) => p.code === project);
+  if (!known) return res.status(400).json({ error: 'Dự án không hợp lệ.' });
+  const month = isMonthKey(req.query.month) ? String(req.query.month) : new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 7);
+  const months = Math.min(24, Math.max(2, Number(req.query.months) || 6));
+  const key = `${project}|${month}|${months}`;
+  const hit = customerMonthlyCache.get(key);
+  if (hit && Date.now() - hit.at < 3 * 60 * 1000 && !req.query.refresh) return res.json(hit.data);
+  try {
+    const trendStart = monthStartOf(addMonths(month, -(months - 1)));
+    const monthEnd = monthEndOf(month);
+    const limit = 5000;
+    const a = await erp.fetchTickets({ projects: [project], openingFrom: trendStart, openingTo: monthEnd, limit });
+    const b = await erp.fetchTickets({ projects: [project], modifiedFrom: trendStart, limit });
+    const c = await erp.fetchTickets({ projects: [project], statuses: weekly.BACKLOG_STATUSES, limit });
+    const rows = [...(a.data || a), ...(b.data || b), ...(c.data || c)];
+    const data = buildMonthlyCustomerReport(rows, { project, month, months });
+    data.projectName = known.name;
+    data.erpUrl = erp.getBaseUrl();
+    if ([a, b, c].some((x) => (x.data || x).length >= limit)) data.meta.warnings.push(`Một truy vấn chạm giới hạn ${limit} ticket — số liệu có thể thiếu.`);
+    customerMonthlyCache.set(key, { at: Date.now(), data });
+    res.json(data);
+  } catch (e) {
+    console.error('[projects/customer-report-monthly] lỗi:', e.message);
     res.status(502).json({ error: e.message });
   }
 });

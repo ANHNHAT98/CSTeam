@@ -109,6 +109,13 @@ Module hiện có:
   tổng hợp (SLA theo Priority, xu hướng theo tuần, aging theo đội xử lý),
   xuất PNG / PDF / file HTML độc lập hoặc gửi thẳng qua email
   (`/abi/dashboard-ticket`).
+- **Dự Án → (từng dự án) → Báo cáo tuần khách hàng / Báo cáo tháng khách hàng**:
+  slide tổng hợp tình trạng ticket (SLA First Response/Resolution, tiếp nhận, đã xử lý,
+  quá hạn, tồn đọng, theo trạng thái/ưu tiên/thời gian tồn) + slide danh sách ticket
+  tồn đọng, xuất PNG / Excel chi tiết / PowerPoint. Bản tuần theo kỳ T2 → CN
+  (`/duan/bao-cao-khach-hang`), bản tháng cùng thông số nhưng kỳ là cả tháng, xu hướng
+  theo tháng, tồn đọng nhóm theo tháng tiếp nhận (`/duan/bao-cao-thang-khach-hang`;
+  logic ở `customerReportMonthly.js`, API `/api/projects/customer-report-monthly`).
 - **Dự Án → AnVy → Ticket Slide**: dán/nhập ticket, tự tạo slide + xuất
   PNG/PPTX (`/anvy/ticket-slide`).
 - **Ticket dự án → Tra cứu ERP**: gọi trực tiếp erp.hqsoft.vn lấy ticket theo
