@@ -48,7 +48,13 @@ function toObjects({ columns, rows }) {
         if (o[key(lb)] === undefined) o[key(lb)] = r[i];
       });
     } else {
-      for (const [k, v] of Object.entries(r)) if (v == null || typeof v !== 'object') o[key(k)] = v;
+      for (const [k, v] of Object.entries(r)) {
+        if (v == null || typeof v !== 'object') o[key(k)] = v;
+        else if (Array.isArray(v) && v.length && isRowsArray(v)) {
+          // dòng cha (vd 1 nhân viên) chứa danh sách con (các time log) → giữ lại để mở rộng
+          o.__children = (o.__children || []).concat(v.map((c) => { const co = {}; for (const [ck, cv] of Object.entries(c)) if (cv == null || typeof cv !== 'object') co[key(ck)] = cv; return co; }));
+        }
+      }
     }
     return o;
   });
@@ -76,6 +82,17 @@ function monthKeyOf(v) {
   return '';
 }
 
+const HOURS_LIKE = /(hour|hrs|so_gio|gio_lam|man_hour)/; const HOURS_NOT = /(rate|cost|price|per_|billing|amount|target|expected|capacity)/;
+const DATE_RE = /^\s*(\d{4}-\d{2}-\d{2}|\d{1,2}[/.-]\d{1,2}[/.-]\d{4})/;
+function allKeys(objs) { return [...new Set(objs.flatMap((o) => Object.keys(o)))].filter((k) => k !== '__children'); }
+function hoursKeyLike(objs) { return allKeys(objs).find((k) => HOURS_LIKE.test(k) && !HOURS_NOT.test(k) && objs.some((o) => !isEmpty(o[k]) && toHours(o[k]) > 0)) || null; }
+function dateKeyByValue(objs) {
+  for (const k of allKeys(objs)) {
+    const vals = objs.map((o) => o[k]).filter((v) => !isEmpty(v));
+    if (vals.length && vals.filter((v) => DATE_RE.test(String(v))).length >= vals.length * 0.5) return k;
+  }
+  return null;
+}
 const DESIGNATION = ['designation', 'employee_designation', 'position', 'job_title', 'job_position', 'chuc_danh', 'role', 'employee_level', 'level'];
 const EMPLOYEE = ['employee_name', 'employee', 'full_name', 'member', 'member_name', 'user_name', 'user', 'nhan_vien', 'owner'];
 const HOURS = ['hours', 'hour', 'total_hours', 'logged_hours', 'log_hours', 'spent_hours', 'working_hours', 'work_hours', 'time_logged', 'hrs', 'so_gio'];
@@ -83,16 +100,30 @@ const HOURS_WEAK = ['duration', 'time_spent', 'time'];
 const DATE = ['from_time', 'start_time', 'log_date', 'work_date', 'logged_date', 'date', 'posting_date', 'start_date', 'time_log_date', 'started_at', 'created_at', 'creation'];
 
 /** Giờ công → [{designation, employee, hours, monthKey}] + diagnostics. */
-function normalizeTimeLogs(msg) {
+function normalizeTimeLogs(msg, range = {}) {
   const found = findRows(msg);
   const diagnostics = { shape: found ? found.shape : 'không tìm thấy mảng dữ liệu', sourceRows: 0, columns: [], detected: {}, sample: null, skipped: 0, designationMissing: false, topKeys: msg && typeof msg === 'object' ? Object.keys(msg).slice(0, 15) : [] };
   if (!found) return { rows: [], diagnostics };
-  const objs = toObjects(found);
-  diagnostics.columns = [...new Set(objs.flatMap((o) => Object.keys(o)))].slice(0, 60);
+  let objs = toObjects(found);
+  diagnostics.parentRows = objs.length;
+  // dòng cha chứa danh sách time log con → mở thành từng time log, thừa hưởng chức danh/nhân viên của cha (bỏ các cột tổng giờ của cha)
+  diagnostics.expandedChildren = objs.some((o) => o.__children && o.__children.length);
+  objs = objs.flatMap((o) => {
+    if (!o.__children || !o.__children.length) return [o];
+    const parent = {}; for (const [k, v] of Object.entries(o)) if (k !== '__children' && !/(hour|hrs|duration|total|gio)/.test(k)) parent[k] = v;
+    return o.__children.map((c) => ({ ...parent, ...c }));
+  });
+  diagnostics.columns = allKeys(objs).slice(0, 60);
   diagnostics.sample = objs[0] || null;
   const dKey = firstKeyPresent(objs, DESIGNATION); const eKey = firstKeyPresent(objs, EMPLOYEE);
-  const hKey = firstKeyPresent(objs, HOURS) || firstKeyPresent(objs, HOURS_WEAK); const tKey = firstKeyPresent(objs, DATE);
+  const hKey = firstKeyPresent(objs, HOURS) || hoursKeyLike(objs) || firstKeyPresent(objs, HOURS_WEAK);
+  const tKey = firstKeyPresent(objs, DATE) || dateKeyByValue(objs);
   diagnostics.detected = { designation: dKey, employee: eKey, hours: hKey, date: tKey, hoursIsWeakGuess: Boolean(hKey && HOURS_WEAK.includes(hKey)) };
+  diagnostics.missing = { designation: 0, hours: 0, date: 0 };
+  // Báo cáo không có cột ngày (chỉ có tổng giờ): nếu khoảng ngày nằm trong 1 tháng thì gán cả vào tháng đó
+  const fromM = monthKeyOf(range.from_date); const toM = monthKeyOf(range.to_date);
+  const fallbackMonth = !tKey && fromM && fromM === toM ? fromM : '';
+  diagnostics.dateFallbackMonth = fallbackMonth || null;
   diagnostics.designationMissing = !dKey;
   const rows = [];
   for (const o of objs) {
@@ -100,8 +131,11 @@ function normalizeTimeLogs(msg) {
     if (label === 'total' || label === 'tổng' || label === 'tong') continue;
     diagnostics.sourceRows++;
     const hours = hKey ? toHours(o[hKey]) : 0;
-    const monthKey = tKey ? monthKeyOf(o[tKey]) : '';
+    const monthKey = tKey ? monthKeyOf(o[tKey]) : fallbackMonth;
     const designation = String((dKey ? o[dKey] : null) ?? (eKey ? o[eKey] : '') ?? '').trim(); // thiếu chức danh → dùng tên nhân viên để người dùng map cấp bậc
+    if (!designation) diagnostics.missing.designation++;
+    if (!hours) diagnostics.missing.hours++;
+    if (!monthKey) diagnostics.missing.date++;
     if (!designation || !hours || !monthKey) { diagnostics.skipped++; continue; }
     rows.push({ designation, employee: eKey ? String(o[eKey] ?? '') : '', hours, monthKey });
   }
@@ -129,4 +163,46 @@ function normalizeProjects(msg) {
   return { projects, diagnostics };
 }
 
-module.exports = { METHODS, findRows, toObjects, normalizeTimeLogs, normalizeProjects, key };
+/** Các trường vô hướng của phản hồi (success, total, page, page_size…) kể cả trong 1 cấp lồng nhau — để dò phân trang và hiển thị chẩn đoán. */
+function pageMeta(msg) {
+  const m = {};
+  if (msg && typeof msg === 'object' && !Array.isArray(msg)) {
+    for (const [k, v] of Object.entries(msg)) {
+      if (v == null || typeof v !== 'object') m[k] = v;
+      else if (!Array.isArray(v)) for (const [k2, v2] of Object.entries(v)) if (v2 == null || typeof v2 !== 'object') m[`${k}.${k2}`] = v2;
+    }
+  }
+  return m;
+}
+const TOTAL_KEYS = /(^|\.)(total|total_count|total_records|total_rows|total_items|count|total_results)$/;
+function reportedTotal(meta) {
+  for (const [k, v] of Object.entries(meta)) if (TOTAL_KEYS.test(k) && Number.isFinite(Number(v)) && Number(v) > 0) return Number(v);
+  return null;
+}
+
+/**
+ * Lấy HẾT các trang của 1 hàm SynergyHub. Tên tham số phân trang chưa biết nên gửi nhiều tên (Frappe tự bỏ tham số hàm không khai báo):
+ * page/page_number/page_no, page_size/limit/per_page/page_length, offset/start (= số dòng đã lấy).
+ * Dừng khi: hết dữ liệu, đủ tổng (nếu phản hồi báo total), trang trả về y hệt trang trước (hàm bỏ qua tham số trang), hoặc quá maxPages.
+ * call(params) → trả về `message` của phản hồi.
+ */
+async function fetchAllPages(call, base, { pageSize = 500, maxPages = 100 } = {}) {
+  const all = []; const info = { pages: 0, pageSizeAsked: pageSize, reportedTotal: null, meta: null, stopped: '' };
+  let prevSig = null; let columns = null;
+  for (let page = 1; page <= maxPages; page++) {
+    const msg = await call({ ...base, page, page_number: page, page_no: page, page_size: pageSize, limit: pageSize, per_page: pageSize, page_length: pageSize, offset: all.length, start: all.length });
+    const found = findRows(msg); const rows = found ? found.rows : [];
+    if (page === 1) { info.meta = pageMeta(msg); info.reportedTotal = reportedTotal(info.meta); columns = found ? found.columns : null; if (!found) info.stopped = 'không tìm thấy mảng dữ liệu'; }
+    if (!rows.length) { info.stopped = info.stopped || 'hết dữ liệu'; break; }
+    const sig = `${rows.length}|${JSON.stringify(rows[0])}|${JSON.stringify(rows[rows.length - 1])}`;
+    if (sig === prevSig) { info.stopped = 'trang trùng trang trước (hàm không nhận tham số trang)'; break; }
+    prevSig = sig; all.push(...rows); info.pages = page;
+    if (info.reportedTotal && all.length >= info.reportedTotal) { info.stopped = 'đủ tổng số dòng'; break; }
+    if (!info.reportedTotal && rows.length < 100) { info.stopped = 'trang cuối'; break; }
+    if (page === maxPages) info.stopped = `dừng ở ${maxPages} trang — có thể còn dữ liệu`;
+  }
+  info.fetched = all.length;
+  return { message: columns ? { columns, result: all } : { data: all }, info };
+}
+
+module.exports = { fetchAllPages, METHODS, findRows, toObjects, normalizeTimeLogs, normalizeProjects, key };

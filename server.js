@@ -235,9 +235,12 @@ function shError(res, what, e) {
 app.get('/api/synergyhub/projects', requireAuth, async (req, res) => {
   if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
   try {
-    // chỉ gửi tham số phân trang (Frappe bỏ qua tham số hàm không khai báo); KHÔNG gửi bộ lọc rỗng vì có thể bị hiểu là "lọc theo chuỗi rỗng"
-    const body = await erp.callMethod(synergyhub.METHODS.projects, { page: 1, page_size: 1000, limit: 1000, per_page: 1000, page_length: 1000 });
-    const out = synergyhub.normalizeProjects(body.message !== undefined ? body.message : body);
+    // không gửi bộ lọc rỗng (có thể bị hiểu là "lọc theo chuỗi rỗng"); chỉ gửi tham số phân trang
+    const call = async (params) => { const b = await erp.callMethod(synergyhub.METHODS.projects, params); return b.message !== undefined ? b.message : b; };
+    const { message, info } = await synergyhub.fetchAllPages(call, {}, { pageSize: 1000 });
+    const out = synergyhub.normalizeProjects(message);
+    out.diagnostics.paging = info;
+    const body = message;
     if (req.query.raw) out.raw = body;
     res.json(out);
   } catch (e) { shError(res, 'projects', e); }
@@ -251,11 +254,13 @@ app.get('/api/synergyhub/time-logs', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Thiếu hoặc sai tham số project / from_date / to_date (YYYY-MM-DD).' });
   }
   try {
-    // đúng bộ tham số mà giao diện SynergyHub gửi (các ô để trống thì gửi chuỗi rỗng)
-    const body = await erp.callMethod(synergyhub.METHODS.timeLogs, {
-      from_date, to_date, employee: '', department: '', project, activity_type: '', approval_status: String(req.query.approval_status || ''),
-    });
-    const out = synergyhub.normalizeTimeLogs(body.message !== undefined ? body.message : body);
+    // đúng bộ tham số mà giao diện SynergyHub gửi (các ô để trống thì gửi chuỗi rỗng) + tham số phân trang; lấy HẾT các trang
+    const base = { from_date, to_date, employee: '', department: '', project, activity_type: '', approval_status: String(req.query.approval_status || '') };
+    const call = async (params) => { const b = await erp.callMethod(synergyhub.METHODS.timeLogs, params); return b.message !== undefined ? b.message : b; };
+    const { message, info } = await synergyhub.fetchAllPages(call, base, { pageSize: 500 });
+    const out = synergyhub.normalizeTimeLogs(message, { from_date, to_date });
+    out.diagnostics.paging = info;
+    const body = message;
     if (req.query.raw) out.raw = body;
     res.json(out);
   } catch (e) { shError(res, 'time-logs', e); }

@@ -433,13 +433,19 @@ document.getElementById('shFetchBtn').addEventListener('click', async () => {
     const d = data.diagnostics || {};
     showShDiag(d);
     const rows = data.rows || [];
+    const pg = d.paging || {};
+    if (pg.reportedTotal && pg.fetched < pg.reportedTotal){
+      throw new Error(`SynergyHub báo có ${pg.reportedTotal} dòng giờ công nhưng chỉ lấy được ${pg.fetched} (hàm không nhận tham số phân trang). Số liệu sẽ thiếu nên tool không tính — hãy chọn khoảng ngày ngắn hơn để mỗi lần dưới ${pg.fetched} dòng.`);
+    }
     if (!rows.length){
-      const why = !d.detected || !d.detected.hours ? 'không nhận ra cột số giờ' : !d.detected.date ? 'không nhận ra cột ngày' : d.sourceRows ? `${d.sourceRows} dòng đều thiếu chức danh/giờ/ngày` : 'không có dòng giờ công nào trong khoảng ngày đã chọn';
+      const m = d.missing || {};
+      const why = !d.detected || !d.detected.hours ? 'không nhận ra cột số giờ' : (!d.detected.date && !d.dateFallbackMonth) ? 'không có cột ngày và khoảng ngày trải qua nhiều tháng — hãy chọn khoảng ngày trong 1 tháng' : d.sourceRows ? `${d.sourceRows} dòng: thiếu chức danh ${m.designation||0}, thiếu giờ ${m.hours||0}, thiếu ngày ${m.date||0}` : 'không có dòng giờ công nào trong khoảng ngày đã chọn';
       throw new Error(`Không đọc được dòng giờ công nào (${why}). Xem "Chi tiết dữ liệu SynergyHub trả về" bên dưới.`);
     }
-    st.textContent = `Đã lấy ${rows.length} dòng giờ công từ SynergyHub (dự án ${project}, ${from_date} → ${to_date}${approval_status ? ', ' + approval_status : ''}).`
+    st.textContent = `Đã lấy ${rows.length} dòng giờ công từ SynergyHub${pg.pages > 1 ? ` (${pg.pages} trang)` : ''} (dự án ${project}, ${from_date} → ${to_date}${approval_status ? ', ' + approval_status : ''}).`
       + (d.designationMissing ? ' Lưu ý: SynergyHub không có cột chức danh — mỗi nhân viên được xem như 1 chức danh, bạn sẽ chọn cấp bậc cho từng người ở bước xác nhận.' : '')
       + (d.skipped ? ` ${d.skipped} dòng bị bỏ qua (thiếu giờ/ngày/chức danh).` : '')
+      + (d.dateFallbackMonth ? ` SynergyHub không có cột ngày — toàn bộ giờ được tính vào tháng ${d.dateFallbackMonth} (chọn khoảng ngày trong 1 tháng mỗi lần lấy).` : '')
       + (d.detected && d.detected.hoursIsWeakGuess ? ` Cột giờ đang lấy là "${d.detected.hours}" — kiểm tra đơn vị là giờ.` : '');
     st.className = 'status ok';
     acceptTimesheetRows(rows, 'SynergyHub', 'shSummary');
