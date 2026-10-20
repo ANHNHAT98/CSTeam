@@ -38,7 +38,7 @@
   .msg{padding:12px 14px;border-radius:8px;font-size:13.5px;margin-bottom:14px;}
   .msg.err{background:#FBE9EB;border:1px solid #E3A7AF;color:#8B2A36;} .msg.info{background:#EAF1F8;border:1px solid var(--grid-line-strong);}
   #loading{color:var(--muted);padding:30px 0;text-align:center;}
-  .kpis{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;}
+  .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
   .kpi{border:1px solid var(--grid-line-strong);border-radius:10px;padding:10px 12px;border-top:5px solid var(--blueprint);background:#fff;min-height:96px;}
   .kpi .l{font-size:12.5px;color:var(--muted);font-weight:600;}
   .kpi .v{font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:700;line-height:1.2;margin-top:2px;}
@@ -53,6 +53,7 @@
   td.n,th.n{text-align:right;white-space:nowrap;} td.mono{font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:nowrap;}
   tr.me td{background:#EAF1F8;font-weight:700;color:var(--blueprint);}
   .ok{color:var(--success);font-weight:600;} .bad{color:var(--danger);font-weight:600;} .wait{color:var(--muted);}
+  .hint-log{font-weight:500;font-size:11.5px;color:var(--muted);}
   .na{color:#8B2A36;background:#FBE9EB;border:1px solid #E3A7AF;border-radius:8px;padding:12px 14px;}
   .tbl-scroll{overflow-x:auto;}
   .two{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;}
@@ -163,7 +164,7 @@ function howText(r, th, weight){
   else prog = 'Progress = 50% + 50% × ('+fmt(a)+' − '+fmt(th.min,0)+') ÷ ('+fmt(th.target,0)+' − '+fmt(th.min,0)+') = <b>'+fmt(r.progress)+'%</b>';
   return base+'<br>'+prog+'<br>KPI Completion = '+fmt(r.progress)+'% × '+fmt(weight,0)+' = <b>'+fmt(r.points,2)+'</b> điểm';
 }
-const resCls = r => r==='Đạt' ? 'ok' : r==='Trượt' ? 'bad' : 'wait';
+const resCls = r => r==='Đạt' ? 'ok' : 'bad';
 
 function render(d){
   const r = d.result, k = d.kpi;
@@ -175,8 +176,7 @@ function render(d){
     $('resBody').innerHTML = '<div class="kpis">'
       +'<div class="kpi"><div class="l">Ticket trong phạm vi</div><div class="v">'+r.total+'</div><div class="d">Tiếp nhận trong tháng</div></div>'
       +'<div class="kpi ok"><div class="l">Đúng SLA</div><div class="v">'+r.pass+'</div><div class="d">&nbsp;</div></div>'
-      +'<div class="kpi bad"><div class="l">Trượt SLA</div><div class="v">'+r.fail+'</div><div class="d">&nbsp;</div></div>'
-      +'<div class="kpi wait"><div class="l">Đang chờ</div><div class="v">'+r.pending+'</div><div class="d">Còn trong ngưỡng, chưa tính</div></div>'
+      +'<div class="kpi bad"><div class="l">Trượt SLA</div><div class="v">'+r.fail+'</div><div class="d">'+(r.missingLog?'Gồm '+r.missingLog+' ticket thiếu log':'&nbsp;')+'</div></div>'
       +'<div class="kpi act"><div class="l">Actual</div><div class="v '+tone+'">'+(r.actual==null?'—':fmt(r.actual)+'%')+'</div><div class="d">Min '+fmt(k.thresholds.min,0)+' · Target '+fmt(k.thresholds.target,0)+' · Max '+fmt(k.thresholds.max,0)+'</div></div>'
       +'<div class="kpi score"><div class="l">Progress</div><div class="v '+tone+'">'+(r.progress==null?'—':fmt(r.progress)+'%')+'</div><div class="d">'+esc(r.band||'Chưa có ticket để tính')+'</div></div>'
       +'<div class="kpi score"><div class="l">KPI Completion</div><div class="v '+tone+'">'+(r.points==null?'—':fmt(r.points,2))+'</div><div class="d">/ '+fmt(k.weight,0)+' điểm (trọng số)</div></div>'
@@ -185,13 +185,13 @@ function render(d){
   }
   // theo dự án
   const pr = Object.entries(d.byProject);
-  $('projTbl').innerHTML = pr.length ? '<table><thead><tr><th>Dự án</th><th class="n">Ticket</th><th class="n">Đúng</th><th class="n">Trượt</th><th class="n">Chờ</th><th class="n">Actual</th></tr></thead><tbody>'
-    + pr.map(([c,o])=>'<tr><td>'+esc(pLabel(c))+'</td><td class="n">'+o.total+'</td><td class="n ok">'+o.pass+'</td><td class="n bad">'+o.fail+'</td><td class="n">'+o.pending+'</td><td class="n">'+((o.pass+o.fail)?fmt(o.pass/(o.pass+o.fail)*100)+'%':'—')+'</td></tr>').join('')+'</tbody></table>'
+  $('projTbl').innerHTML = pr.length ? '<table><thead><tr><th>Dự án</th><th class="n">Ticket</th><th class="n">Đúng</th><th class="n">Trượt</th><th class="n">Actual</th></tr></thead><tbody>'
+    + pr.map(([c,o])=>'<tr><td>'+esc(pLabel(c))+'</td><td class="n">'+o.total+'</td><td class="n ok">'+o.pass+'</td><td class="n bad">'+o.fail+'</td><td class="n">'+((o.pass+o.fail)?fmt(o.pass/(o.pass+o.fail)*100)+'%':'—')+'</td></tr>').join('')+'</tbody></table>'
     : '<div class="empty">Không có ticket.</div>';
   // ticket
   $('tkTitle').textContent = 'Danh sách ticket trong phạm vi ('+d.tickets.length+')';
   $('tkTbl').innerHTML = d.tickets.length ? '<table><thead><tr><th class="n">STT</th><th>Mã ticket</th><th>Dự án</th><th>Ưu tiên</th><th>Tiêu đề</th><th>Tiếp nhận</th><th>'+KPI.date+'</th><th class="n">Thời gian (giờ)</th><th class="n">Ngưỡng (giờ)</th><th>Kết quả</th></tr></thead><tbody>'
-    + d.tickets.map((t,i)=>'<tr><td class="n">'+(i+1)+'</td><td class="mono">'+esc(t.name)+'</td><td>'+esc(pLabel(t.project))+'</td><td>'+esc(t.priority)+'</td><td>'+esc(t.subject)+'</td><td class="mono">'+esc(dtVN(t.opening))+'</td><td class="mono">'+esc(dtVN(IS_RES?t.resolvedAt:t.firstResponded))+'</td><td class="n">'+(t.minutes==null?'':fmt(t.minutes/60))+'</td><td class="n">'+(t.threshold==null?'':fmt(t.threshold/60))+'</td><td class="'+resCls(t.result)+'">'+esc(t.result)+'</td></tr>').join('')+'</tbody></table>'
+    + d.tickets.map((t,i)=>'<tr><td class="n">'+(i+1)+'</td><td class="mono">'+esc(t.name)+'</td><td>'+esc(pLabel(t.project))+'</td><td>'+esc(t.priority)+'</td><td>'+esc(t.subject)+'</td><td class="mono">'+esc(dtVN(t.opening))+'</td><td class="mono">'+esc(dtVN(IS_RES?t.resolvedAt:t.firstResponded))+'</td><td class="n">'+(t.minutes==null?'':fmt(t.minutes/60))+'</td><td class="n">'+(t.threshold==null?'':fmt(t.threshold/60))+'</td><td class="'+resCls(t.result)+'">'+esc(t.result)+(t.missingLog?'<span class="hint-log"> · thiếu log</span>':'')+'</td></tr>').join('')+'</tbody></table>'
     : '<div class="empty">Thành viên này không có ticket nào trong phạm vi (tháng, dự án, cách xác định ticket đã chọn).</div>';
   $('btnXlsx').disabled = false;
 }
@@ -252,15 +252,15 @@ function exportXlsx(){
     ['Dự án', d.projects.map(pLabel).join(', ')], ['Ticket của thành viên', d.by==='owner'?'Ticket do người đó tạo':'Ticket được giao xử lý'],
     ['Xuất lúc', new Date().toLocaleString('vi-VN')], [],
     ['Chỉ số','Giá trị'],
-    ['Ticket trong phạm vi', r.total], ['Đúng SLA', r.pass], ['Trượt SLA', r.fail], ['Đang chờ (chưa tính)', r.pending], ['Mẫu số (đúng + trượt)', r.decided],
+    ['Ticket trong phạm vi', r.total], ['Đúng SLA', r.pass], ['Trượt SLA', r.fail], ['Trong đó thiếu log (chưa có mốc)', r.missingLog], ['Mẫu số (đúng + trượt)', r.decided],
     ['Actual (%)', r.actual==null?'':Math.round(r.actual*100)/100],
   ];
   if(k.applicable) S.push(['Min (%)',k.thresholds.min],['Target (%)',k.thresholds.target],['Max (%)',k.thresholds.max],['Progress (%)', r.progress==null?'':Math.round(r.progress*100)/100],['Mức', r.band],['Trọng số (điểm)',k.weight],['KPI Completion (điểm)', r.points==null?'':Math.round(r.points*100)/100]);
   else S.push(['Ghi chú','KPI không áp dụng cho level này']);
   const s1 = XLSX.utils.aoa_to_sheet(S); s1['!cols'] = [{wch:34},{wch:40}]; XLSX.utils.book_append_sheet(wb, s1, 'Tổng hợp');
-  const s2 = XLSX.utils.aoa_to_sheet([['STT','Mã ticket','Dự án','Ưu tiên','Tiêu đề','Người tạo','Người xử lý','Trạng thái','Tiếp nhận',KPI.date,'Thời gian (giờ)','Ngưỡng (giờ)','Kết quả'],
-    ...d.tickets.map((t,i)=>[i+1,t.name,pLabel(t.project),t.priority,t.subject,t.owner,t.assign,t.status,dtVN(t.opening),dtVN(IS_RES?t.resolvedAt:t.firstResponded),t.minutes==null?'':Math.round(t.minutes/60*10)/10,t.threshold==null?'':Math.round(t.threshold/60*10)/10,t.result])]);
-  s2['!cols'] = [5,16,12,10,60,28,28,12,17,17,14,13,10].map(w=>({wch:w}));
+  const s2 = XLSX.utils.aoa_to_sheet([['STT','Mã ticket','Dự án','Ưu tiên','Tiêu đề','Người tạo','Người xử lý','Trạng thái','Tiếp nhận',KPI.date,'Thời gian (giờ)','Ngưỡng (giờ)','Kết quả','Ghi chú'],
+    ...d.tickets.map((t,i)=>[i+1,t.name,pLabel(t.project),t.priority,t.subject,t.owner,t.assign,t.status,dtVN(t.opening),dtVN(IS_RES?t.resolvedAt:t.firstResponded),t.minutes==null?'':Math.round(t.minutes/60*10)/10,t.threshold==null?'':Math.round(t.threshold/60*10)/10,t.result,t.missingLog?'Thiếu log':''])]);
+  s2['!cols'] = [5,16,12,10,60,28,28,12,17,17,14,13,10,12].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb, s2, 'Chi tiết ticket');
   XLSX.writeFile(wb, 'KPI_'+KPI.code+'_'+shortName(d.member)+'_'+d.month.key.replace('-','_')+'.xlsx');
 }

@@ -4,7 +4,8 @@
    - Ticket của thành viên: mặc định là ticket được GIAO cho người đó (_assign); có thể đổi sang ticket do người đó TẠO (owner).
    - Phạm vi: ticket có Opening On trong tháng, thuộc các dự án được chọn (mặc định AnVy + Merap).
    - Đúng/trượt SLA dùng đúng quy tắc của các trang SLA khác (customerReport.js → slaOne): ngưỡng theo Priority,
-     Critical/Urgent tính giờ liên tục, mức khác tính giờ làm việc; ticket còn trong ngưỡng là "Đang chờ" và chưa tính vào mẫu số.
+     Critical/Urgent tính giờ liên tục, mức khác tính giờ làm việc.
+   - Ticket CHƯA CÓ MỐC (CS01: First Responded On; CS02: Resolution Date/Closed) coi như thiếu log → tính là TRƯỢT, không có "Đang chờ".
    - Actual = đúng SLA ÷ (đúng + trượt) × 100%. Progress nội suy theo Min/Target/Max của level; KPI Completion = Progress × trọng số.
    - Ngưỡng + trọng số theo level: kpi-sla-config.json (lấy từ file Master KPI). */
 
@@ -50,14 +51,15 @@ function evaluateMember(rows, { month, projects, member, by = 'assign', level, k
     tickets.push({
       name: t.name, project: r.project, subject: t.subject, priority: t.priority, status: t.status,
       opening: t.opening, firstResponded: t.firstResponded, resolvedAt: t.resolvedStr, owner: r.owner || '', assign: t.assign.join(', '),
-      result: sla ? sla.result : '', minutes: sla ? sla.minutes : null, threshold: sla ? sla.threshold : null,
+      result: !sla ? '' : sla.done ? sla.result : 'Trượt', missingLog: Boolean(sla && !sla.done),
+      minutes: sla && sla.done ? sla.minutes : null, threshold: sla ? sla.threshold : null,
     });
   }
   tickets.sort((a, b) => String(a.opening).localeCompare(String(b.opening)));
 
   const pass = tickets.filter((t) => t.result === 'Đạt').length;
   const fail = tickets.filter((t) => t.result === 'Trượt').length;
-  const pending = tickets.filter((t) => t.result === 'Đang chờ').length;
+  const missingLog = tickets.filter((t) => t.missingLog).length;
   const decided = pass + fail;
   const th = kpi.thresholds[level]; const weight = kpi.weights[level];
   const applicable = Boolean(th) && weight != null;
@@ -66,15 +68,15 @@ function evaluateMember(rows, { month, projects, member, by = 'assign', level, k
 
   const byProject = {};
   for (const t of tickets) {
-    const o = byProject[t.project] || (byProject[t.project] = { total: 0, pass: 0, fail: 0, pending: 0 });
-    o.total++; if (t.result === 'Đạt') o.pass++; else if (t.result === 'Trượt') o.fail++; else o.pending++;
+    const o = byProject[t.project] || (byProject[t.project] = { total: 0, pass: 0, fail: 0 });
+    o.total++; if (t.result === 'Đạt') o.pass++; else if (t.result === 'Trượt') o.fail++;
   }
   return {
     month: { key: month, start: ms, end: me },
     member, by, level, projects,
     kpi: { key: kpiKey, code: kpi.code, weight: applicable ? weight : null, thresholds: th || null, applicable },
     result: {
-      total: tickets.length, pass, fail, pending, decided,
+      total: tickets.length, pass, fail, missingLog, decided,
       actual, progress: p ? round(p.progress, 4) : null, tier: p ? p.tier : null, band: p ? p.band : '',
       points: p && applicable ? round((p.progress * weight) / 100, 4) : null,
     },
