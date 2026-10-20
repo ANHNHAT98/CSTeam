@@ -154,6 +154,15 @@ Module hiện có:
   `localStorage` của trình duyệt (không đồng bộ giữa các máy — mỗi người
   dùng tự cấu hình 1 lần trên máy mình).
 
+- **KPI Team → CS01: SLA Phản Hồi** (`/kpiteam/sla-phan-hoi`) và **CS02: SLA Hoàn Tất**
+  (`/kpiteam/sla-hoan-tat`): đánh giá KPI theo **tháng** cho 1 thành viên. Bộ lọc: thành viên
+  (lấy từ danh sách người tạo ticket trong `ticket-creators.json`), level (Fresher/Junior/Middle/
+  Senior), dự án (mặc định AnVy + Merap), tháng. Actual = ticket đúng SLA ÷ tổng ticket trong
+  phạm vi; Progress nội suy theo Min/Target/Max (0% → 50% → 100% → trần 150%); KPI Completion =
+  Progress × trọng số. Hai trang dùng chung 1 file `protected/kpiteam-sla-danh-gia.html`, logic
+  ở `kpiSla.js`, API `/api/kpi/sla-member`. Ngưỡng và trọng số nằm ở `kpi-sla-config.json` (lấy từ
+  sheet 02_Master KPI và 03_Ma trận KPI - Vị trí) — HR đổi số thì sửa file này, không cần sửa code.
+
 ## Mã hóa Password Window — chi tiết kỹ thuật
 
 Thuật toán và key hệ thống được **reverse-engineer trực tiếp từ file gốc**

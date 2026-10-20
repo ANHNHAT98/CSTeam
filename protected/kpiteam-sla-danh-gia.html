@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KPI Team — SLA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{--ink:#12233D;--blueprint:#1F4E79;--paper:#EEF2F6;--panel:#FFFFFF;--grid-line:rgba(31,78,121,.14);--grid-line-strong:rgba(31,78,121,.28);--amber:#E8A33D;--amber-deep:#C9821F;--success:#3F7D58;--danger:#B23A48;--muted:#5B7089;--radius:10px;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;min-height:100vh;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:32px 32px;}
+  .ops-topbar{background:#12233D;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:14px;}
+  .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;opacity:.9;}
+  .ops-topbar a:hover{opacity:1;text-decoration:underline;}
+  .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 24px 80px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;line-height:1.6;}
+  .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;}
+  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0 0 10px;}
+  .filters{display:flex;gap:14px 18px;flex-wrap:wrap;align-items:flex-end;}
+  .field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted);font-weight:600;}
+  .field select,.field input[type=month]{font:inherit;font-size:13.5px;font-weight:500;color:var(--ink);padding:8px 12px;border-radius:8px;border:1px solid var(--grid-line-strong);background:#fff;min-width:170px;}
+  .monthbox{display:flex;gap:6px;align-items:center;}
+  button{font:inherit;font-size:13.5px;padding:8px 14px;border-radius:8px;border:1px solid var(--blueprint);background:#fff;color:var(--blueprint);cursor:pointer;font-weight:600;}
+  button.primary{background:var(--blueprint);color:#fff;}
+  button.export{border-color:var(--success);color:var(--success);}
+  button:disabled{opacity:.5;cursor:default;}
+  .scope{display:flex;gap:6px 8px;flex-wrap:wrap;margin-top:12px;font-size:13px;align-items:center;}
+  .scope .t{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px;}
+  .scope label{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--grid-line-strong);border-radius:8px;padding:4px 10px;cursor:pointer;}
+  .scope label.on{border-color:var(--blueprint);background:#EAF1F8;font-weight:600;}
+  .stamp{color:var(--muted);font-size:12px;}
+  .msg{padding:12px 14px;border-radius:8px;font-size:13.5px;margin-bottom:14px;}
+  .msg.err{background:#FBE9EB;border:1px solid #E3A7AF;color:#8B2A36;} .msg.info{background:#EAF1F8;border:1px solid var(--grid-line-strong);}
+  #loading{color:var(--muted);padding:30px 0;text-align:center;}
+  .kpis{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;}
+  .kpi{border:1px solid var(--grid-line-strong);border-radius:10px;padding:10px 12px;border-top:5px solid var(--blueprint);background:#fff;min-height:96px;}
+  .kpi .l{font-size:12.5px;color:var(--muted);font-weight:600;}
+  .kpi .v{font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:700;line-height:1.2;margin-top:2px;}
+  .kpi .d{font-size:11.5px;color:var(--muted);line-height:1.35;}
+  .kpi.ok{border-top-color:var(--success);} .kpi.bad{border-top-color:var(--danger);} .kpi.wait{border-top-color:#8EA3BA;} .kpi.score{border-top-color:#6C5B9E;} .kpi.act{border-top-color:var(--amber);}
+  .tone0{color:var(--danger);} .tone1{color:var(--amber-deep);} .tone2{color:var(--success);} .tone3{color:#1F7A4B;}
+  .how{background:#F5F8FB;border:1px solid var(--grid-line-strong);border-radius:8px;padding:12px 14px;font-size:13.5px;line-height:1.9;margin-top:12px;}
+  .how b{color:var(--blueprint);}
+  table{width:100%;border-collapse:collapse;font-size:13px;background:#fff;}
+  th{background:#1F4E79;color:#fff;text-align:left;padding:7px 10px;font-weight:600;white-space:nowrap;}
+  td{padding:6px 10px;border-bottom:1px solid var(--grid-line);vertical-align:top;}
+  td.n,th.n{text-align:right;white-space:nowrap;} td.mono{font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:nowrap;}
+  tr.me td{background:#EAF1F8;font-weight:700;color:var(--blueprint);}
+  .ok{color:var(--success);font-weight:600;} .bad{color:var(--danger);font-weight:600;} .wait{color:var(--muted);}
+  .na{color:#8B2A36;background:#FBE9EB;border:1px solid #E3A7AF;border-radius:8px;padding:12px 14px;}
+  .tbl-scroll{overflow-x:auto;}
+  .two{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;}
+  @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr);}.two{grid-template-columns:1fr;}}
+  .empty{color:var(--muted);padding:22px 4px;text-align:center;}
+  .note{font-size:12.5px;color:var(--muted);line-height:1.7;margin:8px 0 0;}
+</style>
+</head>
+<body>
+<div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb" id="crumb"></span></div>
+<div class="wrap">
+  <h1 id="title"></h1>
+  <p class="sub" id="desc"></p>
+
+  <div class="panel">
+    <div class="filters">
+      <div class="field">Thành viên<select id="selMember"><option>Đang tải…</option></select></div>
+      <div class="field">Level<select id="selLevel"></select></div>
+      <div class="field">Tháng
+        <div class="monthbox"><button id="btnPrev" type="button" title="Tháng trước">◀</button><input type="month" id="pickMonth"><button id="btnNext" type="button" title="Tháng sau">▶</button><button id="btnThis" type="button" class="primary">Tháng này</button></div>
+      </div>
+      <div class="field">Ticket của thành viên là
+        <select id="selBy"><option value="assign">Ticket được giao xử lý (người xử lý)</option><option value="owner">Ticket do người đó tạo</option></select>
+      </div>
+      <div class="field">&nbsp;<span><button id="btnReload" type="button">↻ Tải lại từ ERP</button> <button id="btnXlsx" type="button" class="export" disabled>⬇ Xuất Excel</button></span></div>
+    </div>
+    <div class="scope" id="scope"></div>
+    <div class="stamp" id="stamp" style="margin-top:8px"></div>
+  </div>
+
+  <div id="notice"></div>
+  <div id="loading">Đang lấy dữ liệu ticket từ ERP…</div>
+
+  <div id="content" style="display:none">
+    <div class="panel">
+      <h2 id="resTitle"></h2>
+      <div id="resBody"></div>
+    </div>
+    <div class="two">
+      <div class="panel"><h2>Ngưỡng theo level</h2><div id="thTbl"></div>
+        <p class="note">Ngưỡng và trọng số lấy từ file Master KPI (<code>kpi-sla-config.json</code>). Dòng tô màu là level đang chọn.</p></div>
+      <div class="panel"><h2>Theo dự án</h2><div id="projTbl"></div></div>
+    </div>
+    <div class="panel">
+      <h2 id="tkTitle">Danh sách ticket trong phạm vi</h2>
+      <div class="tbl-scroll"><div id="tkTbl"></div></div>
+    </div>
+    <div class="panel"><h2>Cách tính</h2><p class="note" id="rules" style="margin-top:0"></p></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const IS_RES = location.pathname.endsWith('/sla-hoan-tat');
+const KPI = IS_RES
+  ? { key:'resolution', code:'CS02', title:'CS02: SLA Hoàn Tất', what:'xử lý xong (Resolution Time)', metric:'Resolution Time', date:'Hoàn tất lúc' }
+  : { key:'firstResponse', code:'CS01', title:'CS01: SLA Phản Hồi', what:'phản hồi lần đầu (First Response)', metric:'First Response', date:'Phản hồi đầu lúc' };
+document.title = 'KPI Team — '+KPI.title;
+$('title').textContent = KPI.title;
+$('crumb').textContent = '/ kpi team / '+(IS_RES?'sla hoàn tất':'sla phản hồi');
+$('desc').innerHTML = 'Đánh giá tỷ lệ ticket được '+KPI.what+' đúng SLA, tính từ lúc tiếp nhận yêu cầu. KPI tính <b>theo tháng</b> cho từng thành viên, theo <b>level</b> và <b>dự án</b> đi theo. Số liệu lấy trực tiếp từ ERP.';
+
+const FALLBACK_PROJECTS = [
+  {code:'MerapLion_eSales',label:'MERAP',name:'Merap'},{code:'ABI_eSales_Support',label:'ABI',name:'ABI'},{code:'ANVY_eSale_Support',label:'ANVY',name:'AnVy'},
+  {code:'Sabeco_PG',label:'SABECO-PG',name:'Sabeco PG'},{code:'Sabeco_B2B_Support',label:'SABECO-B2B',name:'Sabeco B2B'},{code:'FES_eSales',label:'FES',name:'FES'},
+  {code:'ANKO_eSales_Support',label:'ANKO',name:'ANKO'},{code:'HaiHa_eSales_Support',label:'HAIHA',name:'HAIHA'},{code:'Jotun_VN_eSales',label:'JOTUN',name:'JOTUN'}
+];
+const DEFAULT_PROJECTS = ['ANVY_eSale_Support','MerapLion_eSales'];
+const LEVELS = ['Fresher','Junior','Middle','Senior'];
+let projects = FALLBACK_PROJECTS, creators = [], scope = [], data = null, reqSeq = 0;
+const todayMonth = () => new Date(Date.now()+7*3600*1000).toISOString().slice(0,7);
+const addMonths = (key, n) => { const [y,m] = key.split('-').map(Number); return new Date(Date.UTC(y, m-1+n, 1)).toISOString().slice(0,7); };
+const qp = new URLSearchParams(location.search);
+let month = /^\d{4}-(0[1-9]|1[0-2])$/.test(qp.get('month')||'') ? qp.get('month') : todayMonth();
+const mFmt = k => k.slice(5,7)+'/'+k.slice(0,4);
+const fmt = (v,d=1) => v==null ? '—' : Number(v).toFixed(d).replace('.',',');
+const dtVN = s => { s=String(s||''); return s.length>=16 ? s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4)+' '+s.slice(11,16) : s; };
+const pLabel = c => (projects.find(p=>p.code===c)||{}).label || c;
+const shortName = e => String(e).split('@')[0];
+
+/* nhớ lựa chọn trên trình duyệt này */
+const LS = 'kpiSla.v2';
+const store = { get(){ try{ return JSON.parse(localStorage.getItem(LS)||'{}')||{}; }catch(_){ return {}; } }, set(o){ try{ localStorage.setItem(LS, JSON.stringify(o)); }catch(_){} } };
+
+async function api(url){
+  const r = await fetch(url); const j = await r.json().catch(()=>({error:'Phản hồi không hợp lệ (HTTP '+r.status+')'}));
+  if(r.status===401){ location.href='/?next='+encodeURIComponent(location.pathname+location.search); throw new Error('Phiên đăng nhập đã hết'); }
+  if(!r.ok) throw new Error(j.error || ('HTTP '+r.status));
+  return j;
+}
+function renderScope(){
+  $('scope').innerHTML = '<span class="t">Dự án:</span>'+projects.map(p=>'<label class="'+(scope.includes(p.code)?'on':'')+'"><input type="checkbox" data-p="'+esc(p.code)+'"'+(scope.includes(p.code)?' checked':'')+'> '+esc(p.name)+'</label>').join('');
+  $('scope').querySelectorAll('input').forEach(i=>i.onchange=()=>{
+    const sel = [...$('scope').querySelectorAll('input:checked')].map(x=>x.dataset.p);
+    if(!sel.length){ i.checked = true; return; }
+    scope = sel; const s = store.get(); s.scope = scope; store.set(s); load(false);
+  });
+}
+
+function howText(r, th, weight){
+  const a = r.actual; if(a==null) return '';
+  const base = 'Actual = '+r.pass+' ÷ '+r.decided+' × 100% = <b>'+fmt(a)+'%</b>';
+  let prog;
+  if(r.tier===0) prog = 'Actual '+fmt(a)+'% &lt; Min '+fmt(th.min,0)+'% → Progress = <b>0%</b>';
+  else if(r.tier===3) prog = 'Actual '+fmt(a)+'% ≥ Max '+fmt(th.max,0)+'% → Progress = <b>150%</b> (trần)';
+  else if(r.tier===2) prog = th.max>th.target ? 'Progress = 100% + 50% × ('+fmt(a)+' − '+fmt(th.target,0)+') ÷ ('+fmt(th.max,0)+' − '+fmt(th.target,0)+') = <b>'+fmt(r.progress)+'%</b>' : 'Đạt Target → Progress = <b>100%</b>';
+  else prog = 'Progress = 50% + 50% × ('+fmt(a)+' − '+fmt(th.min,0)+') ÷ ('+fmt(th.target,0)+' − '+fmt(th.min,0)+') = <b>'+fmt(r.progress)+'%</b>';
+  return base+'<br>'+prog+'<br>KPI Completion = '+fmt(r.progress)+'% × '+fmt(weight,0)+' = <b>'+fmt(r.points,2)+'</b> điểm';
+}
+const resCls = r => r==='Đạt' ? 'ok' : r==='Trượt' ? 'bad' : 'wait';
+
+function render(d){
+  const r = d.result, k = d.kpi;
+  $('resTitle').textContent = KPI.title+' — '+shortName(d.member)+' · '+d.level+' · tháng '+mFmt(d.month.key);
+  if(!k.applicable){
+    $('resBody').innerHTML = '<div class="na">KPI '+KPI.code+' <b>không áp dụng</b> cho level <b>'+esc(d.level)+'</b> (Master KPI không có ngưỡng / trọng số cho level này). Chọn level khác để đánh giá.</div>';
+  } else {
+    const tone = 'tone'+(r.tier==null?'':r.tier);
+    $('resBody').innerHTML = '<div class="kpis">'
+      +'<div class="kpi"><div class="l">Ticket trong phạm vi</div><div class="v">'+r.total+'</div><div class="d">Tiếp nhận trong tháng</div></div>'
+      +'<div class="kpi ok"><div class="l">Đúng SLA</div><div class="v">'+r.pass+'</div><div class="d">&nbsp;</div></div>'
+      +'<div class="kpi bad"><div class="l">Trượt SLA</div><div class="v">'+r.fail+'</div><div class="d">&nbsp;</div></div>'
+      +'<div class="kpi wait"><div class="l">Đang chờ</div><div class="v">'+r.pending+'</div><div class="d">Còn trong ngưỡng, chưa tính</div></div>'
+      +'<div class="kpi act"><div class="l">Actual</div><div class="v '+tone+'">'+(r.actual==null?'—':fmt(r.actual)+'%')+'</div><div class="d">Min '+fmt(k.thresholds.min,0)+' · Target '+fmt(k.thresholds.target,0)+' · Max '+fmt(k.thresholds.max,0)+'</div></div>'
+      +'<div class="kpi score"><div class="l">Progress</div><div class="v '+tone+'">'+(r.progress==null?'—':fmt(r.progress)+'%')+'</div><div class="d">'+esc(r.band||'Chưa có ticket để tính')+'</div></div>'
+      +'<div class="kpi score"><div class="l">KPI Completion</div><div class="v '+tone+'">'+(r.points==null?'—':fmt(r.points,2))+'</div><div class="d">/ '+fmt(k.weight,0)+' điểm (trọng số)</div></div>'
+      +'</div>'
+      + (r.actual==null ? '<div class="how">Chưa có ticket nào có kết quả SLA (đúng hoặc trượt) trong phạm vi đã chọn nên chưa tính được Actual.</div>' : '<div class="how">'+howText(r, k.thresholds, k.weight)+'</div>');
+  }
+  // ngưỡng theo level
+  const th = d.config.thresholds, w = d.config.weights;
+  $('thTbl').innerHTML = '<table><thead><tr><th>Level</th><th class="n">Min</th><th class="n">Target</th><th class="n">Max</th><th class="n">Trọng số</th></tr></thead><tbody>'
+    + d.config.levels.map(l=>'<tr'+(l===d.level?' class="me"':'')+'><td>'+l+'</td>'+(th[l]?'<td class="n">'+fmt(th[l].min,0)+'%</td><td class="n">'+fmt(th[l].target,0)+'%</td><td class="n">'+fmt(th[l].max,0)+'%</td><td class="n">'+fmt(w[l],0)+'</td>':'<td class="n" colspan="4" style="color:#8EA3BA">Không áp dụng</td>')+'</tr>').join('')+'</tbody></table>';
+  // theo dự án
+  const pr = Object.entries(d.byProject);
+  $('projTbl').innerHTML = pr.length ? '<table><thead><tr><th>Dự án</th><th class="n">Ticket</th><th class="n">Đúng</th><th class="n">Trượt</th><th class="n">Chờ</th><th class="n">Actual</th></tr></thead><tbody>'
+    + pr.map(([c,o])=>'<tr><td>'+esc(pLabel(c))+'</td><td class="n">'+o.total+'</td><td class="n ok">'+o.pass+'</td><td class="n bad">'+o.fail+'</td><td class="n">'+o.pending+'</td><td class="n">'+((o.pass+o.fail)?fmt(o.pass/(o.pass+o.fail)*100)+'%':'—')+'</td></tr>').join('')+'</tbody></table>'
+    : '<div class="empty">Không có ticket.</div>';
+  // ticket
+  $('tkTitle').textContent = 'Danh sách ticket trong phạm vi ('+d.tickets.length+')';
+  $('tkTbl').innerHTML = d.tickets.length ? '<table><thead><tr><th class="n">STT</th><th>Mã ticket</th><th>Dự án</th><th>Ưu tiên</th><th>Tiêu đề</th><th>Tiếp nhận</th><th>'+KPI.date+'</th><th class="n">Thời gian (giờ)</th><th class="n">Ngưỡng (giờ)</th><th>Kết quả</th></tr></thead><tbody>'
+    + d.tickets.map((t,i)=>'<tr><td class="n">'+(i+1)+'</td><td class="mono">'+esc(t.name)+'</td><td>'+esc(pLabel(t.project))+'</td><td>'+esc(t.priority)+'</td><td>'+esc(t.subject)+'</td><td class="mono">'+esc(dtVN(t.opening))+'</td><td class="mono">'+esc(dtVN(IS_RES?t.resolvedAt:t.firstResponded))+'</td><td class="n">'+(t.minutes==null?'':fmt(t.minutes/60))+'</td><td class="n">'+(t.threshold==null?'':fmt(t.threshold/60))+'</td><td class="'+resCls(t.result)+'">'+esc(t.result)+'</td></tr>').join('')+'</tbody></table>'
+    : '<div class="empty">Thành viên này không có ticket nào trong phạm vi (tháng, dự án, cách xác định ticket đã chọn).</div>';
+  $('rules').innerHTML = '<b>Actual</b> = số ticket '+KPI.what+' đúng SLA ÷ tổng số ticket thuộc phạm vi tính SLA × 100%. Phạm vi: ticket <b>tiếp nhận trong tháng</b> (Opening On) của các dự án được chọn, thuộc về thành viên theo cách xác định ở bộ lọc. Ticket còn trong ngưỡng SLA, chưa có kết quả ("Đang chờ") chưa tính vào tổng.<br>'
+    +'<b>Progress</b> (Cao tốt): Actual &lt; Min → 0% · Từ Min đến dưới Target: 50% + 50% × (Actual − Min) ÷ (Target − Min) · Từ Target đến Max: 100% + 50% × (Actual − Target) ÷ (Max − Target) · Vượt Max: 150% (trần). <b>KPI Completion</b> = Progress × trọng số.<br>'
+    +'<b>Ngưỡng SLA theo Priority</b>: Critical 1h, Urgent 4h (tính giờ liên tục); High 8h, Medium 72h, Low 120h (giờ làm việc T2–T6 08:00–12:00 và 13:30–17:30, trừ ngày lễ). '
+    +(IS_RES?'Resolution tính từ lúc tiếp nhận đến Resolution Date (hoặc lúc Closed nếu không có Resolution Date); ticket chưa xong mà đã quá ngưỡng tính là trượt.':'First Response tính từ lúc tiếp nhận đến First Responded On; ticket chưa phản hồi mà đã quá ngưỡng tính là trượt.');
+  $('btnXlsx').disabled = false;
+}
+
+async function load(refresh){
+  const member = $('selMember').value, level = $('selLevel').value;
+  if(!member){ $('loading').style.display='none'; $('notice').innerHTML='<div class="msg err">Chưa có thành viên nào trong danh sách người tạo ticket (ticket-creators.json).</div>'; return; }
+  const seq = ++reqSeq;
+  history.replaceState(null,'','?month='+month);
+  $('pickMonth').value = month; renderScope();
+  $('loading').style.display = ''; $('btnXlsx').disabled = true; $('notice').innerHTML = '';
+  try{
+    const d = await api('/api/kpi/sla-member?kpi='+KPI.key+'&member='+encodeURIComponent(member)+'&level='+encodeURIComponent(level)+'&month='+month+'&by='+$('selBy').value+'&projects='+encodeURIComponent(JSON.stringify(scope))+(refresh?'&refresh=1':''));
+    if(seq!==reqSeq) return;
+    data = d; $('loading').style.display = 'none'; $('content').style.display = '';
+    $('stamp').textContent = 'Cập nhật '+new Date(d.meta.generatedAt).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})+' · '+d.meta.rows+' ticket đã đọc từ ERP (các dự án đã chọn, tháng '+mFmt(month)+')';
+    $('notice').innerHTML = (d.warnings||[]).map(x=>'<div class="msg info">'+esc(x)+'</div>').join('');
+    render(d);
+  }catch(e){
+    if(seq!==reqSeq) return;
+    $('loading').style.display = 'none'; $('content').style.display = 'none';
+    $('notice').innerHTML = '<div class="msg err">Không lấy được dữ liệu: '+esc(e.message)+'</div>';
+  }
+}
+
+function exportXlsx(){
+  const d = data, r = d.result, k = d.kpi;
+  const wb = XLSX.utils.book_new();
+  const S = [
+    [KPI.title+' — Đánh giá KPI theo tháng'],
+    ['Thành viên', d.member], ['Level', d.level], ['Kỳ đánh giá', mFmt(d.month.key)],
+    ['Dự án', d.projects.map(pLabel).join(', ')], ['Ticket của thành viên', d.by==='owner'?'Ticket do người đó tạo':'Ticket được giao xử lý'],
+    ['Xuất lúc', new Date().toLocaleString('vi-VN')], [],
+    ['Chỉ số','Giá trị'],
+    ['Ticket trong phạm vi', r.total], ['Đúng SLA', r.pass], ['Trượt SLA', r.fail], ['Đang chờ (chưa tính)', r.pending], ['Mẫu số (đúng + trượt)', r.decided],
+    ['Actual (%)', r.actual==null?'':Math.round(r.actual*100)/100],
+  ];
+  if(k.applicable) S.push(['Min (%)',k.thresholds.min],['Target (%)',k.thresholds.target],['Max (%)',k.thresholds.max],['Progress (%)', r.progress==null?'':Math.round(r.progress*100)/100],['Mức', r.band],['Trọng số (điểm)',k.weight],['KPI Completion (điểm)', r.points==null?'':Math.round(r.points*100)/100]);
+  else S.push(['Ghi chú','KPI không áp dụng cho level này']);
+  const s1 = XLSX.utils.aoa_to_sheet(S); s1['!cols'] = [{wch:34},{wch:40}]; XLSX.utils.book_append_sheet(wb, s1, 'Tổng hợp');
+  const s2 = XLSX.utils.aoa_to_sheet([['STT','Mã ticket','Dự án','Ưu tiên','Tiêu đề','Người tạo','Người xử lý','Trạng thái','Tiếp nhận',KPI.date,'Thời gian (giờ)','Ngưỡng (giờ)','Kết quả'],
+    ...d.tickets.map((t,i)=>[i+1,t.name,pLabel(t.project),t.priority,t.subject,t.owner,t.assign,t.status,dtVN(t.opening),dtVN(IS_RES?t.resolvedAt:t.firstResponded),t.minutes==null?'':Math.round(t.minutes/60*10)/10,t.threshold==null?'':Math.round(t.threshold/60*10)/10,t.result])]);
+  s2['!cols'] = [5,16,12,10,60,28,28,12,17,17,14,13,10].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, s2, 'Chi tiết ticket');
+  XLSX.writeFile(wb, 'KPI_'+KPI.code+'_'+shortName(d.member)+'_'+d.month.key.replace('-','_')+'.xlsx');
+}
+
+/* ---------- sự kiện ---------- */
+const go = m => { month = m; load(false); };
+$('btnPrev').onclick = () => go(addMonths(month,-1));
+$('btnNext').onclick = () => go(addMonths(month,1));
+$('btnThis').onclick = () => go(todayMonth());
+$('pickMonth').onchange = e => { if(/^\d{4}-\d{2}$/.test(e.target.value)) go(e.target.value); };
+$('btnReload').onclick = () => load(true);
+$('btnXlsx').onclick = () => exportXlsx();
+$('selBy').onchange = () => { const s = store.get(); s.by = $('selBy').value; store.set(s); load(false); };
+$('selLevel').onchange = () => { const s = store.get(); s.levels = s.levels||{}; s.levels[$('selMember').value] = $('selLevel').value; store.set(s); load(false); };
+$('selMember').onchange = () => { const s = store.get(); s.member = $('selMember').value; store.set(s); $('selLevel').value = (s.levels&&s.levels[$('selMember').value]) || 'Junior'; load(false); };
+
+(async function init(){
+  try{ const list = await api('/api/ticket-instructions'); if(Array.isArray(list) && list.length) projects = list; }catch(_){}
+  const s = store.get();
+  scope = (Array.isArray(s.scope)?s.scope:DEFAULT_PROJECTS).filter(c=>projects.some(p=>p.code===c));
+  if(!scope.length) scope = DEFAULT_PROJECTS.filter(c=>projects.some(p=>p.code===c));
+  if(!scope.length) scope = [projects[0].code];
+  $('selLevel').innerHTML = LEVELS.map(l=>'<option>'+l+'</option>').join('');
+  if(s.by) $('selBy').value = s.by;
+  try{
+    const c = await api('/api/erp/ticket-creators'); creators = c.creators || [];
+  }catch(e){ $('notice').innerHTML = '<div class="msg err">Không tải được danh sách thành viên: '+esc(e.message)+'</div>'; }
+  $('selMember').innerHTML = creators.length ? creators.map(e=>'<option value="'+esc(e)+'">'+esc(e)+'</option>').join('') : '<option value="">(chưa có thành viên)</option>';
+  if(s.member && creators.includes(s.member)) $('selMember').value = s.member;
+  $('selLevel').value = (s.levels && s.levels[$('selMember').value]) || 'Junior';
+  load(false);
+})();
+</script>
+</body>
+</html>

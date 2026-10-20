@@ -1,0 +1,75 @@
+{
+  "source": "HQSOFT_CustomerSuccess_Master_KPI_Final.xlsx — sheet 02_Master KPI (ngưỡng) và 03_Ma trận KPI - Vị trí (trọng số CSE). Sửa file này khi HR đổi ngưỡng/trọng số; không cần sửa code.",
+  "defaultProjects": [
+    "ANVY_eSale_Support",
+    "MerapLion_eSales"
+  ],
+  "levels": [
+    "Fresher",
+    "Junior",
+    "Middle",
+    "Senior"
+  ],
+  "kpis": {
+    "firstResponse": {
+      "code": "CS01",
+      "name": "Response time < 4h",
+      "matrixName": "Đáp ứng SLA về phản hồi đầu tiên",
+      "thresholds": {
+        "Fresher": {
+          "min": 80.0,
+          "target": 92.0,
+          "max": 98.0
+        },
+        "Junior": {
+          "min": 85.0,
+          "target": 95.0,
+          "max": 100.0
+        },
+        "Middle": {
+          "min": 88.0,
+          "target": 96.0,
+          "max": 100.0
+        }
+      },
+      "weights": {
+        "Fresher": 20.0,
+        "Junior": 20.0,
+        "Middle": 15.0
+      }
+    },
+    "resolution": {
+      "code": "CS02",
+      "name": "Resolution time < 48h",
+      "matrixName": "Đáp ứng SLA về thời gian xử lý",
+      "thresholds": {
+        "Fresher": {
+          "min": 75.0,
+          "target": 88.0,
+          "max": 95.0
+        },
+        "Junior": {
+          "min": 80.0,
+          "target": 92.0,
+          "max": 98.0
+        },
+        "Middle": {
+          "min": 82.0,
+          "target": 93.0,
+          "max": 98.0
+        },
+        "Senior": {
+          "min": 85.0,
+          "target": 95.0,
+          "max": 99.0
+        }
+      },
+      "weights": {
+        "Fresher": 20.0,
+        "Junior": 20.0,
+        "Middle": 15.0,
+        "Senior": 15.0
+      }
+    }
+  }
+}

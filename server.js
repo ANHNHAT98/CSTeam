@@ -11,6 +11,7 @@ console.log(`[build] Ops Console ${BUILD}`);
 const { applyTicketDefaults } = require('./ticketDefaults');
 const weekly = require('./weeklyReport');
 const { buildCustomerReport } = require('./customerReport');
+const kpiSla = require('./kpiSla');
 const { buildMonthlyCustomerReport, monthStartOf, monthEndOf, addMonths, isMonthKey } = require('./customerReportMonthly');
 const jira = require('./jiraClient');
 const supportCases = require('./supportCasesStore');
@@ -158,6 +159,11 @@ app.get('/khac/ma-hoa-password-macos', requirePageAuth, (req, res) => {
 
 app.get('/kpiteam/loi-nhuan-thang', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'kpiteam-loi-nhuan-thang.html'));
+});
+
+app.get(['/kpiteam/sla-phan-hoi', '/kpiteam/sla-hoan-tat'], requirePageAuth, (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'protected', 'kpiteam-sla-danh-gia.html')); // 1 trang dùng chung, tự nhận CS01/CS02 theo đường dẫn
 });
 
 app.get('/kpiteam/bao-cao-tuan', requirePageAuth, (req, res) => {
@@ -318,6 +324,47 @@ app.get('/api/projects/customer-report-monthly', requireAuth, async (req, res) =
     res.json(data);
   } catch (e) {
     console.error('[projects/customer-report-monthly] lỗi:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+/* ---------- KPI Team: CS01 "SLA Phản Hồi" / CS02 "SLA Hoàn Tất" — đánh giá THEO THÁNG cho 1 thành viên ----------
+   GET /api/kpi/sla-member?kpi=firstResponse|resolution&member=<email>&level=<Fresher|Junior|Middle|Senior>&month=<YYYY-MM>
+       &projects=["ANVY_eSale_Support","MerapLion_eSales"]&by=assign|owner
+   Thành viên phải nằm trong danh sách người tạo ticket (ticket-creators.json). Tính ở kpiSla.js, ngưỡng/trọng số ở kpi-sla-config.json. */
+const kpiSlaCache = new Map(); // dữ liệu ERP thô theo dự án+tháng, để đổi thành viên/level không phải gọi ERP lại
+app.get('/api/kpi/sla-member', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  let config;
+  try { config = kpiSla.loadConfig(); } catch (e) { return res.status(500).json({ error: 'Không đọc được kpi-sla-config.json: ' + e.message }); }
+  const kpiKey = String(req.query.kpi || '');
+  if (!config.kpis[kpiKey]) return res.status(400).json({ error: 'KPI không hợp lệ.' });
+  const member = String(req.query.member || '').trim().toLowerCase();
+  if (!loadProjectCreators().creators.includes(member)) return res.status(400).json({ error: 'Thành viên không nằm trong danh sách người tạo ticket.' });
+  const level = String(req.query.level || '');
+  if (!config.levels.includes(level)) return res.status(400).json({ error: 'Level không hợp lệ.' });
+  const valid = new Set(loadInstructionProjects().map((p) => p.code));
+  const requested = parseJsonArrayParam(req.query.projects);
+  const projects = (requested.length ? requested : config.defaultProjects).filter((c) => valid.has(c));
+  if (!projects.length) return res.status(400).json({ error: 'Chưa chọn dự án hợp lệ.' });
+  const month = kpiSla.isMonthKey(req.query.month) ? String(req.query.month) : new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 7);
+  const by = req.query.by === 'owner' ? 'owner' : 'assign';
+  const key = `${[...projects].sort().join(',')}|${month}`;
+  try {
+    let hit = kpiSlaCache.get(key);
+    if (!hit || Date.now() - hit.at > 3 * 60 * 1000 || req.query.refresh) {
+      const limit = 5000;
+      const r = await erp.fetchTickets({ projects, openingFrom: monthStartOf(month), openingTo: monthEndOf(month), limit });
+      const rows = r.data || r;
+      hit = { at: Date.now(), rows, truncated: rows.length >= limit, limit };
+      kpiSlaCache.set(key, hit);
+    }
+    const data = kpiSla.evaluateMember(hit.rows, { month, projects, member, by, level, kpiKey, config });
+    data.warnings = hit.truncated ? [`Truy vấn chạm giới hạn ${hit.limit} ticket — số liệu có thể thiếu.`] : [];
+    data.config = { levels: config.levels, defaultProjects: config.defaultProjects, thresholds: config.kpis[kpiKey].thresholds, weights: config.kpis[kpiKey].weights, name: config.kpis[kpiKey].matrixName };
+    res.json(data);
+  } catch (e) {
+    console.error('[kpi/sla-member] lỗi:', e.message);
     res.status(502).json({ error: e.message });
   }
 });
