@@ -76,15 +76,11 @@
     "code": "CS03",
     "name": "CSAT khách hàng phụ trách",
     "matrixName": "CSAT khách hàng phụ trách",
-    "projects": [
-      "ABI_eSales_Support",
-      "Sabeco_PG",
-      "Sabeco_B2B_Support"
-    ],
     "channels": [
       "Email",
       "Call",
       "Chat",
+      "Zalo",
       "Khác"
     ],
     "progressComplaintPenalty": 20,

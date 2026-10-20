@@ -439,7 +439,7 @@ app.get('/api/kpi/sla-member', requireAuth, async (req, res) => {
    PUT    /api/kpi/complaints/:id    (cùng dữ liệu)                                                         → sửa
    DELETE /api/kpi/complaints/:id                                                                          → xoá
    Dữ liệu lưu qua listStore.js (GitHub nếu đã cấu hình, ngược lại ./data/kpi-complaints.json). Cách tính: kpiComplaint.js + kpi-sla-config.json ("complaint"). */
-function complaintCtx() { return { config: kpiSla.loadConfig(), allowedMembers: loadProjectCreators().creators }; }
+function complaintCtx() { return { config: kpiSla.loadConfig(), allowedMembers: loadProjectCreators().creators, allowedProjects: loadInstructionProjects().map((p) => p.code) }; }
 app.get('/api/kpi/complaint-score', requireAuth, async (req, res) => {
   try {
     const config = kpiSla.loadConfig(); const c = config.complaint;
@@ -449,12 +449,13 @@ app.get('/api/kpi/complaint-score', requireAuth, async (req, res) => {
     if (!config.levels.includes(level)) return res.status(400).json({ error: 'Level không hợp lệ.' });
     const month = kpiSla.isMonthKey(req.query.month) ? String(req.query.month) : new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 7);
     const requested = parseJsonArrayParam(req.query.projects);
-    const projects = (requested.length ? requested : c.projects).filter((p) => c.projects.includes(p));
-    if (!projects.length) return res.status(400).json({ error: 'Chưa chọn dự án hợp lệ (chỉ ABI và Sabeco).' });
+    const allProjects = loadInstructionProjects().map((p) => p.code);
+    const projects = (requested.length ? requested : allProjects).filter((p) => allProjects.includes(p));
+    if (!projects.length) return res.status(400).json({ error: 'Chưa chọn dự án hợp lệ.' });
     const all = await kpiComplaint.store.readAll();
     const out = kpiComplaint.scoreMember(all, { month, member, level, projects, config });
     out.overview = kpiComplaint.overview(all, { month, projects, config });
-    out.config = { levels: config.levels, projects: c.projects, channels: c.channels, types: kpiComplaint.TYPES, thresholds: c.thresholds, weights: c.weights, progressComplaintPenalty: c.progressComplaintPenalty, repeatPenaltyByCount: c.repeatPenaltyByCount, name: c.matrixName };
+    out.config = { levels: config.levels, projects: allProjects, channels: c.channels, types: kpiComplaint.TYPES, thresholds: c.thresholds, weights: c.weights, progressComplaintPenalty: c.progressComplaintPenalty, repeatPenaltyByCount: c.repeatPenaltyByCount, name: c.matrixName };
     out.githubBacked = kpiComplaint.store.isGithubBacked();
     res.json(out);
   } catch (e) { console.error('[kpi/complaint-score] lỗi:', e.message); res.status(502).json({ error: e.message }); }

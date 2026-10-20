@@ -1,6 +1,6 @@
 'use strict';
 /* KPI Team → CS03 "Complaint khách hàng" — chấm THEO THÁNG cho từng thành viên, từ các complaint được ghi nhận tay (email/call/chat).
-   Mong muốn: không có khách hàng nào phàn nàn. Phạm vi dự án: ABI và Sabeco.
+   Mong muốn: không có khách hàng nào phàn nàn. Áp dụng cho mọi dự án của tool (chọn dự án tính KPI ở bộ lọc).
    Cách tính (cấu hình ở kpi-sla-config.json → "complaint"):
      Điểm trừ  = 20% × số complaint về TIẾN ĐỘ từ Manager
                + Σ theo từng issue/ticket bị phản hồi LẶP LẠI: 1 phản hồi = 5%, 2 phản hồi = 10%, từ 3 phản hồi = 15%
@@ -18,14 +18,14 @@ const round = (x, d = 4) => { const f = 10 ** d; return Math.round(x * f) / f; }
 const newId = () => 'cmp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
 
 /** Làm sạch + kiểm tra 1 bản ghi nhập vào. allowedMembers: danh sách email hợp lệ. */
-function cleanEntry(input, { config, allowedMembers }) {
+function cleanEntry(input, { config, allowedMembers, allowedProjects }) {
   const c = config.complaint;
   const date = String(input.date || '').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(new Date(date).getTime())) throw new Error('Ngày không hợp lệ (YYYY-MM-DD).');
   const member = lc(input.member);
   if (!allowedMembers.includes(member)) throw new Error('Thành viên không nằm trong danh sách người tạo ticket.');
   const project = String(input.project || '').trim();
-  if (!c.projects.includes(project)) throw new Error('Dự án không thuộc phạm vi KPI này (chỉ ABI và Sabeco).');
+  if (!allowedProjects.includes(project)) throw new Error('Dự án không hợp lệ.');
   const type = String(input.type || '');
   if (!TYPES[type]) throw new Error('Loại complaint không hợp lệ.');
   const issue = String(input.issue || '').trim().slice(0, 200);

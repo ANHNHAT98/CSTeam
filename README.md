@@ -174,7 +174,7 @@ Module hiện có:
   sheet 02_Master KPI và 03_Ma trận KPI - Vị trí) — HR đổi số thì sửa file này, không cần sửa code.
 
 - **KPI Team → CS03: Complaint Khách Hàng** (`/kpiteam/complaint`): ghi nhận tay complaint của khách
-  (email/call/chat) theo tháng cho dự án ABI và Sabeco, rồi chấm KPI theo thành viên + level + tháng.
+  (email/call/chat/Zalo) theo tháng cho mọi dự án (chọn dự án tính KPI ở bộ lọc), rồi chấm KPI theo thành viên + level + tháng.
   Điểm trừ: 20% / complaint tiến độ từ Manager; mỗi issue/ticket bị phản hồi lặp lại: 1 lần 5%, 2 lần 10%,
   từ 3 lần 15%. **Actual = 100% − tổng điểm trừ**, rồi qua Min/Target/Max + trọng số của CS03 trong Master KPI
   như CS01/CS02. Logic ở `kpiComplaint.js`, cấu hình trong `kpi-sla-config.json` (mục `complaint`), dữ liệu lưu

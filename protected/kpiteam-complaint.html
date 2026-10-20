@@ -70,7 +70,7 @@
 <div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb">/ kpi team / cs03 complaint khách hàng</span></div>
 <div class="wrap">
   <h1>CS03: Complaint Khách Hàng</h1>
-  <p class="sub">Mong muốn: <b>không có khách hàng nào phàn nàn</b> dưới bất kỳ hình thức nào (email / call / chat) tới Team member, AM, Lead hoặc Manager. Phạm vi dự án: <b>ABI và Sabeco</b>. Complaint được <b>ghi nhận tay theo tháng</b> ở phần cuối trang; cuối tháng chọn thành viên, level và tháng để chấm KPI.</p>
+  <p class="sub">Mong muốn: <b>không có khách hàng nào phàn nàn</b> dưới bất kỳ hình thức nào (email / call / chat) tới Team member, AM, Lead hoặc Manager. Chọn dự án tính KPI ở bộ lọc (mặc định tất cả dự án). Complaint được <b>ghi nhận tay theo tháng</b> ở phần cuối trang; cuối tháng chọn thành viên, level và tháng để chấm KPI.</p>
 
   <div class="panel">
     <div class="filters">
@@ -99,14 +99,14 @@
       <div id="resBody"></div>
     </div>
 
-    <div class="two">
-      <div class="panel"><h2>Bảng điểm trừ complaint</h2><div id="penTbl"></div></div>
-      <div class="panel"><h2 id="ovTitle">Tổng hợp cả team trong tháng</h2><div id="ovTbl"></div></div>
-    </div>
-
     <div class="panel">
       <h2 id="listTitle">Complaint đã ghi nhận</h2>
       <div class="tbl-scroll"><div id="listTbl"></div></div>
+    </div>
+
+    <div class="two">
+      <div class="panel"><h2>Bảng điểm trừ complaint</h2><div id="penTbl"></div></div>
+      <div class="panel"><h2 id="ovTitle">Tổng hợp cả team trong tháng</h2><div id="ovTbl"></div></div>
     </div>
 
     <div class="panel">
@@ -131,11 +131,13 @@
 const $ = id => document.getElementById(id);
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const FALLBACK_PROJECTS = [
-  {code:'ABI_eSales_Support',label:'ABI',name:'ABI'},{code:'Sabeco_PG',label:'SABECO-PG',name:'Sabeco PG'},{code:'Sabeco_B2B_Support',label:'SABECO-B2B',name:'Sabeco B2B'}
+  {code:'MerapLion_eSales',name:'Merap'},{code:'ABI_eSales_Support',name:'ABI'},{code:'ANVY_eSale_Support',name:'AnVy'},
+  {code:'Sabeco_PG',name:'Sabeco PG'},{code:'Sabeco_B2B_Support',name:'Sabeco B2B'},{code:'FES_eSales',name:'FES'},
+  {code:'ANKO_eSales_Support',name:'ANKO'},{code:'HaiHa_eSales_Support',name:'HAIHA'},{code:'Jotun_VN_eSales',name:'JOTUN'}
 ];
-const CS_PROJECTS = ['ABI_eSales_Support','Sabeco_PG','Sabeco_B2B_Support'];
+let CS_PROJECTS = FALLBACK_PROJECTS.map(p=>p.code); // thay bằng danh sách dự án của tool khi tải xong
 const LEVELS = ['Fresher','Junior','Middle','Senior'];
-let projectNames = {}, creators = [], scope = CS_PROJECTS.slice(), data = null, reqSeq = 0, editingId = null;
+let projectNames = {}, creators = [], scope = [], data = null, reqSeq = 0, editingId = null;
 const todayVN = () => new Date(Date.now()+7*3600*1000).toISOString().slice(0,10);
 const addMonths = (key, n) => { const [y,m] = key.split('-').map(Number); return new Date(Date.UTC(y, m-1+n, 1)).toISOString().slice(0,7); };
 const qp = new URLSearchParams(location.search);
@@ -146,7 +148,7 @@ const dmy = iso => iso ? iso.slice(8,10)+'/'+iso.slice(5,7)+'/'+iso.slice(0,4) :
 const pName = c => projectNames[c] || c;
 const shortName = e => String(e).split('@')[0];
 
-const LS = 'kpiComplaint.v1';
+const LS = 'kpiComplaint.v2';
 const store = { get(){ try{ return JSON.parse(localStorage.getItem(LS)||'{}')||{}; }catch(_){ return {}; } }, set(o){ try{ localStorage.setItem(LS, JSON.stringify(o)); }catch(_){} } };
 
 async function api(url, opt){
@@ -227,7 +229,7 @@ function render(d){
   $('listTbl').innerHTML = d.entries.length ? '<table><thead><tr><th>Ngày</th><th>Dự án</th><th>Loại</th><th>Ticket / issue</th><th>Kênh</th><th>Ghi chú</th><th></th></tr></thead><tbody>'
     + d.entries.map(e=>'<tr><td class="mono">'+esc(dmy(e.date))+'</td><td>'+esc(pName(e.project))+'</td><td><span class="tag '+e.type+'">'+(e.type==='progress'?'Tiến độ':'Lặp lại')+'</span></td><td>'+esc(e.issue)+'</td><td>'+esc(e.channel)+'</td><td>'+esc(e.note)+'</td><td style="white-space:nowrap"><button type="button" data-edit="'+esc(e.id)+'" style="padding:3px 10px;font-size:12px">Sửa</button> <button type="button" class="danger" data-del="'+esc(e.id)+'">Xóa</button></td></tr>').join('')+'</tbody></table>'
     : '<div class="empty">Thành viên này chưa có complaint nào trong tháng (trong phạm vi dự án đã chọn) — Actual 100%.</div>';
-  $('listTbl').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delEntry(b.dataset.del));
+  $('listTbl').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delEntry(b.dataset.del, b));
   $('listTbl').querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>startEdit(b.dataset.edit));
   $('storeHint').textContent = d.githubBacked ? 'Dữ liệu complaint được lưu vào repo GitHub (mỗi lần lưu là 1 commit).' : 'Dữ liệu complaint đang lưu trong thư mục data/ của server — cần mount volume ./data (docker-compose) để không bị mất khi container bị xoá.';
   $('btnXlsx').disabled = false;
@@ -282,10 +284,16 @@ async function saveEntry(){
   }catch(e){ $('formMsg').innerHTML = '<div class="msg err">Không lưu được: '+esc(e.message)+'</div>'; }
   finally{ $('btnSave').disabled = false; }
 }
-async function delEntry(id){
-  if(!confirm('Xóa complaint này? Hành động không hoàn tác được.')) return;
+const delArmed = {};
+async function delEntry(id, btn){
+  if(!delArmed[id]){ // lần bấm đầu: yêu cầu xác nhận
+    delArmed[id] = setTimeout(()=>{ delete delArmed[id]; if(btn.isConnected){ btn.textContent = 'Xóa'; btn.style.background = ''; btn.style.color = ''; } }, 4000);
+    btn.textContent = 'Bấm lại để xóa'; btn.style.background = 'var(--danger)'; btn.style.color = '#fff'; return;
+  }
+  clearTimeout(delArmed[id]); delete delArmed[id];
+  btn.disabled = true;
   try{ await api('/api/kpi/complaints/'+encodeURIComponent(id), { method:'DELETE' }); await load(); $('formMsg').innerHTML = '<div class="msg ok">Đã xóa complaint.</div>'; }
-  catch(e){ $('formMsg').innerHTML = '<div class="msg err">Không xóa được: '+esc(e.message)+'</div>'; }
+  catch(e){ btn.disabled = false; $('formMsg').innerHTML = '<div class="msg err">Không xóa được: '+esc(e.message)+'</div>'; }
 }
 
 /* ---------- Excel ---------- */
@@ -318,9 +326,13 @@ $('btnSave').onclick = saveEntry;
 $('btnCancel').onclick = resetForm;
 
 (async function init(){
-  try{ const list = await api('/api/ticket-instructions'); if(Array.isArray(list)) list.forEach(p=>{ projectNames[p.code] = p.name; }); }catch(_){}
+  try{
+    const list = await api('/api/ticket-instructions');
+    if(Array.isArray(list) && list.length){ CS_PROJECTS = list.map(p=>p.code); list.forEach(p=>{ projectNames[p.code] = p.name; }); }
+  }catch(_){}
   FALLBACK_PROJECTS.forEach(p=>{ if(!projectNames[p.code]) projectNames[p.code] = p.name; });
   const s = store.get();
+  scope = CS_PROJECTS.slice(); // mặc định tất cả dự án
   if(Array.isArray(s.scope)){ const sc = s.scope.filter(c=>CS_PROJECTS.includes(c)); if(sc.length) scope = sc; }
   $('selLevel').innerHTML = LEVELS.map(l=>'<option>'+l+'</option>').join('');
   try{ const c = await api('/api/erp/ticket-creators'); creators = c.creators || []; }
@@ -331,7 +343,7 @@ $('btnCancel').onclick = resetForm;
   $('selLevel').value = (s.levels && s.levels[$('selMember').value]) || 'Junior';
   $('fProject').innerHTML = CS_PROJECTS.map(c=>'<option value="'+c+'">'+esc(pName(c))+'</option>').join('');
   $('fType').innerHTML = '<option value="progress">Complaint về tiến độ công việc (từ Manager)</option><option value="repeat">Phản hồi lặp lại của 1 issue/ticket</option>';
-  $('fChannel').innerHTML = ['Email','Call','Chat','Khác'].map(c=>'<option>'+c+'</option>').join('');
+  $('fChannel').innerHTML = ['Email','Call','Chat','Zalo','Khác'].map(c=>'<option>'+c+'</option>').join('');
   updateIssueHint(); renderRef(); load();
 })();
 </script>
