@@ -113,6 +113,11 @@
     padding:4px 6px;margin-bottom:4px;display:flex;align-items:center;gap:6px;
   }
   .side-group-label::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--blueprint);flex-shrink:0;}
+  .side-group-label{cursor:pointer;user-select:none;border-radius:6px;}
+  .side-group-label:hover{background:rgba(31,78,121,.05);}
+  .side-group-label::after{content:"▾";margin-left:auto;font-size:10px;color:var(--muted);transition:transform .15s;}
+  .side-group:not(.open) > .side-group-label::after{transform:rotate(-90deg);}
+  .side-group:not(.open) > :not(.side-group-label){display:none;}
 
   .side-leaf{
     display:block;text-decoration:none;color:var(--ink);font-size:12.5px;
@@ -589,6 +594,11 @@ logoutBtn.addEventListener('click', async ()=>{
 });
 
 /* ---------- menu: mở/đóng nhánh + active theo URL hiện tại ---------- */
+document.querySelectorAll('.side-group-label').forEach(lb=>{
+  lb.addEventListener('click', ()=>{
+    lb.closest('.side-group').classList.toggle('open');
+  });
+});
 document.querySelectorAll('.side-branch-head:not(.static)').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     btn.closest('.side-branch').classList.toggle('open');
@@ -601,6 +611,8 @@ document.querySelectorAll('.side-leaf[data-path]').forEach(a=>{
     a.classList.add('active');
     const branch = a.closest('.side-branch');
     if (branch) branch.classList.add('open'); // mặc định đóng hết; chỉ mở nhánh chứa trang đang xem
+    const group = a.closest('.side-group');
+    if (group) group.classList.add('open'); // đồng thời mở nhóm cha chứa trang đang xem
   }
 });
 
