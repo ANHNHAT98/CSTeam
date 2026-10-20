@@ -83,6 +83,11 @@
     <div class="stamp" id="stamp" style="margin-top:8px"></div>
   </div>
 
+  <div class="two" id="refRow">
+    <div class="panel"><h2>Công thức (KPI Cao tốt)</h2><div id="fmTbl"></div></div>
+    <div class="panel"><h2>Ngưỡng theo level</h2><div id="thTbl"></div></div>
+  </div>
+
   <div id="notice"></div>
   <div id="loading">Đang lấy dữ liệu ticket từ ERP…</div>
 
@@ -91,16 +96,11 @@
       <h2 id="resTitle"></h2>
       <div id="resBody"></div>
     </div>
-    <div class="two">
-      <div class="panel"><h2>Ngưỡng theo level</h2><div id="thTbl"></div>
-        <p class="note">Ngưỡng và trọng số lấy từ file Master KPI (<code>kpi-sla-config.json</code>). Dòng tô màu là level đang chọn.</p></div>
-      <div class="panel"><h2>Theo dự án</h2><div id="projTbl"></div></div>
-    </div>
+    <div class="panel"><h2>Theo dự án</h2><div id="projTbl"></div></div>
     <div class="panel">
       <h2 id="tkTitle">Danh sách ticket trong phạm vi</h2>
       <div class="tbl-scroll"><div id="tkTbl"></div></div>
     </div>
-    <div class="panel"><h2>Cách tính</h2><p class="note" id="rules" style="margin-top:0"></p></div>
   </div>
 </div>
 
@@ -183,10 +183,6 @@ function render(d){
       +'</div>'
       + (r.actual==null ? '<div class="how">Chưa có ticket nào có kết quả SLA (đúng hoặc trượt) trong phạm vi đã chọn nên chưa tính được Actual.</div>' : '<div class="how">'+howText(r, k.thresholds, k.weight)+'</div>');
   }
-  // ngưỡng theo level
-  const th = d.config.thresholds, w = d.config.weights;
-  $('thTbl').innerHTML = '<table><thead><tr><th>Level</th><th class="n">Min</th><th class="n">Target</th><th class="n">Max</th><th class="n">Trọng số</th></tr></thead><tbody>'
-    + d.config.levels.map(l=>'<tr'+(l===d.level?' class="me"':'')+'><td>'+l+'</td>'+(th[l]?'<td class="n">'+fmt(th[l].min,0)+'%</td><td class="n">'+fmt(th[l].target,0)+'%</td><td class="n">'+fmt(th[l].max,0)+'%</td><td class="n">'+fmt(w[l],0)+'</td>':'<td class="n" colspan="4" style="color:#8EA3BA">Không áp dụng</td>')+'</tr>').join('')+'</tbody></table>';
   // theo dự án
   const pr = Object.entries(d.byProject);
   $('projTbl').innerHTML = pr.length ? '<table><thead><tr><th>Dự án</th><th class="n">Ticket</th><th class="n">Đúng</th><th class="n">Trượt</th><th class="n">Chờ</th><th class="n">Actual</th></tr></thead><tbody>'
@@ -197,11 +193,33 @@ function render(d){
   $('tkTbl').innerHTML = d.tickets.length ? '<table><thead><tr><th class="n">STT</th><th>Mã ticket</th><th>Dự án</th><th>Ưu tiên</th><th>Tiêu đề</th><th>Tiếp nhận</th><th>'+KPI.date+'</th><th class="n">Thời gian (giờ)</th><th class="n">Ngưỡng (giờ)</th><th>Kết quả</th></tr></thead><tbody>'
     + d.tickets.map((t,i)=>'<tr><td class="n">'+(i+1)+'</td><td class="mono">'+esc(t.name)+'</td><td>'+esc(pLabel(t.project))+'</td><td>'+esc(t.priority)+'</td><td>'+esc(t.subject)+'</td><td class="mono">'+esc(dtVN(t.opening))+'</td><td class="mono">'+esc(dtVN(IS_RES?t.resolvedAt:t.firstResponded))+'</td><td class="n">'+(t.minutes==null?'':fmt(t.minutes/60))+'</td><td class="n">'+(t.threshold==null?'':fmt(t.threshold/60))+'</td><td class="'+resCls(t.result)+'">'+esc(t.result)+'</td></tr>').join('')+'</tbody></table>'
     : '<div class="empty">Thành viên này không có ticket nào trong phạm vi (tháng, dự án, cách xác định ticket đã chọn).</div>';
-  $('rules').innerHTML = '<b>Actual</b> = số ticket '+KPI.what+' đúng SLA ÷ tổng số ticket thuộc phạm vi tính SLA × 100%. Phạm vi: ticket <b>tiếp nhận trong tháng</b> (Opening On) của các dự án được chọn, thuộc về thành viên theo cách xác định ở bộ lọc. Ticket còn trong ngưỡng SLA, chưa có kết quả ("Đang chờ") chưa tính vào tổng.<br>'
-    +'<b>Progress</b> (Cao tốt): Actual &lt; Min → 0% · Từ Min đến dưới Target: 50% + 50% × (Actual − Min) ÷ (Target − Min) · Từ Target đến Max: 100% + 50% × (Actual − Target) ÷ (Max − Target) · Vượt Max: 150% (trần). <b>KPI Completion</b> = Progress × trọng số.<br>'
-    +'<b>Ngưỡng SLA theo Priority</b>: Critical 1h, Urgent 4h (tính giờ liên tục); High 8h, Medium 72h, Low 120h (giờ làm việc T2–T6 08:00–12:00 và 13:30–17:30, trừ ngày lễ). '
-    +(IS_RES?'Resolution tính từ lúc tiếp nhận đến Resolution Date (hoặc lúc Closed nếu không có Resolution Date); ticket chưa xong mà đã quá ngưỡng tính là trượt.':'First Response tính từ lúc tiếp nhận đến First Responded On; ticket chưa phản hồi mà đã quá ngưỡng tính là trượt.');
   $('btnXlsx').disabled = false;
+}
+
+/* ---------- công thức (KPI Cao tốt) + ngưỡng theo level: luôn hiện dưới bộ lọc ---------- */
+let lastCfg = null;
+function renderRef(){
+  const level = $('selLevel').value;
+  const th = lastCfg && lastCfg.thresholds[level];
+  const rng = th ? [
+    '&lt; '+fmt(th.min,0)+'%',
+    fmt(th.min,0)+'% → &lt; '+fmt(th.target,0)+'%',
+    fmt(th.target,0)+'% → '+fmt(th.max,0)+'%',
+    '&gt; '+fmt(th.max,0)+'%'
+  ] : ['','','',''];
+  const rows = [
+    ['Chưa đạt Min','0%','Thực tế &lt; Min'],
+    ['Từ Min đến dưới Target','50% → 100%','50% + 50% × (Thực tế − Min) ÷ (Target − Min)'],
+    ['Từ Target đến Max','100% → 150%','100% + 50% × (Thực tế − Target) ÷ (Max − Target)'],
+    ['Vượt Max','150% (trần)','Không ghi nhận thêm']
+  ];
+  $('fmTbl').innerHTML = '<table><thead><tr><th>Kết quả thực tế</th><th>Actual (level '+esc(level)+')</th><th>% hoàn thành</th><th>Công thức (KPI Cao tốt)</th></tr></thead><tbody>'
+    + rows.map((r,i)=>'<tr><td><b>'+r[0]+'</b></td><td class="mono">'+(th?rng[i]:'—')+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>').join('')+'</tbody></table>';
+  if(lastCfg){
+    const w = lastCfg.weights;
+    $('thTbl').innerHTML = '<table><thead><tr><th>Level</th><th class="n">Min</th><th class="n">Target</th><th class="n">Max</th><th class="n">Trọng số</th></tr></thead><tbody>'
+      + lastCfg.levels.map(l=>'<tr'+(l===level?' class="me"':'')+'><td>'+l+'</td>'+(lastCfg.thresholds[l]?'<td class="n">'+fmt(lastCfg.thresholds[l].min,0)+'%</td><td class="n">'+fmt(lastCfg.thresholds[l].target,0)+'%</td><td class="n">'+fmt(lastCfg.thresholds[l].max,0)+'%</td><td class="n">'+fmt(w[l],0)+'</td>':'<td class="n" colspan="4" style="color:#8EA3BA">Không áp dụng</td>')+'</tr>').join('')+'</tbody></table>';
+  }
 }
 
 async function load(refresh){
@@ -214,7 +232,7 @@ async function load(refresh){
   try{
     const d = await api('/api/kpi/sla-member?kpi='+KPI.key+'&member='+encodeURIComponent(member)+'&level='+encodeURIComponent(level)+'&month='+month+'&by='+$('selBy').value+'&projects='+encodeURIComponent(JSON.stringify(scope))+(refresh?'&refresh=1':''));
     if(seq!==reqSeq) return;
-    data = d; $('loading').style.display = 'none'; $('content').style.display = '';
+    data = d; lastCfg = d.config; renderRef(); $('loading').style.display = 'none'; $('content').style.display = '';
     $('stamp').textContent = 'Cập nhật '+new Date(d.meta.generatedAt).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})+' · '+d.meta.rows+' ticket đã đọc từ ERP (các dự án đã chọn, tháng '+mFmt(month)+')';
     $('notice').innerHTML = (d.warnings||[]).map(x=>'<div class="msg info">'+esc(x)+'</div>').join('');
     render(d);
@@ -256,7 +274,7 @@ $('pickMonth').onchange = e => { if(/^\d{4}-\d{2}$/.test(e.target.value)) go(e.t
 $('btnReload').onclick = () => load(true);
 $('btnXlsx').onclick = () => exportXlsx();
 $('selBy').onchange = () => { const s = store.get(); s.by = $('selBy').value; store.set(s); load(false); };
-$('selLevel').onchange = () => { const s = store.get(); s.levels = s.levels||{}; s.levels[$('selMember').value] = $('selLevel').value; store.set(s); load(false); };
+$('selLevel').onchange = () => { renderRef(); const s = store.get(); s.levels = s.levels||{}; s.levels[$('selMember').value] = $('selLevel').value; store.set(s); load(false); };
 $('selMember').onchange = () => { const s = store.get(); s.member = $('selMember').value; store.set(s); $('selLevel').value = (s.levels&&s.levels[$('selMember').value]) || 'Junior'; load(false); };
 
 (async function init(){
@@ -273,6 +291,7 @@ $('selMember').onchange = () => { const s = store.get(); s.member = $('selMember
   $('selMember').innerHTML = creators.length ? creators.map(e=>'<option value="'+esc(e)+'">'+esc(e)+'</option>').join('') : '<option value="">(chưa có thành viên)</option>';
   if(s.member && creators.includes(s.member)) $('selMember').value = s.member;
   $('selLevel').value = (s.levels && s.levels[$('selMember').value]) || 'Junior';
+  renderRef();
   load(false);
 })();
 </script>
