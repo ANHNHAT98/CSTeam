@@ -28,6 +28,17 @@ function progressOf(actual, { min, target, max }) {
   return { progress: 50 + (50 * (actual - min)) / (target - min), tier: 1, band: 'Từ Min đến dưới Target' };
 }
 
+/** % hoàn thành của KPI "Thấp tốt" (Min > Target > Max, ví dụ số lỗi 3 / 1 / 0). Thực tế > Min → 0%; Min→Target: 50%→100%; Target→Max: 100%→150%; ≤ Max: 150% (trần). */
+function progressOfLow(actual, { min, target, max }) {
+  if (actual == null || Number.isNaN(actual)) return null;
+  if (actual > min) return { progress: 0, tier: 0, band: 'Chưa đạt Min' };
+  if (actual <= max) return { progress: 150, tier: 3, band: 'Vượt Max' };
+  if (actual > target) return { progress: 50 + (50 * (min - actual)) / (min - target), tier: 1, band: 'Từ Min đến dưới Target' };
+  return target > max
+    ? { progress: 100 + (50 * (target - actual)) / (target - max), tier: 2, band: 'Từ Target đến Max' }
+    : { progress: 100, tier: 2, band: 'Đạt Target' };
+}
+
 const lc = (s) => String(s || '').trim().toLowerCase();
 const round = (x, d) => { const f = 10 ** d; return Math.round(x * f) / f; };
 
@@ -85,4 +96,4 @@ function evaluateMember(rows, { month, projects, member, by = 'assign', level, k
   };
 }
 
-module.exports = { loadConfig, progressOf, evaluateMember, isMonthKey };
+module.exports = { loadConfig, progressOf, progressOfLow, evaluateMember, isMonthKey };

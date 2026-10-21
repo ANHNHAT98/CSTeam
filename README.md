@@ -185,6 +185,14 @@ Module hiện có:
 `creators` = người tạo ticket (cũng là danh sách thành viên ở các trang KPI CS01/CS02/CS03 và nhóm "Thành viên khác" ở ô Người xử lý);
 `defaults` = dự án → 1 email hoặc **mảng email** (phần tử đầu là người tạo mặc định ở Tạo Ticket; cả mảng là thành viên được tích sẵn dự án đó ở các trang KPI).
 
+- **KPI Team → CS05: Lỗi Lọt Review** (`/kpiteam/loi-lot-review`): đánh giá số lỗi nghiệp vụ lọt qua review (KPI **Thấp tốt**,
+  ngưỡng/trọng số CS05 trong Master KPI) theo thành viên + level + dự án + tháng. Tool tự dò từ ticket ERP: (1) ticket chuyển
+  **Closed → mở lại** (đọc log `Version` của ERP; cần quyền đọc Version, nếu không có thì chỉ dò được ticket đang Re-open),
+  (2) ticket **mới liên quan/lặp lại ticket cũ**: qua trường liên kết tới Ticket (tự dò từ cấu trúc DocType Ticket), nội dung nhắc mã
+  ticket cũ (độ tin cậy cao — tự tính), hoặc tiêu đề giống ticket cũ (độ tin cậy thấp — QA bấm Tính mới được tính). Lỗi tính cho người
+  xử lý của ticket cũ. Xác nhận của QA lưu qua `listStore.js` (`data/kpi-defect-decisions.json`). Logic ở `kpiDefect.js`, cấu hình trong
+  `kpi-sla-config.json` (mục `defect`: lookbackMonths, closedStatuses, ngưỡng tương đồng tiêu đề).
+
 ## Mã hóa Password Window — chi tiết kỹ thuật
 
 Thuật toán và key hệ thống được **reverse-engineer trực tiếp từ file gốc**

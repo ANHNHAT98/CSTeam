@@ -13,6 +13,7 @@ const weekly = require('./weeklyReport');
 const { buildCustomerReport } = require('./customerReport');
 const kpiSla = require('./kpiSla');
 const kpiComplaint = require('./kpiComplaint');
+const kpiDefect = require('./kpiDefect');
 const synergyhub = require('./synergyhub');
 const { buildMonthlyCustomerReport, monthStartOf, monthEndOf, addMonths, isMonthKey } = require('./customerReportMonthly');
 const jira = require('./jiraClient');
@@ -166,6 +167,11 @@ app.get('/kpiteam/loi-nhuan-thang', requirePageAuth, (req, res) => {
 app.get(['/kpiteam/sla-phan-hoi', '/kpiteam/sla-hoan-tat'], requirePageAuth, (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.sendFile(path.join(__dirname, 'protected', 'kpiteam-sla-danh-gia.html')); // 1 trang dùng chung, tự nhận CS01/CS02 theo đường dẫn
+});
+
+app.get('/kpiteam/loi-lot-review', requirePageAuth, (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'protected', 'kpiteam-defect.html'));
 });
 
 app.get('/kpiteam/complaint', requirePageAuth, (req, res) => {
@@ -473,6 +479,66 @@ app.put('/api/kpi/complaints/:id', requireAuth, async (req, res) => {
 app.delete('/api/kpi/complaints/:id', requireAuth, async (req, res) => {
   try { res.json({ ok: true, ...(await kpiComplaint.remove(req.params.id)) }); }
   catch (e) { console.error('[kpi/complaints:delete] lỗi:', e.message); res.status(400).json({ error: e.message }); }
+});
+
+/* ---------- KPI Team: CS05 Functional defect escape sau review — dò từ ticket ERP của tháng (mở lại / ticket mới liên quan-lặp lại ticket cũ) ----------
+   GET  /api/kpi/defect-escape?member=<email>&level=&month=<YYYY-MM>&projects=[...]   → ứng viên lỗi lọt của thành viên + Actual/Progress/KPI Completion (kpiDefect.js)
+   POST /api/kpi/defect-decision {id, decision: include|exclude|clear, note}           → QA xác nhận tính / không tính 1 ứng viên (lưu qua listStore) */
+const defectCache = new Map();
+async function loadDefectData(projects, month, config, refresh) {
+  const key = `${[...projects].sort().join(',')}|${month}`;
+  const hit = defectCache.get(key);
+  if (hit && !refresh && Date.now() - hit.at < 3 * 60 * 1000) return hit.data;
+  const dc = config.defect;
+  const from = monthStartOf(addMonths(month, -dc.lookbackMonths)); const to = monthEndOf(month);
+  const limit = 5000;
+  const r = await erp.fetchTickets({ projects, openingFrom: from, openingTo: to, limit });
+  let rows = r.data || r;
+  const warnings = rows.length >= limit ? [`Truy vấn chạm giới hạn ${limit} ticket — có thể thiếu ticket cũ để đối chiếu.`] : [];
+  let linkFields = []; let metaError = '';
+  try {
+    const meta = await erp.getTicketMeta();
+    linkFields = meta.fields.filter((f) => f.fieldtype === 'Link' && f.options === 'Ticket' && f.fieldname !== 'name').map((f) => f.fieldname);
+  } catch (e) { metaError = e.message; }
+  let versions = null; let versionsError = '';
+  try { versions = await erp.fetchVersions({ from: monthStartOf(month), to }); } catch (e) { versionsError = e.message; }
+  if (versions) { // ticket mở lại có thể mở từ trước khoảng lookback → lấy bổ sung theo mã
+    const have = new Set(rows.map((x) => x.name));
+    const need = kpiDefect.reopenEventsFromVersions(versions, dc.closedStatuses).map((e) => e.ticket).filter((n) => !have.has(n));
+    if (need.length) { try { rows = rows.concat(await erp.fetchTicketsByNames(need)); } catch (e) { warnings.push('Không lấy được ticket mở lại ngoài khoảng đối chiếu: ' + e.message); } }
+  }
+  const built = kpiDefect.buildCandidates({ rows, versions, versionsError, linkFields, month, projects, config });
+  if (metaError) built.diagnostics.metaError = metaError;
+  built.warnings = warnings;
+  defectCache.set(key, { at: Date.now(), data: built });
+  return built;
+}
+app.get('/api/kpi/defect-escape', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  try {
+    const config = kpiSla.loadConfig(); const dc = config.defect;
+    const member = String(req.query.member || '').trim().toLowerCase();
+    if (!loadProjectCreators().creators.includes(member)) return res.status(400).json({ error: 'Thành viên không nằm trong danh sách người tạo ticket.' });
+    const level = String(req.query.level || '');
+    if (!config.levels.includes(level)) return res.status(400).json({ error: 'Level không hợp lệ.' });
+    const allProjects = loadInstructionProjects().map((p) => p.code);
+    const requested = parseJsonArrayParam(req.query.projects);
+    const projects = (requested.length ? requested : allProjects).filter((p) => allProjects.includes(p));
+    if (!projects.length) return res.status(400).json({ error: 'Chưa chọn dự án hợp lệ.' });
+    const month = kpiSla.isMonthKey(req.query.month) ? String(req.query.month) : new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 7);
+    const built = await loadDefectData(projects, month, config, Boolean(req.query.refresh));
+    const decisions = await kpiDefect.store.readAll();
+    const out = kpiDefect.scoreMember(built.candidates, decisions, { member, level, config });
+    out.month = { key: month }; out.projects = projects; out.diagnostics = built.diagnostics; out.warnings = built.warnings;
+    out.erpUrl = erp.getBaseUrl();
+    out.teamUnattributed = built.candidates.filter((c) => !c.handlers.length);
+    out.config = { levels: config.levels, thresholds: dc.thresholds, weights: dc.weights, lookbackMonths: dc.lookbackMonths, similarityThreshold: dc.similarityThreshold, name: dc.name };
+    res.json(out);
+  } catch (e) { console.error('[kpi/defect-escape] lỗi:', e.message); res.status(502).json({ error: e.message }); }
+});
+app.post('/api/kpi/defect-decision', requireAuth, async (req, res) => {
+  try { const b = req.body || {}; res.json({ ok: true, ...(await kpiDefect.setDecision({ id: b.id, decision: b.decision, note: b.note, by: req.session.username })) }); }
+  catch (e) { console.error('[kpi/defect-decision] lỗi:', e.message); res.status(400).json({ error: e.message }); }
 });
 
 /* ---------- File hướng dẫn AI (.md) cho từng dự án: nhân viên tải về để tạo Project/Skill gen ticket ----------

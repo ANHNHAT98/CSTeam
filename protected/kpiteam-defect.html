@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KPI Team — CS05: Lỗi Lọt Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{--ink:#12233D;--blueprint:#1F4E79;--paper:#EEF2F6;--panel:#FFFFFF;--grid-line:rgba(31,78,121,.14);--grid-line-strong:rgba(31,78,121,.28);--amber:#E8A33D;--amber-deep:#C9821F;--success:#3F7D58;--danger:#B23A48;--muted:#5B7089;--radius:10px;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;min-height:100vh;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:32px 32px;}
+  .ops-topbar{background:#12233D;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:14px;}
+  .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;opacity:.9;}
+  .ops-topbar a:hover{opacity:1;text-decoration:underline;}
+  .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
+  .wrap{max-width:1240px;margin:0 auto;padding:28px 24px 80px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;line-height:1.6;}
+  .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;}
+  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0 0 10px;}
+  .filters{display:flex;gap:14px 18px;flex-wrap:wrap;align-items:flex-end;}
+  .field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted);font-weight:600;}
+  .field select,.field input[type=month]{font:inherit;font-size:13.5px;font-weight:500;color:var(--ink);padding:8px 12px;border-radius:8px;border:1px solid var(--grid-line-strong);background:#fff;min-width:170px;}
+  .monthbox{display:flex;gap:6px;align-items:center;}
+  button{font:inherit;font-size:13.5px;padding:8px 14px;border-radius:8px;border:1px solid var(--blueprint);background:#fff;color:var(--blueprint);cursor:pointer;font-weight:600;}
+  button.primary{background:var(--blueprint);color:#fff;}
+  button.export{border-color:var(--success);color:var(--success);}
+  button.sm{padding:3px 10px;font-size:12px;}
+  button.yes{border-color:var(--danger);color:var(--danger);} button.yes.on{background:var(--danger);color:#fff;}
+  button.no{border-color:var(--muted);color:var(--muted);} button.no.on{background:var(--muted);color:#fff;}
+  button:disabled{opacity:.5;cursor:default;}
+  .scope{display:flex;gap:6px 8px;flex-wrap:wrap;margin-top:12px;font-size:13px;align-items:center;}
+  .scope .t{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px;}
+  .scope label{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--grid-line-strong);border-radius:8px;padding:4px 10px;cursor:pointer;}
+  .scope label.on{border-color:var(--blueprint);background:#EAF1F8;font-weight:600;}
+  .stamp{color:var(--muted);font-size:12px;}
+  .msg{padding:12px 14px;border-radius:8px;font-size:13.5px;margin-bottom:14px;}
+  .msg.err{background:#FBE9EB;border:1px solid #E3A7AF;color:#8B2A36;} .msg.info{background:#EAF1F8;border:1px solid var(--grid-line-strong);} .msg.ok{background:#EAF5EE;border:1px solid #B5D8C3;color:#2C5E43;}
+  #loading{color:var(--muted);padding:30px 0;text-align:center;}
+  .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
+  .kpi{border:1px solid var(--grid-line-strong);border-radius:10px;padding:10px 12px;border-top:5px solid var(--blueprint);background:#fff;min-height:96px;}
+  .kpi .l{font-size:12.5px;color:var(--muted);font-weight:600;}
+  .kpi .v{font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:700;line-height:1.2;margin-top:2px;}
+  .kpi .d{font-size:11.5px;color:var(--muted);line-height:1.35;}
+  .kpi.bad{border-top-color:var(--danger);} .kpi.score{border-top-color:#6C5B9E;} .kpi.act{border-top-color:var(--amber);}
+  .tone0{color:var(--danger);} .tone1{color:var(--amber-deep);} .tone2{color:var(--success);} .tone3{color:#1F7A4B;}
+  .how{background:#F5F8FB;border:1px solid var(--grid-line-strong);border-radius:8px;padding:12px 14px;font-size:13.5px;line-height:1.9;margin-top:12px;}
+  .how b{color:var(--blueprint);}
+  table{width:100%;border-collapse:collapse;font-size:13px;background:#fff;}
+  th{background:#1F4E79;color:#fff;text-align:left;padding:7px 10px;font-weight:600;white-space:nowrap;}
+  td{padding:6px 10px;border-bottom:1px solid var(--grid-line);vertical-align:top;}
+  td.n,th.n{text-align:right;white-space:nowrap;} td.mono{font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:nowrap;}
+  tr.me td{background:#EAF1F8;font-weight:700;color:var(--blueprint);}
+  tr.off td{opacity:.55;}
+  .na{color:#8B2A36;background:#FBE9EB;border:1px solid #E3A7AF;border-radius:8px;padding:12px 14px;}
+  .tbl-scroll{overflow-x:auto;}
+  .two{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;}
+  @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr);}.two{grid-template-columns:1fr;}}
+  .empty{color:var(--muted);padding:18px 4px;text-align:center;}
+  .tag{display:inline-block;padding:1px 9px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid var(--grid-line-strong);white-space:nowrap;}
+  .tag.reopen{background:#FBE9EB;color:var(--danger);border-color:#E3A7AF;} .tag.related{background:#FFF1DC;color:var(--amber-deep);border-color:#EBC890;}
+  .tag.high{background:#EAF5EE;color:var(--success);border-color:#B5D8C3;} .tag.low{background:#F1F4F8;color:var(--muted);}
+  .hint{font-size:11.5px;color:var(--muted);font-weight:400;line-height:1.5;}
+  a.tk{color:var(--blueprint);font-weight:600;text-decoration:none;font-family:'IBM Plex Mono',monospace;font-size:12px;} a.tk:hover{text-decoration:underline;}
+  pre{white-space:pre-wrap;word-break:break-word;background:#F5F8FB;border:1px solid var(--grid-line-strong);border-radius:8px;padding:10px;max-height:260px;overflow:auto;font-size:12px;}
+</style>
+</head>
+<body>
+<div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb">/ kpi team / cs05 lỗi lọt review</span></div>
+<div class="wrap">
+  <h1>CS05: Lỗi Lọt Review (Functional defect escape sau review)</h1>
+  <p class="sub">Số lỗi nghiệp vụ lọt qua bước review chức năng do chính thành viên thực hiện và chỉ bị phát hiện ở bước sau (khách hàng nhắn lại, phải fix tiếp lỗi cũ). KPI <b>Thấp tốt</b>, tính <b>theo tháng</b>. Tool tự dò từ ticket ERP của tháng: <b>ticket chuyển từ Closed về lại</b>, và <b>ticket mới liên quan / lặp lại ticket cũ</b>. Mỗi dòng QA có thể xác nhận Tính hoặc Không tính.</p>
+
+  <div class="panel">
+    <div class="filters">
+      <div class="field">Thành viên<select id="selMember"><option>Đang tải…</option></select></div>
+      <div class="field">Level<select id="selLevel"></select></div>
+      <div class="field">Tháng
+        <div class="monthbox"><button id="btnPrev" type="button" title="Tháng trước">◀</button><input type="month" id="pickMonth"><button id="btnNext" type="button" title="Tháng sau">▶</button><button id="btnThis" type="button" class="primary">Tháng này</button></div>
+      </div>
+      <div class="field">&nbsp;<span><button id="btnReload" type="button">↻ Tải lại từ ERP</button> <button id="btnXlsx" type="button" class="export" disabled>⬇ Xuất Excel</button></span></div>
+    </div>
+    <div class="scope" id="scope"></div>
+    <div class="stamp" id="stamp" style="margin-top:8px"></div>
+  </div>
+
+  <div class="two" id="refRow">
+    <div class="panel"><h2>Công thức (KPI Thấp tốt)</h2><div id="fmTbl"></div></div>
+    <div class="panel"><h2>Ngưỡng theo level</h2><div id="thTbl"></div></div>
+  </div>
+
+  <div id="notice"></div>
+  <div id="loading">Đang lấy dữ liệu ticket từ ERP…</div>
+
+  <div id="content" style="display:none">
+    <div class="panel">
+      <h2 id="resTitle"></h2>
+      <div id="resBody"></div>
+    </div>
+    <div class="panel">
+      <h2 id="listTitle">Ứng viên lỗi lọt review</h2>
+      <p class="hint" style="margin:0 0 8px">Độ tin cậy <b>cao</b> (mở lại từ Closed, trường liên kết, nội dung nhắc mã ticket cũ) tự được tính. Độ tin cậy <b>thấp</b> (chỉ tiêu đề giống ticket cũ) mặc định chưa tính — QA xem rồi bấm <b>Tính</b> nếu đúng. Bấm lại nút đang chọn để bỏ xác nhận. Lỗi được tính cho người xử lý của <b>ticket cũ</b> (hoặc của chính ticket được mở lại).</p>
+      <div class="tbl-scroll"><div id="listTbl"></div></div>
+    </div>
+    <div class="panel" id="unPanel" style="display:none">
+      <h2>Ứng viên chưa xác định được người xử lý</h2>
+      <p class="hint" style="margin:0 0 8px">Ticket cũ ngoài phạm vi tải hoặc chưa có người xử lý nên chưa tính cho ai.</p>
+      <div class="tbl-scroll"><div id="unTbl"></div></div>
+    </div>
+    <details class="panel"><summary style="cursor:pointer;font-weight:600">Chi tiết cách tool dò dữ liệu (kiểm tra khi số liệu lạ)</summary><pre id="diagPre" style="margin-top:10px"></pre></details>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const FALLBACK_PROJECTS = [
+  {code:'MerapLion_eSales',name:'Merap'},{code:'ABI_eSales_Support',name:'ABI'},{code:'ANVY_eSale_Support',name:'AnVy'},
+  {code:'Sabeco_PG',name:'Sabeco PG'},{code:'Sabeco_B2B_Support',name:'Sabeco B2B'},{code:'FES_eSales',name:'FES'},
+  {code:'ANKO_eSales_Support',name:'ANKO'},{code:'HaiHa_eSales_Support',name:'HAIHA'},{code:'Jotun_VN_eSales',name:'JOTUN'}
+];
+const LEVELS = ['Fresher','Junior','Middle','Senior'];
+let projectsList = FALLBACK_PROJECTS, projectNames = {}, creators = [], memberDefaults = {}, scope = [], data = null, reqSeq = 0;
+const todayMonth = () => new Date(Date.now()+7*3600*1000).toISOString().slice(0,7);
+const addMonths = (key, n) => { const [y,m] = key.split('-').map(Number); return new Date(Date.UTC(y, m-1+n, 1)).toISOString().slice(0,7); };
+const qp = new URLSearchParams(location.search);
+let month = /^\d{4}-(0[1-9]|1[0-2])$/.test(qp.get('month')||'') ? qp.get('month') : todayMonth();
+const mFmt = k => k.slice(5,7)+'/'+k.slice(0,4);
+const fmt = (v,d=1) => v==null ? '—' : Number(v).toFixed(d).replace('.',',');
+const dtVN = s => { s=String(s||''); return s.length>=16 ? s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4)+' '+s.slice(11,16) : s; };
+const pName = c => projectNames[c] || c;
+const shortName = e => String(e).split('@')[0];
+const LS = 'kpiDefect.v1';
+const store = { get(){ try{ return JSON.parse(localStorage.getItem(LS)||'{}')||{}; }catch(_){ return {}; } }, set(o){ try{ localStorage.setItem(LS, JSON.stringify(o)); }catch(_){} } };
+
+/* dự án mặc định theo thành viên = cấu hình Tạo Ticket (ticket-creators.json); không có thì tích tất cả */
+function defaultScopeFor(member){ const all = projectsList.map(p=>p.code); const d = all.filter(c => (memberDefaults[c]||[]).includes(member)); return d.length ? d : all; }
+
+async function api(url, opt){
+  const r = await fetch(url, opt); const j = await r.json().catch(()=>({error:'Phản hồi không hợp lệ (HTTP '+r.status+')'}));
+  if(r.status===401){ location.href='/?next='+encodeURIComponent(location.pathname+location.search); throw new Error('Phiên đăng nhập đã hết'); }
+  if(!r.ok) throw new Error(j.error || ('HTTP '+r.status));
+  return j;
+}
+function renderScope(){
+  $('scope').innerHTML = '<span class="t">Dự án:</span>'+projectsList.map(p=>'<label class="'+(scope.includes(p.code)?'on':'')+'"><input type="checkbox" data-p="'+esc(p.code)+'"'+(scope.includes(p.code)?' checked':'')+'> '+esc(p.name)+'</label>').join('');
+  $('scope').querySelectorAll('input').forEach(i=>i.onchange=()=>{
+    const sel = [...$('scope').querySelectorAll('input:checked')].map(x=>x.dataset.p);
+    if(!sel.length){ i.checked = true; return; }
+    scope = sel; load(false);
+  });
+}
+
+/* ---------- công thức (Thấp tốt) + ngưỡng: luôn hiện dưới bộ lọc ---------- */
+let cfg = null;
+function renderRef(){
+  const level = $('selLevel').value; const th = cfg && cfg.thresholds[level];
+  const rng = th ? ['&gt; '+th.min, th.min+' → &gt; '+th.target, th.target+' → &gt; '+th.max, '≤ '+th.max] : ['','','',''];
+  const rows = [['Chưa đạt Min','0%','Thực tế &gt; Min'],['Từ Min đến dưới Target','50% → 100%','50% + 50% × (Min − Thực tế) ÷ (Min − Target)'],['Từ Target đến Max','100% → 150%','100% + 50% × (Target − Thực tế) ÷ (Target − Max)'],['Vượt Max','150% (trần)','Không ghi nhận thêm']];
+  $('fmTbl').innerHTML = '<table><thead><tr><th>Kết quả thực tế</th><th>Số lỗi (level '+esc(level)+')</th><th>% hoàn thành</th><th>Công thức (KPI Thấp tốt)</th></tr></thead><tbody>'
+    + rows.map((r,i)=>'<tr><td><b>'+r[0]+'</b></td><td class="mono">'+(th?rng[i]:'—')+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>').join('')+'</tbody></table>';
+  if(cfg) $('thTbl').innerHTML = '<table><thead><tr><th>Level</th><th class="n">Min</th><th class="n">Target</th><th class="n">Max</th><th class="n">Trọng số</th></tr></thead><tbody>'
+    + LEVELS.map(l=>'<tr'+(l===level?' class="me"':'')+'><td>'+l+'</td>'+(cfg.thresholds[l]?'<td class="n">'+cfg.thresholds[l].min+' lỗi</td><td class="n">'+cfg.thresholds[l].target+' lỗi</td><td class="n">'+cfg.thresholds[l].max+' lỗi</td><td class="n">'+fmt(cfg.weights[l],0)+'%</td>':'<td class="n" colspan="4" style="color:#8EA3BA">Không áp dụng</td>')+'</tr>').join('')+'</tbody></table>';
+}
+
+/* ---------- kết quả ---------- */
+function howText(d){
+  const r = d.result, th = d.kpi.thresholds;
+  let t = 'Actual = <b>'+r.actual+' lỗi</b> ('+r.auto+' tự động tính + '+r.confirmed+' QA xác nhận'+(r.excluded?' − '+r.excluded+' đã loại':'')+')<br>';
+  if(r.tier===0) t += 'Actual '+r.actual+' &gt; Min '+th.min+' → Progress = <b>0%</b>';
+  else if(r.tier===3) t += 'Actual '+r.actual+' ≤ Max '+th.max+' → Progress = <b>150%</b> (trần)';
+  else if(r.tier===2) t += th.target>th.max ? 'Progress = 100% + 50% × ('+th.target+' − '+r.actual+') ÷ ('+th.target+' − '+th.max+') = <b>'+fmt(r.progress)+'%</b>' : 'Đạt Target → Progress = <b>100%</b>';
+  else t += 'Progress = 50% + 50% × ('+th.min+' − '+r.actual+') ÷ ('+th.min+' − '+th.target+') = <b>'+fmt(r.progress)+'%</b>';
+  return t+'<br>KPI Completion = '+fmt(r.progress)+'% × '+fmt(d.kpi.weight,0)+'% = <b>'+fmt(r.points,2)+'%</b>';
+}
+function render(d){
+  const r = d.result, k = d.kpi;
+  $('resTitle').textContent = 'CS05 — '+shortName(d.member)+' · '+d.level+' · tháng '+mFmt(d.month.key);
+  if(!k.applicable) $('resBody').innerHTML = '<div class="na">KPI CS05 <b>không áp dụng</b> cho level <b>'+esc(d.level)+'</b>. Chọn level khác để đánh giá.</div>';
+  else {
+    const tone = 'tone'+r.tier;
+    $('resBody').innerHTML = '<div class="kpis">'
+      +'<div class="kpi"><div class="l">Ứng viên phát hiện</div><div class="v">'+r.candidates+'</div><div class="d">Của thành viên này</div></div>'
+      +'<div class="kpi bad"><div class="l">Tự động tính</div><div class="v">'+r.auto+'</div><div class="d">Độ tin cậy cao</div></div>'
+      +'<div class="kpi bad"><div class="l">QA xác nhận tính / loại</div><div class="v">'+r.confirmed+' / '+r.excluded+'</div><div class="d">Thêm / bỏ so với tự động</div></div>'
+      +'<div class="kpi act"><div class="l">Actual (số lỗi)</div><div class="v '+tone+'">'+r.actual+'</div><div class="d">Min '+k.thresholds.min+' · Target '+k.thresholds.target+' · Max '+k.thresholds.max+'</div></div>'
+      +'<div class="kpi score"><div class="l">Progress</div><div class="v '+tone+'">'+fmt(r.progress)+'%</div><div class="d">'+esc(r.band)+'</div></div>'
+      +'<div class="kpi score"><div class="l">KPI Completion</div><div class="v '+tone+'">'+fmt(r.points,2)+'%</div><div class="d">trên trọng số '+fmt(k.weight,0)+'%</div></div>'
+      +'</div><div class="how">'+howText(d)+'</div>';
+  }
+  const tk = (t) => t ? '<a class="tk" target="_blank" rel="noopener" href="'+esc(data.erpUrl)+'/app/ticket/'+encodeURIComponent(t.name)+'">'+esc(t.name)+'</a>' : '';
+  $('listTitle').textContent = 'Ứng viên lỗi lọt review — '+shortName(d.member)+' ('+d.candidates.length+')';
+  $('listTbl').innerHTML = d.candidates.length ? '<table><thead><tr><th>Loại</th><th>Ticket</th><th>Tiêu đề</th><th>Ticket cũ liên quan</th><th>Bằng chứng</th><th>Tin cậy</th><th>Tính vào KPI</th><th>Xác nhận QA</th></tr></thead><tbody>'
+    + d.candidates.map(c=>'<tr class="'+(c.counted?'':'off')+'"><td><span class="tag '+c.kind+'">'+(c.kind==='reopen'?'Mở lại':'Liên quan / lặp lại')+'</span></td><td>'+tk(c.ticket)+'<div class="hint">'+esc(pName(c.ticket.project))+' · '+esc(dtVN(c.at))+'</div></td><td>'+esc(c.ticket.subject)+'</td><td>'+(c.old?tk(c.old)+'<div class="hint">'+esc(c.old.subject||'')+'</div>':'—')+'</td><td>'+c.evidence.map(esc).join('<br>')+'</td><td><span class="tag '+c.confidence+'">'+(c.confidence==='high'?'Cao':'Thấp')+'</span></td><td><b style="color:'+(c.counted?'var(--danger)':'var(--muted)')+'">'+(c.counted?'Có (1 lỗi)':'Không')+'</b></td><td style="white-space:nowrap"><button type="button" class="sm yes'+(c.decision==='include'?' on':'')+'" data-id="'+esc(c.id)+'" data-dec="include">Tính</button> <button type="button" class="sm no'+(c.decision==='exclude'?' on':'')+'" data-id="'+esc(c.id)+'" data-dec="exclude">Không tính</button></td></tr>').join('')+'</tbody></table>'
+    : '<div class="empty">Không phát hiện ticket nào liên quan tới lỗi lọt review của thành viên này trong tháng (Actual 0 lỗi).</div>';
+  $('listTbl').querySelectorAll('button[data-id]').forEach(b=>b.onclick=()=>decide(b.dataset.id, b.dataset.dec, b.classList.contains('on')));
+  const un = d.teamUnattributed || [];
+  $('unPanel').style.display = un.length ? '' : 'none';
+  $('unTbl').innerHTML = un.length ? '<table><thead><tr><th>Loại</th><th>Ticket</th><th>Tiêu đề</th><th>Ticket cũ</th><th>Bằng chứng</th></tr></thead><tbody>'+un.map(c=>'<tr><td>'+(c.kind==='reopen'?'Mở lại':'Liên quan / lặp lại')+'</td><td>'+tk(c.ticket)+'</td><td>'+esc(c.ticket.subject)+'</td><td>'+(c.old?tk(c.old):'—')+'</td><td>'+c.evidence.map(esc).join('<br>')+'</td></tr>').join('')+'</tbody></table>' : '';
+  $('diagPre').textContent = JSON.stringify(d.diagnostics, null, 2);
+  $('btnXlsx').disabled = false;
+}
+
+async function decide(id, dec, wasOn){
+  try{ await api('/api/kpi/defect-decision', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, decision: wasOn ? 'clear' : dec }) }); await load(false, true); }
+  catch(e){ $('notice').innerHTML = '<div class="msg err">Không lưu được xác nhận: '+esc(e.message)+'</div>'; }
+}
+
+async function load(refresh, quiet){
+  const member = $('selMember').value, level = $('selLevel').value;
+  if(!member){ $('loading').style.display='none'; $('notice').innerHTML='<div class="msg err">Chưa có thành viên nào trong danh sách người tạo ticket (ticket-creators.json).</div>'; return; }
+  const seq = ++reqSeq;
+  history.replaceState(null,'','?month='+month);
+  $('pickMonth').value = month; renderScope();
+  if(!quiet){ $('loading').style.display = ''; $('btnXlsx').disabled = true; $('notice').innerHTML = ''; }
+  try{
+    const d = await api('/api/kpi/defect-escape?member='+encodeURIComponent(member)+'&level='+encodeURIComponent(level)+'&month='+month+'&projects='+encodeURIComponent(JSON.stringify(scope))+(refresh?'&refresh=1':''));
+    if(seq!==reqSeq) return;
+    data = d; cfg = d.config; renderRef();
+    $('loading').style.display = 'none'; $('content').style.display = '';
+    $('stamp').textContent = 'Cập nhật '+new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})+' · '+d.diagnostics.ticketsScanned+' ticket đã đối chiếu (từ '+d.diagnostics.lookbackFrom+')';
+    const w = [...(d.warnings||[])];
+    if(!d.diagnostics.versions.ok) w.push('Không đọc được log thay đổi trạng thái (Version) của ERP: '+(d.diagnostics.versions.error||'')+' — chỉ dò được ticket đang ở Re-open, có thể thiếu ticket đã mở lại rồi đóng lại.');
+    if(!d.diagnostics.linkFields.length) w.push('DocType Ticket không có trường liên kết tới Ticket khác — chỉ dò được qua nội dung nhắc mã ticket cũ và tiêu đề giống nhau.');
+    $('notice').innerHTML = w.map(x=>'<div class="msg info">'+esc(x)+'</div>').join('');
+    render(d);
+  }catch(e){
+    if(seq!==reqSeq) return;
+    $('loading').style.display = 'none'; $('content').style.display = 'none';
+    $('notice').innerHTML = '<div class="msg err">Không lấy được dữ liệu: '+esc(e.message)+'</div>';
+  }
+}
+
+function exportXlsx(){
+  const d = data, r = d.result, k = d.kpi, wb = XLSX.utils.book_new();
+  const S = [['CS05: Lỗi lọt review — Đánh giá KPI theo tháng'],['Thành viên', d.member],['Level', d.level],['Kỳ đánh giá', mFmt(d.month.key)],['Dự án', d.projects.map(pName).join(', ')],['Xuất lúc', new Date().toLocaleString('vi-VN')],[],
+    ['Chỉ số','Giá trị'],['Ứng viên phát hiện', r.candidates],['Tự động tính', r.auto],['QA xác nhận tính', r.confirmed],['QA loại', r.excluded],['Actual (số lỗi)', r.actual]];
+  if(k.applicable) S.push(['Min',k.thresholds.min],['Target',k.thresholds.target],['Max',k.thresholds.max],['Progress (%)', r.progress],['Mức', r.band],['Trọng số (%)',k.weight],['KPI Completion (%)', r.points]);
+  const s1 = XLSX.utils.aoa_to_sheet(S); s1['!cols'] = [{wch:30},{wch:36}]; XLSX.utils.book_append_sheet(wb, s1, 'Tổng hợp');
+  const s2 = XLSX.utils.aoa_to_sheet([['Loại','Ticket','Dự án','Tiêu đề','Ticket cũ liên quan','Bằng chứng','Độ tin cậy','Tính vào KPI','QA xác nhận'],
+    ...d.candidates.map(c=>[c.kind==='reopen'?'Mở lại':'Liên quan / lặp lại', c.ticket.name, pName(c.ticket.project), c.ticket.subject, c.old?c.old.name:'', c.evidence.join(' | '), c.confidence==='high'?'Cao':'Thấp', c.counted?'Có':'Không', c.decision==='include'?'Tính':c.decision==='exclude'?'Không tính':''])]);
+  s2['!cols'] = [18,18,12,50,18,60,10,10,12].map(w=>({wch:w})); XLSX.utils.book_append_sheet(wb, s2, 'Ứng viên');
+  XLSX.writeFile(wb, 'KPI_CS05_'+shortName(d.member)+'_'+d.month.key.replace('-','_')+'.xlsx');
+}
+
+const go = m => { month = m; load(false); };
+$('btnPrev').onclick = () => go(addMonths(month,-1));
+$('btnNext').onclick = () => go(addMonths(month,1));
+$('btnThis').onclick = () => go(todayMonth());
+$('pickMonth').onchange = e => { if(/^\d{4}-\d{2}$/.test(e.target.value)) go(e.target.value); };
+$('btnReload').onclick = () => load(true);
+$('btnXlsx').onclick = () => exportXlsx();
+$('selLevel').onchange = () => { renderRef(); const s = store.get(); s.levels = s.levels||{}; s.levels[$('selMember').value] = $('selLevel').value; store.set(s); load(false, true); };
+$('selMember').onchange = () => { const s = store.get(); s.member = $('selMember').value; store.set(s); $('selLevel').value = (s.levels&&s.levels[s.member]) || 'Junior'; scope = defaultScopeFor(s.member); load(false); };
+
+(async function init(){
+  try{ const list = await api('/api/ticket-instructions'); if(Array.isArray(list) && list.length){ projectsList = list; } }catch(_){}
+  projectsList.forEach(p=>{ projectNames[p.code] = p.name; });
+  FALLBACK_PROJECTS.forEach(p=>{ if(!projectNames[p.code]) projectNames[p.code] = p.name; });
+  const s = store.get();
+  $('selLevel').innerHTML = LEVELS.map(l=>'<option>'+l+'</option>').join('');
+  try{ const c = await api('/api/erp/ticket-creators'); creators = c.creators || []; memberDefaults = c.defaultMembers || {}; }
+  catch(e){ $('notice').innerHTML = '<div class="msg err">Không tải được danh sách thành viên: '+esc(e.message)+'</div>'; }
+  $('selMember').innerHTML = creators.length ? creators.map(e=>'<option value="'+esc(e)+'">'+esc(e)+'</option>').join('') : '<option value="">(chưa có thành viên)</option>';
+  if(s.member && creators.includes(s.member)) $('selMember').value = s.member;
+  $('selLevel').value = (s.levels && s.levels[$('selMember').value]) || 'Junior';
+  scope = defaultScopeFor($('selMember').value);
+  renderRef(); load(false);
+})();
+</script>
+</body>
+</html>

@@ -117,5 +117,45 @@
       "Middle": 20.0,
       "Senior": 20.0
     }
+  },
+  "defect": {
+    "code": "CS05",
+    "name": "Functional defect escape sau review",
+    "unit": "lỗi",
+    "lowerIsBetter": true,
+    "thresholds": {
+      "Fresher": {
+        "min": 4,
+        "target": 1,
+        "max": 0
+      },
+      "Junior": {
+        "min": 3,
+        "target": 1,
+        "max": 0
+      },
+      "Middle": {
+        "min": 3,
+        "target": 1,
+        "max": 0
+      },
+      "Senior": {
+        "min": 2,
+        "target": 1,
+        "max": 0
+      }
+    },
+    "weights": {
+      "Fresher": 20,
+      "Junior": 10,
+      "Middle": 10,
+      "Senior": 15
+    },
+    "lookbackMonths": 6,
+    "closedStatuses": [
+      "Closed"
+    ],
+    "similarityThreshold": 0.8,
+    "minSimilarTokens": 3
   }
 }

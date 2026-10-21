@@ -188,6 +188,41 @@ async function fetchTimesheetReport({ from_date, to_date, project } = {}) {
   return erpFetch(`/api/method/frappe.desk.query_report.run?${qs.toString()}`);
 }
 
+/** Log thay đổi (DocType Version) của Ticket trong khoảng ngày — dùng dò ticket chuyển Closed → mở lại. Cần quyền đọc Version. */
+async function fetchVersions({ from, to, maxRows = 20000 } = {}) {
+  const filters = [['ref_doctype', '=', 'Ticket']];
+  if (from) filters.push(['creation', '>=', `${from} 00:00:00`]);
+  if (to) filters.push(['creation', '<=', `${to} 23:59:59`]);
+  const page = 1000; const all = [];
+  for (let start = 0; start < maxRows; start += page) {
+    const qs = new URLSearchParams();
+    qs.set('filters', JSON.stringify(filters));
+    qs.set('fields', JSON.stringify(['docname', 'data', 'creation', 'owner']));
+    qs.set('order_by', 'creation asc');
+    qs.set('limit_page_length', String(page));
+    qs.set('limit_start', String(start));
+    const r = await erpFetch(`/api/resource/Version?${qs.toString()}`);
+    const rows = r.data || [];
+    all.push(...rows);
+    if (rows.length < page) break;
+  }
+  return all;
+}
+
+/** Lấy ticket theo danh sách mã (chia lô để URL không quá dài). */
+async function fetchTicketsByNames(names) {
+  const out = []; const list = [...new Set(names)].filter(Boolean);
+  for (let i = 0; i < list.length; i += 80) {
+    const qs = new URLSearchParams();
+    qs.set('filters', JSON.stringify([['name', 'in', list.slice(i, i + 80)]]));
+    qs.set('fields', JSON.stringify(['*']));
+    qs.set('limit_page_length', '200');
+    const r = await erpFetch(`/api/resource/Ticket?${qs.toString()}`);
+    out.push(...(r.data || []));
+  }
+  return out;
+}
+
 /* ===================== GHI DỮ LIỆU (tạo ticket) ===================== */
 let cachedCsrf = null;
 
@@ -615,6 +650,8 @@ module.exports = {
   fetchTickets,
   fetchProjects,
   fetchTimesheetReport,
+  fetchVersions,
+  fetchTicketsByNames,
   callMethod: (name, params) => erpPost(`/api/method/${name}`, params || {}), // gọi hàm whitelisted bất kỳ (SynergyHub...) bằng tài khoản ERP đã cấu hình
   getTicketMeta,
   searchLink,
