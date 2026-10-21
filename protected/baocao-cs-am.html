@@ -75,14 +75,13 @@
   <div class="panel">
     <h2><span class="n">1</span>Lấy ticket từ ERP</h2>
     <div class="chips" id="projChips" style="margin-bottom:10px"></div>
-    <div class="chips" id="statusChips" style="margin-bottom:12px"></div>
+    <div class="chips" id="statusChips" style="margin-bottom:10px"></div>
+    <div class="chips" id="prioChips" style="margin-bottom:12px"></div>
     <div class="row">
-      <div class="field">Cột Cust (khách hàng)<select id="selCust"></select></div>
-      <div class="field">Cột Deadline (ưu tiên Estimated Deadline; trống thì tính hạn SLA từ Opening On)<select id="selDeadline"></select></div>
       <div class="field">Cột Comment<select id="selComment"><option value="_comments">Bình luận gần nhất trên ticket</option><option value="">(để trống, tự nhập)</option></select></div>
-      <div class="field">Ưu tiên<select id="selPrio"><option value="">Tất cả</option><option value="hi">Critical, Urgent, High</option><option value="mid">Critical, Urgent, High, Medium</option></select></div>
       <div class="field">&nbsp;<button id="btnLoad" class="primary" type="button">⬇ Lấy ticket từ ERP</button></div>
     </div>
+    <div class="hint" style="margin-top:8px">Cust lấy từ <b>Customer Name</b> của ticket. Plan &amp; Deadline lấy từ <b>Estimated Deadline</b>; ticket trống thì tính hạn SLA từ <b>Opening On</b> theo Priority — tự điền sẵn ở bước 2 (sửa được).</div>
     <div id="loadMsg" style="margin-top:10px"></div>
   </div>
 
@@ -99,11 +98,10 @@
   <div class="panel" id="outPanel" style="display:none">
     <h2><span class="n">3</span>Slide &amp; xuất file</h2>
     <div class="row">
-      <div class="field">Số mục (góc trái)<input type="text" id="slNum" value="05" style="min-width:90px;width:90px"></div>
-      <div class="field">Tiêu đề slide<input type="text" id="slTitle" value="Issues highlight customer" style="min-width:260px"></div>
       <div class="field">Số dòng / slide<input type="number" id="slRows" value="6" min="3" max="10"></div>
       <div class="field">&nbsp;<span><button id="btnPptx" class="export" type="button">⬇ Tải file PPT</button> <button id="btnCopyAll" type="button">📋 Copy bảng slide đang xem</button></span></div>
     </div>
+    <div id="projSettings" style="margin-top:12px"></div>
     <div id="outMsg" style="margin-top:10px"></div>
     <div id="slides"></div>
   </div>
@@ -119,7 +117,9 @@ const FALLBACK_PROJECTS = [
 ];
 const OPEN_STATUSES = ['Open','Assign','Working','Reviewing','Waiting','Pending','Re-open'];
 const ALL_STATUSES = [...OPEN_STATUSES, 'Closed'];
-let projects = FALLBACK_PROJECTS, pSel = new Set(), sSel = new Set(OPEN_STATUSES), items = [], meta = null, curSlide = 0;
+const PRIORITIES = ['Critical','Urgent','High','Medium','Low'];
+let projects = FALLBACK_PROJECTS, pSel = new Set(), sSel = new Set(OPEN_STATUSES), prioSel = new Set(PRIORITIES), items = [], meta = null, curSlide = 0;
+let custField = '', deadlineField = '', projSettings = {}; // cột Cust / Deadline tự dò, cài đặt số mục + tiêu đề theo từng dự án
 const pName = c => (projects.find(p=>p.code===c)||{}).name || c;
 
 async function api(url){
@@ -133,20 +133,28 @@ function renderChips(){
   $('projChips').querySelectorAll('input').forEach(i=>i.onchange=()=>{ i.checked ? pSel.add(i.dataset.p) : pSel.delete(i.dataset.p); renderChips(); });
   $('statusChips').innerHTML = '<span class="t">Trạng thái:</span>'+ALL_STATUSES.map(s=>'<label class="'+(sSel.has(s)?'on':'')+'"><input type="checkbox" data-s="'+s+'"'+(sSel.has(s)?' checked':'')+'> '+s+'</label>').join('');
   $('statusChips').querySelectorAll('input').forEach(i=>i.onchange=()=>{ i.checked ? sSel.add(i.dataset.s) : sSel.delete(i.dataset.s); renderChips(); });
+  const allP = PRIORITIES.every(x=>prioSel.has(x));
+  $('prioChips').innerHTML = '<span class="t">Ưu tiên:</span><label class="'+(allP?'on':'')+'"><input type="checkbox" data-pr="*"'+(allP?' checked':'')+'> Tất cả</label>'
+    + PRIORITIES.map(x=>'<label class="'+(prioSel.has(x)?'on':'')+'"><input type="checkbox" data-pr="'+x+'"'+(prioSel.has(x)?' checked':'')+'> '+x+'</label>').join('');
+  $('prioChips').querySelectorAll('input').forEach(i=>i.onchange=()=>{
+    if(i.dataset.pr==='*') prioSel = i.checked ? new Set(PRIORITIES) : new Set();
+    else { i.checked ? prioSel.add(i.dataset.pr) : prioSel.delete(i.dataset.pr); }
+    renderChips();
+  });
 }
 
 /* ---------- dò cột từ cấu trúc DocType Ticket ---------- */
-function fillFieldSelects(){
-  const fields = (meta && meta.fields) || [];
+function detectFields(sampleRow){
+  const fields = (meta && meta.fields) || []; const keys = sampleRow ? Object.keys(sampleRow) : [];
   const txt = f => (f.fieldname+' '+f.label).toLowerCase();
-  const custOpts = fields.filter(f=>['Link','Data','Small Text'].includes(f.fieldtype) && /customer|khach/.test(txt(f)));
-  const isEst = f => /estimat\w*[ _]*deadline|deadline[ _]*estimat/.test(txt(f));
-  const dateOpts = fields.filter(f=>['Date','Datetime'].includes(f.fieldtype) || isEst(f));
-  const guess = (list, re) => (list.find(f=>re.test(txt(f))) || list[0] || {}).fieldname || '';
-  $('selCust').innerHTML = '<option value="">Tên dự án</option>' + custOpts.map(f=>'<option value="'+esc(f.fieldname)+'">'+esc(f.label||f.fieldname)+' ('+esc(f.fieldname)+')</option>').join('');
-  $('selCust').value = (custOpts.find(f=>f.fieldname==='customer')||custOpts[0]||{}).fieldname || '';
-  $('selDeadline').innerHTML = '<option value="">(không có — tính hạn SLA từ Opening On)</option>' + dateOpts.map(f=>'<option value="'+esc(f.fieldname)+'">'+esc(f.label||f.fieldname)+' ('+esc(f.fieldname)+')</option>').join('');
-  $('selDeadline').value = (dateOpts.find(isEst) || {}).fieldname || guess(dateOpts.filter(f=>/resolution_by|deadline|due|expected|target|planned|han/.test(txt(f))), /deadline|resolution_by|due/);
+  const byName = n => fields.find(f=>f.fieldname===n) ? n : (keys.includes(n) ? n : '');
+  // Cust = Customer Name; không có thì Customer; không có nữa thì dùng tên dự án
+  const custF = fields.find(f=>/^customer[ _]*name/.test((f.label||'').toLowerCase()) || f.fieldname==='customer_name');
+  custField = custF ? custF.fieldname : (byName('customer_name') || byName('customer'));
+  // Deadline = Estimated Deadline (theo nhãn hoặc tên trường); không có thì để trống → dùng hạn SLA
+  const isEst = s => /estimat\w*[ _]*deadline|deadline[ _]*estimat/.test(s);
+  const dlF = fields.find(f=>isEst(txt(f)));
+  deadlineField = dlF ? dlF.fieldname : (keys.find(k=>isEst(k.toLowerCase())) || '');
 }
 
 /* ---------- chuyển ticket ERP thành dòng báo cáo ---------- */
@@ -163,8 +171,8 @@ function deadlineOf(r, df){
   return { deadline: sla, sortDeadline: String(r._sla_due||'9999'), dlSrc: sla ? 'Hạn SLA theo Priority (từ Opening On)' : '' };
 }
 function toItems(rows){
-  const cf = $('selCust').value, df = $('selDeadline').value, cm = $('selComment').value;
-  const prio = $('selPrio').value; const keep = prio==='hi' ? ['critical','urgent','high'] : prio==='mid' ? ['critical','urgent','high','medium'] : null;
+  const cf = custField, df = deadlineField, cm = $('selComment').value;
+  const allP = PRIORITIES.every(x=>prioSel.has(x)); const keep = allP ? null : [...prioSel].map(x=>x.toLowerCase());
   return rows.filter(r=>!keep || keep.includes(String(r.priority||'').toLowerCase())).map(r=>({
     on:true, name:r.name, project:r.project||'',
     cust: (cf && r[cf]) ? String(r[cf]) : pName(r.project),
@@ -177,12 +185,15 @@ async function loadTickets(){
   const msg = $('loadMsg');
   if(!pSel.size){ msg.innerHTML = '<div class="msg err">Chọn ít nhất 1 dự án.</div>'; return; }
   if(!sSel.size){ msg.innerHTML = '<div class="msg err">Chọn ít nhất 1 trạng thái.</div>'; return; }
+  if(!prioSel.size){ msg.innerHTML = '<div class="msg err">Chọn ít nhất 1 mức ưu tiên (hoặc Tất cả).</div>'; return; }
   msg.innerHTML = '<div class="msg info">Đang lấy ticket từ ERP…</div>'; $('btnLoad').disabled = true;
   try{
     const qs = new URLSearchParams({ projects: JSON.stringify([...pSel]), statuses: JSON.stringify([...sSel]), limit: '2000' });
     const r = await api('/api/bao-cao/cs-am/tickets?'+qs.toString()); const rows = r.data || r;
+    detectFields(rows[0]);
     items = toItems(rows);
-    msg.innerHTML = '<div class="msg ok">Đã lấy '+rows.length+' ticket, '+items.length+' dòng sau khi lọc ưu tiên. Bỏ chọn những ticket không đưa vào slide.</div>';
+    syncProjSettings();
+    msg.innerHTML = '<div class="msg ok">Đã lấy '+rows.length+' ticket, '+items.length+' dòng sau khi lọc ưu tiên.'+(custField?'':' (Không tìm thấy Customer Name trên ticket — đang dùng tên dự án làm Cust.)')+(deadlineField?'':' (Không tìm thấy Estimated Deadline — Plan &amp; Deadline tính theo hạn SLA.)')+' Bỏ chọn những ticket không đưa vào slide.</div>';
     $('editPanel').style.display = ''; $('outPanel').style.display = '';
     renderEditor(); renderSlides();
   }catch(e){ msg.innerHTML = '<div class="msg err">Không lấy được ticket: '+esc(e.message)+'</div>'; }
@@ -201,24 +212,41 @@ function renderEditor(){
   $('edBody').querySelectorAll('input[type=checkbox]').forEach(c=>c.onchange=()=>{ items[c.dataset.i].on = c.checked; c.closest('tr').classList.toggle('off', !c.checked); $('editCount').textContent = '— '+items.filter(x=>x.on).length+'/'+items.length+' ticket được chọn'; renderSlides(); });
   $('edBody').querySelectorAll('input[type=text]').forEach(t=>t.oninput=()=>{ items[t.dataset.i][t.dataset.f] = t.value; renderSlidesSoon(); });
 }
-let tmr = null; const renderSlidesSoon = () => { clearTimeout(tmr); tmr = setTimeout(renderSlides, 250); };
 function setVisible(on){ const q = $('qSearch').value.trim().toLowerCase(); items.forEach(it=>{ if(!q || (it.cust+' '+it.subject+' '+it.name+' '+it.status).toLowerCase().includes(q)) it.on = on; }); renderEditor(); renderSlides(); }
 
-/* ---------- dựng slide ---------- */
-function chunkRows(){
-  const per = Math.max(3, Math.min(10, Number($('slRows').value)||6));
-  const sel = items.filter(x=>x.on).sort((a,b)=>a.cust.localeCompare(b.cust,'vi') || a.sortDeadline.localeCompare(b.sortDeadline) || a.name.localeCompare(b.name));
-  const chunks = []; for(let i=0;i<sel.length;i+=per) chunks.push(sel.slice(i,i+per));
-  return chunks.map(ch=>{ // gộp Cust liên tiếp + đánh số # theo từng Cust (liên tục qua các slide)
-    const rows = ch.map(x=>({...x})); return rows;
-  });
+/* ---------- cài đặt Số mục + Tiêu đề cho từng slide (mỗi dự án có bộ slide riêng) ---------- */
+const DEF_NUM = '05', DEF_TITLE = 'Issues highlight customer';
+function selectedProjectCodes(){ // các dự án đang có ticket được chọn, theo thứ tự tên
+  const set = new Set(items.filter(x=>x.on).map(x=>x.project));
+  return [...set].sort((a,b)=>pName(a).localeCompare(pName(b),'vi'));
 }
-function numberRows(chunks){
-  const counter = {}; const out = [];
-  chunks.forEach(ch=>{ out.push(ch.map(r=>{ counter[r.cust] = (counter[r.cust]||0)+1; return { ...r, n: counter[r.cust] }; })); });
+function syncProjSettings(){ items.forEach(it=>{ if(!projSettings[it.project]) projSettings[it.project] = { num: DEF_NUM, title: DEF_TITLE }; }); }
+function renderProjSettings(){
+  const codes = selectedProjectCodes(); const box = $('projSettings');
+  if(!codes.length){ box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="hint" style="margin-bottom:6px">'+(codes.length>1?'Mỗi dự án có bộ slide riêng — đặt <b>Số mục</b> (góc trái) và <b>Tiêu đề</b> cho từng dự án:':'Số mục (góc trái) và tiêu đề của slide:')+'</div>'
+    + '<table class="ed" style="max-width:820px"><thead><tr><th style="width:190px">Dự án</th><th style="width:120px">Số mục</th><th>Tiêu đề slide</th><th style="width:90px">Số slide</th></tr></thead><tbody>'
+    + codes.map(c=>{ const s = projSettings[c]; const n = (model.filter(m=>m.project===c).length)||''; return '<tr><td><b>'+esc(pName(c))+'</b></td><td><input type="text" data-pc="'+esc(c)+'" data-k="num" value="'+esc(s.num)+'"></td><td><input type="text" data-pc="'+esc(c)+'" data-k="title" value="'+esc(s.title)+'"></td><td>'+n+'</td></tr>'; }).join('')+'</tbody></table>'
+    + (codes.length>1 ? '<div style="margin-top:8px"><button type="button" id="btnApplyAll" style="padding:4px 12px;font-size:12px">Áp dụng dòng đầu cho tất cả dự án</button></div>' : '');
+  box.querySelectorAll('input').forEach(i=>i.oninput=()=>{ projSettings[i.dataset.pc][i.dataset.k] = i.value; renderSlidesSoon(true); });
+  const ba = $('btnApplyAll'); if(ba) ba.onclick = ()=>{ const first = projSettings[codes[0]]; codes.forEach(c=>{ projSettings[c] = { ...first }; }); renderProjSettings(); renderSlides(); };
+}
+
+/* ---------- dựng slide ---------- */
+const byOrder = (a,b)=>a.cust.localeCompare(b.cust,'vi') || a.sortDeadline.localeCompare(b.sortDeadline) || a.name.localeCompare(b.name);
+function buildModel(){
+  const per = Math.max(3, Math.min(10, Number($('slRows').value)||6)); const out = [];
+  selectedProjectCodes().forEach(code=>{
+    const sel = items.filter(x=>x.on && x.project===code).sort(byOrder);
+    const counter = {}; const pages = [];
+    for(let i=0;i<sel.length;i+=per) pages.push(sel.slice(i,i+per).map(r=>{ counter[r.cust] = (counter[r.cust]||0)+1; return { ...r, n: counter[r.cust] }; })); // # đánh số theo từng Cust, liên tục qua các slide của dự án
+    pages.forEach((rows,k)=>out.push({ project: code, page: k+1, pages: pages.length, rows }));
+  });
   return out;
 }
 function groupSpans(rows){ const spans = []; rows.forEach((r,i)=>{ if(i===0 || rows[i-1].cust!==r.cust) spans.push({start:i, cust:r.cust, count:1}); else spans[spans.length-1].count++; }); return spans; }
+const setOf = code => projSettings[code] || { num: DEF_NUM, title: DEF_TITLE };
+const titleOf = m => setOf(m.project).title + (m.pages>1 ? '  ('+m.page+'/'+m.pages+')' : '');
 
 function tableHtml(rows){
   const spans = groupSpans(rows); const startOf = new Map(spans.map(s=>[s.start,s]));
@@ -230,19 +258,22 @@ function tableHtml(rows){
   });
   return h+'</tbody></table>';
 }
-function slideHtml(rows, idx, total){
-  return '<div class="slide" id="slide'+idx+'"><div class="sl-bar"></div><div class="sl-num">'+esc($('slNum').value)+'</div><div class="sl-title">'+esc($('slTitle').value)+(total>1?' <span style="font-size:20px;font-weight:400;color:#5B7089">('+(idx+1)+'/'+total+')</span>':'')+'</div>'
-    +'<div class="sl-brand">HQSOFT<small>Distribution &amp; Retail Solution Expert</small></div><div class="sl-wrap">'+tableHtml(rows)+'</div></div>';
+function slideHtml(m, idx){
+  const s = setOf(m.project);
+  return '<div class="slide" id="slide'+idx+'"><div class="sl-bar"></div><div class="sl-num">'+esc(s.num)+'</div><div class="sl-title">'+esc(s.title)+(m.pages>1?' <span style="font-size:20px;font-weight:400;color:#5B7089">('+m.page+'/'+m.pages+')</span>':'')+'</div>'
+    +'<div class="sl-brand">HQSOFT<small>Distribution &amp; Retail Solution Expert</small></div><div class="sl-wrap">'+tableHtml(m.rows)+'</div></div>';
 }
 let model = [];
-function renderSlides(){
-  model = numberRows(chunkRows());
+function paintSlides(){ // vẽ lại slide (không đụng bảng cài đặt số mục/tiêu đề để không mất con trỏ khi gõ)
+  model = buildModel();
   if(!model.length){ $('slides').innerHTML = '<div class="empty">Chưa chọn ticket nào — tick ít nhất 1 dòng ở bước 2.</div>'; return; }
-  $('slides').innerHTML = model.map((rows,i)=>'<div class="slide-label">Slide '+(i+1)+'/'+model.length+' · '+rows.length+' dòng · <button type="button" data-copy="'+i+'" style="padding:2px 10px;font-size:12px">📋 Copy bảng</button> <button type="button" data-img="'+i+'" style="padding:2px 10px;font-size:12px">🖼 Copy ảnh</button> <button type="button" data-png="'+i+'" style="padding:2px 10px;font-size:12px">⬇ PNG</button></div><div class="slide-scroll">'+slideHtml(rows,i,model.length)+'</div>').join('');
+  $('slides').innerHTML = model.map((m,i)=>'<div class="slide-label">Slide '+(i+1)+'/'+model.length+' · '+esc(pName(m.project))+' · '+m.rows.length+' dòng · <button type="button" data-copy="'+i+'" style="padding:2px 10px;font-size:12px">📋 Copy bảng</button> <button type="button" data-img="'+i+'" style="padding:2px 10px;font-size:12px">🖼 Copy ảnh</button> <button type="button" data-png="'+i+'" style="padding:2px 10px;font-size:12px">⬇ PNG</button></div><div class="slide-scroll">'+slideHtml(m,i)+'</div>').join('');
   $('slides').querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copyTable(Number(b.dataset.copy)));
   $('slides').querySelectorAll('[data-img]').forEach(b=>b.onclick=()=>copyImage(Number(b.dataset.img)));
   $('slides').querySelectorAll('[data-png]').forEach(b=>b.onclick=()=>savePng(Number(b.dataset.png)));
 }
+function renderSlides(){ paintSlides(); renderProjSettings(); }
+let tmr = null; const renderSlidesSoon = (settingsOnly) => { clearTimeout(tmr); tmr = setTimeout(settingsOnly===true ? paintSlides : renderSlides, 250); };
 
 /* ---------- copy / tải ---------- */
 function say(kind, text){ $('outMsg').innerHTML = '<div class="msg '+kind+'">'+text+'</div>'; }
@@ -286,14 +317,15 @@ async function exportPptx(){
   if(!model.length){ say('err','Chưa có slide nào để xuất.'); return; }
   const btn = $('btnPptx'); btn.disabled = true;
   try{
-    const pptx = new PptxGenJS(); pptx.layout = 'LAYOUT_WIDE'; pptx.author = 'HQSOFT'; pptx.title = $('slTitle').value;
+    const pptx = new PptxGenJS(); pptx.layout = 'LAYOUT_WIDE'; pptx.author = 'HQSOFT'; pptx.title = 'Issues highlight customer';
     const F = 'Arial', NAVY = '0F2B66', RED = 'C0392B';
-    model.forEach((rows, idx)=>{
+    model.forEach((m)=>{
+      const rows = m.rows, st = setOf(m.project);
       const sl = pptx.addSlide(); sl.background = { color:'FFFFFF' };
       sl.addShape(pptx.ShapeType.rect, { x:0.62, y:0.36, w:0.07, h:1.0, fill:{ color:RED }, line:{ color:RED } });
       sl.addShape(pptx.ShapeType.roundRect, { x:0.78, y:0.37, w:1.55, h:0.3, fill:{ color:RED }, line:{ color:RED }, rectRadius:0.05 });
-      sl.addText($('slNum').value, { x:0.78, y:0.37, w:1.55, h:0.3, fontFace:F, fontSize:12, bold:true, color:'FFFFFF', align:'center', valign:'middle', margin:0 });
-      sl.addText($('slTitle').value + (model.length>1 ? '  ('+(idx+1)+'/'+model.length+')' : ''), { x:0.74, y:0.68, w:9.5, h:0.55, fontFace:F, fontSize:28, bold:true, color:NAVY, margin:0, valign:'middle' });
+      sl.addText(st.num, { x:0.78, y:0.37, w:1.55, h:0.3, fontFace:F, fontSize:12, bold:true, color:'FFFFFF', align:'center', valign:'middle', margin:0 });
+      sl.addText(titleOf(m), { x:0.74, y:0.68, w:9.5, h:0.55, fontFace:F, fontSize:28, bold:true, color:NAVY, margin:0, valign:'middle' });
       sl.addText([{ text:'HQSOFT', options:{ fontSize:20, bold:true, color:'1F4E9E', breakLine:true } }, { text:'Distribution & Retail Solution Expert', options:{ fontSize:6.5, color:'5B7089' } }], { x:10.3, y:0.25, w:2.8, h:0.55, fontFace:F, align:'right', margin:0 });
       const spans = groupSpans(rows); const startOf = new Map(spans.map(s=>[s.start,s]));
       const hc = t => ({ text:t, options:{ bold:true, color:'FFFFFF', fill:{ color:'2E6DB8' }, align:'center', valign:'middle', fontSize:14 } });
@@ -323,14 +355,14 @@ $('btnPptx').onclick = exportPptx;
 $('qSearch').oninput = renderEditor;
 $('btnAll').onclick = () => setVisible(true);
 $('btnNone').onclick = () => setVisible(false);
-['slNum','slTitle','slRows'].forEach(id=>$(id).addEventListener('input', renderSlidesSoon));
+$('slRows').addEventListener('input', ()=>renderSlidesSoon());
 
 (async function init(){
   try{ const list = await api('/api/ticket-instructions'); if(Array.isArray(list) && list.length) projects = list; }catch(_){}
   pSel = new Set(projects.map(p=>p.code));
   renderChips();
-  try{ meta = await api('/api/erp/ticket-meta'); }catch(e){ $('loadMsg').innerHTML = '<div class="msg info">Chưa đọc được cấu trúc Ticket từ ERP ('+esc(e.message)+') — cột Cust/Deadline sẽ không tự dò được.</div>'; }
-  fillFieldSelects();
+  try{ meta = await api('/api/erp/ticket-meta'); }catch(e){ $('loadMsg').innerHTML = '<div class="msg info">Chưa đọc được cấu trúc Ticket từ ERP ('+esc(e.message)+') — sẽ dò cột Customer Name / Estimated Deadline theo dữ liệu ticket.</div>'; }
+  detectFields(null);
 })();
 </script>
 </body>
