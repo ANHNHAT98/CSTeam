@@ -126,6 +126,12 @@ Module hiện có:
   không đọc sheet Monitor trong file PAKD nữa. Đổi đơn giá chỉ cần sửa file này. Chức danh trong
   timesheet được nhận diện theo tiền tố (vd "Middle Business Analyst" → Middle); chức danh không khớp
   thì hỏi chọn cấp bậc ở Bước 3.
+- **Báo Cáo → Báo Cáo CS & AM** (`/bao-cao/cs-am`): lấy ticket các dự án từ ERP thành slide "Issues highlight customer" theo mẫu
+  Cust · # · Issues · Status · Plan & Deadline · Comment (Cust gộp ô, # đánh số theo từng Cust). Chọn dự án/trạng thái/ưu tiên, tick
+  ticket cần đưa vào và sửa trực tiếp từng ô, rồi **tải file PPT** (bảng gốc của PowerPoint, sửa được) hoặc **copy bảng / copy ảnh / tải PNG**
+  để dán vào file chung của Manager. Cột Cust tự dò từ DocType Ticket (đổi được); **Deadline lấy từ Estimated Deadline, nếu ticket không có/để trống thì tính hạn SLA
+  = Opening On + ngưỡng SLA xử lý theo Priority** (server tính, API `/api/bao-cao/cs-am/tickets`); Comment lấy từ bình luận gần nhất
+  của ticket (`_comments`).
 - **Dự Án → AnVy → Ticket Slide**: dán/nhập ticket, tự tạo slide + xuất
   PNG/PPTX (`/anvy/ticket-slide`).
 - **Ticket dự án → Tra cứu ERP**: gọi trực tiếp erp.hqsoft.vn lấy ticket theo
@@ -189,8 +195,8 @@ Module hiện có:
   ngưỡng/trọng số CS05 trong Master KPI) theo thành viên + level + dự án + tháng. Tool tự dò từ ticket ERP: (1) ticket chuyển
   **Closed → mở lại** (đọc log `Version` của ERP; cần quyền đọc Version, nếu không có thì chỉ dò được ticket đang Re-open),
   (2) ticket **mới liên quan/lặp lại ticket cũ**: qua trường liên kết tới Ticket (tự dò từ cấu trúc DocType Ticket), nội dung nhắc mã
-  ticket cũ (độ tin cậy cao — tự tính), hoặc tiêu đề giống ticket cũ (độ tin cậy thấp — QA bấm Tính mới được tính). Lỗi tính cho người
-  xử lý của ticket cũ. Xác nhận của QA lưu qua `listStore.js` (`data/kpi-defect-decisions.json`). Logic ở `kpiDefect.js`, cấu hình trong
+  ticket cũ (độ tin cậy cao — tự tính), hoặc tiêu đề giống ticket cũ (độ tin cậy thấp — QA bấm Tính mới được tính). Mỗi ticket mới chỉ tính 1 lỗi dù nhắc nhiều ticket cũ; lỗi tính cho người
+  xử lý của (các) ticket cũ — lấy từ `_assign`, hoặc lịch sử giao việc (ToDo) vì ERP thường xoá `_assign` khi ticket đóng. Xác nhận của QA lưu qua `listStore.js` (`data/kpi-defect-decisions.json`). Logic ở `kpiDefect.js`, cấu hình trong
   `kpi-sla-config.json` (mục `defect`: lookbackMonths, closedStatuses, ngưỡng tương đồng tiêu đề).
 
 ## Mã hóa Password Window — chi tiết kỹ thuật

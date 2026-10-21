@@ -103,12 +103,12 @@
     </div>
     <div class="panel">
       <h2 id="listTitle">Ứng viên lỗi lọt review</h2>
-      <p class="hint" style="margin:0 0 8px">Độ tin cậy <b>cao</b> (mở lại từ Closed, trường liên kết, nội dung nhắc mã ticket cũ) tự được tính. Độ tin cậy <b>thấp</b> (chỉ tiêu đề giống ticket cũ) mặc định chưa tính — QA xem rồi bấm <b>Tính</b> nếu đúng. Bấm lại nút đang chọn để bỏ xác nhận. Lỗi được tính cho người xử lý của <b>ticket cũ</b> (hoặc của chính ticket được mở lại).</p>
+      <p class="hint" style="margin:0 0 8px">Độ tin cậy <b>cao</b> (mở lại từ Closed, trường liên kết, nội dung nhắc mã ticket cũ) tự được tính. Độ tin cậy <b>thấp</b> (chỉ tiêu đề giống ticket cũ) mặc định chưa tính — QA xem rồi bấm <b>Tính</b> nếu đúng. Bấm lại nút đang chọn để bỏ xác nhận. Mỗi <b>ticket mới</b> chỉ tính <b>1 lỗi</b> dù nhắc tới nhiều ticket cũ. Lỗi được tính cho người xử lý của <b>(các) ticket cũ</b> (hoặc của chính ticket được mở lại).</p>
       <div class="tbl-scroll"><div id="listTbl"></div></div>
     </div>
     <div class="panel" id="unPanel" style="display:none">
       <h2>Ứng viên chưa xác định được người xử lý</h2>
-      <p class="hint" style="margin:0 0 8px">Ticket cũ ngoài phạm vi tải hoặc chưa có người xử lý nên chưa tính cho ai.</p>
+      <p class="hint" style="margin:0 0 8px">Ticket cũ ngoài phạm vi tải hoặc không tra được người xử lý (kể cả lịch sử giao việc) nên chưa tính cho ai.</p>
       <div class="tbl-scroll"><div id="unTbl"></div></div>
     </div>
     <details class="panel"><summary style="cursor:pointer;font-weight:600">Chi tiết cách tool dò dữ liệu (kiểm tra khi số liệu lạ)</summary><pre id="diagPre" style="margin-top:10px"></pre></details>
@@ -192,15 +192,16 @@ function render(d){
       +'<div class="kpi score"><div class="l">KPI Completion</div><div class="v '+tone+'">'+fmt(r.points,2)+'%</div><div class="d">trên trọng số '+fmt(k.weight,0)+'%</div></div>'
       +'</div><div class="how">'+howText(d)+'</div>';
   }
-  const tk = (t) => t ? '<a class="tk" target="_blank" rel="noopener" href="'+esc(data.erpUrl)+'/app/ticket/'+encodeURIComponent(t.name)+'">'+esc(t.name)+'</a>' : '';
+  const tk = (t) => t ? '<a class="tk" target="_blank" rel="noopener" href="'+esc(data.erpUrl)+'/app/ticket/'+encodeURIComponent(t.name)+'" title="'+esc(t.subject||'')+'">'+esc(t.name)+'</a>' : '';
+  const oldsHtml = (c) => c.olds && c.olds.length ? c.olds.map(tk).join(', ') : '—';
   $('listTitle').textContent = 'Ứng viên lỗi lọt review — '+shortName(d.member)+' ('+d.candidates.length+')';
   $('listTbl').innerHTML = d.candidates.length ? '<table><thead><tr><th>Loại</th><th>Ticket</th><th>Tiêu đề</th><th>Ticket cũ liên quan</th><th>Bằng chứng</th><th>Tin cậy</th><th>Tính vào KPI</th><th>Xác nhận QA</th></tr></thead><tbody>'
-    + d.candidates.map(c=>'<tr class="'+(c.counted?'':'off')+'"><td><span class="tag '+c.kind+'">'+(c.kind==='reopen'?'Mở lại':'Liên quan / lặp lại')+'</span></td><td>'+tk(c.ticket)+'<div class="hint">'+esc(pName(c.ticket.project))+' · '+esc(dtVN(c.at))+'</div></td><td>'+esc(c.ticket.subject)+'</td><td>'+(c.old?tk(c.old)+'<div class="hint">'+esc(c.old.subject||'')+'</div>':'—')+'</td><td>'+c.evidence.map(esc).join('<br>')+'</td><td><span class="tag '+c.confidence+'">'+(c.confidence==='high'?'Cao':'Thấp')+'</span></td><td><b style="color:'+(c.counted?'var(--danger)':'var(--muted)')+'">'+(c.counted?'Có (1 lỗi)':'Không')+'</b></td><td style="white-space:nowrap"><button type="button" class="sm yes'+(c.decision==='include'?' on':'')+'" data-id="'+esc(c.id)+'" data-dec="include">Tính</button> <button type="button" class="sm no'+(c.decision==='exclude'?' on':'')+'" data-id="'+esc(c.id)+'" data-dec="exclude">Không tính</button></td></tr>').join('')+'</tbody></table>'
+    + d.candidates.map(c=>'<tr class="'+(c.counted?'':'off')+'"><td><span class="tag '+c.kind+'">'+(c.kind==='reopen'?'Mở lại':'Liên quan / lặp lại')+'</span></td><td>'+tk(c.ticket)+'<div class="hint">'+esc(pName(c.ticket.project))+' · '+esc(dtVN(c.at))+'</div></td><td>'+esc(c.ticket.subject)+'</td><td>'+oldsHtml(c)+(c.olds&&c.olds.length>1?'<div class="hint">'+c.olds.length+' ticket cũ → tính 1 lỗi</div>':'')+'</td><td>'+c.evidence.map(esc).join('<br>')+'</td><td><span class="tag '+c.confidence+'">'+(c.confidence==='high'?'Cao':'Thấp')+'</span></td><td><b style="color:'+(c.counted?'var(--danger)':'var(--muted)')+'">'+(c.counted?'Có (1 lỗi)':'Không')+'</b></td><td style="white-space:nowrap"><button type="button" class="sm yes'+(c.decision==='include'?' on':'')+'" data-id="'+esc(c.id)+'" data-dec="include">Tính</button> <button type="button" class="sm no'+(c.decision==='exclude'?' on':'')+'" data-id="'+esc(c.id)+'" data-dec="exclude">Không tính</button></td></tr>').join('')+'</tbody></table>'
     : '<div class="empty">Không phát hiện ticket nào liên quan tới lỗi lọt review của thành viên này trong tháng (Actual 0 lỗi).</div>';
   $('listTbl').querySelectorAll('button[data-id]').forEach(b=>b.onclick=()=>decide(b.dataset.id, b.dataset.dec, b.classList.contains('on')));
   const un = d.teamUnattributed || [];
   $('unPanel').style.display = un.length ? '' : 'none';
-  $('unTbl').innerHTML = un.length ? '<table><thead><tr><th>Loại</th><th>Ticket</th><th>Tiêu đề</th><th>Ticket cũ</th><th>Bằng chứng</th></tr></thead><tbody>'+un.map(c=>'<tr><td>'+(c.kind==='reopen'?'Mở lại':'Liên quan / lặp lại')+'</td><td>'+tk(c.ticket)+'</td><td>'+esc(c.ticket.subject)+'</td><td>'+(c.old?tk(c.old):'—')+'</td><td>'+c.evidence.map(esc).join('<br>')+'</td></tr>').join('')+'</tbody></table>' : '';
+  $('unTbl').innerHTML = un.length ? '<table><thead><tr><th>Loại</th><th>Ticket</th><th>Tiêu đề</th><th>Ticket cũ</th><th>Bằng chứng</th></tr></thead><tbody>'+un.map(c=>'<tr><td>'+(c.kind==='reopen'?'Mở lại':'Liên quan / lặp lại')+'</td><td>'+tk(c.ticket)+'</td><td>'+esc(c.ticket.subject)+'</td><td>'+oldsHtml(c)+'</td><td>'+c.evidence.map(esc).join('<br>')+'</td></tr>').join('')+'</tbody></table>' : '';
   $('diagPre').textContent = JSON.stringify(d.diagnostics, null, 2);
   $('btnXlsx').disabled = false;
 }
@@ -242,7 +243,7 @@ function exportXlsx(){
   if(k.applicable) S.push(['Min',k.thresholds.min],['Target',k.thresholds.target],['Max',k.thresholds.max],['Progress (%)', r.progress],['Mức', r.band],['Trọng số (%)',k.weight],['KPI Completion (%)', r.points]);
   const s1 = XLSX.utils.aoa_to_sheet(S); s1['!cols'] = [{wch:30},{wch:36}]; XLSX.utils.book_append_sheet(wb, s1, 'Tổng hợp');
   const s2 = XLSX.utils.aoa_to_sheet([['Loại','Ticket','Dự án','Tiêu đề','Ticket cũ liên quan','Bằng chứng','Độ tin cậy','Tính vào KPI','QA xác nhận'],
-    ...d.candidates.map(c=>[c.kind==='reopen'?'Mở lại':'Liên quan / lặp lại', c.ticket.name, pName(c.ticket.project), c.ticket.subject, c.old?c.old.name:'', c.evidence.join(' | '), c.confidence==='high'?'Cao':'Thấp', c.counted?'Có':'Không', c.decision==='include'?'Tính':c.decision==='exclude'?'Không tính':''])]);
+    ...d.candidates.map(c=>[c.kind==='reopen'?'Mở lại':'Liên quan / lặp lại', c.ticket.name, pName(c.ticket.project), c.ticket.subject, (c.olds||[]).map(o=>o.name).join(', '), c.evidence.join(' | '), c.confidence==='high'?'Cao':'Thấp', c.counted?'Có':'Không', c.decision==='include'?'Tính':c.decision==='exclude'?'Không tính':''])]);
   s2['!cols'] = [18,18,12,50,18,60,10,10,12].map(w=>({wch:w})); XLSX.utils.book_append_sheet(wb, s2, 'Ứng viên');
   XLSX.writeFile(wb, 'KPI_CS05_'+shortName(d.member)+'_'+d.month.key.replace('-','_')+'.xlsx');
 }

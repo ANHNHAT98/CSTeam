@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Báo Cáo CS & AM — Issues highlight customer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<style>
+  :root{--ink:#12233D;--blueprint:#1F4E79;--paper:#EEF2F6;--panel:#FFFFFF;--grid-line:rgba(31,78,121,.14);--grid-line-strong:rgba(31,78,121,.28);--amber:#E8A33D;--success:#3F7D58;--danger:#B23A48;--muted:#5B7089;--radius:10px;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;min-height:100vh;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:32px 32px;}
+  .ops-topbar{background:#12233D;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:14px;}
+  .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;opacity:.9;}
+  .ops-topbar a:hover{opacity:1;text-decoration:underline;}
+  .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
+  .wrap{max-width:1340px;margin:0 auto;padding:28px 24px 80px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;line-height:1.6;}
+  .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;}
+  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:10px;}
+  .panel h2 .n{background:var(--blueprint);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;}
+  .row{display:flex;gap:12px 16px;flex-wrap:wrap;align-items:flex-end;}
+  .field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted);font-weight:600;}
+  .field select,.field input[type=text],.field input[type=number]{font:inherit;font-size:13.5px;font-weight:500;color:var(--ink);padding:8px 12px;border-radius:8px;border:1px solid var(--grid-line-strong);background:#fff;min-width:170px;}
+  .field input[type=number]{min-width:90px;width:90px;}
+  button{font:inherit;font-size:13.5px;padding:8px 14px;border-radius:8px;border:1px solid var(--blueprint);background:#fff;color:var(--blueprint);cursor:pointer;font-weight:600;}
+  button.primary{background:var(--blueprint);color:#fff;}
+  button.export{border-color:var(--success);color:var(--success);}
+  button:disabled{opacity:.5;cursor:default;}
+  .chips{display:flex;gap:6px 8px;flex-wrap:wrap;font-size:13px;align-items:center;}
+  .chips .t{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px;}
+  .chips label{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--grid-line-strong);border-radius:8px;padding:4px 10px;cursor:pointer;}
+  .chips label.on{border-color:var(--blueprint);background:#EAF1F8;font-weight:600;}
+  .msg{padding:12px 14px;border-radius:8px;font-size:13.5px;margin:0 0 12px;}
+  .msg.err{background:#FBE9EB;border:1px solid #E3A7AF;color:#8B2A36;} .msg.info{background:#EAF1F8;border:1px solid var(--grid-line-strong);} .msg.ok{background:#EAF5EE;border:1px solid #B5D8C3;color:#2C5E43;}
+  .hint{font-size:12px;color:var(--muted);line-height:1.6;}
+  table.ed{width:100%;border-collapse:collapse;font-size:13px;background:#fff;}
+  table.ed th{background:#1F4E79;color:#fff;text-align:left;padding:7px 8px;font-weight:600;white-space:nowrap;position:sticky;top:0;}
+  table.ed td{padding:4px 6px;border-bottom:1px solid var(--grid-line);vertical-align:top;}
+  table.ed input[type=text]{width:100%;font:inherit;font-size:12.5px;padding:5px 7px;border:1px solid transparent;border-radius:6px;background:#F5F8FB;}
+  table.ed input[type=text]:focus{border-color:var(--blueprint);background:#fff;outline:none;}
+  table.ed tr.off td{opacity:.45;}
+  .scroll{max-height:460px;overflow:auto;border:1px solid var(--grid-line-strong);border-radius:8px;}
+  .slide-label{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);margin:16px 0 6px;letter-spacing:.04em;text-transform:uppercase;}
+  .slide-scroll{overflow-x:auto;padding-bottom:6px;}
+  .empty{color:var(--muted);padding:26px 4px;text-align:center;}
+
+  /* ---------- slide 1280 × 720 theo mẫu "Issues highlight customer" ---------- */
+  .slide{width:1280px;height:720px;background:#fff;position:relative;box-shadow:0 2px 14px rgba(18,35,61,.14);font-family:Arial,'IBM Plex Sans',sans-serif;overflow:hidden;color:#12233D;}
+  .sl-bar{position:absolute;left:60px;top:34px;width:7px;height:100px;background:#C0392B;}
+  .sl-num{position:absolute;left:76px;top:35px;width:150px;height:30px;background:#C0392B;color:#fff;border-radius:6px;text-align:center;font-weight:700;font-size:15px;line-height:30px;}
+  .sl-title{position:absolute;left:73px;top:68px;font-size:34px;font-weight:700;color:#0F2B66;white-space:nowrap;}
+  .sl-brand{position:absolute;right:50px;top:26px;font-size:26px;font-weight:700;color:#1F4E9E;letter-spacing:.02em;}
+  .sl-brand small{display:block;font-size:8px;font-weight:400;color:#5B7089;text-align:right;letter-spacing:0;}
+  .sl-wrap{position:absolute;left:12px;right:14px;top:117px;bottom:14px;}
+  table.sl{width:100%;border-collapse:collapse;table-layout:fixed;font-size:16px;}
+  table.sl th{background:#2E6DB8;color:#fff;font-weight:600;font-size:20px;text-align:center;padding:14px 6px;border:2px solid #fff;}
+  table.sl td{padding:8px 9px;border:2px solid #fff;vertical-align:middle;line-height:1.3;word-break:break-word;}
+  table.sl tr.a td{background:#D0D8E8;} table.sl tr.b td{background:#E9EDF4;}
+  table.sl td.c{text-align:center;} table.sl td.cust{background:#D0D8E8;text-align:center;font-weight:500;}
+  table.sl .hl{background:#FFFF00;padding:0 3px;}
+</style>
+</head>
+<body>
+<div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb">Báo Cáo / Báo Cáo CS &amp; AM</span></div>
+<div class="wrap">
+  <h1>Báo Cáo CS &amp; AM — Issues highlight customer</h1>
+  <p class="sub">Lấy trạng thái ticket của các dự án từ ERP thành slide theo mẫu <b>Cust · # · Issues · Status · Plan &amp; Deadline · Comment</b>. Chọn ticket cần đưa vào, chỉnh nội dung nếu cần, rồi <b>tải file PPT</b> hoặc <b>copy slide</b> dán vào file chung của Manager.</p>
+
+  <div class="panel">
+    <h2><span class="n">1</span>Lấy ticket từ ERP</h2>
+    <div class="chips" id="projChips" style="margin-bottom:10px"></div>
+    <div class="chips" id="statusChips" style="margin-bottom:12px"></div>
+    <div class="row">
+      <div class="field">Cột Cust (khách hàng)<select id="selCust"></select></div>
+      <div class="field">Cột Deadline (ưu tiên Estimated Deadline; trống thì tính hạn SLA từ Opening On)<select id="selDeadline"></select></div>
+      <div class="field">Cột Comment<select id="selComment"><option value="_comments">Bình luận gần nhất trên ticket</option><option value="">(để trống, tự nhập)</option></select></div>
+      <div class="field">Ưu tiên<select id="selPrio"><option value="">Tất cả</option><option value="hi">Critical, Urgent, High</option><option value="mid">Critical, Urgent, High, Medium</option></select></div>
+      <div class="field">&nbsp;<button id="btnLoad" class="primary" type="button">⬇ Lấy ticket từ ERP</button></div>
+    </div>
+    <div id="loadMsg" style="margin-top:10px"></div>
+  </div>
+
+  <div class="panel" id="editPanel" style="display:none">
+    <h2><span class="n">2</span>Chọn ticket &amp; chỉnh nội dung <span class="hint" id="editCount" style="font-weight:400"></span></h2>
+    <div class="row" style="margin-bottom:10px">
+      <div class="field">Tìm nhanh<input type="text" id="qSearch" placeholder="Gõ để lọc theo khách hàng / tiêu đề / ticket…"></div>
+      <div class="field">&nbsp;<span><button id="btnAll" type="button">Chọn tất cả (đang lọc)</button> <button id="btnNone" type="button">Bỏ chọn tất cả (đang lọc)</button></span></div>
+    </div>
+    <div class="scroll"><table class="ed"><thead><tr><th style="width:34px">✓</th><th style="width:100px">Cust</th><th style="width:130px">Ticket</th><th>Issues</th><th style="width:100px">Status</th><th style="width:150px">Plan &amp; Deadline</th><th style="width:260px">Comment</th></tr></thead><tbody id="edBody"></tbody></table></div>
+    <div class="hint" style="margin-top:6px">Mọi ô đều sửa trực tiếp được. Cột Plan &amp; Deadline lấy từ <b>Estimated Deadline</b>; ticket chưa có thì tính hạn SLA từ Opening On theo Priority (hiện <i>chữ nghiêng</i>, rê chuột để xem nguồn). Các dòng được nhóm theo Cust (cùng Cust nằm liền nhau, ô Cust gộp lại trên slide).</div>
+  </div>
+
+  <div class="panel" id="outPanel" style="display:none">
+    <h2><span class="n">3</span>Slide &amp; xuất file</h2>
+    <div class="row">
+      <div class="field">Số mục (góc trái)<input type="text" id="slNum" value="05" style="min-width:90px;width:90px"></div>
+      <div class="field">Tiêu đề slide<input type="text" id="slTitle" value="Issues highlight customer" style="min-width:260px"></div>
+      <div class="field">Số dòng / slide<input type="number" id="slRows" value="6" min="3" max="10"></div>
+      <div class="field">&nbsp;<span><button id="btnPptx" class="export" type="button">⬇ Tải file PPT</button> <button id="btnCopyAll" type="button">📋 Copy bảng slide đang xem</button></span></div>
+    </div>
+    <div id="outMsg" style="margin-top:10px"></div>
+    <div id="slides"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const FALLBACK_PROJECTS = [
+  {code:'MerapLion_eSales',name:'Merap'},{code:'ABI_eSales_Support',name:'ABI'},{code:'ANVY_eSale_Support',name:'AnVy'},
+  {code:'Sabeco_PG',name:'Sabeco PG'},{code:'Sabeco_B2B_Support',name:'Sabeco B2B'},{code:'FES_eSales',name:'FES'},
+  {code:'ANKO_eSales_Support',name:'ANKO'},{code:'HaiHa_eSales_Support',name:'HAIHA'},{code:'Jotun_VN_eSales',name:'JOTUN'}
+];
+const OPEN_STATUSES = ['Open','Assign','Working','Reviewing','Waiting','Pending','Re-open'];
+const ALL_STATUSES = [...OPEN_STATUSES, 'Closed'];
+let projects = FALLBACK_PROJECTS, pSel = new Set(), sSel = new Set(OPEN_STATUSES), items = [], meta = null, curSlide = 0;
+const pName = c => (projects.find(p=>p.code===c)||{}).name || c;
+
+async function api(url){
+  const r = await fetch(url); const j = await r.json().catch(()=>({error:'Phản hồi không hợp lệ (HTTP '+r.status+')'}));
+  if(r.status===401){ location.href='/?next='+encodeURIComponent(location.pathname+location.search); throw new Error('Phiên đăng nhập đã hết'); }
+  if(!r.ok) throw new Error(j.error || ('HTTP '+r.status));
+  return j;
+}
+function renderChips(){
+  $('projChips').innerHTML = '<span class="t">Dự án:</span>'+projects.map(p=>'<label class="'+(pSel.has(p.code)?'on':'')+'"><input type="checkbox" data-p="'+esc(p.code)+'"'+(pSel.has(p.code)?' checked':'')+'> '+esc(p.name)+'</label>').join('');
+  $('projChips').querySelectorAll('input').forEach(i=>i.onchange=()=>{ i.checked ? pSel.add(i.dataset.p) : pSel.delete(i.dataset.p); renderChips(); });
+  $('statusChips').innerHTML = '<span class="t">Trạng thái:</span>'+ALL_STATUSES.map(s=>'<label class="'+(sSel.has(s)?'on':'')+'"><input type="checkbox" data-s="'+s+'"'+(sSel.has(s)?' checked':'')+'> '+s+'</label>').join('');
+  $('statusChips').querySelectorAll('input').forEach(i=>i.onchange=()=>{ i.checked ? sSel.add(i.dataset.s) : sSel.delete(i.dataset.s); renderChips(); });
+}
+
+/* ---------- dò cột từ cấu trúc DocType Ticket ---------- */
+function fillFieldSelects(){
+  const fields = (meta && meta.fields) || [];
+  const txt = f => (f.fieldname+' '+f.label).toLowerCase();
+  const custOpts = fields.filter(f=>['Link','Data','Small Text'].includes(f.fieldtype) && /customer|khach/.test(txt(f)));
+  const isEst = f => /estimat\w*[ _]*deadline|deadline[ _]*estimat/.test(txt(f));
+  const dateOpts = fields.filter(f=>['Date','Datetime'].includes(f.fieldtype) || isEst(f));
+  const guess = (list, re) => (list.find(f=>re.test(txt(f))) || list[0] || {}).fieldname || '';
+  $('selCust').innerHTML = '<option value="">Tên dự án</option>' + custOpts.map(f=>'<option value="'+esc(f.fieldname)+'">'+esc(f.label||f.fieldname)+' ('+esc(f.fieldname)+')</option>').join('');
+  $('selCust').value = (custOpts.find(f=>f.fieldname==='customer')||custOpts[0]||{}).fieldname || '';
+  $('selDeadline').innerHTML = '<option value="">(không có — tính hạn SLA từ Opening On)</option>' + dateOpts.map(f=>'<option value="'+esc(f.fieldname)+'">'+esc(f.label||f.fieldname)+' ('+esc(f.fieldname)+')</option>').join('');
+  $('selDeadline').value = (dateOpts.find(isEst) || {}).fieldname || guess(dateOpts.filter(f=>/resolution_by|deadline|due|expected|target|planned|han/.test(txt(f))), /deadline|resolution_by|due/);
+}
+
+/* ---------- chuyển ticket ERP thành dòng báo cáo ---------- */
+function lastComment(v){
+  try{ const a = JSON.parse(v||'[]'); if(!Array.isArray(a) || !a.length) return ''; const c = a[a.length-1];
+    return String(c.comment||'').replace(/<br\s*\/?>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/\s+/g,' ').trim(); }catch(_){ return ''; }
+}
+function fmtDeadline(v){ const m = String(v||'').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? 'Deadline: '+Number(m[3])+'/'+Number(m[2]) : ''; }
+/* Deadline = cột Estimated Deadline; nếu không có hoặc để trống thì lấy hạn SLA (Opening On + ngưỡng SLA xử lý theo Priority, do server tính → _sla_due) */
+function deadlineOf(r, df){
+  const est = df ? fmtDeadline(r[df]) : '';
+  if(est) return { deadline: est, sortDeadline: String(r[df]), dlSrc: 'Estimated Deadline' };
+  const sla = fmtDeadline(r._sla_due);
+  return { deadline: sla, sortDeadline: String(r._sla_due||'9999'), dlSrc: sla ? 'Hạn SLA theo Priority (từ Opening On)' : '' };
+}
+function toItems(rows){
+  const cf = $('selCust').value, df = $('selDeadline').value, cm = $('selComment').value;
+  const prio = $('selPrio').value; const keep = prio==='hi' ? ['critical','urgent','high'] : prio==='mid' ? ['critical','urgent','high','medium'] : null;
+  return rows.filter(r=>!keep || keep.includes(String(r.priority||'').toLowerCase())).map(r=>({
+    on:true, name:r.name, project:r.project||'',
+    cust: (cf && r[cf]) ? String(r[cf]) : pName(r.project),
+    subject: r.subject||'', status: r.status||'',
+    ...deadlineOf(r, df), comment: cm==='_comments' ? lastComment(r._comments) : '',
+  })).sort((a,b)=>a.cust.localeCompare(b.cust,'vi') || a.sortDeadline.localeCompare(b.sortDeadline) || a.name.localeCompare(b.name));
+}
+
+async function loadTickets(){
+  const msg = $('loadMsg');
+  if(!pSel.size){ msg.innerHTML = '<div class="msg err">Chọn ít nhất 1 dự án.</div>'; return; }
+  if(!sSel.size){ msg.innerHTML = '<div class="msg err">Chọn ít nhất 1 trạng thái.</div>'; return; }
+  msg.innerHTML = '<div class="msg info">Đang lấy ticket từ ERP…</div>'; $('btnLoad').disabled = true;
+  try{
+    const qs = new URLSearchParams({ projects: JSON.stringify([...pSel]), statuses: JSON.stringify([...sSel]), limit: '2000' });
+    const r = await api('/api/bao-cao/cs-am/tickets?'+qs.toString()); const rows = r.data || r;
+    items = toItems(rows);
+    msg.innerHTML = '<div class="msg ok">Đã lấy '+rows.length+' ticket, '+items.length+' dòng sau khi lọc ưu tiên. Bỏ chọn những ticket không đưa vào slide.</div>';
+    $('editPanel').style.display = ''; $('outPanel').style.display = '';
+    renderEditor(); renderSlides();
+  }catch(e){ msg.innerHTML = '<div class="msg err">Không lấy được ticket: '+esc(e.message)+'</div>'; }
+  finally{ $('btnLoad').disabled = false; }
+}
+
+/* ---------- bảng chọn + chỉnh sửa ---------- */
+function renderEditor(){
+  const q = $('qSearch').value.trim().toLowerCase();
+  const vis = items.map((it,i)=>({it,i})).filter(({it})=>!q || (it.cust+' '+it.subject+' '+it.name+' '+it.status).toLowerCase().includes(q));
+  $('edBody').innerHTML = vis.map(({it,i})=>'<tr class="'+(it.on?'':'off')+'"><td><input type="checkbox" data-i="'+i+'"'+(it.on?' checked':'')+'></td>'
+    +'<td><input type="text" data-i="'+i+'" data-f="cust" value="'+esc(it.cust)+'"></td><td style="font-family:\'IBM Plex Mono\',monospace;font-size:11.5px;white-space:nowrap">'+esc(it.name)+'</td>'
+    +'<td><input type="text" data-i="'+i+'" data-f="subject" value="'+esc(it.subject)+'"></td><td><input type="text" data-i="'+i+'" data-f="status" value="'+esc(it.status)+'"></td>'
+    +'<td><input type="text" data-i="'+i+'" data-f="deadline" value="'+esc(it.deadline)+'" title="Nguồn: '+esc(it.dlSrc||'chưa có')+'"'+(it.dlSrc && it.dlSrc!=='Estimated Deadline' ? ' style="font-style:italic"' : '')+'></td><td><input type="text" data-i="'+i+'" data-f="comment" value="'+esc(it.comment)+'"></td></tr>').join('');
+  $('editCount').textContent = '— '+items.filter(x=>x.on).length+'/'+items.length+' ticket được chọn';
+  $('edBody').querySelectorAll('input[type=checkbox]').forEach(c=>c.onchange=()=>{ items[c.dataset.i].on = c.checked; c.closest('tr').classList.toggle('off', !c.checked); $('editCount').textContent = '— '+items.filter(x=>x.on).length+'/'+items.length+' ticket được chọn'; renderSlides(); });
+  $('edBody').querySelectorAll('input[type=text]').forEach(t=>t.oninput=()=>{ items[t.dataset.i][t.dataset.f] = t.value; renderSlidesSoon(); });
+}
+let tmr = null; const renderSlidesSoon = () => { clearTimeout(tmr); tmr = setTimeout(renderSlides, 250); };
+function setVisible(on){ const q = $('qSearch').value.trim().toLowerCase(); items.forEach(it=>{ if(!q || (it.cust+' '+it.subject+' '+it.name+' '+it.status).toLowerCase().includes(q)) it.on = on; }); renderEditor(); renderSlides(); }
+
+/* ---------- dựng slide ---------- */
+function chunkRows(){
+  const per = Math.max(3, Math.min(10, Number($('slRows').value)||6));
+  const sel = items.filter(x=>x.on).sort((a,b)=>a.cust.localeCompare(b.cust,'vi') || a.sortDeadline.localeCompare(b.sortDeadline) || a.name.localeCompare(b.name));
+  const chunks = []; for(let i=0;i<sel.length;i+=per) chunks.push(sel.slice(i,i+per));
+  return chunks.map(ch=>{ // gộp Cust liên tiếp + đánh số # theo từng Cust (liên tục qua các slide)
+    const rows = ch.map(x=>({...x})); return rows;
+  });
+}
+function numberRows(chunks){
+  const counter = {}; const out = [];
+  chunks.forEach(ch=>{ out.push(ch.map(r=>{ counter[r.cust] = (counter[r.cust]||0)+1; return { ...r, n: counter[r.cust] }; })); });
+  return out;
+}
+function groupSpans(rows){ const spans = []; rows.forEach((r,i)=>{ if(i===0 || rows[i-1].cust!==r.cust) spans.push({start:i, cust:r.cust, count:1}); else spans[spans.length-1].count++; }); return spans; }
+
+function tableHtml(rows){
+  const spans = groupSpans(rows); const startOf = new Map(spans.map(s=>[s.start,s]));
+  const widths = [11,4,43,8,17,17]; // %
+  let h = '<table class="sl"><colgroup>'+widths.map(w=>'<col style="width:'+w+'%">').join('')+'</colgroup><thead><tr><th>Cust</th><th>#</th><th>Issues</th><th>Status</th><th>Plan &amp; Deadline</th><th>Comment</th></tr></thead><tbody>';
+  rows.forEach((r,i)=>{
+    const cls = i%2===0 ? 'a' : 'b'; const sp = startOf.get(i);
+    h += '<tr class="'+cls+'">'+(sp?'<td class="cust" rowspan="'+sp.count+'">'+esc(sp.cust)+'</td>':'')+'<td class="c">'+r.n+'</td><td>'+esc(r.subject)+'</td><td>'+esc(r.status)+'</td><td>'+esc(r.deadline)+'</td><td>'+(r.comment?'<span class="hl">'+esc(r.comment)+'</span>':'')+'</td></tr>';
+  });
+  return h+'</tbody></table>';
+}
+function slideHtml(rows, idx, total){
+  return '<div class="slide" id="slide'+idx+'"><div class="sl-bar"></div><div class="sl-num">'+esc($('slNum').value)+'</div><div class="sl-title">'+esc($('slTitle').value)+(total>1?' <span style="font-size:20px;font-weight:400;color:#5B7089">('+(idx+1)+'/'+total+')</span>':'')+'</div>'
+    +'<div class="sl-brand">HQSOFT<small>Distribution &amp; Retail Solution Expert</small></div><div class="sl-wrap">'+tableHtml(rows)+'</div></div>';
+}
+let model = [];
+function renderSlides(){
+  model = numberRows(chunkRows());
+  if(!model.length){ $('slides').innerHTML = '<div class="empty">Chưa chọn ticket nào — tick ít nhất 1 dòng ở bước 2.</div>'; return; }
+  $('slides').innerHTML = model.map((rows,i)=>'<div class="slide-label">Slide '+(i+1)+'/'+model.length+' · '+rows.length+' dòng · <button type="button" data-copy="'+i+'" style="padding:2px 10px;font-size:12px">📋 Copy bảng</button> <button type="button" data-img="'+i+'" style="padding:2px 10px;font-size:12px">🖼 Copy ảnh</button> <button type="button" data-png="'+i+'" style="padding:2px 10px;font-size:12px">⬇ PNG</button></div><div class="slide-scroll">'+slideHtml(rows,i,model.length)+'</div>').join('');
+  $('slides').querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copyTable(Number(b.dataset.copy)));
+  $('slides').querySelectorAll('[data-img]').forEach(b=>b.onclick=()=>copyImage(Number(b.dataset.img)));
+  $('slides').querySelectorAll('[data-png]').forEach(b=>b.onclick=()=>savePng(Number(b.dataset.png)));
+}
+
+/* ---------- copy / tải ---------- */
+function say(kind, text){ $('outMsg').innerHTML = '<div class="msg '+kind+'">'+text+'</div>'; }
+async function copyTable(i){
+  const tbl = document.querySelector('#slide'+i+' table.sl'); if(!tbl) return;
+  const clone = tbl.cloneNode(true); // gắn style trực tiếp để dán vào PowerPoint vẫn giữ màu/chữ
+  clone.setAttribute('style','border-collapse:collapse;font-family:Arial;font-size:14pt;width:100%');
+  clone.querySelectorAll('th').forEach(e=>e.setAttribute('style','background:#2E6DB8;color:#fff;font-weight:bold;text-align:center;padding:6px;border:2px solid #fff'));
+  clone.querySelectorAll('tbody tr').forEach((tr,k)=>tr.querySelectorAll('td').forEach(td=>{ const bg = td.classList.contains('cust') ? '#D0D8E8' : (k%2===0?'#D0D8E8':'#E9EDF4'); td.setAttribute('style','background:'+bg+';padding:6px;border:2px solid #fff;vertical-align:middle'+(td.classList.contains('c')||td.classList.contains('cust')?';text-align:center':'')); }));
+  clone.querySelectorAll('.hl').forEach(e=>e.setAttribute('style','background:#FFFF00'));
+  const html = clone.outerHTML;
+  try{
+    await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html],{type:'text/html'}), 'text/plain': new Blob([clone.innerText],{type:'text/plain'}) })]);
+    say('ok','Đã copy bảng của slide '+(i+1)+'. Mở PowerPoint, chọn slide đích rồi nhấn <b>Ctrl/Cmd + V</b> (có thể kéo bảng cho vừa khung).');
+  }catch(e){
+    const r = document.createRange(); r.selectNode(tbl); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    let ok = false; try{ ok = document.execCommand('copy'); }catch(_){}
+    s.removeAllRanges();
+    say(ok?'ok':'err', ok ? 'Đã copy bảng của slide '+(i+1)+' (dán vào PowerPoint bằng Ctrl/Cmd + V).' : 'Trình duyệt chặn copy: '+esc(e.message)+'. Dùng nút Tải file PPT hoặc Copy ảnh.');
+  }
+}
+async function slideCanvas(i){ if(document.fonts && document.fonts.ready) await document.fonts.ready; return html2canvas(document.getElementById('slide'+i), { scale:2, backgroundColor:'#ffffff', useCORS:true }); }
+async function copyImage(i){
+  try{
+    const c = await slideCanvas(i); const blob = await new Promise(r=>c.toBlob(r,'image/png'));
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    say('ok','Đã copy ảnh slide '+(i+1)+'. Dán vào PowerPoint bằng Ctrl/Cmd + V (dạng ảnh, không sửa được chữ).');
+  }catch(e){ say('err','Không copy được ảnh: '+esc(e.message)+'. Dùng nút ⬇ PNG rồi chèn ảnh vào PowerPoint.'); }
+}
+async function savePng(i){
+  try{ const c = await slideCanvas(i); const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = 'BaoCao_CS_AM_slide'+(i+1)+'.png'; document.body.appendChild(a); a.click(); a.remove(); }
+  catch(e){ say('err','Không xuất được PNG: '+esc(e.message)); }
+}
+$('btnCopyAll').onclick = () => copyTable(Math.min(curSlide, model.length-1));
+document.addEventListener('scroll', ()=>{ // slide đang xem = slide gần giữa màn hình nhất
+  const mid = innerHeight/2; let best = 0, bd = 1e9; document.querySelectorAll('.slide').forEach((el,i)=>{ const r = el.getBoundingClientRect(); const d = Math.abs((r.top+r.bottom)/2-mid); if(d<bd){ bd=d; best=i; } }); curSlide = best;
+}, {passive:true});
+
+/* ---------- PPTX: bảng gốc của PowerPoint (sửa được) ---------- */
+async function exportPptx(){
+  if(!model.length){ say('err','Chưa có slide nào để xuất.'); return; }
+  const btn = $('btnPptx'); btn.disabled = true;
+  try{
+    const pptx = new PptxGenJS(); pptx.layout = 'LAYOUT_WIDE'; pptx.author = 'HQSOFT'; pptx.title = $('slTitle').value;
+    const F = 'Arial', NAVY = '0F2B66', RED = 'C0392B';
+    model.forEach((rows, idx)=>{
+      const sl = pptx.addSlide(); sl.background = { color:'FFFFFF' };
+      sl.addShape(pptx.ShapeType.rect, { x:0.62, y:0.36, w:0.07, h:1.0, fill:{ color:RED }, line:{ color:RED } });
+      sl.addShape(pptx.ShapeType.roundRect, { x:0.78, y:0.37, w:1.55, h:0.3, fill:{ color:RED }, line:{ color:RED }, rectRadius:0.05 });
+      sl.addText($('slNum').value, { x:0.78, y:0.37, w:1.55, h:0.3, fontFace:F, fontSize:12, bold:true, color:'FFFFFF', align:'center', valign:'middle', margin:0 });
+      sl.addText($('slTitle').value + (model.length>1 ? '  ('+(idx+1)+'/'+model.length+')' : ''), { x:0.74, y:0.68, w:9.5, h:0.55, fontFace:F, fontSize:28, bold:true, color:NAVY, margin:0, valign:'middle' });
+      sl.addText([{ text:'HQSOFT', options:{ fontSize:20, bold:true, color:'1F4E9E', breakLine:true } }, { text:'Distribution & Retail Solution Expert', options:{ fontSize:6.5, color:'5B7089' } }], { x:10.3, y:0.25, w:2.8, h:0.55, fontFace:F, align:'right', margin:0 });
+      const spans = groupSpans(rows); const startOf = new Map(spans.map(s=>[s.start,s]));
+      const hc = t => ({ text:t, options:{ bold:true, color:'FFFFFF', fill:{ color:'2E6DB8' }, align:'center', valign:'middle', fontSize:14 } });
+      const body = [[hc('Cust'),hc('#'),hc('Issues'),hc('Status'),hc('Plan & Deadline'),hc('Comment')]];
+      rows.forEach((r,i)=>{
+        const fill = { color: i%2===0 ? 'D0D8E8' : 'E9EDF4' }; const sp = startOf.get(i);
+        const line = [];
+        if(sp) line.push({ text:sp.cust, options:{ rowspan:sp.count, fill:{ color:'D0D8E8' }, align:'center', valign:'middle', fontSize:12 } });
+        line.push({ text:String(r.n), options:{ fill, align:'center', valign:'middle', fontSize:12 } });
+        line.push({ text:r.subject, options:{ fill, valign:'middle', fontSize:12 } });
+        line.push({ text:r.status, options:{ fill, valign:'middle', fontSize:12 } });
+        line.push({ text:r.deadline, options:{ fill, valign:'middle', fontSize:12 } });
+        line.push({ text:r.comment, options:{ fill, valign:'middle', fontSize:12, ...(r.comment ? { highlight:'FFFF00' } : {}) } });
+        body.push(line);
+      });
+      sl.addTable(body, { x:0.2, y:1.4, w:12.9, colW:[1.2,0.5,5.5,1.0,2.3,2.4], fontFace:F, color:NAVY, border:{ type:'solid', pt:2, color:'FFFFFF' }, margin:[0.05,0.08,0.05,0.08], autoPage:false });
+    });
+    await pptx.writeFile({ fileName: 'BaoCao_CS_AM_'+new Date().toISOString().slice(0,10)+'.pptx' });
+    say('ok','Đã tạo file PowerPoint ('+model.length+' slide). Bảng là bảng gốc của PowerPoint nên sửa được; có thể copy slide sang file chung của Manager.');
+  }catch(e){ console.error(e); say('err','Không tạo được file PPT: '+esc(e.message)); }
+  finally{ btn.disabled = false; }
+}
+
+/* ---------- sự kiện ---------- */
+$('btnLoad').onclick = loadTickets;
+$('btnPptx').onclick = exportPptx;
+$('qSearch').oninput = renderEditor;
+$('btnAll').onclick = () => setVisible(true);
+$('btnNone').onclick = () => setVisible(false);
+['slNum','slTitle','slRows'].forEach(id=>$(id).addEventListener('input', renderSlidesSoon));
+
+(async function init(){
+  try{ const list = await api('/api/ticket-instructions'); if(Array.isArray(list) && list.length) projects = list; }catch(_){}
+  pSel = new Set(projects.map(p=>p.code));
+  renderChips();
+  try{ meta = await api('/api/erp/ticket-meta'); }catch(e){ $('loadMsg').innerHTML = '<div class="msg info">Chưa đọc được cấu trúc Ticket từ ERP ('+esc(e.message)+') — cột Cust/Deadline sẽ không tự dò được.</div>'; }
+  fillFieldSelects();
+})();
+</script>
+</body>
+</html>

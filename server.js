@@ -10,7 +10,7 @@ const BUILD = '2026-10-11.10'; // đối chiếu với trang Tạo Ticket để 
 console.log(`[build] Ops Console ${BUILD}`);
 const { applyTicketDefaults } = require('./ticketDefaults');
 const weekly = require('./weeklyReport');
-const { buildCustomerReport } = require('./customerReport');
+const { buildCustomerReport, slaDueAt, parseNaive, fmtNaive } = require('./customerReport');
 const kpiSla = require('./kpiSla');
 const kpiComplaint = require('./kpiComplaint');
 const kpiDefect = require('./kpiDefect');
@@ -181,6 +181,10 @@ app.get('/kpiteam/complaint', requirePageAuth, (req, res) => {
 
 app.get('/bao-cao/tuan-erp', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'kpiteam-bao-cao-tuan.html'));
+});
+app.get('/bao-cao/cs-am', requirePageAuth, (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'protected', 'baocao-cs-am.html'));
 });
 // URL cũ (trước khi chuyển sang chức năng "Báo Cáo") — giữ để các đường dẫn đã lưu vẫn dùng được
 app.get('/kpiteam/bao-cao-tuan', requirePageAuth, (req, res) => res.redirect(301, '/bao-cao/tuan-erp'));
@@ -507,7 +511,15 @@ async function loadDefectData(projects, month, config, refresh) {
     const need = kpiDefect.reopenEventsFromVersions(versions, dc.closedStatuses).map((e) => e.ticket).filter((n) => !have.has(n));
     if (need.length) { try { rows = rows.concat(await erp.fetchTicketsByNames(need)); } catch (e) { warnings.push('Không lấy được ticket mở lại ngoài khoảng đối chiếu: ' + e.message); } }
   }
-  const built = kpiDefect.buildCandidates({ rows, versions, versionsError, linkFields, month, projects, config });
+  let built = kpiDefect.buildCandidates({ rows, versions, versionsError, linkFields, month, projects, config });
+  if (built.needHandlers.length) { // ticket cũ đã đóng thường mất _assign → tra lịch sử giao việc (ToDo)
+    const asked = built.needHandlers.length;
+    try {
+      const todo = await erp.fetchTodoAssignees(built.needHandlers);
+      built = kpiDefect.buildCandidates({ rows, versions, versionsError, linkFields, todoAssignees: todo, month, projects, config });
+      built.diagnostics.todoLookup = { askedTickets: asked, foundTickets: Object.keys(todo).length, stillUnattributed: built.diagnostics.unattributed };
+    } catch (e) { built.diagnostics.todoError = e.message; }
+  }
   if (metaError) built.diagnostics.metaError = metaError;
   built.warnings = warnings;
   defectCache.set(key, { at: Date.now(), data: built });
@@ -539,6 +551,24 @@ app.get('/api/kpi/defect-escape', requireAuth, async (req, res) => {
 app.post('/api/kpi/defect-decision', requireAuth, async (req, res) => {
   try { const b = req.body || {}; res.json({ ok: true, ...(await kpiDefect.setDecision({ id: b.id, decision: b.decision, note: b.note, by: req.session.username })) }); }
   catch (e) { console.error('[kpi/defect-decision] lỗi:', e.message); res.status(400).json({ error: e.message }); }
+});
+
+/* ---------- Báo Cáo CS & AM: ticket của các dự án kèm HẠN SLA tính từ Opening On theo Priority (dự phòng khi ticket chưa có Estimated Deadline) ----------
+   GET /api/bao-cao/cs-am/tickets?projects=[...]&statuses=[...]&limit=
+   Mỗi ticket thêm trường _sla_due = Opening On + ngưỡng SLA xử lý theo Priority (Critical 1h, Urgent 4h liên tục; High 8h, Medium 72h, Low 120h giờ làm việc, trừ ngày lễ). */
+app.get('/api/bao-cao/cs-am/tickets', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  try {
+    const projects = parseJsonArrayParam(req.query.projects);
+    const statuses = parseJsonArrayParam(req.query.statuses);
+    const limit = Math.min(5000, Math.max(1, Number(req.query.limit) || 2000));
+    const r = await erp.fetchTickets({ projects, statuses, limit });
+    const rows = (r.data || r).map((t) => {
+      const opening = parseNaive(t.opening_date || t.creation);
+      return { ...t, _sla_due: opening ? fmtNaive(slaDueAt(t.priority, opening)) : '' };
+    });
+    res.json({ data: rows });
+  } catch (e) { console.error('[bao-cao/cs-am/tickets] lỗi:', e.message); res.status(502).json({ error: e.message }); }
 });
 
 /* ---------- File hướng dẫn AI (.md) cho từng dự án: nhân viên tải về để tạo Project/Skill gen ticket ----------
