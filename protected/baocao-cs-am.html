@@ -92,7 +92,7 @@
       <div class="field">&nbsp;<span><button id="btnAll" type="button">Chọn tất cả (đang lọc)</button> <button id="btnNone" type="button">Bỏ chọn tất cả (đang lọc)</button></span></div>
     </div>
     <div class="scroll"><table class="ed"><thead><tr><th style="width:34px">✓</th><th style="width:100px">Cust</th><th style="width:130px">Ticket</th><th>Issues</th><th style="width:100px">Status</th><th style="width:150px">Plan &amp; Deadline</th><th style="width:260px">Comment</th></tr></thead><tbody id="edBody"></tbody></table></div>
-    <div class="hint" style="margin-top:6px">Mọi ô đều sửa trực tiếp được. Cột Plan &amp; Deadline lấy từ <b>Estimated Deadline</b>; ticket chưa có thì tính hạn SLA từ Opening On theo Priority (hiện <i>chữ nghiêng</i>, rê chuột để xem nguồn). Các dòng được nhóm theo Cust (cùng Cust nằm liền nhau, ô Cust gộp lại trên slide).</div>
+    <div class="hint" style="margin-top:6px">Mọi ô đều sửa trực tiếp được. Thứ tự trên slide: theo <b>khách hàng</b> trước, trong từng khách hàng xếp trạng thái <b>Open, Working, Assign → Reviewing, Waiting → Pending, Re-open → Closed</b>, cùng trạng thái thì theo hạn. Cột Plan &amp; Deadline lấy từ <b>Estimated Deadline</b>; ticket chưa có thì tính hạn SLA từ Opening On theo Priority (hiện <i>chữ nghiêng</i>, rê chuột để xem nguồn). Các dòng được nhóm theo Cust (cùng Cust nằm liền nhau, ô Cust gộp lại trên slide).</div>
   </div>
 
   <div class="panel" id="outPanel" style="display:none">
@@ -121,6 +121,9 @@ const FALLBACK_PROJECTS = [
   {code:'Sabeco_PG',name:'Sabeco PG'},{code:'Sabeco_B2B_Support',name:'Sabeco B2B'},{code:'FES_eSales',name:'FES'},
   {code:'ANKO_eSales_Support',name:'ANKO'},{code:'HaiHa_eSales_Support',name:'HAIHA'},{code:'Jotun_VN_eSales',name:'JOTUN'}
 ];
+/* Thứ tự trên slide: theo KHÁCH HÀNG trước; trong từng khách hàng xếp trạng thái Open, Working, Assign → Reviewing, Waiting → Pending, Re-open → Closed (trạng thái khác xếp cuối). Chỉ các trạng thái được tick ở "Lấy ticket từ ERP" mới có ticket. */
+const STATUS_RANK = { open:0, working:1, assign:2, reviewing:3, review:3, waiting:4, pending:5, 're-open':6, reopen:6, 're open':6, closed:7, close:7 };
+const statusRank = s => { const k = String(s||'').trim().toLowerCase(); return k in STATUS_RANK ? STATUS_RANK[k] : 99; };
 const OPEN_STATUSES = ['Open','Assign','Working','Reviewing','Waiting','Pending','Re-open'];
 const ALL_STATUSES = [...OPEN_STATUSES, 'Closed'];
 const PRIORITIES = ['Critical','Urgent','High','Medium','Low'];
@@ -184,7 +187,7 @@ function toItems(rows){
     cust: (cf && r[cf]) ? String(r[cf]) : pName(r.project),
     subject: r.subject||'', status: r.status||'',
     ...deadlineOf(r, df), comment: cm==='_comments' ? lastComment(r._comments) : '',
-  })).sort((a,b)=>a.cust.localeCompare(b.cust,'vi') || a.sortDeadline.localeCompare(b.sortDeadline) || a.name.localeCompare(b.name));
+  })).sort((a,b)=>a.cust.localeCompare(b.cust,'vi') || statusRank(a.status)-statusRank(b.status) || a.sortDeadline.localeCompare(b.sortDeadline) || a.name.localeCompare(b.name));
 }
 
 async function loadTickets(){
@@ -239,7 +242,7 @@ function renderProjSettings(){
 }
 
 /* ---------- dựng slide ---------- */
-const byOrder = (a,b)=>a.cust.localeCompare(b.cust,'vi') || a.sortDeadline.localeCompare(b.sortDeadline) || a.name.localeCompare(b.name);
+const byOrder = (a,b)=>a.cust.localeCompare(b.cust,'vi') || statusRank(a.status)-statusRank(b.status) || a.sortDeadline.localeCompare(b.sortDeadline) || a.name.localeCompare(b.name);
 function buildModel(){
   const per = Math.max(3, Math.min(10, Number($('slRows').value)||6)); const out = [];
   selectedProjectCodes().forEach(code=>{
