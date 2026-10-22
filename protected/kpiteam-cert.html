@@ -65,13 +65,18 @@
   .formgrid{display:flex;gap:12px 16px;flex-wrap:wrap;align-items:flex-end;}
   .hint{font-size:11.5px;color:var(--muted);font-weight:400;}
 </style>
-<style>.hide{display:none !important;} textarea.ta{font:inherit;font-size:13px;padding:8px 12px;border-radius:8px;border:1px solid var(--grid-line-strong);min-width:320px;min-height:90px;}</style>
+<style>.hide{display:none !important;} .iconbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;} .iconbar button{font-size:13.5px;}
+table.ed input[type=text],table.ed input[type=number]{width:100%;font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--grid-line-strong);border-radius:6px;background:#fff;}
+.sumbadge{display:inline-block;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;}.sumbadge.ok{background:#EAF5EE;color:var(--success);border:1px solid #B5D8C3;}.sumbadge.bad{background:#FBE9EB;color:var(--danger);border:1px solid #E3A7AF;}
+.mlist{display:flex;gap:6px 10px;flex-wrap:wrap;} .mlist label{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--grid-line-strong);border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer;}
+.mlist label.on{border-color:var(--blueprint);background:#EAF1F8;font-weight:600;}
+.grp{border:1px solid var(--grid-line-strong);border-radius:10px;padding:10px 12px;margin-bottom:10px;background:#fff;}.grp h3{margin:0 0 6px;font-size:14px;font-family:'Space Grotesk',sans-serif;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}</style>
 </head>
 <body>
 <div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb">/ kpi team / cs23 chứng nhận sản phẩm</span></div>
 <div class="wrap">
   <h1>CS23: Hoàn Thành Chứng Nhận Sản Phẩm</h1>
-  <p class="sub">Mức độ hoàn thành <b>lộ trình chứng nhận sản phẩm</b> được giao trong kỳ, để có đủ kiến thức sản phẩm xử lý ticket và CR đúng, nhanh. <b>Actual = số module hoàn thành ÷ tổng số module trong lộ trình của kỳ × 100%</b>. KPI Cao tốt, <b>chỉ Fresher và Junior</b>, chấm theo tháng. Nhập <b>lộ trình (các module) của kỳ</b> ở cuối trang, rồi đánh dấu <b>Hoàn thành</b> khi thành viên xong từng module (kèm bằng chứng).</p>
+  <p class="sub">Mức độ hoàn thành <b>lộ trình chứng nhận sản phẩm</b> được giao trong kỳ. <b>Quản lý</b> lập lộ trình theo tháng cho từng nhân viên (các module có <b>trọng số %, tổng = 100%</b>). <b>Nhân viên</b> gửi <b>bằng chứng / link</b> và <b>đánh giá % hoàn thành</b> từng module rồi bấm Lưu. <b>Actual = Σ (trọng số × % hoàn thành)</b>. KPI Cao tốt, Target = Max, <b>chỉ Fresher và Junior</b>.</p>
 
   <div class="panel">
     <div class="filters">
@@ -82,7 +87,35 @@
       </div>
       <div class="field">&nbsp;<span><button id="btnReload" type="button">↻ Tải lại</button> <button id="btnXlsx" type="button" class="export" disabled>⬇ Xuất Excel</button></span></div>
     </div>
+    <div class="iconbar">
+      <button type="button" id="btnMgr" class="primary" title="Quản lý tạo / cập nhật lộ trình module theo tháng cho nhân viên">＋ Tạo lộ trình KPI theo tháng</button>
+      <button type="button" id="btnView" title="Xem và lọc các lộ trình đã thiết lập theo tháng cho từng nhân viên">👁 Xem lộ trình đã thiết lập</button>
+    </div>
     <div class="stamp" id="stamp" style="margin-top:8px"></div>
+  </div>
+
+  <div class="panel hide" id="mgrPanel">
+    <h2>＋ Tạo / cập nhật lộ trình KPI theo tháng <span class="hint" style="font-weight:400">(dành cho quản lý)</span></h2>
+    <div class="formgrid">
+      <div class="field">Kỳ (tháng)<input type="month" id="mMonth"></div>
+      <div class="field">&nbsp;<button type="button" id="btnMgrLoad" style="font-size:12.5px">Tải lộ trình hiện có của nhân viên đang chọn</button></div>
+    </div>
+    <div class="field" style="margin-top:10px">Áp dụng cho nhân viên <span class="hint">(chọn nhiều người thì mỗi người nhận cùng danh sách module)</span><div class="mlist" id="mMembers"></div></div>
+    <div style="margin-top:12px;overflow-x:auto"><table class="ed" style="max-width:760px"><thead><tr><th>Module chứng nhận</th><th style="width:140px">Trọng số (%)</th><th style="width:70px"></th></tr></thead><tbody id="mRows"></tbody></table></div>
+    <div style="margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button type="button" id="btnMgrAdd" style="font-size:12.5px">＋ Thêm module</button><span id="mSum" class="sumbadge bad">Tổng: 0%</span><span class="hint">Tổng trọng số các module của mỗi nhân viên phải bằng <b>100%</b>.</span></div>
+    <div style="margin-top:12px"><button type="button" id="btnMgrSave" class="primary">💾 Lưu lộ trình</button> <button type="button" id="btnMgrClose">Đóng</button></div>
+    <div class="hint" style="margin-top:6px">Lưu sẽ <b>thay</b> lộ trình của tháng này cho các nhân viên đã chọn: module trùng tên giữ nguyên % hoàn thành và bằng chứng đã gửi, module bị bỏ khỏi danh sách sẽ bị xoá.</div>
+    <div id="mMsg" style="margin-top:8px"></div>
+  </div>
+
+  <div class="panel hide" id="viewPanel">
+    <h2>👁 Lộ trình đã thiết lập theo tháng</h2>
+    <div class="formgrid">
+      <div class="field">Kỳ (tháng)<input type="month" id="vMonth"></div>
+      <div class="field">Nhân viên<select id="vMember"></select></div>
+      <div class="field">&nbsp;<span><button type="button" id="btnVFilter" class="primary">Lọc</button> <button type="button" id="btnVClose">Đóng</button></span></div>
+    </div>
+    <div id="vBody" style="margin-top:12px"></div>
   </div>
 
   <div class="two" id="refRow">
@@ -94,39 +127,19 @@
   <div id="loading">Đang tải dữ liệu…</div>
 
   <div id="content" style="display:none">
-    <div class="panel"><h2 id="resTitle"></h2><div id="resBody"></div></div>
+    <div class="panel" id="resPanel">
+      <h2 style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><span id="resTitle"></span><button type="button" id="btnCopySum" style="padding:4px 12px;font-size:12px">📋 Copy tổng hợp</button></h2>
+      <div id="copyMsg"></div>
+      <div id="resBody"></div>
+      <div class="tbl-scroll" style="margin-top:12px"><div id="sumTbl"></div></div>
+    </div>
 
-    <div class="panel">
+    <div class="panel" id="listPanel">
       <h2 id="listTitle">Lộ trình module của kỳ</h2>
       <div class="tbl-scroll"><div id="listTbl"></div></div>
+      <div id="submitBar" style="margin-top:10px"></div>
+      <div id="submitMsg" style="margin-top:8px"></div>
     </div>
-
-    <div class="two">
-      <div class="panel">
-        <h2 id="formTitle">Thêm module vào lộ trình</h2>
-        <div class="formgrid">
-          <div class="field">Tên module chứng nhận<input type="text" id="fModule" maxlength="200" style="min-width:300px" placeholder="VD: Tìm hiểu dự án Vifon"></div>
-          <div class="field">Thành viên<select id="fMember"></select></div>
-          <div class="field">Kỳ (tháng)<input type="month" id="fMonth"></div>
-          <div class="field">Trọng số <span class="hint">(mặc định 1)</span><input type="number" id="fWeight" min="0.1" step="any" placeholder="1" style="min-width:90px;width:90px"></div>
-          <div class="field">Hạn <span class="hint">(tuỳ chọn)</span><input type="date" id="fDue"></div>
-          <div class="field">Ngày hoàn thành <span class="hint">(trống = chưa xong)</span><input type="date" id="fDone"></div>
-          <div class="field">Bằng chứng (link / mô tả)<input type="text" id="fEvidence" maxlength="500" style="min-width:300px" placeholder="Link tài liệu tổng hợp, ảnh chụp kết quả…"></div>
-          <div class="field">Ghi chú<input type="text" id="fNote" maxlength="1000" style="min-width:200px"></div>
-          <div class="field">&nbsp;<span><button id="btnSave" type="button" class="primary">＋ Lưu module</button> <button id="btnCancel" type="button" style="display:none">Hủy sửa</button></span></div>
-        </div>
-        <div id="formMsg" style="margin-top:10px"></div>
-      </div>
-      <div class="panel">
-        <h2>Thêm cả lộ trình 1 lần</h2>
-        <p class="hint" style="margin:0 0 6px">Mỗi dòng 1 module cho thành viên và kỳ đang chọn ở trên. Có thể thêm trọng số sau dấu <b>|</b> (mặc định 1). Ví dụ:<br><code>Tìm hiểu dự án Vifon | 50</code><br><code>Tài liệu tổng hợp các phần đã tìm hiểu | 50</code></p>
-        <textarea class="ta" id="bulk" placeholder="Tên module | trọng số"></textarea>
-        <div style="margin-top:8px"><button id="btnBulk" type="button" class="primary">＋ Thêm các module</button></div>
-        <div id="bulkMsg" style="margin-top:8px"></div>
-        <h2 style="margin-top:16px" id="ovTitle">Tổng hợp cả team</h2><div id="ovTbl"></div>
-      </div>
-    </div>
-    <div class="hint" id="storeHint"></div>
   </div>
 </div>
 
@@ -134,16 +147,15 @@
 const $ = id => document.getElementById(id);
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LEVELS = ['Fresher','Junior','Middle','Senior'];
-let creators = [], data = null, reqSeq = 0, editingId = null, cfg = null;
+let creators = [], data = null, reqSeq = 0, cfg = null;
 const todayVN = () => new Date(Date.now()+7*3600*1000).toISOString().slice(0,10);
 const addMonths = (key, n) => { const [y,m] = key.split('-').map(Number); return new Date(Date.UTC(y, m-1+n, 1)).toISOString().slice(0,7); };
 const qp = new URLSearchParams(location.search);
 let month = /^\d{4}-(0[1-9]|1[0-2])$/.test(qp.get('month')||'') ? qp.get('month') : todayVN().slice(0,7);
 const mFmt = k => k.slice(5,7)+'/'+k.slice(0,4);
 const fmt = (v,d=1) => v==null ? '—' : Number(v).toFixed(d).replace('.',',');
-const dmy = iso => iso ? iso.slice(8,10)+'/'+iso.slice(5,7)+'/'+iso.slice(0,4) : '';
 const shortName = e => String(e).split('@')[0];
-const LS = 'kpiCert.v1';
+const LS = 'kpiCert.v2';
 const store = { get(){ try{ return JSON.parse(localStorage.getItem(LS)||'{}')||{}; }catch(_){ return {}; } }, set(o){ try{ localStorage.setItem(LS, JSON.stringify(o)); }catch(_){} } };
 async function api(url, opt){
   const r = await fetch(url, opt); const j = await r.json().catch(()=>({error:'Phản hồi không hợp lệ (HTTP '+r.status+')'}));
@@ -151,22 +163,21 @@ async function api(url, opt){
   if(!r.ok) throw new Error(j.error || ('HTTP '+r.status));
   return j;
 }
+const linkify = s => { const t = String(s||'').trim(); return /^https?:\/\//i.test(t) ? '<a href="'+esc(t)+'" target="_blank" rel="noopener">'+esc(t.length>48?t.slice(0,46)+'…':t)+'</a>' : esc(t); };
 
 function renderRef(){
   const level = $('selLevel').value; const th = cfg && cfg.thresholds[level];
   const rows = [['Chưa đạt Min','0%','Thực tế &lt; Min', th?'&lt; '+fmt(th.min,0)+'%':''],['Từ Min đến dưới Target','50% → 100%','50% + 50% × (Actual − Min) ÷ (Target − Min)', th?fmt(th.min,0)+'% → &lt; '+fmt(th.target,0)+'%':''],['Đạt Target (= Max)','100%','Không có phần vượt', th?'≥ '+fmt(th.target,0)+'%':'']];
-  $('fmTbl').innerHTML = '<table><thead><tr><th>Mức</th><th>Actual (level '+esc(level)+')</th><th>% hoàn thành</th><th>Công thức</th></tr></thead><tbody>'
-    + rows.map(r=>'<tr><td><b>'+r[0]+'</b></td><td class="mono">'+(th?r[3]:'—')+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>').join('')+'</tbody></table>';
+  $('fmTbl').innerHTML = '<table><thead><tr><th>Mức</th><th>Actual (level '+esc(level)+')</th><th>% hoàn thành</th><th>Công thức</th></tr></thead><tbody>'+rows.map(r=>'<tr><td><b>'+r[0]+'</b></td><td class="mono">'+(th?r[3]:'—')+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>').join('')+'</tbody></table>';
   if(cfg) $('thTbl').innerHTML = '<table><thead><tr><th>Level</th><th class="n">Min</th><th class="n">Target</th><th class="n">Max</th><th class="n">Trọng số</th></tr></thead><tbody>'
     + LEVELS.map(l=>'<tr'+(l===level?' class="me"':'')+'><td>'+l+'</td>'+(cfg.thresholds[l]?'<td class="n">'+fmt(cfg.thresholds[l].min,0)+'%</td><td class="n">'+fmt(cfg.thresholds[l].target,0)+'%</td><td class="n">'+fmt(cfg.thresholds[l].max,0)+'%</td><td class="n">'+fmt(cfg.weights[l],0)+'%</td>':'<td class="n" colspan="4" style="color:#8EA3BA">Không áp dụng</td>')+'</tr>').join('')+'</tbody></table>';
 }
 function howText(d){
   const r = d.result, th = d.kpi.thresholds;
-  if(r.actual==null) return 'Chưa có module nào trong lộ trình của kỳ này — hãy thêm lộ trình ở cuối trang.';
-  const same = r.totalWeight===r.total;
-  let t = 'Actual = '+(same? r.done+' ÷ '+r.total : fmt(r.doneWeight,1)+' ÷ '+fmt(r.totalWeight,1)+' (theo trọng số)')+' × 100% = <b>'+fmt(r.actual)+'%</b><br>';
+  if(r.actual==null) return 'Chưa có module nào trong lộ trình của kỳ này — nhờ quản lý lập lộ trình (nút "Tạo lộ trình KPI theo tháng").';
+  let t = 'Actual = Σ (trọng số × % hoàn thành) = '+d.entries.map(e=>fmt(e.weight,e.weight%1?1:0)+'% × '+fmt(e.completion,0)+'%').join(' + ')+' = <b>'+fmt(r.actual)+'%</b>'+(r.weightOk?'':' <span style="color:var(--danger)">(tổng trọng số hiện là '+fmt(r.totalWeight,1)+'%, cần 100% — nhờ quản lý chỉnh lộ trình)</span>')+'<br>';
   if(r.tier===0) t += 'Actual '+fmt(r.actual)+'% &lt; Min '+fmt(th.min,0)+'% → Progress = <b>0%</b>';
-  else if(r.tier===2 && th.max<=th.target) t += r.actual>=th.target ? 'Đạt Target (= Max) → Progress = <b>100%</b>, không có phần vượt' : '';
+  else if(r.actual>=th.target) t += 'Đạt Target (= Max) → Progress = <b>100%</b>, không có phần vượt';
   else t += 'Progress = 50% + 50% × ('+fmt(r.actual)+' − '+fmt(th.min,0)+') ÷ ('+fmt(th.target,0)+' − '+fmt(th.min,0)+') = <b>'+fmt(r.progress)+'%</b>';
   return t+'<br>KPI Completion = '+fmt(r.progress)+'% × '+fmt(d.kpi.weight,0)+'% = <b>'+fmt(r.points,2)+'%</b>';
 }
@@ -177,31 +188,27 @@ function render(d){
   else {
     const tone = r.tier==null ? '' : 'tone'+r.tier;
     $('resBody').innerHTML = '<div class="kpis">'
-      +'<div class="kpi"><div class="l">Module trong lộ trình</div><div class="v">'+r.total+'</div><div class="d">của kỳ '+esc(mFmt(d.month))+'</div></div>'
-      +'<div class="kpi"><div class="l">Đã hoàn thành</div><div class="v" style="color:var(--success)">'+r.done+'</div><div class="d">'+(r.total-r.done)+' module chưa xong</div></div>'
+      +'<div class="kpi"><div class="l">Module trong lộ trình</div><div class="v">'+r.total+'</div><div class="d">tổng trọng số '+fmt(r.totalWeight,0)+'%'+(r.weightOk?'':' ⚠')+'</div></div>'
+      +'<div class="kpi"><div class="l">Hoàn thành 100%</div><div class="v" style="color:var(--success)">'+r.done+'</div><div class="d">'+(r.total-r.done)+' module chưa đủ 100%</div></div>'
       +'<div class="kpi act"><div class="l">Actual</div><div class="v '+tone+'">'+(r.actual==null?'—':fmt(r.actual)+'%')+'</div><div class="d">Min '+fmt(k.thresholds.min,0)+' · Target '+fmt(k.thresholds.target,0)+' · Max '+fmt(k.thresholds.max,0)+'</div></div>'
       +'<div class="kpi score"><div class="l">Progress</div><div class="v '+tone+'">'+(r.progress==null?'—':fmt(r.progress)+'%')+'</div><div class="d">'+esc(r.band||'Chưa có lộ trình')+'</div></div>'
       +'<div class="kpi score"><div class="l">KPI Completion</div><div class="v '+tone+'">'+(r.points==null?'—':fmt(r.points,2)+'%')+'</div><div class="d">trên trọng số '+fmt(k.weight,0)+'%</div></div>'
       +'</div><div class="how">'+howText(d)+'</div>';
   }
+  $('sumTbl').innerHTML = d.entries.length ? '<table><thead><tr><th>Module</th><th class="n">Trọng số</th><th class="n">% hoàn thành</th><th class="n">Đóng góp Actual</th><th>Bằng chứng / link</th><th>Ghi chú</th></tr></thead><tbody>'
+    + d.entries.map(e=>'<tr><td><b>'+esc(e.module)+'</b></td><td class="n">'+fmt(e.weight,e.weight%1?1:0)+'%</td><td class="n">'+fmt(e.completion,0)+'%</td><td class="n"><b>'+fmt(e.contribution,2)+'%</b></td><td>'+(e.evidence?linkify(e.evidence):'<span style="color:var(--danger)">chưa có bằng chứng</span>')+'</td><td>'+esc(e.note)+'</td></tr>').join('')
+    +'</tbody><tfoot><tr><td><b>Tổng</b></td><td class="n"><b>'+fmt(r.totalWeight,0)+'%</b></td><td></td><td class="n"><b>'+fmt(r.actual,2)+'%</b></td><td colspan="2"></td></tr></tfoot></table>' : '';
   $('listTitle').textContent = 'Lộ trình module — '+shortName(d.member)+' · kỳ '+mFmt(d.month)+' ('+d.entries.length+')';
-  $('listTbl').innerHTML = d.entries.length ? '<table><thead><tr><th>Module</th><th class="n">Trọng số</th><th>Hạn</th><th>Hoàn thành</th><th>Bằng chứng / ghi chú</th><th></th></tr></thead><tbody>'
-    + d.entries.map(e=>'<tr><td><b>'+esc(e.module)+'</b></td><td class="n">'+fmt(e.weight,e.weight%1?1:0)+'</td><td class="mono">'+esc(dmy(e.dueDate))+'</td><td>'+(e.doneDate?'<span class="tag ok">Xong '+esc(dmy(e.doneDate))+'</span>':'<span class="tag wait">Chưa xong</span>')+'</td><td>'+esc([e.evidence,e.note].filter(Boolean).join(' · '))+'</td><td style="white-space:nowrap">'
-      +(e.doneDate?'<button type="button" data-undone="'+esc(e.id)+'" style="padding:3px 10px;font-size:12px">Bỏ hoàn thành</button>':'<button type="button" class="primary" data-done="'+esc(e.id)+'" style="padding:3px 10px;font-size:12px">✔ Hoàn thành</button>')
-      +' <button type="button" data-edit="'+esc(e.id)+'" style="padding:3px 10px;font-size:12px">Sửa</button> <button type="button" class="danger" data-del="'+esc(e.id)+'">Xóa</button></td></tr>').join('')+'</tbody></table>'
-    : '<div class="empty">Chưa có module nào trong lộ trình của kỳ này. Thêm module ở bên dưới.</div>';
-  $('listTbl').querySelectorAll('[data-done]').forEach(b=>b.onclick=()=>markDone(b.dataset.done, true));
-  $('listTbl').querySelectorAll('[data-undone]').forEach(b=>b.onclick=()=>markDone(b.dataset.undone, false));
-  $('listTbl').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delEntry(b.dataset.del, b));
-  $('listTbl').querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>startEdit(b.dataset.edit));
-  $('ovTitle').textContent = 'Tổng hợp cả team — kỳ '+mFmt(d.month);
-  $('ovTbl').innerHTML = d.overview.length ? '<table><thead><tr><th>Thành viên</th><th class="n">Module</th><th class="n">Xong</th><th class="n">Actual</th></tr></thead><tbody>'+d.overview.map(o=>'<tr class="click'+(o.member===d.member?' me':'')+'" data-m="'+esc(o.member)+'"><td>'+esc(shortName(o.member))+'</td><td class="n">'+o.total+'</td><td class="n">'+o.done+'</td><td class="n">'+(o.actual==null?'—':fmt(o.actual)+'%')+'</td></tr>').join('')+'</tbody></table>' : '<div class="empty">Chưa có lộ trình nào trong kỳ.</div>';
-  $('ovTbl').querySelectorAll('tr.click').forEach(tr=>tr.onclick=()=>{ $('selMember').value = tr.dataset.m; persist(); load(); });
-  $('storeHint').textContent = d.githubBacked ? 'Dữ liệu được lưu vào repo GitHub (mỗi lần lưu là 1 commit).' : 'Dữ liệu đang lưu trong thư mục data/ của server — cần mount volume ./data (docker-compose) để không bị mất khi container bị xoá.';
+  if(d.entries.length){
+    $('listTbl').innerHTML = '<table class="ed"><thead><tr><th>Module (quản lý giao)</th><th class="n" style="width:90px">Trọng số</th><th style="width:130px">% hoàn thành</th><th>Bằng chứng / link</th><th style="width:260px">Ghi chú</th></tr></thead><tbody>'
+      + d.entries.map(e=>'<tr data-id="'+esc(e.id)+'"><td><b>'+esc(e.module)+'</b></td><td class="n">'+fmt(e.weight,e.weight%1?1:0)+'%</td><td><input type="number" class="cmp" min="0" max="100" step="5" value="'+fmt(e.completion,0).replace(',','.')+'"></td><td><input type="text" class="evd" maxlength="500" value="'+esc(e.evidence)+'" placeholder="Link tài liệu, ảnh chụp kết quả…"></td><td><input type="text" class="nte" maxlength="1000" value="'+esc(e.note)+'"></td></tr>').join('')+'</tbody></table>';
+    $('submitBar').innerHTML = '<button type="button" class="primary" id="btnSubmit">💾 Lưu bằng chứng &amp; % hoàn thành (commit)</button> <span class="hint">Nhân viên tự đánh giá % hoàn thành từng module (0–100%) và gửi link bằng chứng.</span>';
+    $('btnSubmit').onclick = submitAll;
+  } else { $('listTbl').innerHTML = '<div class="empty">Chưa có lộ trình cho nhân viên này trong kỳ. Quản lý bấm <b>＋ Tạo lộ trình KPI theo tháng</b> để lập.</div>'; $('submitBar').innerHTML = ''; }
   $('btnXlsx').disabled = false;
 }
 function persist(){ const s = store.get(); s.member = $('selMember').value; s.levels = s.levels||{}; s.levels[$('selMember').value] = $('selLevel').value; store.set(s); }
-async function load(keepForm){
+async function load(){
   const member = $('selMember').value, level = $('selLevel').value;
   if(!member){ $('loading').style.display='none'; $('notice').innerHTML='<div class="msg err">Chưa có thành viên nào trong danh sách người tạo ticket (ticket-creators.json).</div>'; return; }
   const seq = ++reqSeq; history.replaceState(null,'','?month='+month); $('pickMonth').value = month;
@@ -212,77 +219,118 @@ async function load(keepForm){
     data = d; cfg = d.config; renderRef();
     $('loading').style.display = 'none'; $('content').style.display = ''; $('notice').innerHTML = '';
     $('stamp').textContent = 'Cập nhật '+new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
-    render(d); if(!keepForm) resetForm();
+    render(d);
   }catch(e){ if(seq!==reqSeq) return; $('loading').style.display = 'none'; $('content').style.display = 'none'; $('notice').innerHTML = '<div class="msg err">Không lấy được dữ liệu: '+esc(e.message)+'</div>'; }
 }
 
-function resetForm(){
-  editingId = null; $('formTitle').textContent = 'Thêm module vào lộ trình'; $('btnSave').textContent = '＋ Lưu module'; $('btnCancel').style.display = 'none';
-  $('fModule').value = ''; $('fMember').value = $('selMember').value; $('fMonth').value = month; $('fWeight').value = ''; $('fDue').value = ''; $('fDone').value = ''; $('fEvidence').value = ''; $('fNote').value = '';
-}
-function startEdit(id){
-  const e = data.entries.find(x=>x.id===id); if(!e) return; editingId = id;
-  $('formTitle').textContent = 'Sửa module'; $('btnSave').textContent = '💾 Lưu thay đổi'; $('btnCancel').style.display = '';
-  $('fModule').value = e.module; $('fMember').value = e.member; $('fMonth').value = e.month; $('fWeight').value = e.weight===1?'':e.weight; $('fDue').value = e.dueDate||''; $('fDone').value = e.doneDate||''; $('fEvidence').value = e.evidence||''; $('fNote').value = e.note||'';
-  $('formTitle').scrollIntoView({behavior:'smooth', block:'center'});
-}
-async function saveEntry(){
-  const body = { module:$('fModule').value, member:$('fMember').value, month:$('fMonth').value, weight:$('fWeight').value, dueDate:$('fDue').value, doneDate:$('fDone').value, evidence:$('fEvidence').value, note:$('fNote').value };
-  $('btnSave').disabled = true; $('formMsg').innerHTML = '';
+/* ---------- nhân viên: gửi bằng chứng + % hoàn thành ---------- */
+async function submitAll(){
+  const items = [...document.querySelectorAll('#listTbl tbody tr')].map(tr=>({ id:tr.dataset.id, completion:tr.querySelector('.cmp').value, evidence:tr.querySelector('.evd').value, note:tr.querySelector('.nte').value }));
+  const bad = items.find(i=>i.completion===''||Number(i.completion)<0||Number(i.completion)>100); if(bad){ $('submitMsg').innerHTML = '<div class="msg err">% hoàn thành phải từ 0 đến 100.</div>'; return; }
+  $('btnSubmit').disabled = true; $('submitMsg').innerHTML = '';
   try{
-    const r = await api(editingId ? '/api/kpi/cert-modules/'+encodeURIComponent(editingId) : '/api/kpi/cert-modules', { method: editingId?'PUT':'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-    month = r.entry.month; $('selMember').value = r.entry.member; await load();
-    $('formMsg').innerHTML = '<div class="msg ok">Đã lưu module "'+esc(r.entry.module)+'" ('+esc(shortName(r.entry.member))+', kỳ '+esc(mFmt(r.entry.month))+').'+(r.commitUrl?' <a href="'+esc(r.commitUrl)+'" target="_blank" rel="noopener">Xem commit ↗</a>':'')+'</div>';
-  }catch(e){ $('formMsg').innerHTML = '<div class="msg err">Không lưu được: '+esc(e.message)+'</div>'; }
-  finally{ $('btnSave').disabled = false; }
+    const r = await api('/api/kpi/cert-submit', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ member:$('selMember').value, month, items }) });
+    await load();
+    $('submitMsg').innerHTML = '<div class="msg ok">Đã lưu '+r.saved+' module (bằng chứng + % hoàn thành). Xem bảng tổng hợp kết quả có bằng chứng ở mục kết quả phía trên.'+(r.commitUrl?' <a href="'+esc(r.commitUrl)+'" target="_blank" rel="noopener">Xem commit ↗</a>':'')+'</div>';
+    const p = $('resPanel'); p.scrollIntoView({behavior:'smooth', block:'start'}); p.style.boxShadow = '0 0 0 3px #E8A33D'; setTimeout(()=>{ p.style.boxShadow = ''; }, 2200);
+  }catch(e){ $('submitMsg').innerHTML = '<div class="msg err">Không lưu được: '+esc(e.message)+'</div>'; $('btnSubmit') && ($('btnSubmit').disabled = false); }
 }
-async function markDone(id, done){
-  const e = data.entries.find(x=>x.id===id); if(!e) return;
-  try{ await api('/api/kpi/cert-modules/'+encodeURIComponent(id), { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...e, doneDate: done ? todayVN() : '' }) }); await load(true); $('formMsg').innerHTML = '<div class="msg ok">'+(done?'Đã đánh dấu hoàn thành "'+esc(e.module)+'" (ngày '+esc(dmy(todayVN()))+'). Cần chỉnh ngày hoặc thêm bằng chứng thì bấm Sửa.':'Đã bỏ hoàn thành.')+'</div>'; }
-  catch(err){ $('formMsg').innerHTML = '<div class="msg err">Không cập nhật được: '+esc(err.message)+'</div>'; }
+function copySummary(){
+  const d = data, r = d.result; const L = [];
+  L.push('CS23 — Hoàn thành chứng nhận sản phẩm | '+d.member+' | '+d.level+' | kỳ '+mFmt(d.month));
+  L.push('Actual '+fmt(r.actual)+'% | Progress '+fmt(r.progress)+'% | KPI Completion '+fmt(r.points,2)+'%');
+  d.entries.forEach(e=>L.push('• '+e.module+' — trọng số '+fmt(e.weight,0)+'%, hoàn thành '+fmt(e.completion,0)+'%, đóng góp '+fmt(e.contribution,2)+'%'+(e.evidence?' | Bằng chứng: '+e.evidence:' | chưa có bằng chứng')+(e.note?' | '+e.note:'')));
+  return L.join('\n');
 }
-async function saveBulk(){
-  const items = $('bulk').value.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{ const [name, w] = l.split('|').map(x=>x.trim()); return { module:name, weight:w||'' }; });
-  $('btnBulk').disabled = true; $('bulkMsg').innerHTML = '';
+async function copySum(){
+  const txt = copySummary();
+  try{ await navigator.clipboard.writeText(txt); $('copyMsg').innerHTML = '<div class="msg ok">Đã copy tổng hợp.</div>'; }
+  catch(e){ const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); let ok=false; try{ ok = document.execCommand('copy'); }catch(_){} ta.remove(); $('copyMsg').innerHTML = ok ? '<div class="msg ok">Đã copy tổng hợp.</div>' : '<div class="msg err">Trình duyệt chặn copy: '+esc(e.message)+'</div>'; }
+}
+
+/* ---------- quản lý: tạo / cập nhật lộ trình theo tháng ---------- */
+function mSum(){ const s = [...document.querySelectorAll('#mRows .mw')].reduce((a,i)=>a+(Number(i.value)||0),0); const ok = Math.abs(s-100)<0.01; const b = $('mSum'); b.textContent = 'Tổng: '+fmt(s,2).replace(',00','')+'%'+(ok?' ✓':''); b.className = 'sumbadge '+(ok?'ok':'bad'); return s; }
+function addRow(name='', weight=''){
+  const tr = document.createElement('tr'); tr.innerHTML = '<td><input type="text" class="mn" maxlength="200" placeholder="VD: Tìm hiểu dự án Vifon"></td><td><input type="number" class="mw" min="0" max="100" step="any" placeholder="%"></td><td><button type="button" class="danger" style="padding:3px 10px;font-size:12px">Bỏ</button></td>';
+  tr.querySelector('.mn').value = name; tr.querySelector('.mw').value = weight; tr.querySelector('.mw').addEventListener('input', mSum); tr.querySelector('button').onclick = ()=>{ tr.remove(); mSum(); };
+  $('mRows').appendChild(tr); mSum();
+}
+function renderMemberChecks(sel){
+  $('mMembers').innerHTML = creators.map(e=>'<label class="'+(sel.includes(e)?'on':'')+'"><input type="checkbox" data-m="'+esc(e)+'"'+(sel.includes(e)?' checked':'')+'> '+esc(shortName(e))+'</label>').join('');
+  $('mMembers').querySelectorAll('input').forEach(i=>i.onchange=()=>{ i.parentElement.classList.toggle('on', i.checked); });
+}
+function openMgr(){
+  $('viewPanel').classList.add('hide'); $('mgrPanel').classList.remove('hide'); $('mMonth').value = month; renderMemberChecks([$('selMember').value]); $('mRows').innerHTML = ''; addRow(); addRow(); $('mMsg').innerHTML = '';
+  $('mgrPanel').scrollIntoView({behavior:'smooth', block:'start'});
+}
+async function mgrLoadExisting(){
+  const m = $('mMonth').value; const who = $('selMember').value;
   try{
-    const r = await api('/api/kpi/cert-modules/bulk', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ member:$('selMember').value, month, items }) });
-    $('bulk').value = ''; await load(); $('bulkMsg').innerHTML = '<div class="msg ok">Đã thêm '+r.entries.length+' module.'+(r.commitUrl?' <a href="'+esc(r.commitUrl)+'" target="_blank" rel="noopener">Xem commit ↗</a>':'')+'</div>';
-  }catch(e){ $('bulkMsg').innerHTML = '<div class="msg err">Không thêm được: '+esc(e.message)+'</div>'; }
-  finally{ $('btnBulk').disabled = false; }
+    const r = await api('/api/kpi/cert-roadmaps?month='+m+'&member='+encodeURIComponent(who)); const g = r.roadmaps[0];
+    $('mRows').innerHTML = ''; if(g && g.modules.length){ g.modules.forEach(x=>addRow(x.module, x.weight)); $('mMsg').innerHTML = '<div class="msg info">Đã tải lộ trình hiện có của '+esc(shortName(who))+' (kỳ '+esc(mFmt(m))+'). Chỉnh rồi bấm Lưu.</div>'; }
+    else { addRow(); addRow(); $('mMsg').innerHTML = '<div class="msg info">'+esc(shortName(who))+' chưa có lộ trình trong kỳ '+esc(mFmt(m))+'.</div>'; }
+  }catch(e){ $('mMsg').innerHTML = '<div class="msg err">'+esc(e.message)+'</div>'; }
 }
-const delArmed = {};
-async function delEntry(id, btn){
-  if(!delArmed[id]){ delArmed[id] = setTimeout(()=>{ delete delArmed[id]; if(btn.isConnected){ btn.textContent = 'Xóa'; btn.style.background = ''; btn.style.color = ''; } }, 4000); btn.textContent = 'Bấm lại để xóa'; btn.style.background = 'var(--danger)'; btn.style.color = '#fff'; return; }
-  clearTimeout(delArmed[id]); delete delArmed[id]; btn.disabled = true;
-  try{ await api('/api/kpi/cert-modules/'+encodeURIComponent(id), { method:'DELETE' }); await load(); $('formMsg').innerHTML = '<div class="msg ok">Đã xóa module.</div>'; }
-  catch(e){ btn.disabled = false; $('formMsg').innerHTML = '<div class="msg err">Không xóa được: '+esc(e.message)+'</div>'; }
+let mgrArmed = null;
+async function mgrSave(){
+  const btn = $('btnMgrSave'); const members = [...document.querySelectorAll('#mMembers input:checked')].map(i=>i.dataset.m);
+  const modules = [...document.querySelectorAll('#mRows tr')].map(tr=>({ module:tr.querySelector('.mn').value, weight:tr.querySelector('.mw').value })).filter(x=>x.module.trim()||x.weight!=='');
+  if(!members.length){ $('mMsg').innerHTML = '<div class="msg err">Chọn ít nhất 1 nhân viên.</div>'; return; }
+  if(Math.abs(mSum()-100)>=0.01){ $('mMsg').innerHTML = '<div class="msg err">Tổng trọng số phải bằng 100% (hiện '+esc($('mSum').textContent.replace('Tổng: ',''))+').</div>'; return; }
+  if(!mgrArmed){ mgrArmed = setTimeout(()=>{ mgrArmed = null; btn.textContent = '💾 Lưu lộ trình'; btn.style.background = ''; }, 5000); btn.textContent = 'Bấm lại để xác nhận thay lộ trình của '+members.length+' nhân viên'; btn.style.background = 'var(--danger)'; return; }
+  clearTimeout(mgrArmed); mgrArmed = null; btn.textContent = '💾 Lưu lộ trình'; btn.style.background = ''; btn.disabled = true;
+  try{
+    const r = await api('/api/kpi/cert-roadmap', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ members, month:$('mMonth').value, modules }) });
+    month = $('mMonth').value; if(members.length && !members.includes($('selMember').value)) $('selMember').value = members[0]; await load();
+    $('mMsg').innerHTML = '<div class="msg ok">Đã lưu lộ trình kỳ '+esc(mFmt($('mMonth').value))+' cho '+r.members+' nhân viên ('+r.modules+' module: thêm '+r.created+', cập nhật '+r.updated+', xoá '+r.removed+').'+(r.commitUrl?' <a href="'+esc(r.commitUrl)+'" target="_blank" rel="noopener">Xem commit ↗</a>':'')+'</div>';
+  }catch(e){ $('mMsg').innerHTML = '<div class="msg err">Không lưu được: '+esc(e.message)+'</div>'; }
+  finally{ btn.disabled = false; }
 }
+
+/* ---------- xem lộ trình đã thiết lập (lọc theo tháng / nhân viên) ---------- */
+function openView(){
+  $('mgrPanel').classList.add('hide'); $('viewPanel').classList.remove('hide'); $('vMonth').value = month;
+  $('vMember').innerHTML = '<option value="">Tất cả nhân viên</option>'+creators.map(e=>'<option value="'+esc(e)+'">'+esc(e)+'</option>').join(''); $('vMember').value = '';
+  $('viewPanel').scrollIntoView({behavior:'smooth', block:'start'}); viewFilter();
+}
+async function viewFilter(){
+  $('vBody').innerHTML = '<div class="empty">Đang tải…</div>';
+  try{
+    const r = await api('/api/kpi/cert-roadmaps?month='+$('vMonth').value+'&member='+encodeURIComponent($('vMember').value));
+    $('vBody').innerHTML = r.roadmaps.length ? r.roadmaps.map(g=>'<div class="grp"><h3>'+esc(shortName(g.member))+' <span class="sumbadge '+(g.weightOk?'ok':'bad')+'">Tổng trọng số '+fmt(g.weightSum,0)+'%'+(g.weightOk?' ✓':' — cần 100%')+'</span> <span class="hint">Actual hiện tại: <b>'+(g.actual==null?'—':fmt(g.actual)+'%')+'</b></span> <button type="button" data-open="'+esc(g.member)+'" style="padding:2px 10px;font-size:12px">Mở nhân viên này</button></h3>'
+      +'<table><thead><tr><th>Module</th><th class="n">Trọng số</th><th class="n">% hoàn thành</th><th>Bằng chứng</th></tr></thead><tbody>'+g.modules.map(m=>'<tr><td>'+esc(m.module)+'</td><td class="n">'+fmt(m.weight,m.weight%1?1:0)+'%</td><td class="n">'+fmt(m.completion,0)+'%</td><td>'+(m.evidence?linkify(m.evidence):'<span class="hint">chưa có</span>')+'</td></tr>').join('')+'</tbody></table></div>').join('')
+      : '<div class="empty">Chưa có lộ trình nào được thiết lập trong kỳ '+esc(mFmt($('vMonth').value))+(($('vMember').value)?' cho nhân viên này':'')+'.</div>';
+    $('vBody').querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{ month = $('vMonth').value; $('selMember').value = b.dataset.open; persist(); load(); window.scrollTo({top:0,behavior:'smooth'}); });
+  }catch(e){ $('vBody').innerHTML = '<div class="msg err">'+esc(e.message)+'</div>'; }
+}
+
 function exportXlsx(){
   const d = data, r = d.result, k = d.kpi, wb = XLSX.utils.book_new();
   const S = [['CS23: Hoàn thành chứng nhận sản phẩm — Đánh giá KPI theo kỳ'],['Thành viên', d.member],['Level', d.level],['Kỳ', mFmt(d.month)],['Xuất lúc', new Date().toLocaleString('vi-VN')],[],
-    ['Chỉ số','Giá trị'],['Module trong lộ trình', r.total],['Đã hoàn thành', r.done],['Actual (%)', r.actual]];
-  if(k.applicable) S.push(['Min (%)',k.thresholds.min],['Target (%)',k.thresholds.target],['Max (%)',k.thresholds.max],['Progress (%)', r.progress],['Mức', r.band],['Trọng số (%)',k.weight],['KPI Completion (%)', r.points]);
+    ['Chỉ số','Giá trị'],['Module trong lộ trình', r.total],['Tổng trọng số (%)', r.totalWeight],['Actual (%)', r.actual]];
+  if(k.applicable) S.push(['Min (%)',k.thresholds.min],['Target (%)',k.thresholds.target],['Max (%)',k.thresholds.max],['Progress (%)', r.progress],['Mức', r.band],['Trọng số KPI (%)',k.weight],['KPI Completion (%)', r.points]);
   else S.push(['Ghi chú','KPI không áp dụng cho level này']);
   const s1 = XLSX.utils.aoa_to_sheet(S); s1['!cols'] = [{wch:30},{wch:30}]; XLSX.utils.book_append_sheet(wb, s1, 'Tổng hợp');
-  const s2 = XLSX.utils.aoa_to_sheet([['Module','Trọng số','Hạn','Ngày hoàn thành','Bằng chứng','Ghi chú'], ...d.entries.map(e=>[e.module,e.weight,dmy(e.dueDate),dmy(e.doneDate),e.evidence,e.note])]);
-  s2['!cols'] = [44,10,12,16,44,30].map(w=>({wch:w})); XLSX.utils.book_append_sheet(wb, s2, 'Lộ trình');
+  const s2 = XLSX.utils.aoa_to_sheet([['Module','Trọng số (%)','% hoàn thành','Đóng góp Actual (%)','Bằng chứng','Ghi chú'], ...d.entries.map(e=>[e.module,e.weight,e.completion,e.contribution,e.evidence,e.note])]);
+  s2['!cols'] = [44,12,14,18,50,30].map(w=>({wch:w})); XLSX.utils.book_append_sheet(wb, s2, 'Lộ trình');
   XLSX.writeFile(wb, 'KPI_CS23_'+shortName(d.member)+'_'+d.month.replace('-','_')+'.xlsx');
 }
 
 const go = m => { month = m; load(); };
 $('btnPrev').onclick = () => go(addMonths(month,-1)); $('btnNext').onclick = () => go(addMonths(month,1)); $('btnThis').onclick = () => go(todayVN().slice(0,7));
 $('pickMonth').onchange = e => { if(/^\d{4}-\d{2}$/.test(e.target.value)) go(e.target.value); };
-$('btnReload').onclick = () => load(); $('btnXlsx').onclick = () => exportXlsx();
+$('btnReload').onclick = () => load(); $('btnXlsx').onclick = () => exportXlsx(); $('btnCopySum').onclick = copySum;
 $('selLevel').onchange = () => { renderRef(); persist(); load(); };
 $('selMember').onchange = () => { const s = store.get(); $('selLevel').value = (s.levels&&s.levels[$('selMember').value]) || 'Junior'; persist(); load(); };
-$('btnSave').onclick = saveEntry; $('btnCancel').onclick = resetForm; $('btnBulk').onclick = saveBulk;
+$('btnMgr').onclick = openMgr; $('btnView').onclick = openView; $('btnMgrClose').onclick = () => $('mgrPanel').classList.add('hide'); $('btnVClose').onclick = () => $('viewPanel').classList.add('hide');
+$('btnMgrAdd').onclick = () => addRow(); $('btnMgrLoad').onclick = mgrLoadExisting; $('btnMgrSave').onclick = mgrSave; $('btnVFilter').onclick = viewFilter;
+$('vMonth').onchange = viewFilter; $('vMember').onchange = viewFilter;
 
 (async function init(){
   const s = store.get(); $('selLevel').innerHTML = LEVELS.map(l=>'<option>'+l+'</option>').join('');
   try{ const c = await api('/api/erp/ticket-creators'); creators = c.creators || []; }
   catch(e){ $('notice').innerHTML = '<div class="msg err">Không tải được danh sách thành viên: '+esc(e.message)+'</div>'; }
-  const memOpts = creators.length ? creators.map(e=>'<option value="'+esc(e)+'">'+esc(e)+'</option>').join('') : '<option value="">(chưa có thành viên)</option>';
-  $('selMember').innerHTML = memOpts; $('fMember').innerHTML = memOpts;
+  $('selMember').innerHTML = creators.length ? creators.map(e=>'<option value="'+esc(e)+'">'+esc(e)+'</option>').join('') : '<option value="">(chưa có thành viên)</option>';
   if(s.member && creators.includes(s.member)) $('selMember').value = s.member;
   $('selLevel').value = (s.levels && s.levels[$('selMember').value]) || 'Junior';
   renderRef(); load();

@@ -163,6 +163,35 @@ function setAssess({ member, month, c1, c2, c3, note, clear, by }, { config, all
   }, `ai: điểm L&D ${who} ${month}`);
 }
 
+/**
+ * Nhân viên ghi nhận bằng chứng cho cả 3 tiêu chí MỘT LẦN và tự đánh giá:
+ *   workflow (prompt/flow + số phút tuỳ chọn + checklist rubric tự tick) · time (chỉ số phút) · reports[] (báo cáo, có dùng AI?) · violation (có vi phạm AI Data Security?)
+ * Mọi bản ghi được ghi trong 1 lần mutate (1 commit). Workflow nhân viên tự chấm được đánh dấu graded (gradedBy = "tự đánh giá"); L&D vẫn có thể chấm lại.
+ */
+function submit(input, ctx) {
+  const { config } = ctx; const c = config.ai;
+  const member = lc(input.member); const date = String(input.date || '').trim();
+  if (!isDate(date)) throw new Error('Ngày ghi nhận không hợp lệ (YYYY-MM-DD).');
+  const common = { member, evidence: input.evidence, note: input.note };
+  const now = new Date().toISOString(); const out = [];
+  const w = input.workflow || {};
+  if (w.title || w.prompt || w.flow) {
+    const e = { id: newId(), ...cleanEntry({ ...common, kind: 'workflow', date, ...w }, ctx), createdAt: now };
+    const keys = (c.rubric || []).map((r) => r.key);
+    e.rubric = (Array.isArray(w.rubric) ? w.rubric : []).filter((k) => keys.includes(k)); e.graded = true; e.gradedBy = 'tự đánh giá'; e.gradedAt = now;
+    out.push(e);
+  }
+  const t = input.time || {};
+  if (t.task || t.minutesNormal || t.minutesAi) out.push({ id: newId(), ...cleanEntry({ ...common, kind: 'time', date, ...t }, ctx), createdAt: now });
+  for (const r of Array.isArray(input.reports) ? input.reports : []) {
+    if (r && (r.report || r.dueDate)) out.push({ id: newId(), ...cleanEntry({ ...common, kind: 'report', ...r }, ctx), createdAt: now });
+  }
+  const v = input.violation || {};
+  if (v.has === true || v.has === 'true') out.push({ id: newId(), ...cleanEntry({ ...common, kind: 'violation', date, description: v.description }, ctx), createdAt: now });
+  if (!out.length) throw new Error('Chưa nhập bằng chứng nào — điền ít nhất 1 mục (prompt/flow, số phút, báo cáo hoặc vi phạm).');
+  return store.mutate((list) => ({ list: [...list, ...out], result: { entries: out } }), `ai: ghi nhận ${out.length} bằng chứng ${member} ${date.slice(0, 7)}`);
+}
+
 /** Người chấm tick checklist rubric cho 1 workflow (clear = bỏ chấm). */
 function gradeWorkflow({ id, rubric, note, clear, by }, { config }) {
   const keys = (config.ai.rubric || []).map((r) => r.key);
@@ -176,4 +205,4 @@ function gradeWorkflow({ id, rubric, note, clear, by }, { config }) {
   }, `ai: chấm workflow ${id}`);
 }
 
-module.exports = { gradeWorkflow, scanSensitive, store, scoreMember, add, update, remove, setAssess };
+module.exports = { submit, gradeWorkflow, scanSensitive, store, scoreMember, add, update, remove, setAssess };

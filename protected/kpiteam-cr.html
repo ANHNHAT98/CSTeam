@@ -70,7 +70,7 @@
 <div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb">/ kpi team / cs07 cr phân tích đúng hạn</span></div>
 <div class="wrap">
   <h1>CS07: CR Phân Tích Đúng Hạn &amp; Đạt Chất Lượng</h1>
-  <p class="sub">Tỷ lệ <b>CR (Change Request) được thành viên phân tích xong đúng hạn và không bị trả lại</b> do thiếu hoặc sai nội dung, trên tổng số CR được giao phân tích. Phạm vi mặc định: <b>CR ANVY</b>. KPI <b>Cao tốt</b>, chấm <b>theo tháng</b> (CR có <b>hạn phân tích</b> rơi vào tháng). CR được <b>ghi nhận ở cuối trang</b>: khi giao CR thì nhập hạn, khi phân tích xong thì cập nhật ngày xong, nếu bị trả lại thì ghi số lần.</p>
+  <p class="sub">Tỷ lệ <b>CR (Change Request) được thành viên phân tích xong đúng hạn và không bị trả lại</b> do thiếu hoặc sai nội dung, trên tổng số CR được giao phân tích. Dự án mặc định theo thành viên (giống CS01, CS02), tick thêm dự án nếu cần. KPI <b>Cao tốt</b>, chấm <b>theo tháng</b> (CR có <b>hạn phân tích</b> rơi vào tháng). CR được <b>ghi nhận ở cuối trang</b>: khi giao CR thì nhập hạn, khi phân tích xong thì cập nhật ngày xong, nếu bị trả lại thì ghi số lần.</p>
 
   <div class="panel">
     <div class="filters">
@@ -124,7 +124,6 @@
         <div class="field">&nbsp;<span><button id="btnSave" type="button" class="primary">＋ Lưu CR</button> <button id="btnCancel" type="button" style="display:none">Hủy sửa</button></span></div>
       </div>
       <div id="formMsg" style="margin-top:10px"></div>
-      <div class="hint" id="storeHint" style="margin-top:6px"></div>
     </div>
   </div>
 </div>
@@ -137,9 +136,11 @@ const FALLBACK_PROJECTS = [
   {code:'Sabeco_PG',name:'Sabeco PG'},{code:'Sabeco_B2B_Support',name:'Sabeco B2B'},{code:'FES_eSales',name:'FES'},
   {code:'ANKO_eSales_Support',name:'ANKO'},{code:'HaiHa_eSales_Support',name:'HAIHA'},{code:'Jotun_VN_eSales',name:'JOTUN'}
 ];
-const DEFAULT_PROJECTS = ['ANVY_eSale_Support'];
 const LEVELS = ['Fresher','Junior','Middle','Senior'];
-let projectsList = FALLBACK_PROJECTS, projectNames = {}, creators = [], scope = DEFAULT_PROJECTS.slice(), data = null, reqSeq = 0, editingId = null, cfg = null;
+/* Dự án mặc định theo thành viên = cấu hình của chức năng Tạo Ticket (ticket-creators.json), giống KPI CS01/CS02; thành viên không có dự án mặc định thì tích tất cả. */
+let memberDefaults = {};
+function defaultScopeFor(member){ const all = projectsList.map(p=>p.code); const d = all.filter(c => (memberDefaults[c]||[]).includes(member)); return d.length ? d : all; }
+let projectsList = FALLBACK_PROJECTS, projectNames = {}, creators = [], scope = [], data = null, reqSeq = 0, editingId = null, cfg = null;
 const todayVN = () => new Date(Date.now()+7*3600*1000).toISOString().slice(0,10);
 const addMonths = (key, n) => { const [y,m] = key.split('-').map(Number); return new Date(Date.UTC(y, m-1+n, 1)).toISOString().slice(0,7); };
 const qp = new URLSearchParams(location.search);
@@ -224,8 +225,7 @@ function render(d){
   $('ovTbl').innerHTML = d.overview.length ? '<table><thead><tr><th>Thành viên</th><th class="n">CR</th><th class="n">Đạt</th><th class="n">Không đạt</th><th class="n">Đang xử lý</th><th class="n">Actual</th></tr></thead><tbody>'
     + d.overview.map(o=>'<tr class="click'+(o.member===d.member?' me':'')+'" data-m="'+esc(o.member)+'"><td>'+esc(shortName(o.member))+'</td><td class="n">'+o.total+'</td><td class="n">'+o.pass+'</td><td class="n">'+o.fail+'</td><td class="n">'+o.pending+'</td><td class="n">'+(o.actual==null?'—':fmt(o.actual)+'%')+'</td></tr>').join('')+'</tbody></table><div class="hint" style="margin-top:6px">Bấm một dòng để xem thành viên đó.</div>'
     : '<div class="empty">Tháng này chưa ghi nhận CR nào trong phạm vi dự án đã chọn.</div>';
-  $('ovTbl').querySelectorAll('tr.click').forEach(tr=>tr.onclick=()=>{ $('selMember').value = tr.dataset.m; $('fMember').value = tr.dataset.m; persist(); load(); });
-  $('storeHint').textContent = d.githubBacked ? 'Dữ liệu CR được lưu vào repo GitHub (mỗi lần lưu là 1 commit).' : 'Dữ liệu CR đang lưu trong thư mục data/ của server — cần mount volume ./data (docker-compose) để không bị mất khi container bị xoá.';
+  $('ovTbl').querySelectorAll('tr.click').forEach(tr=>tr.onclick=()=>{ $('selMember').value = tr.dataset.m; $('fMember').value = tr.dataset.m; scope = defaultScopeFor(tr.dataset.m); persist(); load(); });
   $('btnXlsx').disabled = false;
 }
 
@@ -307,7 +307,7 @@ $('pickMonth').onchange = e => { if(/^\d{4}-\d{2}$/.test(e.target.value)) go(e.t
 $('btnReload').onclick = () => load();
 $('btnXlsx').onclick = () => exportXlsx();
 $('selLevel').onchange = () => { renderRef(); persist(); load(); };
-$('selMember').onchange = () => { const s = store.get(); $('selLevel').value = (s.levels&&s.levels[$('selMember').value]) || 'Junior'; persist(); load(); };
+$('selMember').onchange = () => { const s = store.get(); $('selLevel').value = (s.levels&&s.levels[$('selMember').value]) || 'Junior'; scope = defaultScopeFor($('selMember').value); persist(); load(); };
 $('btnSave').onclick = saveEntry;
 $('btnCancel').onclick = resetForm;
 
@@ -315,16 +315,16 @@ $('btnCancel').onclick = resetForm;
   try{ const list = await api('/api/ticket-instructions'); if(Array.isArray(list) && list.length){ projectsList = list; } }catch(_){}
   projectsList.forEach(p=>{ projectNames[p.code] = p.name; });
   FALLBACK_PROJECTS.forEach(p=>{ if(!projectNames[p.code]) projectNames[p.code] = p.name; });
-  scope = DEFAULT_PROJECTS.filter(c=>projectsList.some(p=>p.code===c)); if(!scope.length) scope = [projectsList[0].code];
   const s = store.get();
   $('selLevel').innerHTML = LEVELS.map(l=>'<option>'+l+'</option>').join('');
-  try{ const c = await api('/api/erp/ticket-creators'); creators = c.creators || []; }
+  try{ const c = await api('/api/erp/ticket-creators'); creators = c.creators || []; memberDefaults = c.defaultMembers || {}; }
   catch(e){ $('notice').innerHTML = '<div class="msg err">Không tải được danh sách thành viên: '+esc(e.message)+'</div>'; }
   const memOpts = creators.length ? creators.map(e=>'<option value="'+esc(e)+'">'+esc(e)+'</option>').join('') : '<option value="">(chưa có thành viên)</option>';
   $('selMember').innerHTML = memOpts; $('fMember').innerHTML = memOpts;
   if(s.member && creators.includes(s.member)) $('selMember').value = s.member;
   $('selLevel').value = (s.levels && s.levels[$('selMember').value]) || 'Junior';
   $('fProject').innerHTML = projectsList.map(p=>'<option value="'+esc(p.code)+'">'+esc(p.name)+'</option>').join('');
+  scope = defaultScopeFor($('selMember').value);
   renderRef(); renderRules(); load();
 })();
 </script>

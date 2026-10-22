@@ -211,17 +211,18 @@ Module hiện có:
   L&D (TDC) có thể nhập điểm điều chỉnh cho từng tiêu chí (để trống = dùng điểm tự tính). Logic ở `kpiAi.js`, cấu hình ở `kpi-sla-config.json`
   (mục `ai`: ngưỡng/trọng số CS21 + điểm các tiêu chí), dữ liệu lưu qua `listStore.js` (`data/kpi-ai.json`).
 
-- **KPI Team → CS23: Chứng Nhận Sản Phẩm** (`/kpiteam/chung-nhan-san-pham`): ghi nhận **lộ trình module chứng nhận của kỳ (tháng)** cho từng thành viên rồi chấm KPI
-  **Cao tốt, Target = Max** (chỉ Fresher/Junior). Actual = module hoàn thành ÷ tổng module × 100% (mỗi module có trọng số, mặc định 1; có thể nhập 50/50...).
-  Module hoàn thành khi có ngày hoàn thành (nút ✔ Hoàn thành, kèm bằng chứng). Có thêm cả lộ trình 1 lần (mỗi dòng 1 module, 1 commit). Logic ở `kpiCert.js`,
-  cấu hình ở `kpi-sla-config.json` (mục `cert`), dữ liệu lưu qua `listStore.js` (`data/kpi-cert.json`).
+- **KPI Team → CS23: Chứng Nhận Sản Phẩm** (`/kpiteam/chung-nhan-san-pham`): **quản lý** lập lộ trình theo tháng cho từng nhân viên (nút "＋ Tạo lộ trình KPI theo tháng": các module + trọng số %,
+  tổng mỗi nhân viên = 100%, có thể áp dụng cho nhiều nhân viên cùng lúc); nút "👁 Xem lộ trình đã thiết lập" lọc lộ trình đã lập theo tháng / nhân viên. **Nhân viên** gửi bằng chứng / link và tự đánh giá
+  % hoàn thành (0–100%) từng module rồi Lưu (1 commit). Actual = Σ (trọng số × % hoàn thành); KPI Cao tốt, Target = Max, chỉ Fresher/Junior. Bảng tổng hợp ở phần kết quả có từng module + bằng chứng.
+  Logic ở `kpiCert.js`, cấu hình `kpi-sla-config.json` (mục `cert`), dữ liệu `data/kpi-cert.json`.
 
-- **KPI Team → CS25: Quản Lý Plan CR** (`/kpiteam/quan-ly-cr`): ghi nhận tay các CR được giao (mặc định ABI) với 3 mốc cam kết với khách — (1) bàn giao testcase + tài liệu CRs
-  trước Staging 40%, (2) up gói + PM review không lỗi trên Staging đúng hạn 45%, (3) up PROD đúng kế hoạch 15% — mỗi mốc gồm **hạn cam kết gốc** và **ngày thực tế**
-  (mốc 2 có cờ "PM review có lỗi"). Mốc tính vào tháng của hạn cam kết. Actual = Σ (trọng số tiêu chí × tỷ lệ mốc đạt), chuẩn hóa theo các tiêu chí đã có mốc tới hạn,
-  rồi qua ngưỡng CS25 trong Master KPI (Cao tốt; Junior/Middle có trọng số). Logic ở `kpiCrPlan.js`, cấu hình `kpi-sla-config.json` (mục `crplan`), dữ liệu `data/kpi-crplan.json`.
-  **Cách 2 (tự động)**: nút "Lấy từ SynergyHub" lấy task được giao cho thành viên từ SynergyHub (hàm `synergyhub.api.dynamic_permissions.get_filtered_tasks_with_context` — đúng bộ tham số trang Tasks gửi, phân trang bằng `limit_start`/`limit_page_length`; ghi đè bằng biến môi trường
-  `SYNERGYHUB_TASKS_METHOD`), Actual = task hoàn thành đúng hạn ÷ task được giao có hạn dự kiến trong tháng (API `/api/kpi/crplan-auto`, chẩn đoán ở `/api/synergyhub/tasks`).
+- **KPI Team → CS25: Quản Lý Plan CR** (`/kpiteam/quan-ly-cr`) — 2 tab, KPI Cao tốt (Junior/Middle có trọng số), chấm theo tháng, cả hai có nút **Copy tổng hợp** để dán vào KPI trên ERP:
+  **Cách 1 (giống CS23)**: quản lý lập lộ trình tháng cho từng nhân viên (nút "＋ Tạo lộ trình KPI theo tháng": các mục plan CR gồm tên, **trọng số % tổng 100%** và **hạn cam kết với khách**; có nút điền mẫu 3 mốc
+  40/45/15; nút "👁 Xem lộ trình đã thiết lập" lọc theo tháng / nhân viên). Nhân viên nhập **ngày thực tế**, tick "PM review có lỗi" và dán bằng chứng rồi Lưu (1 commit). Mục đạt = ngày thực tế ≤ hạn và không lỗi;
+  Actual = Σ (trọng số × mục đạt) ÷ Σ trọng số các mục đã có kết quả. Logic `kpiCrPlan.js`, dữ liệu `data/kpi-crplan-roadmap.json`.
+  **Cách 2 (tự động)**: chọn dự án SynergyHub trong danh sách (lấy từ `get_filtered_projects`), tool lấy task được giao cho thành viên qua hàm
+  `synergyhub.api.dynamic_permissions.get_filtered_tasks_with_context` (đúng bộ tham số trang Tasks, phân trang `limit_start`/`limit_page_length`; ghi đè bằng biến `SYNERGYHUB_TASKS_METHOD`),
+  Actual = task hoàn thành đúng hạn ÷ task được giao có hạn dự kiến trong tháng (API `/api/kpi/crplan-auto`, chẩn đoán `/api/synergyhub/tasks`).
 
 ## Mã hóa Password Window — chi tiết kỹ thuật
 

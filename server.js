@@ -326,7 +326,7 @@ app.get('/api/synergyhub/time-logs', requireAuth, async (req, res) => {
 /* ---------- SynergyHub Tasks (CS25 cách 2): task được giao cho thành viên, hạn dự kiến vs ngày hoàn thành ----------
    Hàm API Tasks: synergyhub.api.dynamic_permissions.get_filtered_tasks_with_context (ghi đè bằng biến SYNERGYHUB_TASKS_METHOD hoặc ?method=).
    GET /api/synergyhub/tasks[?method=&refresh=1]  → số task, cột nhận được, mẫu (chẩn đoán)
-   GET /api/kpi/crplan-auto?member=<email>&level=&month=<YYYY-MM>[&project=<chuỗi lọc tên dự án SynergyHub>]  → Actual = task đúng hạn ÷ task được giao (hạn trong tháng) */
+   GET /api/kpi/crplan-auto?member=<email>&level=&month=<YYYY-MM>[&projects=[tên dự án SynergyHub đã chọn]]  → Actual = task đúng hạn ÷ task được giao (hạn trong tháng) */
 let synergyTasksCache = null;
 /** Lấy HẾT task: gọi đúng bộ tham số mà trang Tasks gửi (filters rỗng, không lọc dự án, báo cáo toàn bộ), phân trang bằng limit_start / limit_page_length. */
 async function loadSynergyTasks({ method, refresh } = {}) {
@@ -368,13 +368,13 @@ app.get('/api/kpi/crplan-auto', requireAuth, async (req, res) => {
     const level = String(req.query.level || '');
     if (!config.levels.includes(level)) return res.status(400).json({ error: 'Level không hợp lệ.' });
     const month = kpiSla.isMonthKey(req.query.month) ? String(req.query.month) : new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 7);
-    const projFilter = String(req.query.project || 'ABI').trim().toLowerCase();
+    const chosen = parseJsonArrayParam(req.query.projects).map((x) => String(x).trim().toLowerCase()).filter(Boolean); // dự án SynergyHub đã chọn trong danh sách (tên hoặc mã); rỗng = tất cả
     const data = await loadSynergyTasks({ refresh: Boolean(req.query.refresh) });
     const local = member.split('@')[0];
     const today = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
     const mine = data.tasks.filter((t) => t.assignees.includes(member) || t.assignees.includes(local));
     const projectsOfMember = [...new Set(mine.map((t) => t.project).filter(Boolean))].sort();
-    const inProj = mine.filter((t) => !projFilter || t.project.toLowerCase().includes(projFilter));
+    const inProj = mine.filter((t) => !chosen.length || chosen.includes(t.project.trim().toLowerCase()));
     const rows = inProj.filter((t) => t.planned && t.planned.slice(0, 7) === month).map((t) => {
       let status; let pass = false; let decided = true;
       if (t.done) { if (t.done <= t.planned) { status = 'Đạt (đúng hạn)'; pass = true; } else status = 'Trễ hạn'; }
@@ -388,7 +388,7 @@ app.get('/api/kpi/crplan-auto', requireAuth, async (req, res) => {
     const th = c.thresholds[level]; const weight = c.weights[level]; const applicable = Boolean(th) && weight != null;
     const p = applicable ? require('./kpiSla').progressOf(actual, th) : null;
     res.json({
-      month, member, level, method: data.method, projectFilter: projFilter,
+      month, member, level, method: data.method, projects: chosen,
       kpi: { code: c.code, applicable, thresholds: th || null, weight: applicable ? weight : null },
       result: { total: rows.length, decided: decided.length, pass, fail: decided.length - pass, pending: rows.length - decided.length, actual: actual == null ? null : Math.round(actual * 1e4) / 1e4,
         progress: p ? Math.round(p.progress * 1e4) / 1e4 : null, tier: p ? p.tier : null, band: p ? p.band : '', points: p && applicable ? Math.round(p.progress * weight * 1e2) / 1e4 : null },
@@ -708,6 +708,7 @@ app.delete('/api/kpi/cr-entries/:id', requireAuth, async (req, res) => {
 
 /* ---------- KPI Team: CS21 AI adoption cá nhân — ghi nhận bằng chứng AI workflow theo tháng, chấm KPI theo thành viên + level ----------
    GET    /api/kpi/ai-score?member=<email>&level=&month=<YYYY-MM>
+   POST   /api/kpi/ai-submit {member, date, evidence, note, workflow:{…,rubric:[key…]}, time, reports:[…], violation:{has, description}}  (nhân viên ghi nhận + tự đánh giá cả 3 tiêu chí 1 lần)
    POST   /api/kpi/ai-entries {kind: time|workflow|report|violation, member, ...}   ·   POST /api/kpi/ai-grade {id, rubric:[key…], note, clear}  (người chấm tick checklist rubric cho 1 workflow)   ·   PUT /api/kpi/ai-entries/:id   ·   DELETE /api/kpi/ai-entries/:id
    POST   /api/kpi/ai-assess  {member, month, c1, c2, c3, note, clear}      → điểm điều chỉnh của L&D (tuỳ chọn) cho từng tiêu chí
    Lưu qua listStore.js (data/kpi-ai.json); cách tính: kpiAi.js + kpi-sla-config.json ("ai"). */
@@ -726,6 +727,9 @@ app.get('/api/kpi/ai-score', requireAuth, async (req, res) => {
     out.githubBacked = kpiAi.store.isGithubBacked();
     res.json(out);
   } catch (e) { console.error('[kpi/ai-score] lỗi:', e.message); res.status(502).json({ error: e.message }); }
+});
+app.post('/api/kpi/ai-submit', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, ...(await kpiAi.submit(req.body || {}, aiCtx())) }); } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/kpi/ai-entries', requireAuth, async (req, res) => {
   try { res.json({ ok: true, ...(await kpiAi.add(req.body || {}, aiCtx())) }); } catch (e) { res.status(400).json({ error: e.message }); }
@@ -746,7 +750,10 @@ app.post('/api/kpi/ai-assess', requireAuth, async (req, res) => {
 /* ---------- KPI Team: CS23 Hoàn thành chứng nhận sản phẩm — lộ trình module của kỳ (tháng), chấm theo thành viên + level ----------
    GET    /api/kpi/cert-score?member=<email>&level=&month=<YYYY-MM>
    POST   /api/kpi/cert-modules       {module, member, month, weight, dueDate, doneDate, evidence, note}
-   POST   /api/kpi/cert-modules/bulk  {member, month, items:[{module, weight?, dueDate?}]}   (thêm cả lộ trình 1 lần, 1 commit)
+   GET    /api/kpi/cert-roadmaps?month=&member=    → các lộ trình đã lập theo tháng (mỗi nhân viên: module, trọng số %, % hoàn thành)
+   POST   /api/kpi/cert-roadmap {members:[…], month, modules:[{module, weight%}]}   → QUẢN LÝ lập lộ trình (tổng trọng số = 100%)
+   POST   /api/kpi/cert-submit  {member, month, items:[{id, completion%, evidence, note}]}   → NHÂN VIÊN gửi bằng chứng + % hoàn thành (1 commit)
+   POST   /api/kpi/cert-modules/bulk  {member, month, items:[{module, weight?, dueDate?}]}   (cũ: thêm cả lộ trình 1 lần, 1 commit)
    PUT    /api/kpi/cert-modules/:id   ·   DELETE /api/kpi/cert-modules/:id
    Lưu qua listStore.js (data/kpi-cert.json); cách tính: kpiCert.js + kpi-sla-config.json ("cert"). */
 function certCtx() { return { allowedMembers: loadProjectCreators().creators }; }
@@ -760,11 +767,24 @@ app.get('/api/kpi/cert-score', requireAuth, async (req, res) => {
     const month = kpiSla.isMonthKey(req.query.month) ? String(req.query.month) : new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 7);
     const all = await kpiCert.store.readAll();
     const out = kpiCert.scoreMember(all, { month, member, level, config });
-    out.overview = kpiCert.overview(all, { month });
     out.config = { levels: config.levels, thresholds: c.thresholds, weights: c.weights, name: c.name };
     out.githubBacked = kpiCert.store.isGithubBacked();
     res.json(out);
   } catch (e) { console.error('[kpi/cert-score] lỗi:', e.message); res.status(502).json({ error: e.message }); }
+});
+app.get('/api/kpi/cert-roadmaps', requireAuth, async (req, res) => {
+  try {
+    const month = kpiSla.isMonthKey(req.query.month) ? String(req.query.month) : new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 7);
+    const member = String(req.query.member || '').trim().toLowerCase();
+    const all = await kpiCert.store.readAll();
+    res.json({ month, member, roadmaps: kpiCert.roadmaps(all, { month, member }) });
+  } catch (e) { res.status(502).json({ error: e.message }); }
+});
+app.post('/api/kpi/cert-roadmap', requireAuth, async (req, res) => {
+  try { const b = req.body || {}; res.json({ ok: true, ...(await kpiCert.setRoadmap({ members: b.members, month: b.month, modules: b.modules }, certCtx())) }); } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/kpi/cert-submit', requireAuth, async (req, res) => {
+  try { const b = req.body || {}; res.json({ ok: true, ...(await kpiCert.submit({ member: b.member, month: b.month, items: b.items }, certCtx())) }); } catch (e) { res.status(400).json({ error: e.message }); }
 });
 app.post('/api/kpi/cert-modules/bulk', requireAuth, async (req, res) => {
   try { const b = req.body || {}; res.json({ ok: true, ...(await kpiCert.addMany({ member: b.member, month: b.month }, b.items, certCtx())) }); } catch (e) { res.status(400).json({ error: e.message }); }
@@ -779,12 +799,13 @@ app.delete('/api/kpi/cert-modules/:id', requireAuth, async (req, res) => {
   try { res.json({ ok: true, ...(await kpiCert.remove(req.params.id)) }); } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-/* ---------- KPI Team: CS25 Quản lý CR — giữ đúng plan CR đã cam kết với khách (3 mốc: bàn giao testcase+tài liệu, up Staging, up PROD) ----------
-   GET    /api/kpi/crplan-score?member=<email>&level=&month=<YYYY-MM>&projects=[...]
-   POST   /api/kpi/crplan-entries  {cr, member, project, milestones:{handover:{planned,actual}, staging:{planned,actual,pmErrors}, prod:{planned,actual}}, note}
-   PUT    /api/kpi/crplan-entries/:id   ·   DELETE /api/kpi/crplan-entries/:id
-   Lưu qua listStore.js (data/kpi-crplan.json); cách tính: kpiCrPlan.js + kpi-sla-config.json ("crplan"). */
-function crPlanCtx() { return { config: kpiSla.loadConfig(), allowedMembers: loadProjectCreators().creators, allowedProjects: loadInstructionProjects().map((p) => p.code) }; }
+/* ---------- KPI Team: CS25 Quản lý CR — giữ đúng plan CR đã cam kết với khách. Cách 1: quản lý lập lộ trình tháng (mục + trọng số % tổng 100% + hạn cam kết), nhân viên nhập ngày thực tế + bằng chứng.
+   GET  /api/kpi/crplan-score?member=<email>&level=&month=<YYYY-MM>
+   GET  /api/kpi/crplan-roadmaps?month=&member=
+   POST /api/kpi/crplan-roadmap {members:[…], month, modules:[{module, weight%, plannedDate}]}      → QUẢN LÝ lập lộ trình (tổng trọng số = 100%)
+   POST /api/kpi/crplan-submit  {member, month, items:[{id, actualDate, hasError, evidence, note}]}   → NHÂN VIÊN gửi ngày thực tế + bằng chứng (1 commit)
+   Lưu qua listStore.js (data/kpi-crplan-roadmap.json); cách tính: kpiCrPlan.js + kpi-sla-config.json ("crplan"). Cách 2 (tự động từ SynergyHub) ở bên dưới. */
+function crPlanCtx() { return { allowedMembers: loadProjectCreators().creators }; }
 app.get('/api/kpi/crplan-score', requireAuth, async (req, res) => {
   try {
     const config = kpiSla.loadConfig(); const c = config.crplan;
@@ -792,27 +813,25 @@ app.get('/api/kpi/crplan-score', requireAuth, async (req, res) => {
     if (!loadProjectCreators().creators.includes(member)) return res.status(400).json({ error: 'Thành viên không nằm trong danh sách người tạo ticket.' });
     const level = String(req.query.level || '');
     if (!config.levels.includes(level)) return res.status(400).json({ error: 'Level không hợp lệ.' });
-    const allProjects = loadInstructionProjects().map((p) => p.code);
-    const requested = parseJsonArrayParam(req.query.projects);
-    const projects = (requested.length ? requested : c.defaultProjects).filter((p) => allProjects.includes(p));
-    if (!projects.length) return res.status(400).json({ error: 'Chưa chọn dự án hợp lệ.' });
     const month = kpiSla.isMonthKey(req.query.month) ? String(req.query.month) : new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 7);
     const all = await kpiCrPlan.store.readAll();
-    const out = kpiCrPlan.scoreMember(all, { month, member, level, projects, config });
-    out.overview = kpiCrPlan.overview(all, { month, projects, config });
-    out.config = { levels: config.levels, thresholds: c.thresholds, weights: c.weights, criteria: c.criteria, defaultProjects: c.defaultProjects, name: c.name };
-    out.githubBacked = kpiCrPlan.store.isGithubBacked();
+    const out = kpiCrPlan.scoreMember(all, { month, member, level, config });
+    out.config = { levels: config.levels, thresholds: c.thresholds, weights: c.weights, criteria: c.criteria, name: c.name };
     res.json(out);
   } catch (e) { console.error('[kpi/crplan-score] lỗi:', e.message); res.status(502).json({ error: e.message }); }
 });
-app.post('/api/kpi/crplan-entries', requireAuth, async (req, res) => {
-  try { res.json({ ok: true, ...(await kpiCrPlan.add(req.body || {}, crPlanCtx())) }); } catch (e) { res.status(400).json({ error: e.message }); }
+app.get('/api/kpi/crplan-roadmaps', requireAuth, async (req, res) => {
+  try {
+    const month = kpiSla.isMonthKey(req.query.month) ? String(req.query.month) : new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 7);
+    const member = String(req.query.member || '').trim().toLowerCase();
+    res.json({ month, member, roadmaps: kpiCrPlan.roadmaps(await kpiCrPlan.store.readAll(), { month, member, config: kpiSla.loadConfig() }) });
+  } catch (e) { res.status(502).json({ error: e.message }); }
 });
-app.put('/api/kpi/crplan-entries/:id', requireAuth, async (req, res) => {
-  try { res.json({ ok: true, ...(await kpiCrPlan.update(req.params.id, req.body || {}, crPlanCtx())) }); } catch (e) { res.status(400).json({ error: e.message }); }
+app.post('/api/kpi/crplan-roadmap', requireAuth, async (req, res) => {
+  try { const b = req.body || {}; res.json({ ok: true, ...(await kpiCrPlan.setRoadmap({ members: b.members, month: b.month, modules: b.modules }, crPlanCtx())) }); } catch (e) { res.status(400).json({ error: e.message }); }
 });
-app.delete('/api/kpi/crplan-entries/:id', requireAuth, async (req, res) => {
-  try { res.json({ ok: true, ...(await kpiCrPlan.remove(req.params.id)) }); } catch (e) { res.status(400).json({ error: e.message }); }
+app.post('/api/kpi/crplan-submit', requireAuth, async (req, res) => {
+  try { const b = req.body || {}; res.json({ ok: true, ...(await kpiCrPlan.submit({ member: b.member, month: b.month, items: b.items }, crPlanCtx())) }); } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 /* ---------- File hướng dẫn AI (.md) cho từng dự án: nhân viên tải về để tạo Project/Skill gen ticket ----------

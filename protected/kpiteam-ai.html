@@ -76,7 +76,7 @@
 <div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb">/ kpi team / cs21 ai workflow cá nhân</span></div>
 <div class="wrap">
   <h1>CS21: AI Workflow Cá Nhân (AI adoption)</h1>
-  <p class="sub">Đánh giá mức độ ứng dụng AI vào công việc hằng ngày để nâng năng suất và chất lượng xử lý công việc, đúng quy định. <b>Actual = điểm AI workflow đạt được ÷ tổng điểm tối đa (100)</b>, gồm 3 tiêu chí: <b>40</b> (AI soạn email/ticket giảm thời gian ≥ 30%), <b>40</b> (AI hỗ trợ báo cáo đúng hạn), <b>20</b> (0 vi phạm AI Data Security). Mỗi thành viên nộp <b>bằng chứng</b> theo tháng; bằng chứng được <b>ghi nhận ở cuối trang</b>.</p>
+  <p class="sub">Đánh giá mức độ ứng dụng AI vào công việc hằng ngày để nâng năng suất và chất lượng xử lý công việc, đúng quy định. <b>Actual = điểm AI workflow đạt được ÷ tổng điểm tối đa (100)</b>, gồm 3 tiêu chí: <b>40</b> (AI soạn email/ticket giảm thời gian ≥ 30%), <b>40</b> (AI hỗ trợ báo cáo đúng hạn), <b>20</b> (0 vi phạm AI Data Security). Mỗi thành viên nộp <b>bằng chứng</b> theo tháng; bằng chứng được <b>ghi nhận và tự đánh giá ngay trong một form</b> bên dưới.</p>
 
   <div class="panel">
     <div class="filters">
@@ -104,8 +104,50 @@
       <div id="resBody"></div>
     </div>
 
-    <div class="panel">
-      <h2>Chi tiết 3 tiêu chí &amp; bằng chứng</h2>
+    <div class="panel" id="newPanel">
+      <h2>Ghi nhận bằng chứng &amp; tự đánh giá</h2>
+      <p class="hint" style="margin:0 0 10px">Nhân viên điền bằng chứng cho từng mục bên dưới, <b>tự tick đánh giá</b>, rồi bấm <b>Lưu</b> một lần. Sau khi lưu, mục <b>"Chi tiết 3 tiêu chí &amp; bằng chứng"</b> được cập nhật để tổng hợp đưa vào KPI ERP. Mục nào không có thì để trống.</p>
+      <div class="formgrid">
+        <div class="field">Thành viên<select id="nMember"></select></div>
+        <div class="field">Ngày ghi nhận<input type="date" id="nDate"></div>
+        <div class="field">Link bằng chứng chung<input type="text" id="nEvidence" maxlength="500" style="min-width:320px" placeholder="Link ảnh chụp, email, file…"></div>
+        <div class="field">Ghi chú<input type="text" id="nNote" maxlength="1000" style="min-width:220px"></div>
+      </div>
+      <div class="crit" style="grid-template-columns:repeat(2,1fr);margin-top:12px">
+        <div class="cbox"><h3>1a) Prompt / flow AI soạn email-ticket <span class="hint">(tiêu chí 1 · 40 điểm)</span></h3>
+          <div class="field">Tên workflow / việc dùng AI<input type="text" id="nWTitle" maxlength="200" placeholder="VD: Soạn email phản hồi KH về lỗi báo cáo" style="min-width:0;width:100%"></div>
+          <div class="field" style="margin-top:6px">Loại<select id="nWKind" style="min-width:0;width:100%"></select></div>
+          <div class="field" style="margin-top:6px">Prompt đã dùng <span class="hint">(ẩn danh dữ liệu khách hàng)</span><textarea id="nWPrompt" maxlength="4000" style="width:100%;min-height:90px;font:inherit;font-size:13px;padding:8px 12px;border-radius:8px;border:1px solid var(--grid-line-strong)"></textarea></div>
+          <div class="field" style="margin-top:6px">Flow / các bước làm việc với AI<textarea id="nWFlow" maxlength="2000" style="width:100%;min-height:80px;font:inherit;font-size:13px;padding:8px 12px;border-radius:8px;border:1px solid var(--grid-line-strong)"></textarea></div>
+          <div style="margin-top:8px"><b style="font-size:12.5px">Tự đánh giá (tick các tiêu chí đạt):</b><div id="nRubric"></div></div>
+          <div class="ln" id="prev1a" style="margin-top:6px"></div>
+        </div>
+        <div class="cbox"><h3>1b) Thời gian soạn email/ticket <span class="hint">(tiêu chí 1)</span></h3>
+          <div class="field">Việc đã làm (email/ticket)<input type="text" id="nTTask" maxlength="200" style="min-width:0;width:100%"></div>
+          <div class="formgrid" style="margin-top:6px">
+            <div class="field">Loại<select id="nTKind"></select></div>
+            <div class="field">Phút làm thông thường<input type="number" id="nTNormal" min="1" style="min-width:110px;width:110px"></div>
+            <div class="field">Phút làm có AI<input type="number" id="nTAi" min="0" style="min-width:110px;width:110px"></div>
+          </div>
+          <div class="ln" id="prev1b" style="margin-top:6px"></div>
+          <h3 style="margin-top:14px">3) Vi phạm AI Data Security <span class="hint">(tiêu chí 3 · 20 điểm)</span></h3>
+          <label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="nVHas"> Có vi phạm trong tháng (đưa dữ liệu khách hàng nhạy cảm / bảo mật lên công cụ AI ngoài)</label>
+          <div class="field hide" id="nVWrap" style="margin-top:6px">Mô tả vi phạm<input type="text" id="nVDesc" maxlength="500" style="min-width:0;width:100%" placeholder="Dữ liệu gì, đưa lên công cụ AI nào…"></div>
+          <div class="ln" id="prev3" style="margin-top:6px"></div>
+        </div>
+      </div>
+      <div class="cbox" style="margin-top:12px"><h3>2) Báo cáo tuần / tháng / ERP có AI hỗ trợ <span class="hint">(tiêu chí 2 · 40 điểm)</span></h3>
+        <div id="nReports"></div>
+        <div style="margin-top:6px"><button type="button" id="btnAddRep" style="padding:3px 12px;font-size:12px">＋ Thêm báo cáo</button></div>
+        <div class="ln" id="prev2" style="margin-top:6px"></div>
+      </div>
+      <div style="margin-top:12px"><button id="btnSubmit" type="button" class="primary">💾 Lưu bằng chứng &amp; tự đánh giá</button> <button id="btnReset" type="button">Làm mới form</button></div>
+      <div id="submitMsg" style="margin-top:10px"></div>
+    </div>
+
+    <div class="panel" id="detailPanel">
+      <h2 style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><span>Chi tiết 3 tiêu chí &amp; bằng chứng</span><button type="button" id="btnCopySum" style="padding:4px 12px;font-size:12px">📋 Copy tổng hợp (dán vào KPI ERP)</button></h2>
+      <div id="copyMsg"></div>
       <div class="crit" id="crit"></div>
     </div>
 
@@ -122,8 +164,8 @@
       <div id="assessMsg" style="margin-top:8px"></div>
     </div>
 
-    <div class="panel">
-      <h2 id="formTitle">Ghi nhận bằng chứng AI workflow</h2>
+    <div class="panel hide" id="editPanel">
+      <h2 id="formTitle">Sửa bằng chứng</h2>
       <div class="formgrid">
         <div class="field">Loại bằng chứng<select id="fKind"><option value="workflow">1) Prompt / flow AI soạn email-ticket (người chấm tick checklist rubric)</option><option value="time">1) Thời gian soạn email/ticket (chỉ nhập số phút có AI vs thông thường)</option><option value="report">2) Báo cáo tuần/tháng/ERP</option><option value="violation">3) Vi phạm AI Data Security</option></select></div>
         <div class="field">Thành viên<select id="fMember"></select></div>
@@ -278,16 +320,101 @@ async function load(){
     data = d; cfg = d.config; renderRef();
     $('loading').style.display = 'none'; $('content').style.display = ''; $('notice').innerHTML = '';
     $('stamp').textContent = 'Cập nhật '+new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
-    fillKinds(); render(d); resetForm();
+    fillKinds(); buildNewForm(); $('nMember').value = $('selMember').value; render(d); resetForm();
   }catch(e){ if(seq!==reqSeq) return; $('loading').style.display = 'none'; $('content').style.display = 'none'; $('notice').innerHTML = '<div class="msg err">Không lấy được dữ liệu: '+esc(e.message)+'</div>'; }
 }
 
-/* ---------- form bằng chứng ---------- */
+
+/* ---------- form gộp: ghi nhận bằng chứng + tự đánh giá ---------- */
+function rubricRatio(keys){
+  const rub = cfg.rubric||[]; const total = rub.reduce((s,r)=>s+r.weight,0)||100;
+  const raw = rub.filter(r=>keys.includes(r.key)).reduce((s,r)=>s+r.weight,0);
+  const gateFail = rub.some(r=>r.gate && !keys.includes(r.key));
+  return { raw, total, ratio: gateFail ? 0 : raw/total, gateFail };
+}
+function nRubricKeys(){ return [...document.querySelectorAll('#nRubric input:checked')].map(i=>i.dataset.k); }
+function repRows(){ return [...document.querySelectorAll('#nReports .repRow')]; }
+function repValue(row){ return { report: row.querySelector('.rName').value, reportKind: row.querySelector('.rKind').value, dueDate: row.querySelector('.rDue').value, doneDate: row.querySelector('.rDone').value, usedAi: row.querySelector('.rAi').value==='true' }; }
+function addRepRow(){
+  const div = document.createElement('div'); div.className = 'repRow'; div.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:6px;border-bottom:1px dashed var(--grid-line);padding-bottom:6px';
+  div.innerHTML = '<div class="field">Tên báo cáo / tổng hợp<input type="text" class="rName" maxlength="200" style="min-width:220px"></div><div class="field">Loại<select class="rKind">'+cfg.reportKinds.map(x=>'<option>'+esc(x)+'</option>').join('')+'</select></div>'
+    +'<div class="field">Hạn<input type="date" class="rDue"></div><div class="field">Ngày hoàn thành<input type="date" class="rDone"></div><div class="field">Có dùng AI?<select class="rAi"><option value="true">Có</option><option value="false">Không</option></select></div>'
+    +'<button type="button" class="danger rDel" style="padding:3px 10px;font-size:12px">Bỏ dòng</button>';
+  div.querySelectorAll('input,select').forEach(i=>i.addEventListener('input', updatePreview));
+  div.querySelector('.rDel').onclick = ()=>{ div.remove(); updatePreview(); };
+  $('nReports').appendChild(div);
+}
+function updatePreview(){
+  if(!cfg) return; const c = cfg.criteria;
+  const keys = nRubricKeys(); const hasWf = $('nWTitle').value.trim() || $('nWPrompt').value.trim() || $('nWFlow').value.trim();
+  if(hasWf){ const r = rubricRatio(keys); $('prev1a').innerHTML = 'Tự đánh giá: <b>'+fmt(r.ratio*100,0)+'%</b> ('+r.raw+'/'+r.total+' điểm rubric)'+(r.gateFail?' — <span style="color:var(--danger)">chưa tick mục bảo mật bắt buộc → 0%</span>':'')+' → đóng góp hệ số tiêu chí 1'; } else $('prev1a').textContent = '';
+  const n = Number($('nTNormal').value), a = Number($('nTAi').value);
+  if(n>0 && $('nTAi').value!==''){ const red = (n-a)/n*100; $('prev1b').innerHTML = 'Giảm <b>'+fmt(red)+'%</b> thời gian (mục tiêu ≥ '+c.time.targetReductionPct+'%) → hệ số '+fmt(Math.min(1,Math.max(0,red)/c.time.targetReductionPct)*100,0)+'%'; } else $('prev1b').textContent = '';
+  const reps = repRows().map(repValue).filter(r=>r.report||r.dueDate); const today = new Date(Date.now()+7*3600*1000).toISOString().slice(0,10);
+  let pass = 0, dec = 0; reps.forEach(r=>{ if(r.doneDate){ dec++; if(r.doneDate<=r.dueDate && r.usedAi) pass++; } else if(r.dueDate && r.dueDate<today) dec++; });
+  $('prev2').innerHTML = reps.length ? 'Đạt <b>'+pass+'/'+dec+'</b> báo cáo có kết quả (đúng hạn và có dùng AI)'+(dec?' → <b>'+fmt(pass/dec*100,0)+'%</b> × '+c.report.points+' = '+fmt(pass/dec*c.report.points,1)+' điểm':'') : '';
+  $('prev3').innerHTML = $('nVHas').checked ? '<span style="color:var(--danger)">Có vi phạm → 0/'+c.security.points+' điểm</span>' : 'Không có vi phạm → <b>'+c.security.points+'/'+c.security.points+'</b> điểm';
+  $('nVWrap').classList.toggle('hide', !$('nVHas').checked);
+}
+function buildNewForm(){
+  if($('nRubric').children.length) return;
+  $('nMember').innerHTML = $('fMember').innerHTML;
+  $('nWKind').innerHTML = $('nTKind').innerHTML = cfg.timeKinds.map(x=>'<option>'+esc(x)+'</option>').join('');
+  $('nRubric').innerHTML = (cfg.rubric||[]).map(r=>'<label style="display:flex;gap:6px;align-items:flex-start;font-size:12.5px;line-height:1.5;margin:2px 0"><input type="checkbox" data-k="'+esc(r.key)+'"><span>'+esc(r.label)+' <b style="color:var(--blueprint)">('+r.weight+'%'+(r.gate?' · bắt buộc':'')+')</b></span></label>').join('');
+  $('nRubric').querySelectorAll('input').forEach(i=>i.addEventListener('change', updatePreview));
+  ['nWTitle','nWPrompt','nWFlow','nTTask','nTNormal','nTAi','nVDesc'].forEach(id=>$(id).addEventListener('input', updatePreview)); $('nVHas').addEventListener('change', updatePreview);
+  $('btnAddRep').onclick = ()=>{ addRepRow(); updatePreview(); };
+  $('btnSubmit').onclick = submitAll; $('btnReset').onclick = resetNew;
+  resetNew();
+}
+function resetNew(){
+  $('nMember').value = $('selMember').value; $('nDate').value = defaultDate(); ['nEvidence','nNote','nWTitle','nWPrompt','nWFlow','nTTask','nTNormal','nTAi','nVDesc'].forEach(id=>$(id).value='');
+  $('nVHas').checked = false; $('nRubric').querySelectorAll('input').forEach(i=>i.checked=false); $('nReports').innerHTML = ''; addRepRow(); const r = repRows()[0]; if(r) r.querySelector('.rDue').value = defaultDate(); updatePreview();
+}
+async function submitAll(){
+  const reps = repRows().map(repValue).filter(r=>r.report||r.dueDate||r.doneDate);
+  const body = { member:$('nMember').value, date:$('nDate').value, evidence:$('nEvidence').value, note:$('nNote').value,
+    workflow: { title:$('nWTitle').value, taskKind:$('nWKind').value, prompt:$('nWPrompt').value, flow:$('nWFlow').value, rubric:nRubricKeys() },
+    time: { task:$('nTTask').value, taskKind:$('nTKind').value, minutesNormal:$('nTNormal').value, minutesAi:$('nTAi').value },
+    reports: reps, violation: { has:$('nVHas').checked, description:$('nVDesc').value } };
+  $('btnSubmit').disabled = true; $('submitMsg').innerHTML = '';
+  try{
+    const r = await api('/api/kpi/ai-submit', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const m = r.entries[0].month; month = m; $('selMember').value = body.member; await load();
+    $('submitMsg').innerHTML = '<div class="msg ok">Đã lưu '+r.entries.length+' bằng chứng cho '+esc(shortName(body.member))+' (tháng '+esc(mFmt(m))+'). Xem bên dưới mục <b>Chi tiết 3 tiêu chí &amp; bằng chứng</b> để tổng hợp đưa vào KPI ERP.'+(r.commitUrl?' <a href="'+esc(r.commitUrl)+'" target="_blank" rel="noopener">Xem commit ↗</a>':'')+'</div>';
+    const dp = $('detailPanel'); dp.scrollIntoView({behavior:'smooth', block:'start'}); dp.style.transition = 'box-shadow .3s'; dp.style.boxShadow = '0 0 0 3px #E8A33D'; setTimeout(()=>{ dp.style.boxShadow = ''; }, 2200);
+  }catch(e){ $('submitMsg').innerHTML = '<div class="msg err">Không lưu được: '+esc(e.message)+'</div>'; }
+  finally{ $('btnSubmit').disabled = false; }
+}
+function copySummary(){
+  const d = data, c = d.criteria, E = d.entries, r = d.result; const L = [];
+  L.push('CS21 — AI adoption cá nhân | '+d.member+' | '+d.level+' | tháng '+mFmt(d.month));
+  L.push('Tổng điểm AI workflow: '+fmt(r.total,1)+'/'+r.maxTotal+' → Actual '+fmt(r.actual)+'% | Progress '+fmt(r.progress)+'% | KPI Completion '+fmt(r.points,2)+'%');
+  L.push('');
+  L.push('1) AI soạn email/ticket giảm thời gian ≥ '+c.time.targetPct+'% — '+fmt(c.time.score,1)+'/'+c.time.max+(c.time.overridden?' (L&D chấm)':''));
+  if(c.time.reductionPct!=null) L.push('   - Số phút: thông thường '+c.time.sumNormal+' → có AI '+c.time.sumAi+', giảm '+fmt(c.time.reductionPct)+'%');
+  if(c.time.workflowsGraded) L.push('   - Rubric: '+c.time.workflowsGraded+' workflow, hệ số '+fmt(c.time.rubricFactor*100,0)+'%');
+  E.workflow.forEach(w=>L.push('   • '+dmy(w.date)+' '+w.taskKind+': '+w.title+(w.graded?' [đánh giá '+fmt((w.ratio||0)*100,0)+'%'+(w.gradedBy?' — '+w.gradedBy:'')+']':' [chưa chấm]')+((w.evidence)?' | '+w.evidence:'')));
+  E.time.forEach(t=>L.push('   • '+dmy(t.date)+' '+t.taskKind+': '+t.task+' — '+t.minutesNormal+' → '+t.minutesAi+' phút'+(t.evidence?' | '+t.evidence:'')));
+  L.push('2) AI hỗ trợ báo cáo đúng hạn — '+fmt(c.report.score,1)+'/'+c.report.max+(c.report.overridden?' (L&D chấm)':'')+(c.report.decided?' ('+c.report.pass+'/'+c.report.decided+' báo cáo đúng hạn có dùng AI)':''));
+  E.report.forEach(e=>L.push('   • '+e.reportKind+': '+e.report+' — hạn '+dmy(e.dueDate)+(e.doneDate?', xong '+dmy(e.doneDate):'')+', '+(e.usedAi?'có AI':'không AI')+' → '+e.status+(e.evidence?' | '+e.evidence:'')));
+  L.push('3) 0 vi phạm AI Data Security — '+fmt(c.security.score,1)+'/'+c.security.max+(c.security.overridden?' (L&D chấm)':'')+' ('+c.security.violations+' vi phạm)');
+  E.violation.forEach(v=>L.push('   • '+dmy(v.date)+': '+v.description));
+  return L.join('\n');
+}
+async function copySum(){
+  const txt = copySummary();
+  try{ await navigator.clipboard.writeText(txt); $('copyMsg').innerHTML = '<div class="msg ok">Đã copy tổng hợp — dán vào KPI ERP.</div>'; }
+  catch(e){ const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); let ok=false; try{ ok = document.execCommand('copy'); }catch(_){} ta.remove(); $('copyMsg').innerHTML = ok ? '<div class="msg ok">Đã copy tổng hợp — dán vào KPI ERP.</div>' : '<div class="msg err">Trình duyệt chặn copy: '+esc(e.message)+'</div>'; }
+}
+
+/* ---------- form bằng chứng (chỉ dùng khi SỬA 1 bản ghi) ---------- */
 function fillKinds(){ if(!$('tKind').options.length){ $('wKind').innerHTML = $('tKind').innerHTML = cfg.timeKinds.map(x=>'<option>'+esc(x)+'</option>').join(''); $('rKind').innerHTML = cfg.reportKinds.map(x=>'<option>'+esc(x)+'</option>').join(''); } }
 function showKind(){ const k = $('fKind').value; $('gWf').classList.toggle('hide', k!=='workflow'); $('gTime').classList.toggle('hide', k!=='time'); $('gReport').classList.toggle('hide', k!=='report'); $('gViol').classList.toggle('hide', k!=='violation'); }
 function defaultDate(){ const t = todayVN(); return t.slice(0,7)===month ? t : month+'-01'; }
-function resetForm(){
-  editing = null; $('fKind').disabled = false; $('formTitle').textContent = 'Ghi nhận bằng chứng AI workflow'; $('btnSave').textContent = '＋ Lưu bằng chứng'; $('btnCancel').style.display = 'none';
+function showEdit(on){ $('editPanel').classList.toggle('hide', !on); }
+function resetForm(){ showEdit(false);
+  editing = null; $('fKind').disabled = false; $('formTitle').textContent = 'Sửa bằng chứng'; $('btnSave').textContent = '＋ Lưu bằng chứng'; $('btnCancel').style.display = 'none';
   $('fMember').value = $('selMember').value; ['tTask','tNormal','tAi','rName','rDone','vDesc','wTitle','wPrompt','wFlow','wNormal','wAi','fEvidence','fNote'].forEach(i=>$(i).value=''); $('wDate').value = defaultDate(); $('tDate').value = defaultDate(); $('rDue').value = defaultDate(); $('vDate').value = defaultDate(); $('rAi').value = 'true'; showKind();
 }
 function findEntry(id){ return [...data.entries.time, ...data.entries.workflow, ...data.entries.report, ...data.entries.violation].find(x=>x.id===id); }
@@ -298,7 +425,7 @@ function startEdit(id){
   if(e.kind==='time'){ $('tDate').value = e.date; $('tKind').value = e.taskKind; $('tTask').value = e.task; $('tNormal').value = e.minutesNormal; $('tAi').value = e.minutesAi; }
   if(e.kind==='report'){ $('rName').value = e.report; $('rKind').value = e.reportKind; $('rDue').value = e.dueDate; $('rDone').value = e.doneDate||''; $('rAi').value = e.usedAi ? 'true' : 'false'; }
   if(e.kind==='violation'){ $('vDate').value = e.date; $('vDesc').value = e.description; }
-  $('formTitle').scrollIntoView({behavior:'smooth', block:'center'});
+  showEdit(true); $('formTitle').scrollIntoView({behavior:'smooth', block:'center'});
 }
 function formBody(){
   const kind = $('fKind').value; const b = { kind, member:$('fMember').value, evidence:$('fEvidence').value, note:$('fNote').value };
@@ -365,7 +492,7 @@ $('btnReload').onclick = () => load(); $('btnXlsx').onclick = () => exportXlsx()
 $('selLevel').onchange = () => { renderRef(); persist(); load(); };
 $('selMember').onchange = () => { const s = store.get(); $('selLevel').value = (s.levels&&s.levels[$('selMember').value]) || 'Junior'; persist(); load(); };
 $('fKind').onchange = showKind; $('btnSave').onclick = saveEntry; $('btnCancel').onclick = resetForm;
-$('btnAssess').onclick = () => saveAssess(false); $('btnAssessClear').onclick = () => saveAssess(true);
+$('btnCopySum').onclick = copySum; $('btnAssess').onclick = () => saveAssess(false); $('btnAssessClear').onclick = () => saveAssess(true);
 
 (async function init(){
   const s = store.get(); $('selLevel').innerHTML = LEVELS.map(l=>'<option>'+l+'</option>').join('');
