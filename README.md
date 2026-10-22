@@ -199,6 +199,30 @@ Module hiện có:
   xử lý của (các) ticket cũ — lấy từ `_assign`, hoặc lịch sử giao việc (ToDo) vì ERP thường xoá `_assign` khi ticket đóng. Xác nhận của QA lưu qua `listStore.js` (`data/kpi-defect-decisions.json`). Logic ở `kpiDefect.js`, cấu hình trong
   `kpi-sla-config.json` (mục `defect`: lookbackMonths, closedStatuses, ngưỡng tương đồng tiêu đề).
 
+- **KPI Team → CS07: CR Phân Tích Đúng Hạn** (`/kpiteam/cr-phan-tich`): ghi nhận tay các CR được giao phân tích (mã/tên CR, dự án — mặc định
+  ANVY, thành viên, ngày giao, hạn phân tích, ngày xong, số lần bị trả lại + lý do) rồi chấm KPI **Cao tốt** theo thành viên + level + tháng.
+  Actual = CR xong đúng hạn và không bị trả lại ÷ CR có kết quả; tháng của CR = tháng của hạn phân tích; CR chưa xong mà quá hạn tính là không đạt,
+  chưa tới hạn thì "Đang xử lý" (chưa tính). Chỉ Junior/Middle/Senior có KPI này (ngưỡng/trọng số CS07 trong Master KPI). Logic ở `kpiCr.js`,
+  cấu hình ở `kpi-sla-config.json` (mục `cr`), dữ liệu lưu qua `listStore.js` (`data/kpi-cr.json`).
+
+- **KPI Team → CS21: AI Workflow Cá Nhân** (`/kpiteam/ai-workflow`): chấm KPI **Cao tốt** "AI adoption cá nhân" theo thành viên + level + tháng,
+  Actual = điểm AI workflow ÷ 100, từ bằng chứng nhập tay: (1) 40 điểm — AI soạn email/ticket: nộp **prompt/flow** (tool tự quét dữ liệu nhạy cảm để gợi ý, người chấm tick **checklist rubric** `ai.rubric`,
+  tiêu chí bảo mật là bắt buộc) và/hoặc số phút có AI vs thông thường (giảm ≥ 30% là đủ điểm); có cả hai nguồn thì lấy trung bình hệ số; (2) 40 điểm — báo cáo tuần/tháng/ERP đúng hạn có dùng AI (tỷ lệ × 40); (3) 20 điểm — 0 vi phạm AI Data Security (có vi phạm = 0).
+  L&D (TDC) có thể nhập điểm điều chỉnh cho từng tiêu chí (để trống = dùng điểm tự tính). Logic ở `kpiAi.js`, cấu hình ở `kpi-sla-config.json`
+  (mục `ai`: ngưỡng/trọng số CS21 + điểm các tiêu chí), dữ liệu lưu qua `listStore.js` (`data/kpi-ai.json`).
+
+- **KPI Team → CS23: Chứng Nhận Sản Phẩm** (`/kpiteam/chung-nhan-san-pham`): ghi nhận **lộ trình module chứng nhận của kỳ (tháng)** cho từng thành viên rồi chấm KPI
+  **Cao tốt, Target = Max** (chỉ Fresher/Junior). Actual = module hoàn thành ÷ tổng module × 100% (mỗi module có trọng số, mặc định 1; có thể nhập 50/50...).
+  Module hoàn thành khi có ngày hoàn thành (nút ✔ Hoàn thành, kèm bằng chứng). Có thêm cả lộ trình 1 lần (mỗi dòng 1 module, 1 commit). Logic ở `kpiCert.js`,
+  cấu hình ở `kpi-sla-config.json` (mục `cert`), dữ liệu lưu qua `listStore.js` (`data/kpi-cert.json`).
+
+- **KPI Team → CS25: Quản Lý Plan CR** (`/kpiteam/quan-ly-cr`): ghi nhận tay các CR được giao (mặc định ABI) với 3 mốc cam kết với khách — (1) bàn giao testcase + tài liệu CRs
+  trước Staging 40%, (2) up gói + PM review không lỗi trên Staging đúng hạn 45%, (3) up PROD đúng kế hoạch 15% — mỗi mốc gồm **hạn cam kết gốc** và **ngày thực tế**
+  (mốc 2 có cờ "PM review có lỗi"). Mốc tính vào tháng của hạn cam kết. Actual = Σ (trọng số tiêu chí × tỷ lệ mốc đạt), chuẩn hóa theo các tiêu chí đã có mốc tới hạn,
+  rồi qua ngưỡng CS25 trong Master KPI (Cao tốt; Junior/Middle có trọng số). Logic ở `kpiCrPlan.js`, cấu hình `kpi-sla-config.json` (mục `crplan`), dữ liệu `data/kpi-crplan.json`.
+  **Cách 2 (tự động)**: nút "Lấy từ SynergyHub" lấy task được giao cho thành viên từ SynergyHub (hàm `synergyhub.api.dynamic_permissions.get_filtered_tasks_with_context` — đúng bộ tham số trang Tasks gửi, phân trang bằng `limit_start`/`limit_page_length`; ghi đè bằng biến môi trường
+  `SYNERGYHUB_TASKS_METHOD`), Actual = task hoàn thành đúng hạn ÷ task được giao có hạn dự kiến trong tháng (API `/api/kpi/crplan-auto`, chẩn đoán ở `/api/synergyhub/tasks`).
+
 ## Mã hóa Password Window — chi tiết kỹ thuật
 
 Thuật toán và key hệ thống được **reverse-engineer trực tiếp từ file gốc**

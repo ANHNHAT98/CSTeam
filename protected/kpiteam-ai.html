@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KPI Team — CS21: AI Workflow Cá Nhân</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{--ink:#12233D;--blueprint:#1F4E79;--paper:#EEF2F6;--panel:#FFFFFF;--grid-line:rgba(31,78,121,.14);--grid-line-strong:rgba(31,78,121,.28);--amber:#E8A33D;--amber-deep:#C9821F;--success:#3F7D58;--danger:#B23A48;--muted:#5B7089;--radius:10px;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;min-height:100vh;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:32px 32px;}
+  .ops-topbar{background:#12233D;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:14px;}
+  .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;opacity:.9;}
+  .ops-topbar a:hover{opacity:1;text-decoration:underline;}
+  .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 24px 80px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;line-height:1.6;}
+  .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;}
+  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0 0 10px;}
+  .filters{display:flex;gap:14px 18px;flex-wrap:wrap;align-items:flex-end;}
+  .field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted);font-weight:600;}
+  .field select,.field input[type=month],.field input[type=date],.field input[type=text],.field textarea{font:inherit;font-size:13.5px;font-weight:500;color:var(--ink);padding:8px 12px;border-radius:8px;border:1px solid var(--grid-line-strong);background:#fff;min-width:170px;}
+  .field textarea{min-width:260px;min-height:38px;resize:vertical;}
+  .monthbox{display:flex;gap:6px;align-items:center;}
+  button{font:inherit;font-size:13.5px;padding:8px 14px;border-radius:8px;border:1px solid var(--blueprint);background:#fff;color:var(--blueprint);cursor:pointer;font-weight:600;}
+  button.primary{background:var(--blueprint);color:#fff;}
+  button.export{border-color:var(--success);color:var(--success);}
+  button.danger{border-color:var(--danger);color:var(--danger);padding:3px 10px;font-size:12px;}
+  button:disabled{opacity:.5;cursor:default;}
+  .scope{display:flex;gap:6px 8px;flex-wrap:wrap;margin-top:12px;font-size:13px;align-items:center;}
+  .scope .t{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px;}
+  .scope label{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--grid-line-strong);border-radius:8px;padding:4px 10px;cursor:pointer;}
+  .scope label.on{border-color:var(--blueprint);background:#EAF1F8;font-weight:600;}
+  .stamp{color:var(--muted);font-size:12px;}
+  .msg{padding:12px 14px;border-radius:8px;font-size:13.5px;margin-bottom:14px;}
+  .msg.err{background:#FBE9EB;border:1px solid #E3A7AF;color:#8B2A36;} .msg.info{background:#EAF1F8;border:1px solid var(--grid-line-strong);} .msg.ok{background:#EAF5EE;border:1px solid #B5D8C3;color:#2C5E43;}
+  #loading{color:var(--muted);padding:30px 0;text-align:center;}
+  .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
+  .kpi{border:1px solid var(--grid-line-strong);border-radius:10px;padding:10px 12px;border-top:5px solid var(--blueprint);background:#fff;min-height:96px;}
+  .kpi .l{font-size:12.5px;color:var(--muted);font-weight:600;}
+  .kpi .v{font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:700;line-height:1.2;margin-top:2px;}
+  .kpi .d{font-size:11.5px;color:var(--muted);line-height:1.35;}
+  .kpi.bad{border-top-color:var(--danger);} .kpi.score{border-top-color:#6C5B9E;} .kpi.act{border-top-color:var(--amber);}
+  .tone0{color:var(--danger);} .tone1{color:var(--amber-deep);} .tone2{color:var(--success);} .tone3{color:#1F7A4B;}
+  .how{background:#F5F8FB;border:1px solid var(--grid-line-strong);border-radius:8px;padding:12px 14px;font-size:13.5px;line-height:1.9;margin-top:12px;}
+  .how b{color:var(--blueprint);}
+  table{width:100%;border-collapse:collapse;font-size:13px;background:#fff;}
+  th{background:#1F4E79;color:#fff;text-align:left;padding:7px 10px;font-weight:600;white-space:nowrap;}
+  td{padding:6px 10px;border-bottom:1px solid var(--grid-line);vertical-align:top;}
+  td.n,th.n{text-align:right;white-space:nowrap;} td.mono{font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:nowrap;}
+  tr.me td{background:#EAF1F8;font-weight:700;color:var(--blueprint);}
+  tr.click{cursor:pointer;} tr.click:hover td{background:#F5F8FB;}
+  .na{color:#8B2A36;background:#FBE9EB;border:1px solid #E3A7AF;border-radius:8px;padding:12px 14px;}
+  .tbl-scroll{overflow-x:auto;}
+  .two{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;}
+  @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr);}.two{grid-template-columns:1fr;}}
+  .empty{color:var(--muted);padding:18px 4px;text-align:center;}
+  .tag{display:inline-block;padding:1px 9px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid var(--grid-line-strong);white-space:nowrap;}
+  .tag.ok{background:#EAF5EE;color:var(--success);border-color:#B5D8C3;} .tag.bad{background:#FBE9EB;color:var(--danger);border-color:#E3A7AF;} .tag.wait{background:#F1F4F8;color:var(--muted);}
+  .formgrid{display:flex;gap:12px 16px;flex-wrap:wrap;align-items:flex-end;}
+  .hint{font-size:11.5px;color:var(--muted);font-weight:400;}
+</style>
+<style>.crit{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}@media(max-width:1000px){.crit{grid-template-columns:1fr;}}
+.cbox{border:1px solid var(--grid-line-strong);border-radius:10px;padding:12px 14px;background:#fff;}.cbox h3{margin:0 0 6px;font-family:'Space Grotesk',sans-serif;font-size:14px;}
+.cbox .sc{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;color:var(--blueprint);}.cbox .sc small{font-size:13px;color:var(--muted);font-weight:500;}
+.cbox .ln{font-size:12.5px;color:var(--muted);line-height:1.7;}.ovr{display:inline-block;background:#FFF1DC;color:var(--amber-deep);border:1px solid #EBC890;border-radius:999px;padding:0 8px;font-size:11px;font-weight:600;margin-left:6px;}
+.kpis.k7{grid-template-columns:repeat(7,1fr);}@media(max-width:1100px){.kpis.k7{grid-template-columns:repeat(2,1fr);}}
+.hide{display:none !important;}</style>
+</head>
+<body>
+<div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb">/ kpi team / cs21 ai workflow cá nhân</span></div>
+<div class="wrap">
+  <h1>CS21: AI Workflow Cá Nhân (AI adoption)</h1>
+  <p class="sub">Đánh giá mức độ ứng dụng AI vào công việc hằng ngày để nâng năng suất và chất lượng xử lý công việc, đúng quy định. <b>Actual = điểm AI workflow đạt được ÷ tổng điểm tối đa (100)</b>, gồm 3 tiêu chí: <b>40</b> (AI soạn email/ticket giảm thời gian ≥ 30%), <b>40</b> (AI hỗ trợ báo cáo đúng hạn), <b>20</b> (0 vi phạm AI Data Security). Mỗi thành viên nộp <b>bằng chứng</b> theo tháng; bằng chứng được <b>ghi nhận ở cuối trang</b>.</p>
+
+  <div class="panel">
+    <div class="filters">
+      <div class="field">Thành viên<select id="selMember"><option>Đang tải…</option></select></div>
+      <div class="field">Level<select id="selLevel"></select></div>
+      <div class="field">Tháng
+        <div class="monthbox"><button id="btnPrev" type="button" title="Tháng trước">◀</button><input type="month" id="pickMonth"><button id="btnNext" type="button" title="Tháng sau">▶</button><button id="btnThis" type="button" class="primary">Tháng này</button></div>
+      </div>
+      <div class="field">&nbsp;<span><button id="btnReload" type="button">↻ Tải lại</button> <button id="btnXlsx" type="button" class="export" disabled>⬇ Xuất Excel</button></span></div>
+    </div>
+    <div class="stamp" id="stamp" style="margin-top:8px"></div>
+  </div>
+
+  <div class="two" id="refRow">
+    <div class="panel"><h2>Công thức (KPI Cao tốt)</h2><div id="fmTbl"></div></div>
+    <div class="panel"><h2>Ngưỡng theo level</h2><div id="thTbl"></div></div>
+  </div>
+
+  <div id="notice"></div>
+  <div id="loading">Đang tải dữ liệu…</div>
+
+  <div id="content" style="display:none">
+    <div class="panel">
+      <h2 id="resTitle"></h2>
+      <div id="resBody"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Chi tiết 3 tiêu chí &amp; bằng chứng</h2>
+      <div class="crit" id="crit"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Điểm điều chỉnh của L&amp;D (tuỳ chọn)</h2>
+      <p class="hint" style="margin:0 0 8px">Rubric chấm điểm do L&amp;D (TDC) cung cấp. Nếu L&amp;D chấm khác điểm tự tính từ bằng chứng thì nhập điểm cho từng tiêu chí; <b>để trống = dùng điểm tự tính</b>.</p>
+      <div class="formgrid">
+        <div class="field"><span id="a1Label">Tiêu chí 1 (tối đa 40)</span><input type="number" id="a1" min="0" step="0.5" style="min-width:110px;width:110px"></div>
+        <div class="field"><span id="a2Label">Tiêu chí 2 (tối đa 40)</span><input type="number" id="a2" min="0" step="0.5" style="min-width:110px;width:110px"></div>
+        <div class="field"><span id="a3Label">Tiêu chí 3 (tối đa 20)</span><input type="number" id="a3" min="0" step="0.5" style="min-width:110px;width:110px"></div>
+        <div class="field">Ghi chú<input type="text" id="aNote" maxlength="500" style="min-width:260px"></div>
+        <div class="field">&nbsp;<span><button id="btnAssess" type="button" class="primary">Lưu điểm L&amp;D</button> <button id="btnAssessClear" type="button">Bỏ điều chỉnh</button></span></div>
+      </div>
+      <div id="assessMsg" style="margin-top:8px"></div>
+    </div>
+
+    <div class="panel">
+      <h2 id="formTitle">Ghi nhận bằng chứng AI workflow</h2>
+      <div class="formgrid">
+        <div class="field">Loại bằng chứng<select id="fKind"><option value="workflow">1) Prompt / flow AI soạn email-ticket (người chấm tick checklist rubric)</option><option value="time">1) Thời gian soạn email/ticket (chỉ nhập số phút có AI vs thông thường)</option><option value="report">2) Báo cáo tuần/tháng/ERP</option><option value="violation">3) Vi phạm AI Data Security</option></select></div>
+        <div class="field">Thành viên<select id="fMember"></select></div>
+      </div>
+      <div class="formgrid" id="gWf" style="margin-top:10px">
+        <div class="field">Ngày<input type="date" id="wDate"></div>
+        <div class="field">Loại<select id="wKind"></select></div>
+        <div class="field">Tên workflow / việc dùng AI<input type="text" id="wTitle" maxlength="200" style="min-width:300px" placeholder="VD: Soạn email phản hồi KH về lỗi báo cáo"></div>
+        <div style="flex-basis:100%"></div>
+        <div class="field" style="flex:1 1 420px">Prompt đã dùng <span class="hint">(ẩn danh dữ liệu khách hàng trước khi dán)</span><textarea id="wPrompt" maxlength="4000" style="min-width:300px;width:100%;min-height:110px;font:inherit;font-size:13px;padding:8px 12px;border-radius:8px;border:1px solid var(--grid-line-strong)"></textarea></div>
+        <div class="field" style="flex:1 1 420px">Flow / các bước làm việc với AI<textarea id="wFlow" maxlength="2000" style="min-width:300px;width:100%;min-height:110px;font:inherit;font-size:13px;padding:8px 12px;border-radius:8px;border:1px solid var(--grid-line-strong)" placeholder="VD: 1) Dán nội dung ticket đã ẩn danh → 2) AI soạn nháp → 3) Mình kiểm tra, sửa → 4) Gửi KH"></textarea></div>
+        <div class="field">Phút làm thông thường <span class="hint">(tuỳ chọn)</span><input type="number" id="wNormal" min="1" style="min-width:110px;width:110px"></div>
+        <div class="field">Phút làm có AI <span class="hint">(tuỳ chọn)</span><input type="number" id="wAi" min="0" style="min-width:110px;width:110px"></div>
+      </div>
+      <div class="formgrid hide" id="gTime" style="margin-top:10px">
+        <div class="field">Ngày<input type="date" id="tDate"></div>
+        <div class="field">Loại<select id="tKind"></select></div>
+        <div class="field">Nội dung (email/ticket đã soạn)<input type="text" id="tTask" maxlength="200" style="min-width:260px"></div>
+        <div class="field">Thời gian làm thông thường (phút)<input type="number" id="tNormal" min="1" style="min-width:110px;width:110px"></div>
+        <div class="field">Thời gian làm có AI (phút)<input type="number" id="tAi" min="0" style="min-width:110px;width:110px"></div>
+      </div>
+      <div class="formgrid hide" id="gReport" style="margin-top:10px">
+        <div class="field">Tên báo cáo / tổng hợp<input type="text" id="rName" maxlength="200" style="min-width:260px"></div>
+        <div class="field">Loại<select id="rKind"></select></div>
+        <div class="field">Hạn<input type="date" id="rDue"></div>
+        <div class="field">Ngày hoàn thành <span class="hint">(trống nếu chưa xong)</span><input type="date" id="rDone"></div>
+        <div class="field">Có dùng AI hỗ trợ?<select id="rAi"><option value="true">Có</option><option value="false">Không</option></select></div>
+      </div>
+      <div class="formgrid hide" id="gViol" style="margin-top:10px">
+        <div class="field">Ngày<input type="date" id="vDate"></div>
+        <div class="field">Mô tả vi phạm<input type="text" id="vDesc" maxlength="500" style="min-width:420px" placeholder="Dữ liệu gì, đưa lên công cụ AI nào…"></div>
+      </div>
+      <div class="formgrid" style="margin-top:10px">
+        <div class="field">Bằng chứng (link / mô tả)<input type="text" id="fEvidence" maxlength="500" style="min-width:360px" placeholder="Link ảnh chụp, email, file…"></div>
+        <div class="field">Ghi chú<input type="text" id="fNote" maxlength="1000" style="min-width:220px"></div>
+        <div class="field">&nbsp;<span><button id="btnSave" type="button" class="primary">＋ Lưu bằng chứng</button> <button id="btnCancel" type="button" style="display:none">Hủy sửa</button></span></div>
+      </div>
+      <div id="formMsg" style="margin-top:10px"></div>
+      <div class="hint" id="storeHint" style="margin-top:6px"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const LEVELS = ['Fresher','Junior','Middle','Senior'];
+let creators = [], data = null, reqSeq = 0, editing = null, cfg = null;
+const todayVN = () => new Date(Date.now()+7*3600*1000).toISOString().slice(0,10);
+const addMonths = (key, n) => { const [y,m] = key.split('-').map(Number); return new Date(Date.UTC(y, m-1+n, 1)).toISOString().slice(0,7); };
+const qp = new URLSearchParams(location.search);
+let month = /^\d{4}-(0[1-9]|1[0-2])$/.test(qp.get('month')||'') ? qp.get('month') : todayVN().slice(0,7);
+const mFmt = k => k.slice(5,7)+'/'+k.slice(0,4);
+const fmt = (v,d=1) => v==null ? '—' : Number(v).toFixed(d).replace('.',',');
+const dmy = iso => iso ? iso.slice(8,10)+'/'+iso.slice(5,7)+'/'+iso.slice(0,4) : '';
+const shortName = e => String(e).split('@')[0];
+const LS = 'kpiAi.v1';
+const store = { get(){ try{ return JSON.parse(localStorage.getItem(LS)||'{}')||{}; }catch(_){ return {}; } }, set(o){ try{ localStorage.setItem(LS, JSON.stringify(o)); }catch(_){} } };
+async function api(url, opt){
+  const r = await fetch(url, opt); const j = await r.json().catch(()=>({error:'Phản hồi không hợp lệ (HTTP '+r.status+')'}));
+  if(r.status===401){ location.href='/?next='+encodeURIComponent(location.pathname+location.search); throw new Error('Phiên đăng nhập đã hết'); }
+  if(!r.ok) throw new Error(j.error || ('HTTP '+r.status));
+  return j;
+}
+
+function renderRef(){
+  const level = $('selLevel').value; const th = cfg && cfg.thresholds[level];
+  const rng = th ? ['&lt; '+fmt(th.min,0)+'%', fmt(th.min,0)+'% → &lt; '+fmt(th.target,0)+'%', fmt(th.target,0)+'% → '+fmt(th.max,0)+'%', '&gt; '+fmt(th.max,0)+'%'] : ['','','',''];
+  const rows = [['Chưa đạt Min','0%','Thực tế &lt; Min'],['Từ Min đến dưới Target','50% → 100%','50% + 50% × (Thực tế − Min) ÷ (Target − Min)'],['Từ Target đến Max','100% → 150%','100% + 50% × (Thực tế − Target) ÷ (Max − Target)'],['Vượt Max','150% (trần)','Không ghi nhận thêm']];
+  $('fmTbl').innerHTML = '<table><thead><tr><th>Kết quả thực tế</th><th>Actual (level '+esc(level)+')</th><th>% hoàn thành</th><th>Công thức (KPI Cao tốt)</th></tr></thead><tbody>'
+    + rows.map((r,i)=>'<tr><td><b>'+r[0]+'</b></td><td class="mono">'+(th?rng[i]:'—')+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>').join('')+'</tbody></table>';
+  if(cfg) $('thTbl').innerHTML = '<table><thead><tr><th>Level</th><th class="n">Min</th><th class="n">Target</th><th class="n">Max</th><th class="n">Trọng số</th></tr></thead><tbody>'
+    + LEVELS.map(l=>'<tr'+(l===level?' class="me"':'')+'><td>'+l+'</td>'+(cfg.thresholds[l]?'<td class="n">'+fmt(cfg.thresholds[l].min,0)+'%</td><td class="n">'+fmt(cfg.thresholds[l].target,0)+'%</td><td class="n">'+fmt(cfg.thresholds[l].max,0)+'%</td><td class="n">'+fmt(cfg.weights[l],0)+'%</td>':'<td class="n" colspan="4" style="color:#8EA3BA">Không áp dụng</td>')+'</tr>').join('')+'</tbody></table>';
+}
+
+function howText(d){
+  const r = d.result, th = d.kpi.thresholds, c = d.criteria;
+  let t = 'Điểm AI workflow = '+fmt(c.time.score,1)+' + '+fmt(c.report.score,1)+' + '+fmt(c.security.score,1)+' = <b>'+fmt(r.total,1)+' / '+r.maxTotal+'</b> → Actual = <b>'+fmt(r.actual)+'%</b><br>';
+  if(r.tier===0) t += 'Actual '+fmt(r.actual)+'% &lt; Min '+fmt(th.min,0)+'% → Progress = <b>0%</b>';
+  else if(r.tier===3) t += 'Actual '+fmt(r.actual)+'% ≥ Max '+fmt(th.max,0)+'% → Progress = <b>150%</b> (trần)';
+  else if(r.tier===2) t += th.max>th.target ? 'Progress = 100% + 50% × ('+fmt(r.actual)+' − '+fmt(th.target,0)+') ÷ ('+fmt(th.max,0)+' − '+fmt(th.target,0)+') = <b>'+fmt(r.progress)+'%</b>' : 'Đạt Target → Progress = <b>100%</b>';
+  else t += 'Progress = 50% + 50% × ('+fmt(r.actual)+' − '+fmt(th.min,0)+') ÷ ('+fmt(th.target,0)+' − '+fmt(th.min,0)+') = <b>'+fmt(r.progress)+'%</b>';
+  return t+'<br>KPI Completion = '+fmt(r.progress)+'% × '+fmt(d.kpi.weight,0)+'% = <b>'+fmt(r.points,2)+'%</b>';
+}
+const delBtn = (id) => '<button type="button" data-edit="'+esc(id)+'" style="padding:2px 9px;font-size:12px">Sửa</button> <button type="button" class="danger" data-del="'+esc(id)+'">Xóa</button>';
+const ev = e => [e.evidence,e.note].filter(Boolean).map(esc).join(' · ');
+function renderCrit(d){
+  const c = d.criteria, E = d.entries;
+  const ovr = x => x.overridden ? '<span class="ovr">L&amp;D chấm</span>' : '';
+  const rub = cfg.rubric || [];
+  const f1 = [];
+  if(c.time.reductionPct!=null) f1.push('Số phút: '+c.time.samples+' mẫu · thông thường '+c.time.sumNormal+' → có AI '+c.time.sumAi+' phút, giảm <b>'+fmt(c.time.reductionPct)+'%</b> → hệ số '+fmt(c.time.timeFactor*100,0)+'%');
+  if(c.time.workflowsGraded) f1.push('Checklist rubric: '+c.time.workflowsGraded+' workflow đã chấm → hệ số trung bình <b>'+fmt(c.time.rubricFactor*100,0)+'%</b>');
+  if(c.time.workflowsPending) f1.push('<span style="color:var(--amber-deep)">'+c.time.workflowsPending+' workflow chưa chấm (chưa tính)</span>');
+  const wfHtml = E.workflow.map(w=>{
+    const sens = (w.sensitive||[]).length ? '<div style="margin:4px 0"><span class="tag bad">⚠ Có thể chứa dữ liệu nhạy cảm</span> '+w.sensitive.map(s=>esc(s.type)+' ×'+s.count+' ('+esc(s.example)+')').join(', ')+'</div>' : '';
+    const ticked = w.rubric||[];
+    const chk = rub.map(r=>'<label style="display:flex;gap:6px;align-items:flex-start;font-size:12.5px;line-height:1.5;margin:2px 0"><input type="checkbox" data-wf="'+esc(w.id)+'" data-k="'+esc(r.key)+'"'+(ticked.includes(r.key)?' checked':'')+'><span>'+esc(r.label)+' <b style="color:var(--blueprint)">('+r.weight+'%'+(r.gate?' · bắt buộc':'')+')</b></span></label>').join('');
+    const stat = w.graded ? '<span class="tag '+(w.gateFail?'bad':'ok')+'">Đã chấm: '+fmt(w.ratio*100,0)+'%'+(w.gateFail?' (vi phạm bảo mật → 0)':'')+'</span>' : '<span class="tag wait">Chưa chấm</span>';
+    return '<details style="border-top:1px solid var(--grid-line);padding:6px 0"><summary style="cursor:pointer;font-size:13px"><b>'+esc(dmy(w.date))+'</b> · '+esc(w.taskKind)+': '+esc(w.title)+' '+stat+'</summary>'
+      +sens+(w.prompt?'<div class="hint" style="margin-top:6px"><b>Prompt:</b></div><pre style="max-height:140px">'+esc(w.prompt)+'</pre>':'')+(w.flow?'<div class="hint"><b>Flow:</b></div><pre style="max-height:110px">'+esc(w.flow)+'</pre>':'')
+      +(w.minutesNormal!=null?'<div class="hint">Số phút: thông thường '+w.minutesNormal+' → có AI '+w.minutesAi+'</div>':'')+(ev(w)?'<div class="hint">'+ev(w)+'</div>':'')
+      +'<div style="margin:6px 0"><b style="font-size:12.5px">Checklist chấm (người chấm tick):</b>'+chk+'</div>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><button type="button" class="primary" style="padding:3px 12px;font-size:12px" data-grade="'+esc(w.id)+'">Lưu chấm</button>'+(w.graded?' <button type="button" style="padding:3px 12px;font-size:12px" data-ungrade="'+esc(w.id)+'">Bỏ chấm</button>':'')+' '+delBtn(w.id)+'</div></details>';
+  }).join('');
+  const b1 = '<div class="cbox"><h3>1) AI soạn email/ticket giảm thời gian ≥ '+c.time.targetPct+'%</h3><div class="sc">'+fmt(c.time.score,1)+' <small>/ '+c.time.max+'</small>'+ovr(c.time)+'</div>'
+    +'<div class="ln">'+(f1.length ? f1.join('<br>')+'<br>Điểm = hệ số × '+c.time.max : 'Chưa có bằng chứng nào → 0 điểm')+'</div>'
+    +(E.workflow.length ? '<div style="margin-top:8px"><b style="font-size:12.5px">Prompt / flow đã nộp ('+E.workflow.length+')</b>'+wfHtml+'</div>' : '')
+    +(E.time.length ? '<table style="margin-top:8px"><thead><tr><th>Ngày</th><th>Việc (chỉ nhập số phút)</th><th class="n">TT</th><th class="n">AI</th><th></th></tr></thead><tbody>'+E.time.map(e=>'<tr><td class="mono">'+esc(dmy(e.date))+'</td><td>'+esc(e.taskKind)+': '+esc(e.task)+'<div class="hint">'+ev(e)+'</div></td><td class="n">'+e.minutesNormal+'</td><td class="n">'+e.minutesAi+'</td><td style="white-space:nowrap">'+delBtn(e.id)+'</td></tr>').join('')+'</tbody></table>' : '')+'</div>';
+  const b2 = '<div class="cbox"><h3>2) AI hỗ trợ báo cáo đúng hạn</h3><div class="sc">'+fmt(c.report.score,1)+' <small>/ '+c.report.max+'</small>'+ovr(c.report)+'</div>'
+    +'<div class="ln">'+(c.report.decided ? c.report.pass+' báo cáo đúng hạn có dùng AI ÷ '+c.report.decided+' báo cáo có kết quả = <b>'+fmt(c.report.ratePct)+'%</b> → điểm = '+fmt(c.report.ratePct)+'% × '+c.report.max+(c.report.pending?'<br>'+c.report.pending+' báo cáo đang thực hiện (chưa tính)':'') : (c.report.total ? 'Chưa có báo cáo nào có kết quả → 0 điểm' : 'Chưa ghi nhận báo cáo nào → 0 điểm'))+'</div>'
+    +(E.report.length ? '<table style="margin-top:8px"><thead><tr><th>Báo cáo</th><th>Hạn</th><th>Xong</th><th>Kết quả</th><th></th></tr></thead><tbody>'+E.report.map(e=>'<tr><td>'+esc(e.reportKind)+': '+esc(e.report)+'<div class="hint">'+(e.usedAi?'Có dùng AI':'Không dùng AI')+(ev(e)?' · '+ev(e):'')+'</div></td><td class="mono">'+esc(dmy(e.dueDate))+'</td><td class="mono">'+esc(dmy(e.doneDate))+'</td><td><span class="tag '+(e.pass?'ok':(e.decided?'bad':'wait'))+'">'+esc(e.status)+'</span></td><td style="white-space:nowrap">'+delBtn(e.id)+'</td></tr>').join('')+'</tbody></table>' : '')+'</div>';
+  const b3 = '<div class="cbox"><h3>3) 0 lần vi phạm AI Data Security</h3><div class="sc">'+fmt(c.security.score,1)+' <small>/ '+c.security.max+'</small>'+ovr(c.security)+'</div>'
+    +'<div class="ln">'+(c.security.violations ? '<b>'+c.security.violations+' vi phạm</b> trong tháng → 0 điểm' : 'Không có vi phạm nào được ghi nhận → đủ điểm')+'</div>'
+    +(E.violation.length ? '<table style="margin-top:8px"><thead><tr><th>Ngày</th><th>Mô tả</th><th></th></tr></thead><tbody>'+E.violation.map(e=>'<tr><td class="mono">'+esc(dmy(e.date))+'</td><td>'+esc(e.description)+'<div class="hint">'+ev(e)+'</div></td><td style="white-space:nowrap">'+delBtn(e.id)+'</td></tr>').join('')+'</tbody></table>' : '')+'</div>';
+  $('crit').innerHTML = b1+b2+b3;
+  $('crit').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delEntry(b.dataset.del, b));
+  $('crit').querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>startEdit(b.dataset.edit));
+  $('crit').querySelectorAll('[data-grade]').forEach(b=>b.onclick=()=>gradeWf(b.dataset.grade, false));
+  $('crit').querySelectorAll('[data-ungrade]').forEach(b=>b.onclick=()=>gradeWf(b.dataset.ungrade, true));
+}
+function render(d){
+  const r = d.result, k = d.kpi, c = d.criteria;
+  $('resTitle').textContent = 'CS21 — '+shortName(d.member)+' · '+d.level+' · tháng '+mFmt(d.month);
+  if(!k.applicable) $('resBody').innerHTML = '<div class="na">KPI CS21 <b>không áp dụng</b> cho level <b>'+esc(d.level)+'</b>.</div>';
+  else {
+    const tone = 'tone'+r.tier;
+    $('resBody').innerHTML = '<div class="kpis k7">'
+      +'<div class="kpi"><div class="l">Tiêu chí 1 · Thời gian</div><div class="v">'+fmt(c.time.score,1)+'</div><div class="d">/ '+c.time.max+' điểm</div></div>'
+      +'<div class="kpi"><div class="l">Tiêu chí 2 · Báo cáo</div><div class="v">'+fmt(c.report.score,1)+'</div><div class="d">/ '+c.report.max+' điểm</div></div>'
+      +'<div class="kpi"><div class="l">Tiêu chí 3 · Bảo mật</div><div class="v">'+fmt(c.security.score,1)+'</div><div class="d">/ '+c.security.max+' điểm</div></div>'
+      +'<div class="kpi act"><div class="l">Actual</div><div class="v '+tone+'">'+fmt(r.actual)+'%</div><div class="d">'+fmt(r.total,1)+' / '+r.maxTotal+' điểm · Min '+fmt(k.thresholds.min,0)+' · Target '+fmt(k.thresholds.target,0)+' · Max '+fmt(k.thresholds.max,0)+'</div></div>'
+      +'<div class="kpi score"><div class="l">Progress</div><div class="v '+tone+'">'+fmt(r.progress)+'%</div><div class="d">'+esc(r.band)+'</div></div>'
+      +'<div class="kpi score"><div class="l">KPI Completion</div><div class="v '+tone+'">'+fmt(r.points,2)+'%</div><div class="d">trên trọng số '+fmt(k.weight,0)+'%</div></div>'
+      +'</div><div class="how">'+howText(d)+'</div>';
+  }
+  renderCrit(d);
+  const a = d.assess || {}; $('a1').value = a.c1==null?'':a.c1; $('a2').value = a.c2==null?'':a.c2; $('a3').value = a.c3==null?'':a.c3; $('aNote').value = a.note||'';
+  $('a1Label').textContent = 'Tiêu chí 1 (tối đa '+c.time.max+') — tự tính '+fmt(c.time.auto,1); $('a2Label').textContent = 'Tiêu chí 2 (tối đa '+c.report.max+') — tự tính '+fmt(c.report.auto,1); $('a3Label').textContent = 'Tiêu chí 3 (tối đa '+c.security.max+') — tự tính '+fmt(c.security.auto,1);
+  $('storeHint').textContent = d.githubBacked ? 'Bằng chứng được lưu vào repo GitHub (mỗi lần lưu là 1 commit).' : 'Dữ liệu đang lưu trong thư mục data/ của server — cần mount volume ./data (docker-compose) để không bị mất khi container bị xoá.';
+  $('btnXlsx').disabled = false;
+}
+function persist(){ const s = store.get(); s.member = $('selMember').value; s.levels = s.levels||{}; s.levels[$('selMember').value] = $('selLevel').value; store.set(s); }
+async function load(){
+  const member = $('selMember').value, level = $('selLevel').value;
+  if(!member){ $('loading').style.display='none'; $('notice').innerHTML='<div class="msg err">Chưa có thành viên nào trong danh sách người tạo ticket (ticket-creators.json).</div>'; return; }
+  const seq = ++reqSeq; history.replaceState(null,'','?month='+month); $('pickMonth').value = month;
+  $('loading').style.display = ''; $('btnXlsx').disabled = true;
+  try{
+    const d = await api('/api/kpi/ai-score?member='+encodeURIComponent(member)+'&level='+encodeURIComponent(level)+'&month='+month);
+    if(seq!==reqSeq) return;
+    data = d; cfg = d.config; renderRef();
+    $('loading').style.display = 'none'; $('content').style.display = ''; $('notice').innerHTML = '';
+    $('stamp').textContent = 'Cập nhật '+new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+    fillKinds(); render(d); resetForm();
+  }catch(e){ if(seq!==reqSeq) return; $('loading').style.display = 'none'; $('content').style.display = 'none'; $('notice').innerHTML = '<div class="msg err">Không lấy được dữ liệu: '+esc(e.message)+'</div>'; }
+}
+
+/* ---------- form bằng chứng ---------- */
+function fillKinds(){ if(!$('tKind').options.length){ $('wKind').innerHTML = $('tKind').innerHTML = cfg.timeKinds.map(x=>'<option>'+esc(x)+'</option>').join(''); $('rKind').innerHTML = cfg.reportKinds.map(x=>'<option>'+esc(x)+'</option>').join(''); } }
+function showKind(){ const k = $('fKind').value; $('gWf').classList.toggle('hide', k!=='workflow'); $('gTime').classList.toggle('hide', k!=='time'); $('gReport').classList.toggle('hide', k!=='report'); $('gViol').classList.toggle('hide', k!=='violation'); }
+function defaultDate(){ const t = todayVN(); return t.slice(0,7)===month ? t : month+'-01'; }
+function resetForm(){
+  editing = null; $('fKind').disabled = false; $('formTitle').textContent = 'Ghi nhận bằng chứng AI workflow'; $('btnSave').textContent = '＋ Lưu bằng chứng'; $('btnCancel').style.display = 'none';
+  $('fMember').value = $('selMember').value; ['tTask','tNormal','tAi','rName','rDone','vDesc','wTitle','wPrompt','wFlow','wNormal','wAi','fEvidence','fNote'].forEach(i=>$(i).value=''); $('wDate').value = defaultDate(); $('tDate').value = defaultDate(); $('rDue').value = defaultDate(); $('vDate').value = defaultDate(); $('rAi').value = 'true'; showKind();
+}
+function findEntry(id){ return [...data.entries.time, ...data.entries.workflow, ...data.entries.report, ...data.entries.violation].find(x=>x.id===id); }
+function startEdit(id){
+  const e = findEntry(id); if(!e) return; editing = id; $('fKind').value = e.kind; $('fKind').disabled = true; showKind();
+  $('formTitle').textContent = 'Sửa bằng chứng'; $('btnSave').textContent = '💾 Lưu thay đổi'; $('btnCancel').style.display = ''; $('fMember').value = e.member; $('fEvidence').value = e.evidence||''; $('fNote').value = e.note||'';
+  if(e.kind==='workflow'){ $('wDate').value = e.date; $('wKind').value = e.taskKind; $('wTitle').value = e.title; $('wPrompt').value = e.prompt||''; $('wFlow').value = e.flow||''; $('wNormal').value = e.minutesNormal==null?'':e.minutesNormal; $('wAi').value = e.minutesAi==null?'':e.minutesAi; }
+  if(e.kind==='time'){ $('tDate').value = e.date; $('tKind').value = e.taskKind; $('tTask').value = e.task; $('tNormal').value = e.minutesNormal; $('tAi').value = e.minutesAi; }
+  if(e.kind==='report'){ $('rName').value = e.report; $('rKind').value = e.reportKind; $('rDue').value = e.dueDate; $('rDone').value = e.doneDate||''; $('rAi').value = e.usedAi ? 'true' : 'false'; }
+  if(e.kind==='violation'){ $('vDate').value = e.date; $('vDesc').value = e.description; }
+  $('formTitle').scrollIntoView({behavior:'smooth', block:'center'});
+}
+function formBody(){
+  const kind = $('fKind').value; const b = { kind, member:$('fMember').value, evidence:$('fEvidence').value, note:$('fNote').value };
+  if(kind==='workflow') Object.assign(b, { date:$('wDate').value, taskKind:$('wKind').value, title:$('wTitle').value, prompt:$('wPrompt').value, flow:$('wFlow').value, minutesNormal:$('wNormal').value, minutesAi:$('wAi').value });
+  if(kind==='time') Object.assign(b, { date:$('tDate').value, taskKind:$('tKind').value, task:$('tTask').value, minutesNormal:$('tNormal').value, minutesAi:$('tAi').value });
+  if(kind==='report') Object.assign(b, { report:$('rName').value, reportKind:$('rKind').value, dueDate:$('rDue').value, doneDate:$('rDone').value, usedAi:$('rAi').value==='true' });
+  if(kind==='violation') Object.assign(b, { date:$('vDate').value, description:$('vDesc').value });
+  return b;
+}
+async function saveEntry(){
+  $('btnSave').disabled = true; $('formMsg').innerHTML = '';
+  try{
+    const r = await api(editing ? '/api/kpi/ai-entries/'+encodeURIComponent(editing) : '/api/kpi/ai-entries', { method: editing?'PUT':'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(formBody()) });
+    month = r.entry.month; $('selMember').value = r.entry.member; await load();
+    $('formMsg').innerHTML = '<div class="msg ok">Đã lưu bằng chứng cho '+esc(shortName(r.entry.member))+' (tháng '+esc(mFmt(r.entry.month))+').'+(r.commitUrl?' <a href="'+esc(r.commitUrl)+'" target="_blank" rel="noopener">Xem commit ↗</a>':'')+'</div>';
+  }catch(e){ $('formMsg').innerHTML = '<div class="msg err">Không lưu được: '+esc(e.message)+'</div>'; }
+  finally{ $('btnSave').disabled = false; }
+}
+const delArmed = {};
+async function delEntry(id, btn){
+  if(!delArmed[id]){ delArmed[id] = setTimeout(()=>{ delete delArmed[id]; if(btn.isConnected){ btn.textContent = 'Xóa'; btn.style.background = ''; btn.style.color = ''; } }, 4000); btn.textContent = 'Bấm lại để xóa'; btn.style.background = 'var(--danger)'; btn.style.color = '#fff'; return; }
+  clearTimeout(delArmed[id]); delete delArmed[id]; btn.disabled = true;
+  try{ await api('/api/kpi/ai-entries/'+encodeURIComponent(id), { method:'DELETE' }); await load(); $('formMsg').innerHTML = '<div class="msg ok">Đã xóa.</div>'; }
+  catch(e){ btn.disabled = false; $('formMsg').innerHTML = '<div class="msg err">Không xóa được: '+esc(e.message)+'</div>'; }
+}
+async function gradeWf(id, clear){
+  const keys = [...document.querySelectorAll('#crit input[data-wf="'+id+'"]:checked')].map(i=>i.dataset.k);
+  try{ await api('/api/kpi/ai-grade', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, rubric: keys, clear: !!clear }) });
+    const open = new Set([...document.querySelectorAll('#crit details[open]')].map(d=>d.querySelector('[data-grade]').dataset.grade));
+    await load(); document.querySelectorAll('#crit details').forEach(d=>{ if(open.has(d.querySelector('[data-grade]').dataset.grade)) d.open = true; });
+    $('formMsg').innerHTML = '<div class="msg ok">'+(clear?'Đã bỏ chấm workflow.':'Đã lưu chấm workflow ('+keys.length+' tiêu chí đạt).')+'</div>';
+  }catch(e){ $('formMsg').innerHTML = '<div class="msg err">Không lưu được: '+esc(e.message)+'</div>'; }
+}
+async function saveAssess(clear){
+  try{
+    const r = await api('/api/kpi/ai-assess', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ member:$('selMember').value, month, c1:$('a1').value, c2:$('a2').value, c3:$('a3').value, note:$('aNote').value, clear: !!clear }) });
+    await load(); $('assessMsg').innerHTML = '<div class="msg ok">'+(clear||!r.assess?'Đã bỏ điều chỉnh — dùng điểm tự tính.':'Đã lưu điểm L&D.')+'</div>';
+  }catch(e){ $('assessMsg').innerHTML = '<div class="msg err">Không lưu được: '+esc(e.message)+'</div>'; }
+}
+
+function exportXlsx(){
+  const d = data, r = d.result, k = d.kpi, c = d.criteria, wb = XLSX.utils.book_new();
+  const S = [['CS21: AI workflow cá nhân — Đánh giá KPI theo tháng'],['Thành viên', d.member],['Level', d.level],['Kỳ đánh giá', mFmt(d.month)],['Xuất lúc', new Date().toLocaleString('vi-VN')],[],
+    ['Tiêu chí','Điểm','Tối đa','Ghi chú'],
+    ['1) AI soạn email/ticket giảm thời gian ≥ '+c.time.targetPct+'%', c.time.score, c.time.max, c.time.samples ? 'Mức giảm '+(c.time.reductionPct==null?'':c.time.reductionPct)+'% ('+c.time.samples+' mẫu)' : 'Chưa có mẫu'+(c.time.overridden?' · L&D chấm':'')],
+    ['2) AI hỗ trợ báo cáo đúng hạn', c.report.score, c.report.max, c.report.decided ? c.report.pass+'/'+c.report.decided+' báo cáo' : 'Chưa có báo cáo'],
+    ['3) 0 vi phạm AI Data Security', c.security.score, c.security.max, c.security.violations+' vi phạm'],
+    ['Tổng điểm', r.total, r.maxTotal, ''],['Actual (%)', r.actual]];
+  if(k.applicable) S.push(['Min (%)',k.thresholds.min],['Target (%)',k.thresholds.target],['Max (%)',k.thresholds.max],['Progress (%)', r.progress],['Mức', r.band],['Trọng số (%)',k.weight],['KPI Completion (%)', r.points]);
+  const s1 = XLSX.utils.aoa_to_sheet(S); s1['!cols'] = [{wch:44},{wch:14},{wch:10},{wch:40}]; XLSX.utils.book_append_sheet(wb, s1, 'Tổng hợp');
+  const rows = [['Loại','Ngày / hạn','Nội dung','Thông thường (phút)','Có AI (phút)','Ngày xong','Dùng AI','Kết quả','Bằng chứng']];
+  d.entries.workflow.forEach(e=>rows.push(['Prompt/flow AI',dmy(e.date),e.taskKind+': '+e.title+(e.prompt?' | Prompt: '+e.prompt:'')+(e.flow?' | Flow: '+e.flow:''),e.minutesNormal==null?'':e.minutesNormal,e.minutesAi==null?'':e.minutesAi,'','',e.graded?('Đã chấm '+Math.round((e.ratio||0)*100)+'%'+(e.gateFail?' (vi phạm bảo mật)':'')):'Chưa chấm',e.evidence]));
+  d.entries.time.forEach(e=>rows.push(['Thời gian',dmy(e.date),e.taskKind+': '+e.task,e.minutesNormal,e.minutesAi,'','','',e.evidence]));
+  d.entries.report.forEach(e=>rows.push(['Báo cáo',dmy(e.dueDate),e.reportKind+': '+e.report,'','',dmy(e.doneDate),e.usedAi?'Có':'Không',e.status,e.evidence]));
+  d.entries.violation.forEach(e=>rows.push(['Vi phạm AI Data Security',dmy(e.date),e.description,'','','','','',e.evidence]));
+  const s2 = XLSX.utils.aoa_to_sheet(rows); s2['!cols'] = [22,12,50,18,14,12,10,28,40].map(w=>({wch:w})); XLSX.utils.book_append_sheet(wb, s2, 'Bằng chứng');
+  XLSX.writeFile(wb, 'KPI_CS21_'+shortName(d.member)+'_'+d.month.replace('-','_')+'.xlsx');
+}
+
+const go = m => { month = m; load(); };
+$('btnPrev').onclick = () => go(addMonths(month,-1)); $('btnNext').onclick = () => go(addMonths(month,1)); $('btnThis').onclick = () => go(todayVN().slice(0,7));
+$('pickMonth').onchange = e => { if(/^\d{4}-\d{2}$/.test(e.target.value)) go(e.target.value); };
+$('btnReload').onclick = () => load(); $('btnXlsx').onclick = () => exportXlsx();
+$('selLevel').onchange = () => { renderRef(); persist(); load(); };
+$('selMember').onchange = () => { const s = store.get(); $('selLevel').value = (s.levels&&s.levels[$('selMember').value]) || 'Junior'; persist(); load(); };
+$('fKind').onchange = showKind; $('btnSave').onclick = saveEntry; $('btnCancel').onclick = resetForm;
+$('btnAssess').onclick = () => saveAssess(false); $('btnAssessClear').onclick = () => saveAssess(true);
+
+(async function init(){
+  const s = store.get(); $('selLevel').innerHTML = LEVELS.map(l=>'<option>'+l+'</option>').join('');
+  try{ const c = await api('/api/erp/ticket-creators'); creators = c.creators || []; }
+  catch(e){ $('notice').innerHTML = '<div class="msg err">Không tải được danh sách thành viên: '+esc(e.message)+'</div>'; }
+  const memOpts = creators.length ? creators.map(e=>'<option value="'+esc(e)+'">'+esc(e)+'</option>').join('') : '<option value="">(chưa có thành viên)</option>';
+  $('selMember').innerHTML = memOpts; $('fMember').innerHTML = memOpts;
+  if(s.member && creators.includes(s.member)) $('selMember').value = s.member;
+  $('selLevel').value = (s.levels && s.levels[$('selMember').value]) || 'Junior';
+  renderRef(); load();
+})();
+</script>
+</body>
+</html>

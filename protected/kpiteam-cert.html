@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KPI Team — CS23: Chứng Nhận Sản Phẩm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{--ink:#12233D;--blueprint:#1F4E79;--paper:#EEF2F6;--panel:#FFFFFF;--grid-line:rgba(31,78,121,.14);--grid-line-strong:rgba(31,78,121,.28);--amber:#E8A33D;--amber-deep:#C9821F;--success:#3F7D58;--danger:#B23A48;--muted:#5B7089;--radius:10px;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;min-height:100vh;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:32px 32px;}
+  .ops-topbar{background:#12233D;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:14px;}
+  .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;opacity:.9;}
+  .ops-topbar a:hover{opacity:1;text-decoration:underline;}
+  .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 24px 80px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;line-height:1.6;}
+  .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;}
+  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0 0 10px;}
+  .filters{display:flex;gap:14px 18px;flex-wrap:wrap;align-items:flex-end;}
+  .field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted);font-weight:600;}
+  .field select,.field input[type=month],.field input[type=date],.field input[type=text],.field textarea{font:inherit;font-size:13.5px;font-weight:500;color:var(--ink);padding:8px 12px;border-radius:8px;border:1px solid var(--grid-line-strong);background:#fff;min-width:170px;}
+  .field textarea{min-width:260px;min-height:38px;resize:vertical;}
+  .monthbox{display:flex;gap:6px;align-items:center;}
+  button{font:inherit;font-size:13.5px;padding:8px 14px;border-radius:8px;border:1px solid var(--blueprint);background:#fff;color:var(--blueprint);cursor:pointer;font-weight:600;}
+  button.primary{background:var(--blueprint);color:#fff;}
+  button.export{border-color:var(--success);color:var(--success);}
+  button.danger{border-color:var(--danger);color:var(--danger);padding:3px 10px;font-size:12px;}
+  button:disabled{opacity:.5;cursor:default;}
+  .scope{display:flex;gap:6px 8px;flex-wrap:wrap;margin-top:12px;font-size:13px;align-items:center;}
+  .scope .t{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px;}
+  .scope label{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--grid-line-strong);border-radius:8px;padding:4px 10px;cursor:pointer;}
+  .scope label.on{border-color:var(--blueprint);background:#EAF1F8;font-weight:600;}
+  .stamp{color:var(--muted);font-size:12px;}
+  .msg{padding:12px 14px;border-radius:8px;font-size:13.5px;margin-bottom:14px;}
+  .msg.err{background:#FBE9EB;border:1px solid #E3A7AF;color:#8B2A36;} .msg.info{background:#EAF1F8;border:1px solid var(--grid-line-strong);} .msg.ok{background:#EAF5EE;border:1px solid #B5D8C3;color:#2C5E43;}
+  #loading{color:var(--muted);padding:30px 0;text-align:center;}
+  .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
+  .kpi{border:1px solid var(--grid-line-strong);border-radius:10px;padding:10px 12px;border-top:5px solid var(--blueprint);background:#fff;min-height:96px;}
+  .kpi .l{font-size:12.5px;color:var(--muted);font-weight:600;}
+  .kpi .v{font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:700;line-height:1.2;margin-top:2px;}
+  .kpi .d{font-size:11.5px;color:var(--muted);line-height:1.35;}
+  .kpi.bad{border-top-color:var(--danger);} .kpi.score{border-top-color:#6C5B9E;} .kpi.act{border-top-color:var(--amber);}
+  .tone0{color:var(--danger);} .tone1{color:var(--amber-deep);} .tone2{color:var(--success);} .tone3{color:#1F7A4B;}
+  .how{background:#F5F8FB;border:1px solid var(--grid-line-strong);border-radius:8px;padding:12px 14px;font-size:13.5px;line-height:1.9;margin-top:12px;}
+  .how b{color:var(--blueprint);}
+  table{width:100%;border-collapse:collapse;font-size:13px;background:#fff;}
+  th{background:#1F4E79;color:#fff;text-align:left;padding:7px 10px;font-weight:600;white-space:nowrap;}
+  td{padding:6px 10px;border-bottom:1px solid var(--grid-line);vertical-align:top;}
+  td.n,th.n{text-align:right;white-space:nowrap;} td.mono{font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:nowrap;}
+  tr.me td{background:#EAF1F8;font-weight:700;color:var(--blueprint);}
+  tr.click{cursor:pointer;} tr.click:hover td{background:#F5F8FB;}
+  .na{color:#8B2A36;background:#FBE9EB;border:1px solid #E3A7AF;border-radius:8px;padding:12px 14px;}
+  .tbl-scroll{overflow-x:auto;}
+  .two{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;}
+  @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr);}.two{grid-template-columns:1fr;}}
+  .empty{color:var(--muted);padding:18px 4px;text-align:center;}
+  .tag{display:inline-block;padding:1px 9px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid var(--grid-line-strong);white-space:nowrap;}
+  .tag.ok{background:#EAF5EE;color:var(--success);border-color:#B5D8C3;} .tag.bad{background:#FBE9EB;color:var(--danger);border-color:#E3A7AF;} .tag.wait{background:#F1F4F8;color:var(--muted);}
+  .formgrid{display:flex;gap:12px 16px;flex-wrap:wrap;align-items:flex-end;}
+  .hint{font-size:11.5px;color:var(--muted);font-weight:400;}
+</style>
+<style>.hide{display:none !important;} textarea.ta{font:inherit;font-size:13px;padding:8px 12px;border-radius:8px;border:1px solid var(--grid-line-strong);min-width:320px;min-height:90px;}</style>
+</head>
+<body>
+<div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb">/ kpi team / cs23 chứng nhận sản phẩm</span></div>
+<div class="wrap">
+  <h1>CS23: Hoàn Thành Chứng Nhận Sản Phẩm</h1>
+  <p class="sub">Mức độ hoàn thành <b>lộ trình chứng nhận sản phẩm</b> được giao trong kỳ, để có đủ kiến thức sản phẩm xử lý ticket và CR đúng, nhanh. <b>Actual = số module hoàn thành ÷ tổng số module trong lộ trình của kỳ × 100%</b>. KPI Cao tốt, <b>chỉ Fresher và Junior</b>, chấm theo tháng. Nhập <b>lộ trình (các module) của kỳ</b> ở cuối trang, rồi đánh dấu <b>Hoàn thành</b> khi thành viên xong từng module (kèm bằng chứng).</p>
+
+  <div class="panel">
+    <div class="filters">
+      <div class="field">Thành viên<select id="selMember"><option>Đang tải…</option></select></div>
+      <div class="field">Level<select id="selLevel"></select></div>
+      <div class="field">Kỳ (tháng)
+        <div class="monthbox"><button id="btnPrev" type="button" title="Tháng trước">◀</button><input type="month" id="pickMonth"><button id="btnNext" type="button" title="Tháng sau">▶</button><button id="btnThis" type="button" class="primary">Tháng này</button></div>
+      </div>
+      <div class="field">&nbsp;<span><button id="btnReload" type="button">↻ Tải lại</button> <button id="btnXlsx" type="button" class="export" disabled>⬇ Xuất Excel</button></span></div>
+    </div>
+    <div class="stamp" id="stamp" style="margin-top:8px"></div>
+  </div>
+
+  <div class="two" id="refRow">
+    <div class="panel"><h2>Công thức (KPI Cao tốt, Target = Max)</h2><div id="fmTbl"></div></div>
+    <div class="panel"><h2>Ngưỡng theo level</h2><div id="thTbl"></div></div>
+  </div>
+
+  <div id="notice"></div>
+  <div id="loading">Đang tải dữ liệu…</div>
+
+  <div id="content" style="display:none">
+    <div class="panel"><h2 id="resTitle"></h2><div id="resBody"></div></div>
+
+    <div class="panel">
+      <h2 id="listTitle">Lộ trình module của kỳ</h2>
+      <div class="tbl-scroll"><div id="listTbl"></div></div>
+    </div>
+
+    <div class="two">
+      <div class="panel">
+        <h2 id="formTitle">Thêm module vào lộ trình</h2>
+        <div class="formgrid">
+          <div class="field">Tên module chứng nhận<input type="text" id="fModule" maxlength="200" style="min-width:300px" placeholder="VD: Tìm hiểu dự án Vifon"></div>
+          <div class="field">Thành viên<select id="fMember"></select></div>
+          <div class="field">Kỳ (tháng)<input type="month" id="fMonth"></div>
+          <div class="field">Trọng số <span class="hint">(mặc định 1)</span><input type="number" id="fWeight" min="0.1" step="any" placeholder="1" style="min-width:90px;width:90px"></div>
+          <div class="field">Hạn <span class="hint">(tuỳ chọn)</span><input type="date" id="fDue"></div>
+          <div class="field">Ngày hoàn thành <span class="hint">(trống = chưa xong)</span><input type="date" id="fDone"></div>
+          <div class="field">Bằng chứng (link / mô tả)<input type="text" id="fEvidence" maxlength="500" style="min-width:300px" placeholder="Link tài liệu tổng hợp, ảnh chụp kết quả…"></div>
+          <div class="field">Ghi chú<input type="text" id="fNote" maxlength="1000" style="min-width:200px"></div>
+          <div class="field">&nbsp;<span><button id="btnSave" type="button" class="primary">＋ Lưu module</button> <button id="btnCancel" type="button" style="display:none">Hủy sửa</button></span></div>
+        </div>
+        <div id="formMsg" style="margin-top:10px"></div>
+      </div>
+      <div class="panel">
+        <h2>Thêm cả lộ trình 1 lần</h2>
+        <p class="hint" style="margin:0 0 6px">Mỗi dòng 1 module cho thành viên và kỳ đang chọn ở trên. Có thể thêm trọng số sau dấu <b>|</b> (mặc định 1). Ví dụ:<br><code>Tìm hiểu dự án Vifon | 50</code><br><code>Tài liệu tổng hợp các phần đã tìm hiểu | 50</code></p>
+        <textarea class="ta" id="bulk" placeholder="Tên module | trọng số"></textarea>
+        <div style="margin-top:8px"><button id="btnBulk" type="button" class="primary">＋ Thêm các module</button></div>
+        <div id="bulkMsg" style="margin-top:8px"></div>
+        <h2 style="margin-top:16px" id="ovTitle">Tổng hợp cả team</h2><div id="ovTbl"></div>
+      </div>
+    </div>
+    <div class="hint" id="storeHint"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const LEVELS = ['Fresher','Junior','Middle','Senior'];
+let creators = [], data = null, reqSeq = 0, editingId = null, cfg = null;
+const todayVN = () => new Date(Date.now()+7*3600*1000).toISOString().slice(0,10);
+const addMonths = (key, n) => { const [y,m] = key.split('-').map(Number); return new Date(Date.UTC(y, m-1+n, 1)).toISOString().slice(0,7); };
+const qp = new URLSearchParams(location.search);
+let month = /^\d{4}-(0[1-9]|1[0-2])$/.test(qp.get('month')||'') ? qp.get('month') : todayVN().slice(0,7);
+const mFmt = k => k.slice(5,7)+'/'+k.slice(0,4);
+const fmt = (v,d=1) => v==null ? '—' : Number(v).toFixed(d).replace('.',',');
+const dmy = iso => iso ? iso.slice(8,10)+'/'+iso.slice(5,7)+'/'+iso.slice(0,4) : '';
+const shortName = e => String(e).split('@')[0];
+const LS = 'kpiCert.v1';
+const store = { get(){ try{ return JSON.parse(localStorage.getItem(LS)||'{}')||{}; }catch(_){ return {}; } }, set(o){ try{ localStorage.setItem(LS, JSON.stringify(o)); }catch(_){} } };
+async function api(url, opt){
+  const r = await fetch(url, opt); const j = await r.json().catch(()=>({error:'Phản hồi không hợp lệ (HTTP '+r.status+')'}));
+  if(r.status===401){ location.href='/?next='+encodeURIComponent(location.pathname+location.search); throw new Error('Phiên đăng nhập đã hết'); }
+  if(!r.ok) throw new Error(j.error || ('HTTP '+r.status));
+  return j;
+}
+
+function renderRef(){
+  const level = $('selLevel').value; const th = cfg && cfg.thresholds[level];
+  const rows = [['Chưa đạt Min','0%','Thực tế &lt; Min', th?'&lt; '+fmt(th.min,0)+'%':''],['Từ Min đến dưới Target','50% → 100%','50% + 50% × (Actual − Min) ÷ (Target − Min)', th?fmt(th.min,0)+'% → &lt; '+fmt(th.target,0)+'%':''],['Đạt Target (= Max)','100%','Không có phần vượt', th?'≥ '+fmt(th.target,0)+'%':'']];
+  $('fmTbl').innerHTML = '<table><thead><tr><th>Mức</th><th>Actual (level '+esc(level)+')</th><th>% hoàn thành</th><th>Công thức</th></tr></thead><tbody>'
+    + rows.map(r=>'<tr><td><b>'+r[0]+'</b></td><td class="mono">'+(th?r[3]:'—')+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>').join('')+'</tbody></table>';
+  if(cfg) $('thTbl').innerHTML = '<table><thead><tr><th>Level</th><th class="n">Min</th><th class="n">Target</th><th class="n">Max</th><th class="n">Trọng số</th></tr></thead><tbody>'
+    + LEVELS.map(l=>'<tr'+(l===level?' class="me"':'')+'><td>'+l+'</td>'+(cfg.thresholds[l]?'<td class="n">'+fmt(cfg.thresholds[l].min,0)+'%</td><td class="n">'+fmt(cfg.thresholds[l].target,0)+'%</td><td class="n">'+fmt(cfg.thresholds[l].max,0)+'%</td><td class="n">'+fmt(cfg.weights[l],0)+'%</td>':'<td class="n" colspan="4" style="color:#8EA3BA">Không áp dụng</td>')+'</tr>').join('')+'</tbody></table>';
+}
+function howText(d){
+  const r = d.result, th = d.kpi.thresholds;
+  if(r.actual==null) return 'Chưa có module nào trong lộ trình của kỳ này — hãy thêm lộ trình ở cuối trang.';
+  const same = r.totalWeight===r.total;
+  let t = 'Actual = '+(same? r.done+' ÷ '+r.total : fmt(r.doneWeight,1)+' ÷ '+fmt(r.totalWeight,1)+' (theo trọng số)')+' × 100% = <b>'+fmt(r.actual)+'%</b><br>';
+  if(r.tier===0) t += 'Actual '+fmt(r.actual)+'% &lt; Min '+fmt(th.min,0)+'% → Progress = <b>0%</b>';
+  else if(r.tier===2 && th.max<=th.target) t += r.actual>=th.target ? 'Đạt Target (= Max) → Progress = <b>100%</b>, không có phần vượt' : '';
+  else t += 'Progress = 50% + 50% × ('+fmt(r.actual)+' − '+fmt(th.min,0)+') ÷ ('+fmt(th.target,0)+' − '+fmt(th.min,0)+') = <b>'+fmt(r.progress)+'%</b>';
+  return t+'<br>KPI Completion = '+fmt(r.progress)+'% × '+fmt(d.kpi.weight,0)+'% = <b>'+fmt(r.points,2)+'%</b>';
+}
+function render(d){
+  const r = d.result, k = d.kpi;
+  $('resTitle').textContent = 'CS23 — '+shortName(d.member)+' · '+d.level+' · kỳ '+mFmt(d.month);
+  if(!k.applicable) $('resBody').innerHTML = '<div class="na">KPI CS23 <b>không áp dụng</b> cho level <b>'+esc(d.level)+'</b> (chỉ Fresher và Junior). Chọn level khác để đánh giá.</div>';
+  else {
+    const tone = r.tier==null ? '' : 'tone'+r.tier;
+    $('resBody').innerHTML = '<div class="kpis">'
+      +'<div class="kpi"><div class="l">Module trong lộ trình</div><div class="v">'+r.total+'</div><div class="d">của kỳ '+esc(mFmt(d.month))+'</div></div>'
+      +'<div class="kpi"><div class="l">Đã hoàn thành</div><div class="v" style="color:var(--success)">'+r.done+'</div><div class="d">'+(r.total-r.done)+' module chưa xong</div></div>'
+      +'<div class="kpi act"><div class="l">Actual</div><div class="v '+tone+'">'+(r.actual==null?'—':fmt(r.actual)+'%')+'</div><div class="d">Min '+fmt(k.thresholds.min,0)+' · Target '+fmt(k.thresholds.target,0)+' · Max '+fmt(k.thresholds.max,0)+'</div></div>'
+      +'<div class="kpi score"><div class="l">Progress</div><div class="v '+tone+'">'+(r.progress==null?'—':fmt(r.progress)+'%')+'</div><div class="d">'+esc(r.band||'Chưa có lộ trình')+'</div></div>'
+      +'<div class="kpi score"><div class="l">KPI Completion</div><div class="v '+tone+'">'+(r.points==null?'—':fmt(r.points,2)+'%')+'</div><div class="d">trên trọng số '+fmt(k.weight,0)+'%</div></div>'
+      +'</div><div class="how">'+howText(d)+'</div>';
+  }
+  $('listTitle').textContent = 'Lộ trình module — '+shortName(d.member)+' · kỳ '+mFmt(d.month)+' ('+d.entries.length+')';
+  $('listTbl').innerHTML = d.entries.length ? '<table><thead><tr><th>Module</th><th class="n">Trọng số</th><th>Hạn</th><th>Hoàn thành</th><th>Bằng chứng / ghi chú</th><th></th></tr></thead><tbody>'
+    + d.entries.map(e=>'<tr><td><b>'+esc(e.module)+'</b></td><td class="n">'+fmt(e.weight,e.weight%1?1:0)+'</td><td class="mono">'+esc(dmy(e.dueDate))+'</td><td>'+(e.doneDate?'<span class="tag ok">Xong '+esc(dmy(e.doneDate))+'</span>':'<span class="tag wait">Chưa xong</span>')+'</td><td>'+esc([e.evidence,e.note].filter(Boolean).join(' · '))+'</td><td style="white-space:nowrap">'
+      +(e.doneDate?'<button type="button" data-undone="'+esc(e.id)+'" style="padding:3px 10px;font-size:12px">Bỏ hoàn thành</button>':'<button type="button" class="primary" data-done="'+esc(e.id)+'" style="padding:3px 10px;font-size:12px">✔ Hoàn thành</button>')
+      +' <button type="button" data-edit="'+esc(e.id)+'" style="padding:3px 10px;font-size:12px">Sửa</button> <button type="button" class="danger" data-del="'+esc(e.id)+'">Xóa</button></td></tr>').join('')+'</tbody></table>'
+    : '<div class="empty">Chưa có module nào trong lộ trình của kỳ này. Thêm module ở bên dưới.</div>';
+  $('listTbl').querySelectorAll('[data-done]').forEach(b=>b.onclick=()=>markDone(b.dataset.done, true));
+  $('listTbl').querySelectorAll('[data-undone]').forEach(b=>b.onclick=()=>markDone(b.dataset.undone, false));
+  $('listTbl').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delEntry(b.dataset.del, b));
+  $('listTbl').querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>startEdit(b.dataset.edit));
+  $('ovTitle').textContent = 'Tổng hợp cả team — kỳ '+mFmt(d.month);
+  $('ovTbl').innerHTML = d.overview.length ? '<table><thead><tr><th>Thành viên</th><th class="n">Module</th><th class="n">Xong</th><th class="n">Actual</th></tr></thead><tbody>'+d.overview.map(o=>'<tr class="click'+(o.member===d.member?' me':'')+'" data-m="'+esc(o.member)+'"><td>'+esc(shortName(o.member))+'</td><td class="n">'+o.total+'</td><td class="n">'+o.done+'</td><td class="n">'+(o.actual==null?'—':fmt(o.actual)+'%')+'</td></tr>').join('')+'</tbody></table>' : '<div class="empty">Chưa có lộ trình nào trong kỳ.</div>';
+  $('ovTbl').querySelectorAll('tr.click').forEach(tr=>tr.onclick=()=>{ $('selMember').value = tr.dataset.m; persist(); load(); });
+  $('storeHint').textContent = d.githubBacked ? 'Dữ liệu được lưu vào repo GitHub (mỗi lần lưu là 1 commit).' : 'Dữ liệu đang lưu trong thư mục data/ của server — cần mount volume ./data (docker-compose) để không bị mất khi container bị xoá.';
+  $('btnXlsx').disabled = false;
+}
+function persist(){ const s = store.get(); s.member = $('selMember').value; s.levels = s.levels||{}; s.levels[$('selMember').value] = $('selLevel').value; store.set(s); }
+async function load(keepForm){
+  const member = $('selMember').value, level = $('selLevel').value;
+  if(!member){ $('loading').style.display='none'; $('notice').innerHTML='<div class="msg err">Chưa có thành viên nào trong danh sách người tạo ticket (ticket-creators.json).</div>'; return; }
+  const seq = ++reqSeq; history.replaceState(null,'','?month='+month); $('pickMonth').value = month;
+  $('loading').style.display = ''; $('btnXlsx').disabled = true;
+  try{
+    const d = await api('/api/kpi/cert-score?member='+encodeURIComponent(member)+'&level='+encodeURIComponent(level)+'&month='+month);
+    if(seq!==reqSeq) return;
+    data = d; cfg = d.config; renderRef();
+    $('loading').style.display = 'none'; $('content').style.display = ''; $('notice').innerHTML = '';
+    $('stamp').textContent = 'Cập nhật '+new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+    render(d); if(!keepForm) resetForm();
+  }catch(e){ if(seq!==reqSeq) return; $('loading').style.display = 'none'; $('content').style.display = 'none'; $('notice').innerHTML = '<div class="msg err">Không lấy được dữ liệu: '+esc(e.message)+'</div>'; }
+}
+
+function resetForm(){
+  editingId = null; $('formTitle').textContent = 'Thêm module vào lộ trình'; $('btnSave').textContent = '＋ Lưu module'; $('btnCancel').style.display = 'none';
+  $('fModule').value = ''; $('fMember').value = $('selMember').value; $('fMonth').value = month; $('fWeight').value = ''; $('fDue').value = ''; $('fDone').value = ''; $('fEvidence').value = ''; $('fNote').value = '';
+}
+function startEdit(id){
+  const e = data.entries.find(x=>x.id===id); if(!e) return; editingId = id;
+  $('formTitle').textContent = 'Sửa module'; $('btnSave').textContent = '💾 Lưu thay đổi'; $('btnCancel').style.display = '';
+  $('fModule').value = e.module; $('fMember').value = e.member; $('fMonth').value = e.month; $('fWeight').value = e.weight===1?'':e.weight; $('fDue').value = e.dueDate||''; $('fDone').value = e.doneDate||''; $('fEvidence').value = e.evidence||''; $('fNote').value = e.note||'';
+  $('formTitle').scrollIntoView({behavior:'smooth', block:'center'});
+}
+async function saveEntry(){
+  const body = { module:$('fModule').value, member:$('fMember').value, month:$('fMonth').value, weight:$('fWeight').value, dueDate:$('fDue').value, doneDate:$('fDone').value, evidence:$('fEvidence').value, note:$('fNote').value };
+  $('btnSave').disabled = true; $('formMsg').innerHTML = '';
+  try{
+    const r = await api(editingId ? '/api/kpi/cert-modules/'+encodeURIComponent(editingId) : '/api/kpi/cert-modules', { method: editingId?'PUT':'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    month = r.entry.month; $('selMember').value = r.entry.member; await load();
+    $('formMsg').innerHTML = '<div class="msg ok">Đã lưu module "'+esc(r.entry.module)+'" ('+esc(shortName(r.entry.member))+', kỳ '+esc(mFmt(r.entry.month))+').'+(r.commitUrl?' <a href="'+esc(r.commitUrl)+'" target="_blank" rel="noopener">Xem commit ↗</a>':'')+'</div>';
+  }catch(e){ $('formMsg').innerHTML = '<div class="msg err">Không lưu được: '+esc(e.message)+'</div>'; }
+  finally{ $('btnSave').disabled = false; }
+}
+async function markDone(id, done){
+  const e = data.entries.find(x=>x.id===id); if(!e) return;
+  try{ await api('/api/kpi/cert-modules/'+encodeURIComponent(id), { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...e, doneDate: done ? todayVN() : '' }) }); await load(true); $('formMsg').innerHTML = '<div class="msg ok">'+(done?'Đã đánh dấu hoàn thành "'+esc(e.module)+'" (ngày '+esc(dmy(todayVN()))+'). Cần chỉnh ngày hoặc thêm bằng chứng thì bấm Sửa.':'Đã bỏ hoàn thành.')+'</div>'; }
+  catch(err){ $('formMsg').innerHTML = '<div class="msg err">Không cập nhật được: '+esc(err.message)+'</div>'; }
+}
+async function saveBulk(){
+  const items = $('bulk').value.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{ const [name, w] = l.split('|').map(x=>x.trim()); return { module:name, weight:w||'' }; });
+  $('btnBulk').disabled = true; $('bulkMsg').innerHTML = '';
+  try{
+    const r = await api('/api/kpi/cert-modules/bulk', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ member:$('selMember').value, month, items }) });
+    $('bulk').value = ''; await load(); $('bulkMsg').innerHTML = '<div class="msg ok">Đã thêm '+r.entries.length+' module.'+(r.commitUrl?' <a href="'+esc(r.commitUrl)+'" target="_blank" rel="noopener">Xem commit ↗</a>':'')+'</div>';
+  }catch(e){ $('bulkMsg').innerHTML = '<div class="msg err">Không thêm được: '+esc(e.message)+'</div>'; }
+  finally{ $('btnBulk').disabled = false; }
+}
+const delArmed = {};
+async function delEntry(id, btn){
+  if(!delArmed[id]){ delArmed[id] = setTimeout(()=>{ delete delArmed[id]; if(btn.isConnected){ btn.textContent = 'Xóa'; btn.style.background = ''; btn.style.color = ''; } }, 4000); btn.textContent = 'Bấm lại để xóa'; btn.style.background = 'var(--danger)'; btn.style.color = '#fff'; return; }
+  clearTimeout(delArmed[id]); delete delArmed[id]; btn.disabled = true;
+  try{ await api('/api/kpi/cert-modules/'+encodeURIComponent(id), { method:'DELETE' }); await load(); $('formMsg').innerHTML = '<div class="msg ok">Đã xóa module.</div>'; }
+  catch(e){ btn.disabled = false; $('formMsg').innerHTML = '<div class="msg err">Không xóa được: '+esc(e.message)+'</div>'; }
+}
+function exportXlsx(){
+  const d = data, r = d.result, k = d.kpi, wb = XLSX.utils.book_new();
+  const S = [['CS23: Hoàn thành chứng nhận sản phẩm — Đánh giá KPI theo kỳ'],['Thành viên', d.member],['Level', d.level],['Kỳ', mFmt(d.month)],['Xuất lúc', new Date().toLocaleString('vi-VN')],[],
+    ['Chỉ số','Giá trị'],['Module trong lộ trình', r.total],['Đã hoàn thành', r.done],['Actual (%)', r.actual]];
+  if(k.applicable) S.push(['Min (%)',k.thresholds.min],['Target (%)',k.thresholds.target],['Max (%)',k.thresholds.max],['Progress (%)', r.progress],['Mức', r.band],['Trọng số (%)',k.weight],['KPI Completion (%)', r.points]);
+  else S.push(['Ghi chú','KPI không áp dụng cho level này']);
+  const s1 = XLSX.utils.aoa_to_sheet(S); s1['!cols'] = [{wch:30},{wch:30}]; XLSX.utils.book_append_sheet(wb, s1, 'Tổng hợp');
+  const s2 = XLSX.utils.aoa_to_sheet([['Module','Trọng số','Hạn','Ngày hoàn thành','Bằng chứng','Ghi chú'], ...d.entries.map(e=>[e.module,e.weight,dmy(e.dueDate),dmy(e.doneDate),e.evidence,e.note])]);
+  s2['!cols'] = [44,10,12,16,44,30].map(w=>({wch:w})); XLSX.utils.book_append_sheet(wb, s2, 'Lộ trình');
+  XLSX.writeFile(wb, 'KPI_CS23_'+shortName(d.member)+'_'+d.month.replace('-','_')+'.xlsx');
+}
+
+const go = m => { month = m; load(); };
+$('btnPrev').onclick = () => go(addMonths(month,-1)); $('btnNext').onclick = () => go(addMonths(month,1)); $('btnThis').onclick = () => go(todayVN().slice(0,7));
+$('pickMonth').onchange = e => { if(/^\d{4}-\d{2}$/.test(e.target.value)) go(e.target.value); };
+$('btnReload').onclick = () => load(); $('btnXlsx').onclick = () => exportXlsx();
+$('selLevel').onchange = () => { renderRef(); persist(); load(); };
+$('selMember').onchange = () => { const s = store.get(); $('selLevel').value = (s.levels&&s.levels[$('selMember').value]) || 'Junior'; persist(); load(); };
+$('btnSave').onclick = saveEntry; $('btnCancel').onclick = resetForm; $('btnBulk').onclick = saveBulk;
+
+(async function init(){
+  const s = store.get(); $('selLevel').innerHTML = LEVELS.map(l=>'<option>'+l+'</option>').join('');
+  try{ const c = await api('/api/erp/ticket-creators'); creators = c.creators || []; }
+  catch(e){ $('notice').innerHTML = '<div class="msg err">Không tải được danh sách thành viên: '+esc(e.message)+'</div>'; }
+  const memOpts = creators.length ? creators.map(e=>'<option value="'+esc(e)+'">'+esc(e)+'</option>').join('') : '<option value="">(chưa có thành viên)</option>';
+  $('selMember').innerHTML = memOpts; $('fMember').innerHTML = memOpts;
+  if(s.member && creators.includes(s.member)) $('selMember').value = s.member;
+  $('selLevel').value = (s.levels && s.levels[$('selMember').value]) || 'Junior';
+  renderRef(); load();
+})();
+</script>
+</body>
+</html>

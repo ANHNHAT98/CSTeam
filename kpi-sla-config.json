@@ -157,5 +157,193 @@
     ],
     "similarityThreshold": 0.8,
     "minSimilarTokens": 3
+  },
+  "cr": {
+    "code": "CS07",
+    "name": "CR phân tích đúng hạn & đạt chất lượng",
+    "definition": "CR được phân tích xong đúng hạn và không bị trả lại ÷ tổng CR được giao.",
+    "defaultProjects": [
+      "ANVY_eSale_Support"
+    ],
+    "thresholds": {
+      "Junior": {
+        "min": 75.0,
+        "target": 90.0,
+        "max": 100.0
+      },
+      "Middle": {
+        "min": 80.0,
+        "target": 95.0,
+        "max": 100.0
+      },
+      "Senior": {
+        "min": 85.0,
+        "target": 95.0,
+        "max": 100.0
+      }
+    },
+    "weights": {
+      "Junior": 15.0,
+      "Middle": 15.0,
+      "Senior": 15.0
+    }
+  },
+  "ai": {
+    "code": "CS21",
+    "name": "AI adoption cá nhân",
+    "thresholds": {
+      "Fresher": {
+        "min": 50.0,
+        "target": 70.0,
+        "max": 90.0
+      },
+      "Junior": {
+        "min": 50.0,
+        "target": 70.0,
+        "max": 90.0
+      },
+      "Middle": {
+        "min": 60.0,
+        "target": 80.0,
+        "max": 95.0
+      },
+      "Senior": {
+        "min": 70.0,
+        "target": 85.0,
+        "max": 100.0
+      }
+    },
+    "weights": {
+      "Fresher": 15.0,
+      "Junior": 10.0,
+      "Middle": 10.0,
+      "Senior": 10.0
+    },
+    "criteria": {
+      "time": {
+        "label": "Dùng AI soạn email/ticket giúp giảm thời gian ≥ 30% — đánh giá qua prompt/flow (checklist rubric) và số phút nếu có",
+        "points": 40,
+        "targetReductionPct": 30
+      },
+      "report": {
+        "label": "Ứng dụng AI hỗ trợ báo cáo tuần/tháng/ERP đúng hạn",
+        "points": 40
+      },
+      "security": {
+        "label": "0 lần vi phạm AI Data Security",
+        "points": 20
+      }
+    },
+    "reportKinds": [
+      "Báo cáo tuần",
+      "Báo cáo tháng",
+      "Báo cáo ERP",
+      "Khác"
+    ],
+    "timeKinds": [
+      "Email",
+      "Ticket",
+      "Khác"
+    ],
+    "rubric": [
+      {
+        "key": "goal",
+        "label": "Mục tiêu / nhiệm vụ rõ ràng (nêu rõ việc cần AI làm)",
+        "weight": 20
+      },
+      {
+        "key": "context",
+        "label": "Có bối cảnh & ràng buộc (vai trò, đối tượng nhận, giọng văn, ngôn ngữ)",
+        "weight": 20
+      },
+      {
+        "key": "format",
+        "label": "Có yêu cầu định dạng đầu ra / ví dụ mẫu",
+        "weight": 15
+      },
+      {
+        "key": "review",
+        "label": "Có bước người kiểm tra & chỉnh sửa kết quả AI trước khi gửi",
+        "weight": 20
+      },
+      {
+        "key": "security",
+        "label": "Tuân thủ AI Data Security (không có dữ liệu KH nhạy cảm, đã ẩn danh)",
+        "weight": 15,
+        "gate": true
+      },
+      {
+        "key": "reuse",
+        "label": "Dùng lại được (template / flow chia sẻ cho team)",
+        "weight": 10
+      }
+    ]
+  },
+  "cert": {
+    "code": "CS23",
+    "name": "Hoàn thành chứng nhận sản phẩm",
+    "definition": "Module chứng nhận sản phẩm hoàn thành ÷ lộ trình kỳ.",
+    "thresholds": {
+      "Fresher": {
+        "min": 70.0,
+        "target": 100.0,
+        "max": 100.0
+      },
+      "Junior": {
+        "min": 70.0,
+        "target": 100.0,
+        "max": 100.0
+      }
+    },
+    "weights": {
+      "Fresher": 15.0,
+      "Junior": 5.0
+    }
+  },
+  "crplan": {
+    "code": "CS25",
+    "name": "Quản lý CR",
+    "definition": "Đảm bảo plan CR đúng thời hạn với KH ÷ tổng CR được giao.",
+    "defaultProjects": [
+      "ABI_eSales_Support"
+    ],
+    "thresholds": {
+      "Junior": {
+        "min": 70.0,
+        "target": 85.0,
+        "max": 100.0
+      },
+      "Middle": {
+        "min": 75.0,
+        "target": 90.0,
+        "max": 100.0
+      },
+      "Senior": {
+        "min": 80.0,
+        "target": 95.0,
+        "max": 100.0
+      }
+    },
+    "weights": {
+      "Junior": 10.0,
+      "Middle": 10.0
+    },
+    "criteria": [
+      {
+        "key": "handover",
+        "label": "Bàn giao đầy đủ testcase CRs và tài liệu CRs trước khi lên môi trường Staging",
+        "weight": 40
+      },
+      {
+        "key": "staging",
+        "label": "Up gói CRs và review CRs từ PM không lỗi trên Staging đúng hạn theo kế hoạch của khách hàng",
+        "weight": 45
+      },
+      {
+        "key": "prod",
+        "label": "Up PROD hoàn thành theo kế hoạch khách hàng",
+        "weight": 15
+      }
+    ]
   }
 }

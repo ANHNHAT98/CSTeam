@@ -9,6 +9,8 @@
 const METHODS = {
   projects: 'synergyhub.api.projects.get_filtered_projects',
   timeLogs: 'synergyhub.api.reports.get_detail_time_log_report',
+  // Tasks (trang SynergyHub → Tasks): hàm thật lấy từ lời gọi API của trang. Có thể ghi đè bằng biến môi trường SYNERGYHUB_TASKS_METHOD.
+  tasks: 'synergyhub.api.dynamic_permissions.get_filtered_tasks_with_context',
 };
 
 /** Chuẩn hoá tên cột/khoá: bỏ dấu tiếng Việt, chữ thường, ký tự lạ → "_". */
@@ -208,4 +210,47 @@ async function fetchAllPages(call, base, { pageSize = 500, maxPages = 100 } = {}
   return { message: columns ? { columns, result: all } : { data: all }, info };
 }
 
-module.exports = { fetchAllPages, METHODS, findRows, toObjects, normalizeTimeLogs, normalizeProjects, key };
+/* ---------- Tasks (CS25 cách 2): task của thành viên, hạn dự kiến, ngày hoàn thành ---------- */
+const T_TITLE = ['task_name', 'title', 'subject', 'task_title', 'name_of_task', 'task', 'name'];
+const T_ID = ['task_id', 'id', 'name', 'task_code', 'code'];
+const T_PROJECT = ['project_name', 'project', 'project_title', 'project_id'];
+const T_ASSIGNEE = ['assignees', 'assigned_to', 'assignee', 'assigned_users', 'assigned_user', 'assignee_email', 'assigned_to_email', 'assigned_to_name', 'responsible', 'team_member', 'owner'];
+const T_PLANNED = ['due_date', 'end_date', 'expected_end_date', 'planned_end_date', 'planned_end', 'deadline', 'target_date', 'estimated_end_date', 'exp_end_date', 'finish_date', 'exp_end', 'due'];
+const T_DONE = ['completed_on', 'completed_date', 'completion_date', 'completed_at', 'actual_end_date', 'actual_end', 'closed_on', 'done_date', 'finished_on', 'date_completed', 'resolved_on'];
+const T_DONE_APPROX = ['modified', 'updated_at', 'last_updated', 'date_modified'];
+const T_STATUS = ['status', 'task_status', 'state'];
+const T_DONE_STATUS = /^(completed|complete|done|closed|finished|resolved|hoan thanh|da hoan thanh)$/i;
+
+function flatKeyMap(o) { const m = {}; for (const [k, v] of Object.entries(o || {})) { const nk = key(k); if (m[nk] === undefined) m[nk] = v; } return m; }
+function firstVal(m, names) { for (const n of names) if (m[n] !== undefined && m[n] !== null && String(m[n]) !== '' && !(Array.isArray(m[n]) && !m[n].length)) return { k: n, v: m[n] }; return null; }
+function peopleOf(v) {
+  const out = [];
+  const add = (x) => { if (x == null) return; if (typeof x === 'string' || typeof x === 'number') { for (const part of String(x).split(/[,;]/)) { const t = part.trim().toLowerCase(); if (t) out.push(t); } } else if (Array.isArray(x)) x.forEach(add); else if (typeof x === 'object') add(x.email || x.user || x.user_id || x.name || x.full_name || x.employee || x.username); };
+  add(v); return [...new Set(out)];
+}
+const isoDay = (v) => { if (v == null) return ''; const s0 = String(v); let m = s0.match(/(\d{4})-(\d{2})-(\d{2})/); if (m) return `${m[1]}-${m[2]}-${m[3]}`; m = s0.match(/(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/); return m ? `${m[3]}-${String(m[2]).padStart(2, '0')}-${String(m[1]).padStart(2, '0')}` : ''; };
+
+/** Phản hồi danh sách task → [{id, name, project, assignees:[email…], planned, done, doneApprox, status}] + diagnostics (cột nhận được, mẫu). */
+function normalizeTasks(msg) {
+  const found = findRows(msg);
+  const diagnostics = { shape: found ? found.shape : 'không tìm thấy mảng dữ liệu', rows: 0, detected: {}, sample: null, noPlanned: 0, noAssignee: 0, topKeys: msg && typeof msg === 'object' ? Object.keys(msg).slice(0, 15) : [] };
+  if (!found) return { tasks: [], diagnostics };
+  const maps = found.rows.map((r) => flatKeyMap(Array.isArray(r) && found.columns ? Object.fromEntries(found.columns.map((c, i) => [typeof c === 'string' ? c : (c.fieldname || c.label), r[i]])) : r));
+  diagnostics.rows = maps.length; diagnostics.sample = found.rows[0] || null;
+  const present = (names) => names.find((n) => maps.some((m) => firstVal(m, [n]))) || null;
+  const keys = { title: present(T_TITLE), id: present(T_ID), project: present(T_PROJECT), assignee: present(T_ASSIGNEE), planned: present(T_PLANNED), done: present(T_DONE), status: present(T_STATUS), doneApprox: present(T_DONE_APPROX) };
+  diagnostics.detected = keys;
+  const tasks = maps.map((m) => {
+    const status = keys.status ? String(m[keys.status] ?? '').trim() : '';
+    let done = keys.done ? isoDay(m[keys.done]) : ''; let approx = false;
+    if (!done && T_DONE_STATUS.test(key(status).replace(/_/g, ' '))) { done = keys.doneApprox ? isoDay(m[keys.doneApprox]) : ''; approx = Boolean(done); }
+    const planned = keys.planned ? isoDay(m[keys.planned]) : '';
+    const assignees = keys.assignee ? peopleOf(m[keys.assignee]) : [];
+    if (!planned) diagnostics.noPlanned++; if (!assignees.length) diagnostics.noAssignee++;
+    const pv = keys.project ? m[keys.project] : '';
+    return { id: String(keys.id ? m[keys.id] ?? '' : ''), name: String(keys.title ? m[keys.title] ?? '' : ''), project: String(pv && typeof pv === 'object' ? (pv.project_name || pv.name || pv.title || '') : (pv ?? '')), assignees, planned, done, doneApprox: approx, status, completedByStatus: T_DONE_STATUS.test(key(status).replace(/_/g, ' ')) };
+  });
+  return { tasks, diagnostics };
+}
+
+module.exports = { normalizeTasks, fetchAllPages, METHODS, findRows, toObjects, normalizeTimeLogs, normalizeProjects, key };
