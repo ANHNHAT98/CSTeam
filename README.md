@@ -129,7 +129,7 @@ Module hiện có:
 - **Báo Cáo → Báo Cáo CS & AM** (`/bao-cao/cs-am`): lấy ticket các dự án từ ERP thành slide "Issues highlight customer" theo mẫu
   Cust · # · Issues · Status · Plan & Deadline · Comment (Cust gộp ô, # đánh số theo từng Cust). Chọn dự án/trạng thái/ưu tiên, tick
   ticket cần đưa vào và sửa trực tiếp từng ô, rồi **tải file PPT** (bảng gốc của PowerPoint, sửa được) hoặc **copy bảng / copy ảnh / tải PNG**
-  để dán vào file chung của Manager. Cust lấy từ **Customer Name** của ticket; ưu tiên chọn được nhiều mức (hoặc Tất cả); **mỗi dự án có bộ slide riêng** với Số mục + Tiêu đề riêng; **Deadline lấy từ Estimated Deadline, nếu ticket không có/để trống thì tính hạn SLA
+  để dán vào file chung của Manager (nút **Copy cả slide (sửa được)** = 1 bảng gồm số mục + tiêu đề + dữ liệu; **Copy cả slide (ảnh)** = đúng hình dạng slide mẫu). Cust lấy từ **Customer Name** của ticket; ưu tiên chọn được nhiều mức (hoặc Tất cả); **mỗi dự án có bộ slide riêng** với Số mục + Tiêu đề riêng; **Deadline lấy từ Estimated Deadline, nếu ticket không có/để trống thì tính hạn SLA
   = Opening On + ngưỡng SLA xử lý theo Priority** (server tính, API `/api/bao-cao/cs-am/tickets`); Comment lấy từ bình luận gần nhất
   của ticket (`_comments`).
 - **Dự Án → AnVy → Ticket Slide**: dán/nhập ticket, tự tạo slide + xuất

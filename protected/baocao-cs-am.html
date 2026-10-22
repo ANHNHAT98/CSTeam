@@ -99,8 +99,14 @@
     <h2><span class="n">3</span>Slide &amp; xuất file</h2>
     <div class="row">
       <div class="field">Số dòng / slide<input type="number" id="slRows" value="6" min="3" max="10"></div>
-      <div class="field">&nbsp;<span><button id="btnPptx" class="export" type="button">⬇ Tải file PPT</button> <button id="btnCopyAll" type="button">📋 Copy bảng slide đang xem</button></span></div>
+      <div class="field">&nbsp;<span><button id="btnPptx" class="export" type="button">⬇ Tải file PPT</button> <button id="btnCopySlide" type="button" class="primary">📑 Copy cả slide đang xem</button> <button id="btnCopyAll" type="button">📋 Copy riêng bảng</button></span></div>
     </div>
+    <details style="margin-top:10px;font-size:13px"><summary style="cursor:pointer;color:var(--blueprint);font-weight:600">Cách đưa slide vào file gốc của Manager</summary>
+      <ol class="hint" style="margin:8px 0 0 18px;line-height:1.8">
+        <li><b>Copy cả slide (sửa được):</b> bấm nút trên slide, mở slide gốc của Manager, nhấn <b>Ctrl/Cmd + V</b>. Dán ra 1 bảng PowerPoint gồm số mục + tiêu đề + dữ liệu, sửa chữ thoải mái.</li>
+        <li><b>Copy cả slide (ảnh):</b> giữ đúng hình dạng slide mẫu (thanh đỏ, tiêu đề, bảng màu). Dán vào slide gốc, kéo cho vừa khung. Không sửa được chữ.</li>
+        <li><b>Tải file PPT:</b> mở file vừa tải, chọn slide ở cột trái, <b>Ctrl/Cmd + C</b>, qua file của Manager chọn vị trí rồi <b>Ctrl/Cmd + V</b> (chọn <b>Keep Source Formatting</b> để giữ định dạng). Hoặc trong file của Manager: <b>Home → New Slide → Reuse Slides → Browse</b> rồi chọn file PPT. Nhiều slide thì dùng cách này.</li>
+      </ol></details>
     <div id="projSettings" style="margin-top:12px"></div>
     <div id="outMsg" style="margin-top:10px"></div>
     <div id="slides"></div>
@@ -267,7 +273,8 @@ let model = [];
 function paintSlides(){ // vẽ lại slide (không đụng bảng cài đặt số mục/tiêu đề để không mất con trỏ khi gõ)
   model = buildModel();
   if(!model.length){ $('slides').innerHTML = '<div class="empty">Chưa chọn ticket nào — tick ít nhất 1 dòng ở bước 2.</div>'; return; }
-  $('slides').innerHTML = model.map((m,i)=>'<div class="slide-label">Slide '+(i+1)+'/'+model.length+' · '+esc(pName(m.project))+' · '+m.rows.length+' dòng · <button type="button" data-copy="'+i+'" style="padding:2px 10px;font-size:12px">📋 Copy bảng</button> <button type="button" data-img="'+i+'" style="padding:2px 10px;font-size:12px">🖼 Copy ảnh</button> <button type="button" data-png="'+i+'" style="padding:2px 10px;font-size:12px">⬇ PNG</button></div><div class="slide-scroll">'+slideHtml(m,i)+'</div>').join('');
+  $('slides').innerHTML = model.map((m,i)=>'<div class="slide-label">Slide '+(i+1)+'/'+model.length+' · '+esc(pName(m.project))+' · '+m.rows.length+' dòng · <button type="button" data-slide="'+i+'" class="primary" style="padding:2px 10px;font-size:12px">📑 Copy cả slide (sửa được)</button> <button type="button" data-img="'+i+'" style="padding:2px 10px;font-size:12px">🖼 Copy cả slide (ảnh)</button> <button type="button" data-copy="'+i+'" style="padding:2px 10px;font-size:12px">📋 Copy riêng bảng</button> <button type="button" data-png="'+i+'" style="padding:2px 10px;font-size:12px">⬇ PNG</button></div><div class="slide-scroll">'+slideHtml(m,i)+'</div>').join('');
+  $('slides').querySelectorAll('[data-slide]').forEach(b=>b.onclick=()=>copySlide(Number(b.dataset.slide)));
   $('slides').querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copyTable(Number(b.dataset.copy)));
   $('slides').querySelectorAll('[data-img]').forEach(b=>b.onclick=()=>copyImage(Number(b.dataset.img)));
   $('slides').querySelectorAll('[data-png]').forEach(b=>b.onclick=()=>savePng(Number(b.dataset.png)));
@@ -277,30 +284,49 @@ let tmr = null; const renderSlidesSoon = (settingsOnly) => { clearTimeout(tmr); 
 
 /* ---------- copy / tải ---------- */
 function say(kind, text){ $('outMsg').innerHTML = '<div class="msg '+kind+'">'+text+'</div>'; }
-async function copyTable(i){
-  const tbl = document.querySelector('#slide'+i+' table.sl'); if(!tbl) return;
+function styledTable(i){
+  const tbl = document.querySelector('#slide'+i+' table.sl'); if(!tbl) return null;
   const clone = tbl.cloneNode(true); // gắn style trực tiếp để dán vào PowerPoint vẫn giữ màu/chữ
   clone.setAttribute('style','border-collapse:collapse;font-family:Arial;font-size:14pt;width:100%');
   clone.querySelectorAll('th').forEach(e=>e.setAttribute('style','background:#2E6DB8;color:#fff;font-weight:bold;text-align:center;padding:6px;border:2px solid #fff'));
   clone.querySelectorAll('tbody tr').forEach((tr,k)=>tr.querySelectorAll('td').forEach(td=>{ const bg = td.classList.contains('cust') ? '#D0D8E8' : (k%2===0?'#D0D8E8':'#E9EDF4'); td.setAttribute('style','background:'+bg+';padding:6px;border:2px solid #fff;vertical-align:middle'+(td.classList.contains('c')||td.classList.contains('cust')?';text-align:center':'')); }));
   clone.querySelectorAll('.hl').forEach(e=>e.setAttribute('style','background:#FFFF00'));
-  const html = clone.outerHTML;
-  try{
-    await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html],{type:'text/html'}), 'text/plain': new Blob([clone.innerText],{type:'text/plain'}) })]);
-    say('ok','Đã copy bảng của slide '+(i+1)+'. Mở PowerPoint, chọn slide đích rồi nhấn <b>Ctrl/Cmd + V</b> (có thể kéo bảng cho vừa khung).');
-  }catch(e){
-    const r = document.createRange(); r.selectNode(tbl); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  return clone;
+}
+async function writeHtmlClipboard(html, plain){
+  try{ await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html],{type:'text/html'}), 'text/plain': new Blob([plain],{type:'text/plain'}) })]); return true; }
+  catch(e){
+    const box = document.createElement('div'); box.style.cssText = 'position:fixed;left:-9999px;top:0'; box.innerHTML = html; document.body.appendChild(box);
+    const r = document.createRange(); r.selectNodeContents(box); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
     let ok = false; try{ ok = document.execCommand('copy'); }catch(_){}
-    s.removeAllRanges();
-    say(ok?'ok':'err', ok ? 'Đã copy bảng của slide '+(i+1)+' (dán vào PowerPoint bằng Ctrl/Cmd + V).' : 'Trình duyệt chặn copy: '+esc(e.message)+'. Dùng nút Tải file PPT hoặc Copy ảnh.');
+    s.removeAllRanges(); box.remove(); return ok;
   }
 }
-async function slideCanvas(i){ if(document.fonts && document.fonts.ready) await document.fonts.ready; return html2canvas(document.getElementById('slide'+i), { scale:2, backgroundColor:'#ffffff', useCORS:true }); }
+async function copyTable(i){
+  const clone = styledTable(i); if(!clone) return;
+  const ok = await writeHtmlClipboard(clone.outerHTML, clone.innerText);
+  say(ok?'ok':'err', ok ? 'Đã copy <b>bảng</b> của slide '+(i+1)+'. Mở PowerPoint, chọn slide đích rồi nhấn <b>Ctrl/Cmd + V</b> (kéo bảng cho vừa khung).' : 'Trình duyệt chặn copy. Dùng nút Tải file PPT hoặc Copy ảnh.');
+}
+/* Copy CẢ SLIDE dạng 1 bảng PowerPoint sửa được: dòng đầu là số mục + tiêu đề (gộp ô), tiếp theo là bảng dữ liệu. Dán vào slide gốc của Manager bằng Ctrl/Cmd + V. */
+function slideRichHtml(i){
+  const clone = styledTable(i); if(!clone) return null; const m = model[i]; const st = setOf(m.project);
+  const cols = clone.querySelectorAll('thead th').length;
+  const head = '<thead><tr><td colspan="'+cols+'" style="background:#FFFFFF;border:0;padding:4px 6px"><span style="background:#C0392B;color:#FFFFFF;font-family:Arial;font-size:12pt;font-weight:bold">&nbsp;'+esc(st.num)+'&nbsp;</span></td></tr>'
+    +'<tr><td colspan="'+cols+'" style="background:#FFFFFF;border:0;border-bottom:3px solid #C0392B;padding:2px 6px 8px;color:#0F2B66;font-family:Arial;font-size:26pt;font-weight:bold">'+esc(titleOf(m))+'</td></tr>';
+  clone.querySelector('thead').insertAdjacentHTML('afterbegin', head.replace('<thead>','')); // chèn 2 dòng tiêu đề vào đầu bảng
+  return clone;
+}
+async function copySlide(i){
+  const t = slideRichHtml(i); if(!t) return;
+  const ok = await writeHtmlClipboard(t.outerHTML, t.innerText);
+  say(ok?'ok':'err', ok ? 'Đã copy <b>cả slide '+(i+1)+'</b> (số mục + tiêu đề + bảng, sửa được). Mở slide gốc của Manager rồi nhấn <b>Ctrl/Cmd + V</b>; nếu PowerPoint hỏi kiểu dán thì chọn <b>Keep Source Formatting</b>. Muốn giữ nguyên hình dạng như slide mẫu thì dùng <b>Copy cả slide (ảnh)</b>.' : 'Trình duyệt chặn copy. Dùng nút Tải file PPT hoặc Copy cả slide (ảnh).');
+}
+async function slideCanvas(i){ if(document.fonts && document.fonts.ready) await document.fonts.ready; return html2canvas(document.getElementById('slide'+i), { scale:3, backgroundColor:'#ffffff', useCORS:true }); }
 async function copyImage(i){
   try{
     const c = await slideCanvas(i); const blob = await new Promise(r=>c.toBlob(r,'image/png'));
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-    say('ok','Đã copy ảnh slide '+(i+1)+'. Dán vào PowerPoint bằng Ctrl/Cmd + V (dạng ảnh, không sửa được chữ).');
+    say('ok','Đã copy <b>cả slide '+(i+1)+' dạng ảnh</b> (đúng hình dạng slide mẫu, độ phân giải cao). Mở slide gốc của Manager rồi nhấn <b>Ctrl/Cmd + V</b> (ảnh không sửa được chữ).');
   }catch(e){ say('err','Không copy được ảnh: '+esc(e.message)+'. Dùng nút ⬇ PNG rồi chèn ảnh vào PowerPoint.'); }
 }
 async function savePng(i){
@@ -308,6 +334,7 @@ async function savePng(i){
   catch(e){ say('err','Không xuất được PNG: '+esc(e.message)); }
 }
 $('btnCopyAll').onclick = () => copyTable(Math.min(curSlide, model.length-1));
+$('btnCopySlide').onclick = () => copySlide(Math.min(curSlide, model.length-1));
 document.addEventListener('scroll', ()=>{ // slide đang xem = slide gần giữa màn hình nhất
   const mid = innerHeight/2; let best = 0, bd = 1e9; document.querySelectorAll('.slide').forEach((el,i)=>{ const r = el.getBoundingClientRect(); const d = Math.abs((r.top+r.bottom)/2-mid); if(d<bd){ bd=d; best=i; } }); curSlide = best;
 }, {passive:true});
