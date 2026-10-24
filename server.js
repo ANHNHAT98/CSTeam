@@ -13,6 +13,7 @@ const weekly = require('./weeklyReport');
 const { buildCustomerReport, slaDueAt, parseNaive, fmtNaive } = require('./customerReport');
 const kpiSla = require('./kpiSla');
 const kpiComplaint = require('./kpiComplaint');
+const sqlEnv = require('./sqlEnv');
 const kpiDefect = require('./kpiDefect');
 const kpiCr = require('./kpiCr');
 const kpiAi = require('./kpiAi');
@@ -154,6 +155,34 @@ app.get('/hotfix/gom-build', requirePageAuth, (req, res) => {
 
 app.get('/hotfix/backup-build', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'hotfix-backup-build.html'));
+});
+
+app.get('/hotfix/moi-truong', requirePageAuth, (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'protected', 'hotfix-moi-truong.html'));
+});
+
+/* ---------- Hotfix: Môi trường SQL Build (thông tin DB / BackOffice / SFA / API / Hangfire của từng server dự án) ----------
+   GET    /api/sql-env        → { items:[{id, project, name, kind, note, rows:[{type,key,value,secret}], updatedAt, updatedBy}], kinds, githubBacked }
+   POST   /api/sql-env        (cùng dữ liệu, không có id)  → thêm
+   PUT    /api/sql-env/:id    (cùng dữ liệu)               → sửa
+   DELETE /api/sql-env/:id                                 → xoá
+   Giá trị dòng secret (mật khẩu) mã hoá khi lưu — xem sqlEnv.js. Lưu qua listStore (GitHub nếu đã cấu hình, ngược lại ./data/sql-environments.json). */
+app.get('/api/sql-env', requireAuth, async (req, res) => {
+  try { res.set('Cache-Control', 'no-store'); res.json({ items: await sqlEnv.list(), kinds: sqlEnv.KINDS, githubBacked: sqlEnv.store.isGithubBacked() }); }
+  catch (e) { console.error('[sql-env:get] lỗi:', e.message); res.status(502).json({ error: e.message }); }
+});
+app.post('/api/sql-env', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, ...(await sqlEnv.add(req.body || {}, req.session.username)) }); }
+  catch (e) { console.error('[sql-env:post] lỗi:', e.message); res.status(400).json({ error: e.message }); }
+});
+app.put('/api/sql-env/:id', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, ...(await sqlEnv.update(req.params.id, req.body || {}, req.session.username)) }); }
+  catch (e) { console.error('[sql-env:put] lỗi:', e.message); res.status(400).json({ error: e.message }); }
+});
+app.delete('/api/sql-env/:id', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, ...(await sqlEnv.remove(req.params.id)) }); }
+  catch (e) { console.error('[sql-env:delete] lỗi:', e.message); res.status(400).json({ error: e.message }); }
 });
 
 app.get('/khac/ma-hoa-password-window', requirePageAuth, (req, res) => {

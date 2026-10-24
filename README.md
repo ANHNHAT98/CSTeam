@@ -543,3 +543,13 @@ Menu **Dự Án > Merap > Dashboard Support Tuần** mở `/duan/support-tuan?pr
 - Biểu đồ: xu hướng 8 tuần (mới / xong / tồn), theo ngày trong tuần, trạng thái, mức ưu tiên, Request Type.
 - Bảng: tồn đọng cần chú ý (ưu tiên cao trước rồi lâu nhất trước), tải theo người xử lý (từ `_assign`), ticket mới và ticket xong trong tuần, ticket trượt SLA. Mã ticket liên kết sang ERP.
 - Chưa có: thống kê theo Product (trường này nằm trong bảng con, API danh sách ticket không trả về) và số giờ hỗ trợ (timesheet).
+
+### Môi trường SQL Build (`/hotfix/moi-truong`)
+**Mở theo dự án:** trong menu **Dự Án → (tên dự án) → Môi trường dự án** (link `/hotfix/moi-truong?project=<mã dự án>`; Sabeco có 2 mục PG và B2B) — trang chỉ hiện môi trường của dự án đó, thêm môi trường mới tự gán đúng dự án. Mục **Hotfix → Môi trường – tất cả dự án** (`/hotfix/moi-truong`) là trang tổng hợp để xem/xuất Excel nhiều dự án.
+
+Lưu thông tin môi trường của từng server dự án (Database, BackOffice, SFA, API, Hangfire…) theo dạng bảng **Items / Info**. Cấu trúc **dự án → nhiều môi trường**: chọn dự án ở danh sách bên trái (hiện số môi trường của từng dự án), mỗi môi trường là 1 tab (UAT, PRODUCTION, DEV…) gồm các dòng "nhóm" và "mục"; có nút **Excel cả dự án** (mỗi môi trường 1 sheet).
+- Mỗi dòng gồm **Tiêu đề / Nội dung / Link hoặc thông tin đính kèm** (link tự bấm mở được, có thể nhiều dòng; ghi tên file/nơi lưu nếu là tài liệu đính kèm). Mẫu không có TK/MK vì mỗi người dùng user riêng; dùng **＋ Thêm link API** để thêm API/link riêng của từng dự án (không giới hạn số dòng).
+- **Thêm / sửa / xoá / nhân bản**; soạn thảo có nút lên-xuống, thêm nhóm/mục, **Nạp mẫu** (cấu trúc như file Excel đang dùng) và **Dán từ Excel** (dán 2 cột Items/Info, tự nhận nhóm và đánh dấu mật khẩu theo tên cột).
+- **Copy bảng** (dán Excel/Word), **Copy văn bản** (dán Zalo/chat), copy từng giá trị; **Xuất Excel** cho 1 môi trường hoặc tất cả môi trường theo bộ lọc (mỗi môi trường 1 sheet + sheet Tổng hợp). Ô "Ẩn mật khẩu khi copy / xuất Excel" áp dụng cho cả copy và xuất.
+- Dòng đánh dấu 🔒 được **mã hoá khi lưu** (`hqPasswordCrypto`, tiền tố `enc:`) — file `data/sql-environments.json` (hoặc commit trên GitHub) không chứa mật khẩu dạng chữ thường; giao diện ẩn mật khẩu mặc định, bấm 👁 để xem. Khoá mã hoá nằm trong mã nguồn nên đây là lớp che chắn, không thay thế việc giữ repo ở chế độ private.
+- API: `GET/POST /api/sql-env`, `PUT/DELETE /api/sql-env/:id`. Lưu qua `listStore.js` (GitHub nếu đã cấu hình, ngược lại `./data/sql-environments.json`). Mã: `sqlEnv.js`, `protected/hotfix-moi-truong.html`.

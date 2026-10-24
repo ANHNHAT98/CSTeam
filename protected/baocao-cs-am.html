@@ -287,12 +287,21 @@ let tmr = null; const renderSlidesSoon = (settingsOnly) => { clearTimeout(tmr); 
 
 /* ---------- copy / tải ---------- */
 function say(kind, text){ $('outMsg').innerHTML = '<div class="msg '+kind+'">'+text+'</div>'; }
+const PASTE_W = [138,50,539,100,213,213]; // px, tổng 1253 = đúng bề rộng bảng trong slide của tool (1280px = 13,33" ⇒ bảng ≈ 13,05") — PowerPoint bỏ qua <colgroup> nên phải gắn width trực tiếp lên từng ô
 function styledTable(i){
   const tbl = document.querySelector('#slide'+i+' table.sl'); if(!tbl) return null;
   const clone = tbl.cloneNode(true); // gắn style trực tiếp để dán vào PowerPoint vẫn giữ màu/chữ
-  clone.setAttribute('style','border-collapse:collapse;font-family:Arial;font-size:14pt;width:100%');
-  clone.querySelectorAll('th').forEach(e=>e.setAttribute('style','background:#2E6DB8;color:#fff;font-weight:bold;text-align:center;padding:6px;border:2px solid #fff'));
-  clone.querySelectorAll('tbody tr').forEach((tr,k)=>tr.querySelectorAll('td').forEach(td=>{ const bg = td.classList.contains('cust') ? '#D0D8E8' : (k%2===0?'#D0D8E8':'#E9EDF4'); td.setAttribute('style','background:'+bg+';padding:6px;border:2px solid #fff;vertical-align:middle'+(td.classList.contains('c')||td.classList.contains('cust')?';text-align:center':'')); }));
+  const total = PASTE_W.reduce((a,b)=>a+b,0);
+  clone.removeAttribute('class'); clone.querySelectorAll('colgroup').forEach(e=>e.remove());
+  clone.setAttribute('width', total); clone.setAttribute('border','0'); clone.setAttribute('cellspacing','0'); clone.setAttribute('cellpadding','8');
+  clone.setAttribute('style','border-collapse:collapse;font-family:Arial;font-size:12pt;width:'+total+'px;table-layout:fixed');
+  const wAttr = (e,col)=>{ e.setAttribute('width', PASTE_W[col]); return 'width:'+PASTE_W[col]+'px;'; };
+  clone.querySelectorAll('th').forEach((e,k)=>e.setAttribute('style', wAttr(e,k)+'background:#2E6DB8;color:#fff;font-weight:bold;font-size:15pt;text-align:center;vertical-align:middle;padding:14px 6px;border:2px solid #fff'));
+  clone.querySelectorAll('tbody tr').forEach((tr,k)=>{ let col = tr.querySelector('td.cust') ? 0 : 1; tr.querySelectorAll('td').forEach(td=>{
+    const isCust = td.classList.contains('cust'), isNum = td.classList.contains('c');
+    const bg = isCust ? '#D0D8E8' : (k%2===0?'#D0D8E8':'#E9EDF4');
+    td.setAttribute('style', wAttr(td,col)+'background:'+bg+';color:#0F2B66;font-family:Arial;font-size:12pt;padding:8px 9px;border:2px solid #fff;vertical-align:middle'+(isNum||isCust?';text-align:center':'')); col++;
+  }); });
   clone.querySelectorAll('.hl').forEach(e=>e.setAttribute('style','background:#FFFF00'));
   return clone;
 }
@@ -313,16 +322,18 @@ async function copyTable(i){
 /* Copy CẢ SLIDE dạng 1 bảng PowerPoint sửa được: dòng đầu là số mục + tiêu đề (gộp ô), tiếp theo là bảng dữ liệu. Dán vào slide gốc của Manager bằng Ctrl/Cmd + V. */
 function slideRichHtml(i){
   const clone = styledTable(i); if(!clone) return null; const m = model[i]; const st = setOf(m.project);
-  const cols = clone.querySelectorAll('thead th').length;
-  const head = '<thead><tr><td colspan="'+cols+'" style="background:#FFFFFF;border:0;padding:4px 6px"><span style="background:#C0392B;color:#FFFFFF;font-family:Arial;font-size:12pt;font-weight:bold">&nbsp;'+esc(st.num)+'&nbsp;</span></td></tr>'
-    +'<tr><td colspan="'+cols+'" style="background:#FFFFFF;border:0;border-bottom:3px solid #C0392B;padding:2px 6px 8px;color:#0F2B66;font-family:Arial;font-size:26pt;font-weight:bold">'+esc(titleOf(m))+'</td></tr>';
-  clone.querySelector('thead').insertAdjacentHTML('afterbegin', head.replace('<thead>','')); // chèn 2 dòng tiêu đề vào đầu bảng
+  const cols = PASTE_W.length;
+  // dòng 1: nhãn số mục (ô nền đỏ ở cột Cust) + 5 ô trắng trống — đủ 6 ô nên PowerPoint lấy đúng độ rộng cột từ dòng này
+  const blank = PASTE_W.slice(1).map((w,k)=>'<td width="'+w+'" style="width:'+w+'px;background:#FFFFFF;border:0;padding:2px"></td>').join('');
+  const head = '<tr><td width="'+PASTE_W[0]+'" style="width:'+PASTE_W[0]+'px;background:#C0392B;color:#FFFFFF;font-family:Arial;font-size:12pt;font-weight:bold;text-align:center;vertical-align:middle;border:0;padding:3px 6px;white-space:nowrap">'+esc(st.num)+'</td>'+blank+'</tr>'
+    +'<tr><td colspan="'+cols+'" style="background:#FFFFFF;border:0;border-bottom:3px solid #C0392B;padding:4px 0 10px;color:#0F2B66;font-family:Arial;font-size:25pt;font-weight:bold;text-align:left">'+esc(titleOf(m))+'</td></tr>';
+  clone.querySelector('thead').insertAdjacentHTML('afterbegin', head); // chèn 2 dòng tiêu đề vào đầu bảng
   return clone;
 }
 async function copySlide(i){
   const t = slideRichHtml(i); if(!t) return;
   const ok = await writeHtmlClipboard(t.outerHTML, t.innerText);
-  say(ok?'ok':'err', ok ? 'Đã copy <b>cả slide '+(i+1)+'</b> (số mục + tiêu đề + bảng, sửa được). Mở slide gốc của Manager rồi nhấn <b>Ctrl/Cmd + V</b>; nếu PowerPoint hỏi kiểu dán thì chọn <b>Keep Source Formatting</b>. Muốn giữ nguyên hình dạng như slide mẫu thì dùng <b>Copy cả slide (ảnh)</b>.' : 'Trình duyệt chặn copy. Dùng nút Tải file PPT hoặc Copy cả slide (ảnh).');
+  say(ok?'ok':'err', ok ? 'Đã copy <b>cả slide '+(i+1)+'</b> (số mục + tiêu đề + bảng, sửa được). Mở slide gốc của Manager rồi bấm chuột phải → <b>Dán</b> (hoặc <b>Ctrl/Cmd + V</b>), không cần chọn kiểu dán nào khác; sau đó kéo bảng cho vừa khung. Muốn giữ nguyên hình dạng như slide mẫu thì dùng <b>Copy cả slide (ảnh)</b>.' : 'Trình duyệt chặn copy. Dùng nút Tải file PPT hoặc Copy cả slide (ảnh).');
 }
 async function slideCanvas(i){ if(document.fonts && document.fonts.ready) await document.fonts.ready; return html2canvas(document.getElementById('slide'+i), { scale:3, backgroundColor:'#ffffff', useCORS:true }); }
 async function copyImage(i){
