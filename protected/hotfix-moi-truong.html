@@ -204,17 +204,18 @@ function renderEditor(){
   const rows = d.rows.map((r,i)=>'<tr class="'+(r.type==='group'?'g':'i')+'" data-i="'+i+'"><td class="c" style="width:74px"><button type="button" class="sm" data-up="'+i+'" title="Lên">▲</button><button type="button" class="sm" data-dn="'+i+'" title="Xuống">▼</button></td>'
     +'<td style="width:92px"><select data-f="type"><option value="item"'+(r.type==='item'?' selected':'')+'>Mục</option><option value="group"'+(r.type==='group'?' selected':'')+'>Nhóm</option></select></td>'
     +'<td><input type="text" data-f="key" value="'+esc(r.key)+'" placeholder="'+(r.type==='group'?'Tên nhóm (vd: Database)':'Tiêu đề (vd: Server, API Ecom)')+'"></td>'
-    +'<td>'+(r.type==='group'?'':'<textarea data-f="value" rows="1" placeholder="Nội dung">'+esc(r.value)+'</textarea>')+'</td>'
-    +'<td>'+(r.type==='group'?'':'<textarea data-f="link" rows="1" placeholder="Link hoặc thông tin đính kèm">'+esc(r.link||'')+'</textarea>')+'</td>'
+    +(r.type==='group'
+      ? '<td colspan="2" style="text-align:right"><button type="button" class="sm" data-addin="'+i+'" title="Thêm 1 mục vào cuối nhóm này">＋ Thêm mục vào nhóm</button> <button type="button" class="sm" data-addapi="'+i+'" title="Thêm dòng API vào cuối nhóm này">＋ Link API</button></td>'
+      : '<td><textarea data-f="value" rows="1" placeholder="Nội dung">'+esc(r.value)+'</textarea></td><td><textarea data-f="link" rows="1" placeholder="Link hoặc thông tin đính kèm">'+esc(r.link||'')+'</textarea></td>')
     +'<td class="c" style="width:44px"><button type="button" class="danger sm" data-rm="'+i+'" title="Xoá dòng">✕</button></td></tr>').join('');
-  box.innerHTML = '<div class="head"><h2>'+(d.id?'Sửa môi trường':'Thêm môi trường mới')+'</h2><div class="acts"><button type="button" class="primary" id="eSave">💾 Lưu (commit Git)</button><button type="button" id="eCancel">Hủy</button></div></div>'
+  box.innerHTML = '<div class="head"><h2>'+(d.id?'Sửa môi trường':'Thêm môi trường mới')+'</h2><div class="acts"><button type="button" class="primary" id="eSave">💾 Lưu</button><button type="button" id="eCancel">Hủy</button></div></div>'
     +'<div class="row2">'+projField(d)
     +'<label class="field">Tên môi trường<input type="text" id="eName" value="'+esc(d.name)+'" placeholder="vd: UAT DemoPharma"></label>'
     +'<label class="field">Loại<select id="eKind">'+kinds.map(k=>'<option'+(k===d.kind?' selected':'')+'>'+esc(k)+'</option>').join('')+'</select></label></div>'
     +'<label class="field" style="margin-bottom:12px">Ghi chú (không bắt buộc)<input type="text" id="eNote" value="'+esc(d.note)+'" style="width:100%"></label>'
     +'<table class="ed"><thead><tr><th></th><th>Loại dòng</th><th>Tiêu đề</th><th>Nội dung</th><th>Link / Đính kèm</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
-    +'<div class="acts" style="margin-top:10px"><button type="button" class="sm" id="eAddItem" title="Một dòng gồm tiêu đề, nội dung và link/đính kèm">＋ Thêm mục</button><button type="button" class="sm" id="eAddApi" title="Thêm dòng API với tiêu đề và link riêng của dự án">＋ Thêm link API</button><button type="button" class="sm" id="eAddGroup">＋ Thêm nhóm</button><button type="button" class="sm" id="eTpl">Nạp mẫu</button><button type="button" class="sm" id="ePasteBtn">Dán từ Excel</button><button type="button" class="sm export" id="eImport">📥 Import file Excel</button><button type="button" class="sm" id="eTemplate">⬇ Template Excel</button><input type="file" id="eFile" accept=".xlsx,.xls,.csv" style="display:none"></div>'
-    +'<div class="paste" id="pasteBox"><div class="hint" id="pasteHint" style="margin-bottom:6px">Dán các dòng copy từ Excel (cột <b>Tiêu đề / Nội dung / Link</b>, có thể thêm cột <b>Loại</b> = Nhóm/Mục). Không có cột Loại thì dòng không có nội dung và tên thuộc nhóm quen thuộc (Database, BackOffice, SFA, Service Sales, API Ecom, API GE, Image, Hangfire, Promotion) sẽ thành <b>nhóm</b>.</div><select id="sheetPick" style="display:none;margin-bottom:8px;padding:6px 10px;border-radius:8px;border:1px solid var(--grid-line-strong)"></select><textarea id="pasteTxt" placeholder="Tiêu đề&#9;Nội dung&#9;Link&#10;Database&#10;Server&#9;10.10.62.109,1437&#10;…"></textarea><div class="acts" style="margin-top:8px"><button type="button" class="primary sm" id="pReplace">Thay toàn bộ các dòng</button><button type="button" class="sm" id="pAppend">Thêm vào cuối</button></div></div>';
+    +'<div class="acts" style="margin-top:10px"><button type="button" class="sm" id="eAddItem" title="Thêm 1 mục ở cuối cùng (muốn thêm vào nhóm nào thì bấm nút trên dòng nhóm đó)">＋ Thêm mục (cuối)</button><button type="button" class="sm" id="eAddApi" title="Thêm dòng API ở cuối cùng">＋ Thêm link API (cuối)</button><button type="button" class="sm" id="eAddGroup">＋ Thêm nhóm</button><button type="button" class="danger sm" id="eClear">Xoá toàn bộ</button><button type="button" class="sm export" id="eImport">📥 Import file Excel</button><button type="button" class="sm" id="eTemplate">⬇ Template Excel</button><input type="file" id="eFile" accept=".xlsx,.xls,.csv" style="display:none"></div>'
+    +'<div class="paste" id="pasteBox"><div class="hint" id="pasteHint" style="margin-bottom:6px">Xem trước các dòng đọc được từ file Excel. Bấm <b>Thay toàn bộ các dòng</b> hoặc <b>Thêm vào cuối</b> để áp dụng vào form.</div><select id="sheetPick" style="display:none;margin-bottom:8px;padding:6px 10px;border-radius:8px;border:1px solid var(--grid-line-strong)"></select><textarea id="pasteTxt" readonly></textarea><div class="acts" style="margin-top:8px"><button type="button" class="primary sm" id="pReplace">Thay toàn bộ các dòng</button><button type="button" class="sm" id="pAppend">Thêm vào cuối</button><button type="button" class="sm" id="pClose">Đóng</button></div></div>';
   syncDraft = () => { d.project = LOCK ? LOCK : ($('eProjSel').value==='__other__' ? $('eProject').value.trim() : $('eProjSel').value); d.name = $('eName').value; d.kind = $('eKind').value; d.note = $('eNote').value; };
   box.querySelectorAll('tr[data-i]').forEach(tr=>{ const i = Number(tr.dataset.i);
     tr.querySelectorAll('[data-f]').forEach(inp=>{ const f = inp.dataset.f;
@@ -225,17 +226,24 @@ function renderEditor(){
   box.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ syncDraft(); d.rows.splice(Number(b.dataset.rm),1); renderEditor(); });
   box.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{ const i = Number(b.dataset.up); if(i>0){ syncDraft(); [d.rows[i-1],d.rows[i]] = [d.rows[i],d.rows[i-1]]; renderEditor(); } });
   box.querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{ const i = Number(b.dataset.dn); if(i<d.rows.length-1){ syncDraft(); [d.rows[i+1],d.rows[i]] = [d.rows[i],d.rows[i+1]]; renderEditor(); } });
+  const addInGroup = (gi, key) => { syncDraft(); let j = gi+1; while(j<d.rows.length && d.rows[j].type!=='group') j++; d.rows.splice(j, 0, it(key)); renderEditor(); const el = box.querySelector('tr[data-i="'+j+'"] input[data-f=key]'); if(el){ el.focus(); el.select(); } };
+  box.querySelectorAll('[data-addin]').forEach(b=>b.onclick=()=>addInGroup(Number(b.dataset.addin), ''));
+  box.querySelectorAll('[data-addapi]').forEach(b=>b.onclick=()=>addInGroup(Number(b.dataset.addapi), 'API'));
   const focusLast = () => { const t = box.querySelectorAll('tr[data-i]'); const el = t.length && t[t.length-1].querySelector('input[data-f=key]'); if(el) el.focus(); };
   $('eAddItem').onclick = () => { syncDraft(); d.rows.push(it('')); renderEditor(); focusLast(); };
   $('eAddApi').onclick = () => { syncDraft(); d.rows.push(it('API')); renderEditor(); focusLast(); };
   $('eAddGroup').onclick = () => { syncDraft(); d.rows.push(g('')); renderEditor(); focusLast(); };
-  $('eTpl').onclick = () => { syncDraft(); if(d.rows.some(r=>r.value||r.link) && !confirm('Thay các dòng hiện tại bằng mẫu trống?')) return; d.rows = TEMPLATE(); renderEditor(); };
-  $('ePasteBtn').onclick = () => $('pasteBox').classList.toggle('on');
+  let armClear = false;
+  $('eClear').onclick = () => {
+    syncDraft();
+    if(d.rows.some(r=>r.key||r.value||r.link) && !armClear){ armClear = true; $('eClear').textContent = 'Bấm lần nữa để xoá toàn bộ'; $('eClear').classList.add('arm'); setTimeout(()=>{ armClear = false; const b = $('eClear'); if(b){ b.textContent = 'Xoá toàn bộ'; b.classList.remove('arm'); } }, 4000); return; }
+    d.rows = []; pending = null; say('info','Đã xoá toàn bộ các dòng — thêm mục / nhóm hoặc <b>Import file Excel</b> để nhập lại.'); renderEditor();
+  };
   $('eTemplate').onclick = downloadTemplate;
   $('eImport').onclick = () => { $('eFile').value = ''; $('eFile').click(); };
   $('eFile').onchange = () => importFile($('eFile').files[0]);
-  $('pasteTxt').oninput = () => { pending = null; };
-  const take = () => { const rows = pending || parsePaste($('pasteTxt').value); if(!rows.length){ say('err','Không đọc được dòng nào — kiểm tra lại nội dung dán / file Excel.'); return null; } return rows; };
+  const take = () => { if(!pending || !pending.length){ say('err','Chưa có dòng nào từ file Excel — bấm Import file Excel và chọn file.'); return null; } return pending; };
+  $('pClose').onclick = () => { pending = null; $('pasteBox').classList.remove('on'); };
   $('pReplace').onclick = () => { const rows = take(); if(!rows) return; syncDraft(); d.rows = rows; pending = null; say('ok','Đã nạp '+rows.length+' dòng — kiểm tra lại rồi bấm Lưu.'); renderEditor(); };
   $('pAppend').onclick = () => { const rows = take(); if(!rows) return; syncDraft(); d.rows = d.rows.concat(rows); pending = null; say('ok','Đã thêm '+rows.length+' dòng.'); renderEditor(); };
   if(!LOCK) $('eProjSel').onchange = () => { const o = $('eProjSel').value==='__other__'; $('eProject').style.display = o ? '' : 'none'; if(o) $('eProject').focus(); };
@@ -244,7 +252,7 @@ function renderEditor(){
   if(!d.name) $('eName').focus();
 }
 
-/* ---------- đọc dữ liệu dán / file Excel thành các dòng ---------- */
+/* ---------- đọc file Excel import thành các dòng ---------- */
 const TYPE_WORDS = { 'nhóm':'group', 'nhom':'group', 'group':'group', 'mục':'item', 'muc':'item', 'item':'item' };
 function parseTable(table){
   const rows = table.map(r=>r.map(c=>String(c==null?'':c).trim()));
@@ -270,13 +278,6 @@ function parseTable(table){
     else out.push({ type:'item', key, value, link });
   });
   return out;
-}
-function parsePaste(text){
-  const table = String(text||'').replace(/\r/g,'').split('\n').filter(l=>l.trim()).map(line=>{
-    if(line.includes('\t')) return line.split('\t');
-    const m = line.match(/^\s*([^:\/]{1,40}?)\s*:\s*(.*)$/); return m ? [m[1], m[2]] : [line];
-  });
-  return parseTable(table);
 }
 async function importFile(file){
   if(!file) return;
@@ -305,7 +306,7 @@ async function saveDraft(){
     sel = r.id || d.id; const proj = d.project; draft = null; pending = null;
     await load(true); if(!LOCK){ $('fProject').value = lastProj = projectCodes().includes(proj) ? proj : ''; render(); }
     saved(d.id ? 'Đã lưu thay đổi.' : 'Đã thêm môi trường.', r);
-  }catch(err){ say('err', esc(err.message)); btn.disabled = false; btn.textContent = '💾 Lưu (commit Git)'; }
+  }catch(err){ say('err', esc(err.message)); btn.disabled = false; btn.textContent = '💾 Lưu'; }
 }
 
 /* ---------- copy / xuất ---------- */
