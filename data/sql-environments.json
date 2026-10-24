@@ -51,7 +51,7 @@
       {
         "type": "item",
         "key": "Account",
-        "value": "",
+        "value": "admin",
         "link": ""
       },
       {
@@ -139,7 +139,7 @@
         "link": ""
       }
     ],
-    "updatedAt": "2026-10-24T07:23:29.784Z",
+    "updatedAt": "2026-10-24T07:33:56.052Z",
     "updatedBy": "admin"
   }
 ]
