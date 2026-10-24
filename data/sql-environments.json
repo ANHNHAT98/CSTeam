@@ -1,0 +1,145 @@
+[
+  {
+    "id": "env_1792826609783_9n5u5",
+    "project": "MerapLion_eSales",
+    "name": "Internal",
+    "kind": "TEST",
+    "note": "Môi trường MERAPLION",
+    "rows": [
+      {
+        "type": "group",
+        "key": "Database",
+        "value": "",
+        "link": ""
+      },
+      {
+        "type": "item",
+        "key": "Server",
+        "value": "125.253.121.10, 19438",
+        "link": ""
+      },
+      {
+        "type": "item",
+        "key": "DB Name",
+        "value": "MERAPLION_INTERNAL",
+        "link": ""
+      },
+      {
+        "type": "item",
+        "key": "Account",
+        "value": "HQSoft_SP",
+        "link": ""
+      },
+      {
+        "type": "item",
+        "key": "Password",
+        "value": "HQS0ft@S4pp0rt",
+        "link": ""
+      },
+      {
+        "type": "group",
+        "key": "BackOffice",
+        "value": "",
+        "link": ""
+      },
+      {
+        "type": "item",
+        "key": "Link Cloud",
+        "value": "https://dms.meraplion.com/internal/Login?token=token",
+        "link": ""
+      },
+      {
+        "type": "item",
+        "key": "Account",
+        "value": "",
+        "link": ""
+      },
+      {
+        "type": "item",
+        "key": "Password",
+        "value": "",
+        "link": ""
+      },
+      {
+        "type": "group",
+        "key": "SFA",
+        "value": "",
+        "link": ""
+      },
+      {
+        "type": "group",
+        "key": "Service Sales",
+        "value": "",
+        "link": ""
+      },
+      {
+        "type": "item",
+        "key": "ProjectCode",
+        "value": "",
+        "link": ""
+      },
+      {
+        "type": "group",
+        "key": "API Ecom",
+        "value": "",
+        "link": ""
+      },
+      {
+        "type": "item",
+        "key": "API link",
+        "value": "",
+        "link": ""
+      },
+      {
+        "type": "group",
+        "key": "API GE",
+        "value": "",
+        "link": ""
+      },
+      {
+        "type": "item",
+        "key": "API link",
+        "value": "",
+        "link": ""
+      },
+      {
+        "type": "group",
+        "key": "Image",
+        "value": "",
+        "link": ""
+      },
+      {
+        "type": "item",
+        "key": "SFA",
+        "value": "",
+        "link": ""
+      },
+      {
+        "type": "group",
+        "key": "Hangfire",
+        "value": "",
+        "link": ""
+      },
+      {
+        "type": "item",
+        "key": "Hangfire",
+        "value": "",
+        "link": ""
+      },
+      {
+        "type": "group",
+        "key": "Promotion",
+        "value": "",
+        "link": ""
+      },
+      {
+        "type": "item",
+        "key": "Hangfire",
+        "value": "",
+        "link": ""
+      }
+    ],
+    "updatedAt": "2026-10-24T07:23:29.784Z",
+    "updatedBy": "admin"
+  }
+]
