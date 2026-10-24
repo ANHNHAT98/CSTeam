@@ -10,136 +10,167 @@
         "type": "group",
         "key": "Database",
         "value": "",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
         "type": "item",
         "key": "Server",
         "value": "125.253.121.10, 19438",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
         "type": "item",
         "key": "DB Name",
         "value": "MERAPLION_INTERNAL",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
         "type": "item",
         "key": "Account",
         "value": "HQSoft_SP",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
         "type": "item",
         "key": "Password",
         "value": "HQS0ft@S4pp0rt",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
         "type": "group",
         "key": "BackOffice",
         "value": "",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
         "type": "item",
         "key": "Link Cloud",
         "value": "https://dms.meraplion.com/internal/Login?token=token",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
         "type": "item",
         "key": "Account",
         "value": "admin",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
         "type": "item",
         "key": "Password",
         "value": "",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
         "type": "group",
         "key": "SFA",
         "value": "",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
-        "type": "group",
+        "type": "item",
         "key": "Service Sales",
         "value": "",
-        "link": ""
+        "link": "",
+        "files": [
+          {
+            "id": "f_mvm3ldbevcr1f",
+            "name": "RELEASENOTE-2026-10.md",
+            "size": 2263,
+            "assetId": "671631582",
+            "by": "admin",
+            "at": "2026-10-24T07:49:16.927Z"
+          }
+        ]
       },
       {
         "type": "item",
         "key": "ProjectCode",
         "value": "",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
         "type": "group",
         "key": "API Ecom",
         "value": "",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
         "type": "item",
         "key": "API link",
         "value": "",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
         "type": "group",
         "key": "API GE",
         "value": "",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
         "type": "item",
         "key": "API link",
         "value": "",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
         "type": "group",
         "key": "Image",
         "value": "",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
         "type": "item",
         "key": "SFA",
         "value": "",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
         "type": "group",
         "key": "Hangfire",
         "value": "",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
         "type": "item",
         "key": "Hangfire",
         "value": "",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
         "type": "group",
         "key": "Promotion",
         "value": "",
-        "link": ""
+        "link": "",
+        "files": []
       },
       {
         "type": "item",
         "key": "Hangfire",
         "value": "",
-        "link": ""
+        "link": "",
+        "files": []
       }
     ],
-    "updatedAt": "2026-10-24T07:33:56.052Z",
+    "updatedAt": "2026-10-24T07:49:21.675Z",
     "updatedBy": "admin"
   }
 ]
