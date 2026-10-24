@@ -63,6 +63,10 @@
   table.ed textarea[data-f=value]{font-family:'IBM Plex Mono',monospace;}
   table.ed tr.g input{font-weight:700;background:#EDF1F8;}
   table.ed td.c{white-space:nowrap;text-align:center;}
+  .fchip{display:inline-flex;align-items:center;gap:6px;background:#EAF1F8;border:1px solid var(--grid-line-strong);border-radius:20px;padding:2px 10px;margin:3px 6px 3px 0;font-size:12.5px;max-width:100%;}
+  .fchip a{color:var(--blueprint);font-weight:600;text-decoration:none;word-break:break-all;} .fchip a:hover{text-decoration:underline;} .fchip small{color:var(--muted);white-space:nowrap;}
+  .fchip button{padding:0 6px;font-size:12px;border-color:var(--danger);color:var(--danger);line-height:1.5;}
+  table.ed .upl{margin-top:5px;}
   .paste{margin-top:10px;display:none;border:1px dashed var(--grid-line-strong);border-radius:8px;padding:12px;background:#F8FAFC;} .paste.on{display:block;}
   .paste textarea{width:100%;min-height:150px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;padding:8px 10px;border:1px solid var(--grid-line-strong);border-radius:8px;}
   .row2{display:grid;grid-template-columns:1fr 1fr 170px;gap:12px;margin-bottom:12px;}
@@ -113,8 +117,11 @@ let items = [], kinds = KINDS_DEFAULT, projLabels = {}, sel = null, draft = null
 let pending = null; // các dòng đã đọc từ file Excel import (chờ bấm Thay / Thêm)
 const pLabel = c => projLabels[c] || c;
 const GROUPS = ['database','backoffice','sfa','service sales','api ecom','api ge','image','hangfire','promotion'];
-const g = (key) => ({ type:'group', key, value:'', link:'' });
-const it = (key) => ({ type:'item', key, value:'', link:'' });
+const g = (key) => ({ type:'group', key, value:'', link:'', files:[] });
+const it = (key) => ({ type:'item', key, value:'', link:'', files:[] });
+const fmtSize = n => n>=1048576 ? (n/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(n/1024))+' KB';
+const fileUrl = (envId, f) => '/api/sql-env/'+encodeURIComponent(envId)+'/file/'+encodeURIComponent(f.id);
+const filesHtml = (envId, files) => (files||[]).map(f=>'<span class="fchip">📎 <a href="'+fileUrl(envId,f)+'" download>'+esc(f.name)+'</a> <small>'+fmtSize(f.size)+'</small></span>').join('');
 const TEMPLATE = () => [g('Database'), it('Server'), it('DB Name'),
   g('BackOffice'), it('Link Cloud'), it('Account'), it('Password'),
   g('SFA'), g('Service Sales'), it('ProjectCode'),
@@ -156,8 +163,8 @@ function filtered(){
 const confirmDiscard = () => confirm('Bạn đang sửa dở. Bỏ thay đổi chưa lưu?');
 const fmtTime = s => { if(!s) return ''; const d = new Date(s); return isNaN(d) ? '' : d.toLocaleString('vi-VN'); };
 const linkHtml = t => String(t||'').split(/\n+/).map(l=>l.trim()).filter(Boolean).map(l=>esc(l).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>')).join('<br>');
-const clone = e => JSON.parse(JSON.stringify({ id:e.id, project:e.project, name:e.name, kind:e.kind, note:e.note||'', rows:e.rows.map(r=>({type:r.type,key:r.key,value:r.value,link:r.link||''})) }));
-const startNew = () => { draft = { project: curProject(), name:'', kind:'UAT', note:'', rows: TEMPLATE() }; pending = null; say('',''); render(); };
+const clone = e => JSON.parse(JSON.stringify({ id:e.id, project:e.project, name:e.name, kind:e.kind, note:e.note||'', rows:e.rows.map(r=>({type:r.type,key:r.key,value:r.value,link:r.link||'',files:(r.files||[]).map(f=>({...f}))})) }));
+const startNew = () => { draft = { project: curProject(), name:'', kind:'UAT', note:'', rows: TEMPLATE(), _fresh: [] }; pending = null; say('',''); render(); };
 
 function render(){
   if(draft) return renderEditor();
@@ -172,7 +179,7 @@ function render(){
   const body = e.rows.map((r,i)=>{
     if(r.type==='group') return '<tr class="g"><td colspan="2">'+esc(r.key)+'</td><td colspan="2" style="text-align:right;white-space:nowrap"><button type="button" class="sm" data-gt="'+i+'" title="Copy văn bản của nhóm này">📋 Văn bản</button> <button type="button" class="sm" data-gb="'+i+'" title="Copy bảng của nhóm này">📋 Bảng</button> <button type="button" class="sm" data-gi="'+i+'" title="Copy ảnh bảng của nhóm này">🖼 Ảnh</button></td></tr>';
     const v = /^https?:\/\//i.test(r.value) ? '<a href="'+esc(r.value)+'" target="_blank" rel="noopener">'+esc(r.value)+'</a>' : esc(r.value);
-    return '<tr class="i"><td class="k">'+esc(r.key)+'</td><td class="v">'+v+'</td><td class="lk">'+linkHtml(r.link)+'</td><td class="t">'+(r.value?'<button type="button" class="sm" data-cp="'+i+'" title="Copy nội dung">📋</button> ':'')+(r.link?'<button type="button" class="sm" data-cpl="'+i+'" title="Copy link / đính kèm">🔗</button>':'')+'</td></tr>';
+    return '<tr class="i"><td class="k">'+esc(r.key)+'</td><td class="v">'+v+'</td><td class="lk">'+linkHtml(r.link)+(r.link&&(r.files||[]).length?'<br>':'')+filesHtml(e.id, r.files)+'</td><td class="t">'+(r.value?'<button type="button" class="sm" data-cp="'+i+'" title="Copy nội dung">📋</button> ':'')+(r.link?'<button type="button" class="sm" data-cpl="'+i+'" title="Copy link / đính kèm">🔗</button>':'')+'</td></tr>';
   }).join('');
   box.innerHTML = '<div class="head"><div><h2>'+esc(scope)+'</h2></div></div>'+tabs
     +'<div class="head"><div><div class="meta" style="margin:0">'+(e.updatedAt?'Cập nhật '+esc(fmtTime(e.updatedAt))+(e.updatedBy?' bởi '+esc(e.updatedBy):''):'')+'</div>'+(e.note?'<div class="meta" style="color:var(--ink)">📝 '+esc(e.note)+'</div>':'')+'</div>'
@@ -187,8 +194,8 @@ function render(){
   box.querySelectorAll('[data-gi]').forEach(b=>b.onclick=()=>copyImage(e, Number(b.dataset.gi)));
   $('bCopyI').onclick = () => copyImage(e);
   $('bXls').onclick = () => exportExcel([e]);
-  $('bEdit').onclick = () => { draft = clone(e); pending = null; say('',''); render(); };
-  $('bDup').onclick = () => { draft = clone(e); delete draft.id; draft.name = e.name + ' (bản sao)'; pending = null; say('info','Đang tạo bản sao — chỉnh rồi bấm <b>Lưu</b>.'); render(); };
+  $('bEdit').onclick = () => { draft = clone(e); draft._fresh = []; pending = null; say('',''); render(); };
+  $('bDup').onclick = () => { draft = clone(e); delete draft.id; draft._fresh = []; draft.rows.forEach(r=>{ r.files = []; }); draft.name = e.name + ' (bản sao)'; pending = null; say('info','Đang tạo bản sao — chỉnh rồi bấm <b>Lưu</b>.'); render(); };
   $('bDel').onclick = async () => {
     if(!armDelete){ armDelete = true; render(); setTimeout(()=>{ if(armDelete){ armDelete = false; if(!draft) render(); } }, 4000); return; }
     try{ const r = await send('DELETE','/api/sql-env/'+encodeURIComponent(e.id)); armDelete = false; sel = null; await load(true); saved('Đã xoá môi trường.', r); }catch(err){ say('err', esc(err.message)); }
@@ -208,6 +215,8 @@ function projField(d){
   return '<div class="field">Dự án<select id="eProjSel">'+codes.map(c=>'<option value="'+esc(c)+'"'+(c===d.project?' selected':'')+'>'+esc(pLabel(c))+'</option>').join('')+'<option value="__other__"'+(other?' selected':'')+'>➕ Dự án khác…</option></select><input type="text" id="eProject" value="'+esc(other?d.project:'')+'" placeholder="Nhập tên dự án mới" style="margin-top:6px;'+(other?'':'display:none')+'"></div>';
 }
 let syncDraft = () => {};
+/** Các dòng sắp bị bỏ khỏi form: file vừa tải lên (chưa lưu) thì xoá luôn trên kho; file đã lưu sẽ được server dọn khi bấm Lưu. */
+function discardFresh(d, rows){ rows.forEach(r=>(r.files||[]).forEach(f=>{ const k = d._fresh.indexOf(f.assetId); if(k>=0){ d._fresh.splice(k,1); fetch('/api/sql-env/upload/'+encodeURIComponent(f.assetId), { method:'DELETE' }).catch(()=>{}); } })); }
 function renderEditor(){
   const d = draft; const box = $('detail');
   const rows = d.rows.map((r,i)=>'<tr class="'+(r.type==='group'?'g':'i')+'" data-i="'+i+'"><td class="c" style="width:68px;padding:5px 2px"><button type="button" class="sm" style="padding:4px 6px" data-up="'+i+'" title="Lên">▲</button><button type="button" class="sm" style="padding:4px 6px" data-dn="'+i+'" title="Xuống">▼</button></td>'
@@ -215,7 +224,7 @@ function renderEditor(){
     +'<td><input type="text" data-f="key" value="'+esc(r.key)+'" placeholder="'+(r.type==='group'?'Tên nhóm (vd: Database)':'Tiêu đề (vd: Server, API Ecom)')+'"></td>'
     +(r.type==='group'
       ? '<td colspan="2" style="text-align:right"><button type="button" class="sm" data-addin="'+i+'" title="Thêm 1 mục vào cuối nhóm này">＋ Thêm mục vào nhóm</button> <button type="button" class="sm" data-addapi="'+i+'" title="Thêm dòng API vào cuối nhóm này">＋ Link API</button></td>'
-      : '<td><textarea data-f="value" rows="1" placeholder="Nội dung">'+esc(r.value)+'</textarea></td><td><textarea data-f="link" rows="1" placeholder="Link hoặc thông tin đính kèm">'+esc(r.link||'')+'</textarea></td>')
+      : '<td><textarea data-f="value" rows="1" placeholder="Nội dung">'+esc(r.value)+'</textarea></td><td><textarea data-f="link" rows="1" placeholder="Link hoặc thông tin đính kèm">'+esc(r.link||'')+'</textarea><div class="upl">'+(r.files||[]).map((f,j)=>'<span class="fchip">📎 '+esc(f.name)+' <small>'+fmtSize(f.size)+'</small><button type="button" data-fdel="'+i+':'+j+'" title="Bỏ file này">✕</button></span>').join('')+'<button type="button" class="sm" data-pick="'+i+'" title="Tải file (APK, zip…) lên tool — thành viên khác tải về được">📎 Tải file lên</button><input type="file" data-fin="'+i+'" style="display:none" accept=".apk,.aab,.zip,.7z,.rar,.ipa,.pdf,.doc,.docx,.xls,.xlsx,.txt,.json,.sql,.png,.jpg,.jpeg,.csv,.md"></div></td>')
     +'<td class="c" style="width:46px"><button type="button" class="danger sm" data-rm="'+i+'" title="Xoá dòng">✕</button></td></tr>').join('');
   box.innerHTML = '<div class="head"><h2>'+(d.id?'Sửa môi trường':'Thêm môi trường mới')+'</h2><div class="acts"><button type="button" class="primary" id="eSave">💾 Lưu</button><button type="button" id="eCancel">Hủy</button></div></div>'
     +'<div class="row2">'+projField(d)
@@ -234,7 +243,22 @@ function renderEditor(){
       if(f==='type') inp.onchange = () => { inp.oninput(); syncDraft(); renderEditor(); };
     });
   });
-  box.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ syncDraft(); d.rows.splice(Number(b.dataset.rm),1); renderEditor(); });
+  box.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>box.querySelector('[data-fin="'+b.dataset.pick+'"]').click());
+  box.querySelectorAll('[data-fin]').forEach(inp=>inp.onchange=async()=>{
+    const f = inp.files[0]; if(!f) return; const i = Number(inp.dataset.fin);
+    const btn = box.querySelector('[data-pick="'+i+'"]'); btn.disabled = true; btn.textContent = 'Đang tải lên '+fmtSize(f.size)+'…';
+    try{
+      const fd = new FormData(); fd.append('file', f);
+      const r = await api('/api/sql-env/upload', { method:'POST', body: fd });
+      syncDraft(); d.rows[i].files = (d.rows[i].files||[]).concat(r.file); d._fresh.push(r.file.assetId); say('',''); renderEditor();
+    }catch(err){ say('err','Không tải file lên được: '+esc(err.message)); btn.disabled = false; btn.textContent = '📎 Tải file lên'; }
+  });
+  box.querySelectorAll('[data-fdel]').forEach(b=>b.onclick=()=>{
+    const [i,j] = b.dataset.fdel.split(':').map(Number); syncDraft(); const f = d.rows[i].files.splice(j,1)[0];
+    const k = d._fresh.indexOf(f.assetId); if(k>=0){ d._fresh.splice(k,1); fetch('/api/sql-env/upload/'+encodeURIComponent(f.assetId), { method:'DELETE' }).catch(()=>{}); } // file vừa tải lên, chưa lưu → xoá luôn
+    renderEditor();
+  });
+  box.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ syncDraft(); discardFresh(d, d.rows.splice(Number(b.dataset.rm),1)); renderEditor(); });
   box.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{ const i = Number(b.dataset.up); if(i>0){ syncDraft(); [d.rows[i-1],d.rows[i]] = [d.rows[i],d.rows[i-1]]; renderEditor(); } });
   box.querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{ const i = Number(b.dataset.dn); if(i<d.rows.length-1){ syncDraft(); [d.rows[i+1],d.rows[i]] = [d.rows[i],d.rows[i+1]]; renderEditor(); } });
   const addInGroup = (gi, key) => { syncDraft(); let j = gi+1; while(j<d.rows.length && d.rows[j].type!=='group') j++; d.rows.splice(j, 0, it(key)); renderEditor(); const el = box.querySelector('tr[data-i="'+j+'"] input[data-f=key]'); if(el){ el.focus(); el.select(); } };
@@ -248,17 +272,17 @@ function renderEditor(){
   $('eClear').onclick = () => {
     syncDraft();
     if(d.rows.some(r=>r.key||r.value||r.link) && !armClear){ armClear = true; $('eClear').textContent = 'Bấm lần nữa để xoá toàn bộ'; $('eClear').classList.add('arm'); setTimeout(()=>{ armClear = false; const b = $('eClear'); if(b){ b.textContent = 'Xoá toàn bộ'; b.classList.remove('arm'); } }, 4000); return; }
-    d.rows = []; pending = null; say('info','Đã xoá toàn bộ các dòng — thêm mục / nhóm hoặc <b>Import file Excel</b> để nhập lại.'); renderEditor();
+    discardFresh(d, d.rows); d.rows = []; pending = null; say('info','Đã xoá toàn bộ các dòng — thêm mục / nhóm hoặc <b>Import file Excel</b> để nhập lại.'); renderEditor();
   };
   $('eTemplate').onclick = downloadTemplate;
   $('eImport').onclick = () => { $('eFile').value = ''; $('eFile').click(); };
   $('eFile').onchange = () => importFile($('eFile').files[0]);
   const take = () => { if(!pending || !pending.length){ say('err','Chưa có dòng nào từ file Excel — bấm Import file Excel và chọn file.'); return null; } return pending; };
   $('pClose').onclick = () => { pending = null; $('pasteBox').classList.remove('on'); };
-  $('pReplace').onclick = () => { const rows = take(); if(!rows) return; syncDraft(); d.rows = rows; pending = null; say('ok','Đã nạp '+rows.length+' dòng — kiểm tra lại rồi bấm Lưu.'); renderEditor(); };
+  $('pReplace').onclick = () => { const rows = take(); if(!rows) return; syncDraft(); discardFresh(d, d.rows); d.rows = rows; pending = null; say('ok','Đã nạp '+rows.length+' dòng — kiểm tra lại rồi bấm Lưu.'); renderEditor(); };
   $('pAppend').onclick = () => { const rows = take(); if(!rows) return; syncDraft(); d.rows = d.rows.concat(rows); pending = null; say('ok','Đã thêm '+rows.length+' dòng.'); renderEditor(); };
   if(!LOCK) $('eProjSel').onchange = () => { const o = $('eProjSel').value==='__other__'; $('eProject').style.display = o ? '' : 'none'; if(o) $('eProject').focus(); };
-  $('eCancel').onclick = () => { draft = null; pending = null; say('',''); render(); };
+  $('eCancel').onclick = () => { (d._fresh||[]).forEach(a=>fetch('/api/sql-env/upload/'+encodeURIComponent(a), { method:'DELETE' }).catch(()=>{})); draft = null; pending = null; say('',''); render(); };
   $('eSave').onclick = saveDraft;
   if(!d.name) $('eName').focus();
   requestAnimationFrame(()=>box.querySelectorAll('table.ed textarea').forEach(autoGrow));
@@ -287,7 +311,7 @@ function parseTable(table){
     const t = map.type>=0 ? TYPE_WORDS[cell(map.type).toLowerCase()] : null;
     if(!value && !link && /^(tk|mk)$/i.test(key) && t!=='group') return; // mỗi người dùng user riêng — bỏ TK/MK trống
     if(t==='group' || (!t && !value && !link && GROUPS.includes(key.toLowerCase()))) out.push(g(key));
-    else out.push({ type:'item', key, value, link });
+    else out.push({ type:'item', key, value, link, files:[] });
   });
   return out;
 }
@@ -311,7 +335,7 @@ async function importFile(file){
 }
 async function saveDraft(){
   syncDraft(); const d = draft;
-  const payload = { project:d.project, name:d.name, kind:d.kind, note:d.note, rows:d.rows };
+  const payload = { project:d.project, name:d.name, kind:d.kind, note:d.note, rows:d.rows.map(r=>({type:r.type,key:r.key,value:r.value,link:r.link,files:r.files||[]})) };
   const btn = $('eSave'); btn.disabled = true; btn.textContent = 'Đang lưu & commit…';
   try{
     const r = d.id ? await send('PUT','/api/sql-env/'+encodeURIComponent(d.id), payload) : await send('POST','/api/sql-env', payload);
@@ -330,11 +354,12 @@ async function copyText(text){
 const rowsOf = (e, gi) => { if(gi==null) return e.rows; let j = gi+1; while(j<e.rows.length && e.rows[j].type!=='group') j++; return e.rows.slice(gi, j); };
 function envText(e, gi){
   const rows = rowsOf(e, gi); const lines = gi==null ? [pLabel(e.project)+' — '+e.name+' ('+e.kind+')'] : [];
-  rows.forEach(r=>{ if(r.type==='group'){ if(lines.length) lines.push(''); lines.push('['+r.key+']'); } else if(r.key || r.value || r.link){ lines.push(r.key+': '+[r.value, r.link ? 'Link: '+String(r.link).replace(/\s*\n+\s*/g,' ; ') : ''].filter(Boolean).join(' | ')); } });
+  rows.forEach(r=>{ if(r.type==='group'){ if(lines.length) lines.push(''); lines.push('['+r.key+']'); } else if(r.key || r.value || r.link || (r.files||[]).length){ lines.push(r.key+': '+[r.value, r.link ? 'Link: '+String(r.link).replace(/\s*\n+\s*/g,' ; ') : '', ...fileLines(e,r).map(x=>'Tệp: '+x)].filter(Boolean).join(' | ')); } });
   return lines.join('\n');
 }
+const fileLines = (e, r) => (r.files||[]).map(f=>f.name+' — '+location.origin+fileUrl(e.id,f));
 const flat = t => String(t||'').replace(/[\t\r\n]+/g,' ');
-function envTsv(e, gi){ return ['Tiêu đề\tNội dung\tLink / Đính kèm'].concat(rowsOf(e, gi).map(r=>r.type==='group' ? r.key+'\t\t' : r.key+'\t'+flat(r.value)+'\t'+flat(r.link))).join('\n'); }
+function envTsv(e, gi){ return ['Tiêu đề\tNội dung\tLink / Đính kèm'].concat(rowsOf(e, gi).map(r=>r.type==='group' ? r.key+'\t\t' : r.key+'\t'+flat(r.value)+'\t'+flat([r.link, ...fileLines(e,r).map(x=>'Tệp: '+x)].filter(Boolean).join(' ; ')))).join('\n'); }
 /** HTML dạng bảng có kẻ viền + màu như giao diện (gắn border/bgcolor/width trực tiếp để Word, Excel, PowerPoint, Zalo giữ đúng khi dán). */
 function envHtml(e, gi){
   const W = [190, 330, 330], B = '#9FB0C4';
@@ -342,7 +367,7 @@ function envHtml(e, gi){
   const th = (t,w) => '<th width="'+w+'" bgcolor="#1F4E79" align="left" style="'+cell+';width:'+w+'px;background:#1F4E79;color:#FFFFFF;text-align:left"><font color="#FFFFFF"><b>'+t+'</b></font></th>';
   const rows = rowsOf(e, gi).map(r=>r.type==='group'
     ? '<tr><td colspan="3" bgcolor="#D0D8E8" style="'+cell+';background:#D0D8E8;color:#0F2B66;font-weight:bold"><b>'+esc(r.key)+'</b></td></tr>'
-    : '<tr><td width="'+W[0]+'" style="'+cell+';width:'+W[0]+'px;padding-left:22px;font-weight:bold"><b>'+esc(r.key)+'</b></td><td width="'+W[1]+'" style="'+cell+';width:'+W[1]+'px">'+esc(r.value).replace(/\n/g,'<br>')+'</td><td width="'+W[2]+'" style="'+cell+';width:'+W[2]+'px">'+linkHtml(r.link)+'</td></tr>').join('');
+    : '<tr><td width="'+W[0]+'" style="'+cell+';width:'+W[0]+'px;padding-left:22px;font-weight:bold"><b>'+esc(r.key)+'</b></td><td width="'+W[1]+'" style="'+cell+';width:'+W[1]+'px">'+esc(r.value).replace(/\n/g,'<br>')+'</td><td width="'+W[2]+'" style="'+cell+';width:'+W[2]+'px">'+linkHtml(r.link)+((r.files||[]).map(f=>'<br>📎 <a href="'+esc(location.origin+fileUrl(e.id,f))+'">'+esc(f.name)+'</a>').join(''))+'</td></tr>').join('');
   return '<table border="1" cellspacing="0" cellpadding="6" width="'+(W[0]+W[1]+W[2])+'" style="border-collapse:collapse;border:1px solid '+B+';font-family:Arial;font-size:11pt"><tr>'+th('Tiêu đề',W[0])+th('Nội dung',W[1])+th('Link / Đính kèm',W[2])+'</tr>'+rows+'</table>';
 }
 async function copyEnv(e, mode, gi){
@@ -374,8 +399,8 @@ function sheetName(e, used){
   used.add(k.toLowerCase()); return k;
 }
 const XLS_HEAD = ['Loại','Tiêu đề','Nội dung','Link / Đính kèm'];
-const xlsRows = rows => [XLS_HEAD].concat(rows.map(r=>[r.type==='group'?'Nhóm':'Mục', r.key, r.value||'', r.link||'']));
-const xlsSheet = rows => { const ws = XLSX.utils.aoa_to_sheet(xlsRows(rows)); ws['!cols'] = [{wch:8},{wch:26},{wch:56},{wch:56}]; return ws; };
+const xlsRows = (rows, envId) => [XLS_HEAD].concat(rows.map(r=>[r.type==='group'?'Nhóm':'Mục', r.key, r.value||'', [r.link||'', ...(r.files||[]).map(f=>'Tệp: '+f.name+' — '+location.origin+fileUrl(envId,f))].filter(Boolean).join('\n')]));
+const xlsSheet = (rows, envId) => { const ws = XLSX.utils.aoa_to_sheet(xlsRows(rows, envId)); ws['!cols'] = [{wch:8},{wch:26},{wch:56},{wch:56}]; return ws; };
 /** File xuất ra dùng đúng định dạng của template nên Import lại được ở phần Thêm mới / Sửa. */
 function exportExcel(list){
   if(!list.length){ say('err','Không có môi trường nào để xuất.'); return; }
@@ -385,7 +410,7 @@ function exportExcel(list){
     const ws = XLSX.utils.aoa_to_sheet(rows); ws['!cols'] = [{wch:22},{wch:30},{wch:12},{wch:28},{wch:36},{wch:20},{wch:24}];
     XLSX.utils.book_append_sheet(wb, ws, 'Tổng hợp'); used.add('tổng hợp');
   }
-  list.forEach(e=>XLSX.utils.book_append_sheet(wb, xlsSheet(e.rows), sheetName(e, used)));
+  list.forEach(e=>XLSX.utils.book_append_sheet(wb, xlsSheet(e.rows, e.id), sheetName(e, used)));
   const safe = s => String(s).replace(/[^\w\-]+/g,'_').replace(/^_+|_+$/g,'');
   const stamp = new Date().toISOString().slice(0,10);
   XLSX.writeFile(wb, list.length===1 ? 'MoiTruong_'+safe(pLabel(list[0].project))+'_'+safe(list[0].name)+'.xlsx' : 'MoiTruong_SQL_Build_'+stamp+'.xlsx');

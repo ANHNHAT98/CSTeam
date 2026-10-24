@@ -173,6 +173,36 @@ app.get('/api/sql-env', requireAuth, async (req, res) => {
   try { res.set('Cache-Control', 'no-store'); res.json({ items: await sqlEnv.list(), kinds: sqlEnv.KINDS, githubBacked: sqlEnv.store.isGithubBacked() }); }
   catch (e) { console.error('[sql-env:get] lỗi:', e.message); res.status(502).json({ error: e.message }); }
 });
+/* File đính kèm của dòng (APK, zip…): POST /api/sql-env/upload (multipart, field "file") → meta để gắn vào dòng rồi Lưu;
+   GET /api/sql-env/:id/file/:fileId → tải về; DELETE /api/sql-env/upload/:assetId → bỏ file vừa tải lên nhưng chưa lưu. Lưu ở GitHub Releases (xem envFiles.js). */
+const envFiles = require('./envFiles');
+const envUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: envFiles.MAX_BYTES, files: 1 } }).single('file');
+app.post('/api/sql-env/upload', requireAuth, (req, res) => {
+  envUpload(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'File lớn hơn 100MB — hãy dán link (Drive/SharePoint…) vào cột Link / Đính kèm.' : err.message });
+    if (!req.file) return res.status(400).json({ error: 'Chưa chọn file.' });
+    try {
+      const name = Buffer.from(req.file.originalname, 'latin1').toString('utf8'); // multer đọc tên theo latin1 → đổi lại UTF-8 để giữ tiếng Việt
+      res.json({ ok: true, file: await envFiles.save(req.file.buffer, name, req.session.username) });
+    } catch (e) { console.error('[sql-env:upload] lỗi:', e.message); res.status(400).json({ error: e.message }); }
+  });
+});
+app.delete('/api/sql-env/upload/:assetId', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, ...(await sqlEnv.discardUpload(req.params.assetId)) }); }
+  catch (e) { console.error('[sql-env:discard] lỗi:', e.message); res.status(400).json({ error: e.message }); }
+});
+app.get('/api/sql-env/:id/file/:fileId', requireAuth, async (req, res) => {
+  try {
+    const f = await sqlEnv.findFile(req.params.id, req.params.fileId);
+    if (!f) return res.status(404).json({ error: 'Không tìm thấy file (có thể đã bị xoá).' });
+    const { stream, size } = await envFiles.open(f.assetId);
+    res.set('Content-Type', 'application/octet-stream');
+    res.set('Content-Disposition', "attachment; filename*=UTF-8''" + encodeURIComponent(f.name));
+    if (size) res.set('Content-Length', String(size));
+    stream.on('error', (e) => { console.error('[sql-env:file] lỗi stream:', e.message); res.destroy(e); });
+    stream.pipe(res);
+  } catch (e) { console.error('[sql-env:file] lỗi:', e.message); if (!res.headersSent) res.status(502).json({ error: e.message }); }
+});
 app.post('/api/sql-env', requireAuth, async (req, res) => {
   try { res.json({ ok: true, ...(await sqlEnv.add(req.body || {}, req.session.username)) }); }
   catch (e) { console.error('[sql-env:post] lỗi:', e.message); res.status(400).json({ error: e.message }); }
