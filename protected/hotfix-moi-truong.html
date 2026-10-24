@@ -17,61 +17,48 @@
   .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;opacity:.9;}
   .ops-topbar a:hover{opacity:1;text-decoration:underline;}
   .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
-  .wrap{max-width:1280px;margin:0 auto;padding:28px 24px 80px;}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 24px 80px;}
   h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 4px;}
   .sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;line-height:1.6;}
   .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;}
-  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0 0 10px;}
   .bar{display:flex;gap:10px 14px;flex-wrap:wrap;align-items:flex-end;}
   .field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted);font-weight:600;}
-  .field select,.field input[type=text],.field textarea{font:inherit;font-size:13.5px;font-weight:500;color:var(--ink);padding:8px 12px;border-radius:8px;border:1px solid var(--grid-line-strong);background:#fff;min-width:200px;}
-  .field textarea{min-height:60px;resize:vertical;width:100%;}
+  .field select,.field input[type=text]{font:inherit;font-size:13.5px;font-weight:500;color:var(--ink);padding:8px 12px;border-radius:8px;border:1px solid var(--grid-line-strong);background:#fff;min-width:220px;}
   button{font:inherit;font-size:13.5px;padding:8px 14px;border-radius:8px;border:1px solid var(--blueprint);background:#fff;color:var(--blueprint);cursor:pointer;font-weight:600;}
   button.primary{background:var(--blueprint);color:#fff;}
   button.export{border-color:var(--success);color:var(--success);}
   button.danger{border-color:var(--danger);color:var(--danger);}
   button.danger.arm{background:var(--danger);color:#fff;}
-  button.sm{padding:3px 9px;font-size:12px;}
+  button.sm{padding:4px 10px;font-size:12.5px;}
   button:disabled{opacity:.5;cursor:default;}
-  .chk{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink);font-weight:500;cursor:pointer;}
-  .msg{padding:11px 14px;border-radius:8px;font-size:13.5px;margin-bottom:14px;}
-  .msg.err{background:#FBE9EB;border:1px solid #E3A7AF;color:#8B2A36;} .msg.info{background:#EAF1F8;border:1px solid var(--grid-line-strong);} .msg.ok{background:#EAF5EE;border:1px solid #B5D8C3;color:#2C5E43;}
-  .grid{display:grid;grid-template-columns:330px 1fr;gap:16px;align-items:start;}
-  @media(max-width:900px){.grid{grid-template-columns:1fr;}}
-  .plist{max-height:70vh;overflow:auto;}
-  .proj{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;color:var(--blueprint);margin:12px 0 6px;display:flex;justify-content:space-between;}
-  .proj:first-child{margin-top:0;} .proj small{color:var(--muted);font-weight:500;font-family:'IBM Plex Sans',sans-serif;}
-  .env{border:1px solid var(--grid-line-strong);border-radius:8px;padding:8px 11px;margin-bottom:6px;background:#fff;cursor:pointer;}
-  .env:hover{background:#F5F8FB;} .env.on{border-color:var(--blueprint);background:#EAF1F8;box-shadow:inset 4px 0 0 var(--blueprint);}
-  .env .n{font-weight:600;font-size:13.5px;display:flex;gap:8px;align-items:center;justify-content:space-between;}
-  .env .s{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted);margin-top:2px;word-break:break-all;}
+  .msg{padding:11px 14px;border-radius:8px;font-size:13.5px;margin-bottom:14px;line-height:1.55;}
+  .msg.err{background:#FBE9EB;border:1px solid #E3A7AF;color:#8B2A36;} .msg.info{background:#EAF1F8;border:1px solid var(--grid-line-strong);} .msg.ok{background:#EAF5EE;border:1px solid #B5D8C3;color:#2C5E43;} .msg.warn{background:#FFF6E3;border:1px solid #EBCB8B;color:#7A5410;}
+  .msg a{color:inherit;font-weight:700;}
   .badge{font-size:10.5px;font-weight:700;border-radius:20px;padding:1px 8px;background:#E4EBF3;color:var(--blueprint);letter-spacing:.03em;white-space:nowrap;}
   .badge.PRODUCTION{background:#FBE9EB;color:#8B2A36;} .badge.UAT{background:#FFF3DC;color:#8A5A0B;} .badge.DEV,.badge.TEST{background:#EAF5EE;color:#2C5E43;}
-  .proj-item{border:1px solid var(--grid-line-strong);border-radius:8px;padding:9px 12px;margin-bottom:6px;background:#fff;cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:center;font-weight:600;font-size:13.5px;}
-  .proj-item:hover{background:#F5F8FB;} .proj-item.on{border-color:var(--blueprint);background:#EAF1F8;box-shadow:inset 4px 0 0 var(--blueprint);} .proj-item.zero{color:var(--muted);font-weight:500;}
-  .cnt{font-size:11.5px;font-weight:700;border-radius:20px;padding:1px 9px;background:#E4EBF3;color:var(--blueprint);} .zero .cnt{background:#F0F2F5;color:var(--muted);}
   .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px;border-bottom:2px solid var(--grid-line-strong);padding-bottom:8px;}
   .tab{display:flex;gap:7px;align-items:center;padding:7px 13px;border:1px solid var(--grid-line-strong);border-radius:8px 8px 0 0;background:#fff;cursor:pointer;font-size:13.5px;font-weight:600;color:var(--ink);}
   .tab.on{background:var(--blueprint);color:#fff;border-color:var(--blueprint);} .tab.on .badge{background:#fff;}
+  .tab small{font-weight:500;opacity:.75;}
   .head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start;margin-bottom:10px;}
-  .head h2{font-size:18px;margin:0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .head h2{font-family:'Space Grotesk',sans-serif;font-size:17px;margin:0;}
   .meta{color:var(--muted);font-size:12px;margin-top:4px;}
   .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
   table{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff;}
   th{background:#1F4E79;color:#fff;text-align:left;padding:8px 12px;font-weight:600;}
   td{padding:7px 12px;border-bottom:1px solid var(--grid-line);vertical-align:top;word-break:break-word;}
-  td.k{width:32%;font-weight:500;} td.v{font-family:'IBM Plex Mono',monospace;font-size:12.5px;}
-  td.v a{color:var(--blueprint);} td.t{width:92px;text-align:right;white-space:nowrap;}
+  td.k{width:26%;font-weight:500;} td.v{font-family:'IBM Plex Mono',monospace;font-size:12.5px;white-space:pre-wrap;width:32%;}
+  td.lk{font-size:12.5px;line-height:1.5;} td.lk a,td.v a{color:var(--blueprint);} td.t{width:84px;text-align:right;white-space:nowrap;}
   tr.g td{background:#D0D8E8;font-weight:700;color:#0F2B66;border-bottom:1px solid #fff;}
   tr.i td.k{padding-left:26px;}
-  .empty{color:var(--muted);padding:34px 0;text-align:center;font-size:14px;}
+  .empty{color:var(--muted);padding:34px 0;text-align:center;font-size:14px;line-height:1.7;}
   .hint{color:var(--muted);font-size:12.5px;line-height:1.6;}
-  table.ed td{padding:4px 6px;} table.ed input[type=text],table.ed input[type=password],table.ed select{width:100%;font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--grid-line-strong);border-radius:6px;background:#fff;color:var(--ink);}
+  table.ed td{padding:4px 6px;}
+  table.ed input[type=text],table.ed select,table.ed textarea{width:100%;font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--grid-line-strong);border-radius:6px;background:#fff;color:var(--ink);}
+  table.ed textarea{resize:vertical;min-height:34px;}
   table.ed tr.g input{font-weight:700;background:#EDF1F8;}
   table.ed td.c{white-space:nowrap;text-align:center;}
-  td.lk{font-size:12.5px;line-height:1.5;} td.lk a{color:var(--blueprint);} td.v{white-space:pre-wrap;}
-  table.ed textarea{width:100%;font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--grid-line-strong);border-radius:6px;background:#fff;color:var(--ink);resize:vertical;min-height:34px;}
-  .paste{margin-top:10px;display:none;} .paste.on{display:block;}
+  .paste{margin-top:10px;display:none;border:1px dashed var(--grid-line-strong);border-radius:8px;padding:12px;background:#F8FAFC;} .paste.on{display:block;}
   .paste textarea{width:100%;min-height:150px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;padding:8px 10px;border:1px solid var(--grid-line-strong);border-radius:8px;}
   .row2{display:grid;grid-template-columns:1fr 1fr 170px;gap:12px;margin-bottom:12px;}
   @media(max-width:700px){.row2{grid-template-columns:1fr;}}
@@ -82,24 +69,24 @@
 <div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb" id="crumb">/ hotfix / môi trường sql build</span></div>
 <div class="wrap">
   <h1 id="h1">Môi trường SQL Build</h1>
-  <p class="sub" id="sub">Thông tin môi trường của từng server dự án (Database, BackOffice, SFA, API, Hangfire…). <b>Thêm / sửa / xoá</b>, <b>copy</b> thông tin để gửi nhanh và <b>xuất Excel</b>. Mật khẩu được mã hoá khi lưu và ẩn mặc định khi xem (bấm 👁 để hiện).</p>
+  <p class="sub" id="sub">Chọn <b>dự án</b> để xem các môi trường đã tạo (UAT, PRODUCTION…): <b>copy</b> thông tin hoặc <b>xuất Excel</b>. Bấm <b>＋ Thêm mới</b> để tạo môi trường, <b>Sửa</b> để chỉnh rồi <b>Lưu</b> — dữ liệu được commit lên Git của tool.</p>
 
   <div class="panel">
     <div class="bar">
-      <label class="field">Tìm kiếm
-        <input type="text" id="fSearch" placeholder="Dự án, tên môi trường, server, DB, link…">
+      <label class="field" id="fProjBox">Dự án
+        <select id="fProject"></select>
       </label>
-      <button type="button" class="primary" id="btnNew">＋ Thêm môi trường</button>
-      <button type="button" class="export" id="btnExportAll">⬇ Xuất Excel tất cả dự án</button>
-      <label class="chk" title="Áp dụng cho Copy và Xuất Excel"><input type="checkbox" id="hideSecrets"> Ẩn mật khẩu khi copy / xuất Excel</label>
+      <label class="field" id="fSearchBox">Tìm kiếm
+        <input type="text" id="fSearch" placeholder="Tên môi trường, server, DB, link…">
+      </label>
+      <button type="button" class="primary" id="btnNew">＋ Thêm mới</button>
+      <button type="button" class="export" id="btnExportAll">⬇ Xuất Excel (theo bộ lọc)</button>
+      <button type="button" id="btnTemplate" title="File Excel mẫu để điền rồi Import ở phần Thêm mới / Sửa">⬇ Template Excel</button>
     </div>
   </div>
 
   <div id="msg"></div>
-  <div class="grid">
-    <div class="panel plist" id="list"></div>
-    <div class="panel" id="detail"></div>
-  </div>
+  <div class="panel" id="detail"></div>
 </div>
 
 <script>
@@ -115,16 +102,16 @@ const send = (method, url, body) => api(url, { method, headers:{'Content-Type':'
 const say = (kind, text) => { $('msg').innerHTML = text ? '<div class="msg '+kind+'">'+text+'</div>' : ''; };
 
 /* ---------- dữ liệu ---------- */
-const KINDS_DEFAULT = ['UAT','PRODUCTION','DEV','TEST','DEMO','Khác'];
 const LOCK = new URLSearchParams(location.search).get('project') || ''; // mở từ menu Dự án → chỉ làm việc với 1 dự án
-let items = [], kinds = KINDS_DEFAULT, projLabels = {}, sel = null, draft = null, revealed = new Set(), showPw = false, armDelete = false;
+const KINDS_DEFAULT = ['UAT','PRODUCTION','DEV','TEST','DEMO','Khác'];
+let items = [], kinds = KINDS_DEFAULT, projLabels = {}, sel = null, draft = null, armDelete = false, githubBacked = false;
+let pending = null; // các dòng đã đọc từ file Excel import (chờ bấm Thay / Thêm)
 const pLabel = c => projLabels[c] || c;
-const SECRET_RE = /(^|[\s_.-])(mk|mật khẩu|mat khau|password|pass|pwd|secret|token)([\s_.-]|$)/i;
 const GROUPS = ['database','backoffice','sfa','service sales','api ecom','api ge','image','hangfire','promotion'];
-const g = (key) => ({ type:'group', key, value:'', link:'', secret:false });
-const it = (key, secret) => ({ type:'item', key, value:'', link:'', secret: !!secret });
+const g = (key) => ({ type:'group', key, value:'', link:'' });
+const it = (key) => ({ type:'item', key, value:'', link:'' });
 const TEMPLATE = () => [g('Database'), it('Server'), it('DB Name'),
-  g('BackOffice'), it('Link Cloud'), it('Account'), it('Password',true),
+  g('BackOffice'), it('Link Cloud'), it('Account'), it('Password'),
   g('SFA'), g('Service Sales'), it('ProjectCode'),
   g('API Ecom'), it('API link'), g('API GE'), it('API link'),
   g('Image'), it('SFA'),
@@ -132,180 +119,212 @@ const TEMPLATE = () => [g('Database'), it('Server'), it('DB Name'),
 
 async function load(keepSel){
   const [d, p] = await Promise.all([api('/api/sql-env'), api('/api/ticket-instructions').catch(()=>[])]);
-  items = d.items || []; if(Array.isArray(d.kinds) && d.kinds.length) kinds = d.kinds;
+  items = d.items || []; githubBacked = !!d.githubBacked; if(Array.isArray(d.kinds) && d.kinds.length) kinds = d.kinds;
   projLabels = {}; p.forEach(x => { projLabels[x.code] = x.label || x.name || x.code; });
   if(!keepSel || !items.some(x=>x.id===sel)) sel = null;
-  if(selProj && !items.some(x=>x.project===selProj) && !projLabels[selProj]) selProj = null;
-  if(LOCK){ selProj = LOCK; applyLock(); }
+  if(LOCK) applyLock(); else renderFilter();
   render();
 }
 function applyLock(){
   const n = pLabel(LOCK);
   $('h1').textContent = 'Môi trường dự án — '+n; document.title = 'Môi trường dự án — '+n;
   $('crumb').textContent = '/ dự án / '+n.toLowerCase()+' / môi trường dự án';
-  $('sub').innerHTML = 'Các môi trường của dự án <b>'+esc(n)+'</b> (UAT, PRODUCTION…): <b>thêm / sửa / xoá</b>, <b>copy</b> thông tin để gửi nhanh và <b>xuất Excel</b>. Mật khẩu được mã hoá khi lưu và ẩn mặc định khi xem (bấm 👁 để hiện).';
-  $('list').style.display = 'none'; $('fSearch').closest('.field').style.display = 'none'; $('btnExportAll').style.display = 'none'; $('btnNew').style.display = 'none';
-  document.querySelector('.grid').style.gridTemplateColumns = '1fr';
+  $('sub').innerHTML = 'Các môi trường đã tạo của dự án <b>'+esc(n)+'</b> (UAT, PRODUCTION…): <b>copy</b> thông tin hoặc <b>xuất Excel</b>. Bấm <b>＋ Thêm mới</b> để tạo môi trường, <b>Sửa</b> để chỉnh rồi <b>Lưu</b> — dữ liệu được commit lên Git của tool.';
+  $('fProjBox').style.display = 'none'; $('fSearchBox').style.display = 'none';
 }
-const serverOf = e => { const r = e.rows.find(x=>x.type==='item' && /^(server|ip db|ip)$/i.test(x.key) && x.value); return r ? r.value : ''; };
-let selProj = null;
-const envMatch = (e, q) => [e.name, e.kind, e.note].concat(e.rows.flatMap(r=>[r.key, r.secret?'':r.value, r.link||''])).join(' ').toLowerCase().includes(q);
 const kindRank = k => { const i = kinds.indexOf(k); return i<0 ? 99 : i; };
-const envsOf = code => items.filter(e=>e.project===code).sort((a,b)=>kindRank(a.kind)-kindRank(b.kind) || a.name.localeCompare(b.name,'vi'));
-function filtered(){ // các môi trường khớp ô tìm kiếm (dùng cho Xuất Excel tất cả)
-  const q = $('fSearch').value.trim().toLowerCase();
-  return items.filter(e=>!q || pLabel(e.project).toLowerCase().includes(q) || envMatch(e,q)).sort((a,b)=>pLabel(a.project).localeCompare(pLabel(b.project),'vi') || kindRank(a.kind)-kindRank(b.kind) || a.name.localeCompare(b.name,'vi'));
+const projectCodes = () => [...new Set([...Object.keys(projLabels), ...items.map(x=>x.project)])].sort((a,b)=>pLabel(a).localeCompare(pLabel(b),'vi'));
+function renderFilter(){
+  const cur = $('fProject').value; const codes = projectCodes();
+  $('fProject').innerHTML = '<option value="">Tất cả dự án ('+items.length+')</option>' + codes.map(c=>'<option value="'+esc(c)+'">'+esc(pLabel(c))+' ('+items.filter(x=>x.project===c).length+')</option>').join('');
+  $('fProject').value = codes.includes(cur) ? cur : '';
 }
-function projectList(){
-  const q = $('fSearch').value.trim().toLowerCase();
-  const codes = [...new Set([...Object.keys(projLabels), ...items.map(x=>x.project)])];
-  return codes.filter(c=>!q || pLabel(c).toLowerCase().includes(q) || c.toLowerCase().includes(q) || envsOf(c).some(e=>envMatch(e,q)))
-    .sort((a,b)=>(envsOf(b).length>0)-(envsOf(a).length>0) || pLabel(a).localeCompare(pLabel(b),'vi'));
+const curProject = () => LOCK || $('fProject').value;
+const envMatch = (e, q) => [pLabel(e.project), e.name, e.kind, e.note].concat(e.rows.flatMap(r=>[r.key, r.value, r.link||''])).join(' ').toLowerCase().includes(q);
+function filtered(){
+  const p = curProject(), q = LOCK ? '' : $('fSearch').value.trim().toLowerCase();
+  return items.filter(e=>(!p || e.project===p) && (!q || envMatch(e,q)))
+    .sort((a,b)=>pLabel(a.project).localeCompare(pLabel(b.project),'vi') || kindRank(a.kind)-kindRank(b.kind) || a.name.localeCompare(b.name,'vi'));
 }
 
 /* ---------- hiển thị ---------- */
-function render(){ renderList(); renderDetail(); }
-function renderList(){
-  const list = projectList(); const box = $('list');
-  if(!list.length){ box.innerHTML = '<div class="empty">Không có dự án khớp tìm kiếm.</div>'; return; }
-  box.innerHTML = '<div class="proj" style="margin-top:0"><span>Dự án</span><small>'+items.length+' môi trường</small></div>'
-    + list.map(c=>{ const n = envsOf(c).length; return '<div class="proj-item'+(c===selProj?' on':'')+(n?'':' zero')+'" data-p="'+esc(c)+'"><span>'+esc(pLabel(c))+'</span><span class="cnt">'+n+'</span></div>'; }).join('');
-  box.querySelectorAll('.proj-item').forEach(el=>el.onclick=()=>{ if(draft && !confirmDiscard()) return; draft = null; selProj = el.dataset.p; const envs = envsOf(selProj); sel = envs.length ? envs[0].id : null; armDelete = false; revealed.clear(); say('',''); render(); });
-}
 const confirmDiscard = () => confirm('Bạn đang sửa dở. Bỏ thay đổi chưa lưu?');
 const fmtTime = s => { if(!s) return ''; const d = new Date(s); return isNaN(d) ? '' : d.toLocaleString('vi-VN'); };
 const linkHtml = t => String(t||'').split(/\n+/).map(l=>l.trim()).filter(Boolean).map(l=>esc(l).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>')).join('<br>');
-const isUrl = v => /^https?:\/\//i.test(v);
-const startNew = (project) => { project = LOCK || project; draft = { project: project||'', name:'', kind:'UAT', note:'', rows: TEMPLATE() }; say('',''); render(); setTimeout(()=>{ const el = $(project ? 'eName' : 'eProjSel'); if(el) el.focus(); }, 0); };
+const clone = e => JSON.parse(JSON.stringify({ id:e.id, project:e.project, name:e.name, kind:e.kind, note:e.note||'', rows:e.rows.map(r=>({type:r.type,key:r.key,value:r.value,link:r.link||''})) }));
+const startNew = () => { draft = { project: curProject(), name:'', kind:'UAT', note:'', rows: TEMPLATE() }; pending = null; say('',''); render(); };
 
-function renderDetail(){
+function render(){
   if(draft) return renderEditor();
-  const box = $('detail');
-  if(!selProj){ box.innerHTML = '<div class="empty">Chọn một <b>dự án</b> ở danh sách bên trái để xem các môi trường của dự án đó.</div>'; return; }
-  const envs = envsOf(selProj); const e = envs.find(x=>x.id===sel) || envs[0]; if(e) sel = e.id;
-  const top = '<div class="head"><div><h2>'+esc(pLabel(selProj))+'</h2><div class="meta">'+envs.length+' môi trường</div></div><div class="acts"><button type="button" class="primary sm" id="pNew">＋ Thêm môi trường cho dự án này</button>'+(envs.length?'<button type="button" class="export sm" id="pXls">⬇ Excel cả dự án</button>':'')+'</div></div>';
-  if(!e){ box.innerHTML = top+'<div class="empty">Dự án chưa có môi trường nào.<br>Bấm <b>＋ Thêm môi trường cho dự án này</b> (có thể <b>Dán từ Excel</b>).</div>'; $('pNew').onclick = () => startNew(selProj); return; }
-  const tabs = '<div class="tabs">'+envs.map(x=>'<div class="tab'+(x.id===e.id?' on':'')+'" data-tab="'+esc(x.id)+'"><span>'+esc(x.name)+'</span><span class="badge '+esc(x.kind)+'">'+esc(x.kind)+'</span></div>').join('')+'</div>';
+  const box = $('detail'); const envs = filtered(); const p = curProject();
+  const scope = (p ? pLabel(p) : 'Tất cả dự án') + ' — ' + envs.length + ' môi trường';
+  if(!envs.length){
+    box.innerHTML = '<div class="head"><h2>'+esc(scope)+'</h2></div><div class="empty">'+(items.length && !p ? 'Không có môi trường nào khớp tìm kiếm.' : 'Chưa có môi trường nào'+(p?' cho dự án này':'')+'.<br>Bấm <b>＋ Thêm mới</b> để tạo (có thể <b>Import Excel</b> theo template).')+'</div>';
+    return;
+  }
+  const e = envs.find(x=>x.id===sel) || envs[0]; sel = e.id;
+  const tabs = '<div class="tabs">'+envs.map(x=>'<div class="tab'+(x.id===e.id?' on':'')+'" data-tab="'+esc(x.id)+'">'+(p?'':'<small>'+esc(pLabel(x.project))+' ·</small>')+'<span>'+esc(x.name)+'</span><span class="badge '+esc(x.kind)+'">'+esc(x.kind)+'</span></div>').join('')+'</div>';
   const body = e.rows.map((r,i)=>{
     if(r.type==='group') return '<tr class="g"><td colspan="4">'+esc(r.key)+'</td></tr>';
-    const shown = !r.secret || revealed.has(i);
-    const val = !r.value ? '' : (shown ? (isUrl(r.value) ? '<a href="'+esc(r.value)+'" target="_blank" rel="noopener">'+esc(r.value)+'</a>' : esc(r.value)) : '••••••••');
-    return '<tr class="i"><td class="k">'+esc(r.key)+'</td><td class="v">'+val+'</td><td class="lk">'+linkHtml(r.link)+'</td><td class="t">'+(r.secret&&r.value?'<button type="button" class="sm" data-eye="'+i+'" title="Hiện / ẩn">👁</button> ':'')+(r.value?'<button type="button" class="sm" data-cp="'+i+'" title="Copy nội dung">📋</button> ':'')+(r.link?'<button type="button" class="sm" data-cpl="'+i+'" title="Copy link / đính kèm">🔗</button>':'')+'</td></tr>';
+    const v = /^https?:\/\//i.test(r.value) ? '<a href="'+esc(r.value)+'" target="_blank" rel="noopener">'+esc(r.value)+'</a>' : esc(r.value);
+    return '<tr class="i"><td class="k">'+esc(r.key)+'</td><td class="v">'+v+'</td><td class="lk">'+linkHtml(r.link)+'</td><td class="t">'+(r.value?'<button type="button" class="sm" data-cp="'+i+'" title="Copy nội dung">📋</button> ':'')+(r.link?'<button type="button" class="sm" data-cpl="'+i+'" title="Copy link / đính kèm">🔗</button>':'')+'</td></tr>';
   }).join('');
-  box.innerHTML = top + tabs
+  box.innerHTML = '<div class="head"><div><h2>'+esc(scope)+'</h2></div></div>'+tabs
     +'<div class="head"><div><div class="meta" style="margin:0">'+(e.updatedAt?'Cập nhật '+esc(fmtTime(e.updatedAt))+(e.updatedBy?' bởi '+esc(e.updatedBy):''):'')+'</div>'+(e.note?'<div class="meta" style="color:var(--ink)">📝 '+esc(e.note)+'</div>':'')+'</div>'
     +'<div class="acts"><button type="button" class="primary sm" id="bCopyT" title="Dán vào Excel / Word">📋 Copy bảng</button><button type="button" class="sm" id="bCopyX" title="Dán vào Zalo / chat">📋 Copy văn bản</button><button type="button" class="export sm" id="bXls">⬇ Excel</button><button type="button" class="sm" id="bEdit">✏️ Sửa</button><button type="button" class="sm" id="bDup">⎘ Nhân bản</button><button type="button" class="danger sm'+(armDelete?' arm':'')+'" id="bDel">'+(armDelete?'Bấm lần nữa để xoá':'🗑 Xoá')+'</button></div></div>'
     +'<table><thead><tr><th>Tiêu đề</th><th>Nội dung</th><th>Link / Đính kèm</th><th></th></tr></thead><tbody>'+body+'</tbody></table>';
-  $('pNew').onclick = () => startNew(selProj);
-  const px = $('pXls'); if(px) px.onclick = () => exportExcel(envs);
-  box.querySelectorAll('[data-tab]').forEach(t=>t.onclick=()=>{ sel = t.dataset.tab; armDelete = false; revealed.clear(); renderDetail(); });
-  box.querySelectorAll('[data-eye]').forEach(b=>b.onclick=()=>{ const i = Number(b.dataset.eye); revealed.has(i)?revealed.delete(i):revealed.add(i); renderDetail(); });
-  box.querySelectorAll('[data-cpl]').forEach(b=>b.onclick=async()=>{ const r = e.rows[Number(b.dataset.cpl)]; const ok = await copyText(r.link); say(ok?'ok':'err', ok?'Đã copy link / đính kèm của <b>'+esc(r.key)+'</b>.':'Trình duyệt chặn copy.'); });
+  box.querySelectorAll('[data-tab]').forEach(t=>t.onclick=()=>{ sel = t.dataset.tab; armDelete = false; render(); });
   box.querySelectorAll('[data-cp]').forEach(b=>b.onclick=async()=>{ const r = e.rows[Number(b.dataset.cp)]; const ok = await copyText(r.value); say(ok?'ok':'err', ok?'Đã copy <b>'+esc(r.key)+'</b>.':'Trình duyệt chặn copy.'); });
+  box.querySelectorAll('[data-cpl]').forEach(b=>b.onclick=async()=>{ const r = e.rows[Number(b.dataset.cpl)]; const ok = await copyText(r.link); say(ok?'ok':'err', ok?'Đã copy link / đính kèm của <b>'+esc(r.key)+'</b>.':'Trình duyệt chặn copy.'); });
   $('bCopyT').onclick = () => copyEnv(e, 'table'); $('bCopyX').onclick = () => copyEnv(e, 'text');
   $('bXls').onclick = () => exportExcel([e]);
-  $('bEdit').onclick = () => { draft = clone(e); render(); };
-  $('bDup').onclick = () => { draft = clone(e); delete draft.id; draft.name = e.name + ' (bản sao)'; say('info','Đang tạo bản sao — chỉnh rồi bấm <b>Lưu</b>.'); render(); };
+  $('bEdit').onclick = () => { draft = clone(e); pending = null; say('',''); render(); };
+  $('bDup').onclick = () => { draft = clone(e); delete draft.id; draft.name = e.name + ' (bản sao)'; pending = null; say('info','Đang tạo bản sao — chỉnh rồi bấm <b>Lưu</b>.'); render(); };
   $('bDel').onclick = async () => {
-    if(!armDelete){ armDelete = true; renderDetail(); setTimeout(()=>{ if(armDelete){ armDelete = false; if(!draft) renderDetail(); } }, 4000); return; }
-    try{ await send('DELETE','/api/sql-env/'+encodeURIComponent(e.id)); armDelete = false; sel = null; say('ok','Đã xoá môi trường.'); await load(true); }catch(err){ say('err', esc(err.message)); }
+    if(!armDelete){ armDelete = true; render(); setTimeout(()=>{ if(armDelete){ armDelete = false; if(!draft) render(); } }, 4000); return; }
+    try{ const r = await send('DELETE','/api/sql-env/'+encodeURIComponent(e.id)); armDelete = false; sel = null; await load(true); saved('Đã xoá môi trường.', r); }catch(err){ say('err', esc(err.message)); }
   };
 }
-const clone = e => JSON.parse(JSON.stringify({ id:e.id, project:e.project, name:e.name, kind:e.kind, note:e.note||'', rows:e.rows }));
-
-/* ---------- soạn thảo ---------- */
-const projectCodes = () => [...new Set([...Object.keys(projLabels), ...items.map(x=>x.project)])].sort((a,b)=>pLabel(a).localeCompare(pLabel(b),'vi'));
-function projField(d){
-  if(LOCK) return '<div class="field">Dự án<input type="text" id="eProjLock" value="'+esc(pLabel(LOCK))+'" disabled></div>';
-  return '<div class="field">Dự án<select id="eProjSel">'+projectCodes().map(c=>'<option value="'+esc(c)+'"'+(c===d.project?' selected':'')+'>'+esc(pLabel(c))+'</option>').join('')+'<option value="__other__"'+(d.project && !projectCodes().includes(d.project) ? ' selected' : '')+'>➕ Dự án khác…</option></select><input type="text" id="eProject" value="'+esc(projectCodes().includes(d.project)?'':d.project)+'" placeholder="Nhập tên dự án mới" style="margin-top:6px;'+(d.project && !projectCodes().includes(d.project) ? '' : 'display:none')+'"></div>'
-    ;
+/** Thông báo sau khi lưu/xoá: có commit Git thì kèm link, chưa cấu hình Git thì cảnh báo rõ. */
+function saved(text, r){
+  if(r && r.commitUrl) say('ok', esc(text)+' Đã <b>commit lên Git</b>: <a href="'+esc(r.commitUrl)+'" target="_blank" rel="noopener">xem commit</a>.');
+  else if(!githubBacked) say('warn', esc(text)+' <b>Chưa commit lên Git</b> vì server chưa cấu hình <code>GITHUB_TOKEN</code> / <code>GITHUB_REPO</code> — dữ liệu mới chỉ lưu trên server và có thể mất khi deploy lại.');
+  else say('ok', esc(text));
 }
+
+/* ---------- soạn thảo (dùng chung cho Thêm mới và Sửa) ---------- */
+function projField(d){
+  if(LOCK) return '<div class="field">Dự án<input type="text" value="'+esc(pLabel(LOCK))+'" disabled></div>';
+  const codes = projectCodes(); const other = d.project && !codes.includes(d.project);
+  return '<div class="field">Dự án<select id="eProjSel">'+codes.map(c=>'<option value="'+esc(c)+'"'+(c===d.project?' selected':'')+'>'+esc(pLabel(c))+'</option>').join('')+'<option value="__other__"'+(other?' selected':'')+'>➕ Dự án khác…</option></select><input type="text" id="eProject" value="'+esc(other?d.project:'')+'" placeholder="Nhập tên dự án mới" style="margin-top:6px;'+(other?'':'display:none')+'"></div>';
+}
+let syncDraft = () => {};
 function renderEditor(){
   const d = draft; const box = $('detail');
   const rows = d.rows.map((r,i)=>'<tr class="'+(r.type==='group'?'g':'i')+'" data-i="'+i+'"><td class="c" style="width:74px"><button type="button" class="sm" data-up="'+i+'" title="Lên">▲</button><button type="button" class="sm" data-dn="'+i+'" title="Xuống">▼</button></td>'
-    +'<td style="width:96px"><select data-f="type"><option value="item"'+(r.type==='item'?' selected':'')+'>Mục</option><option value="group"'+(r.type==='group'?' selected':'')+'>Nhóm</option></select></td>'
+    +'<td style="width:92px"><select data-f="type"><option value="item"'+(r.type==='item'?' selected':'')+'>Mục</option><option value="group"'+(r.type==='group'?' selected':'')+'>Nhóm</option></select></td>'
     +'<td><input type="text" data-f="key" value="'+esc(r.key)+'" placeholder="'+(r.type==='group'?'Tên nhóm (vd: Database)':'Tiêu đề (vd: Server, API Ecom)')+'"></td>'
-    +'<td>'+(r.type==='group'?'':(r.secret ? '<input type="'+(showPw?'text':'password')+'" data-f="value" value="'+esc(r.value)+'" placeholder="Nội dung" autocomplete="off">' : '<textarea data-f="value" rows="1" placeholder="Nội dung">'+esc(r.value)+'</textarea>'))+'</td>'
+    +'<td>'+(r.type==='group'?'':'<textarea data-f="value" rows="1" placeholder="Nội dung">'+esc(r.value)+'</textarea>')+'</td>'
     +'<td>'+(r.type==='group'?'':'<textarea data-f="link" rows="1" placeholder="Link hoặc thông tin đính kèm">'+esc(r.link||'')+'</textarea>')+'</td>'
-    +'<td class="c" style="width:58px">'+(r.type==='group'?'':'<label title="Mật khẩu — mã hoá khi lưu" style="cursor:pointer">🔒<input type="checkbox" data-f="secret"'+(r.secret?' checked':'')+'></label>')+'</td>'
     +'<td class="c" style="width:44px"><button type="button" class="danger sm" data-rm="'+i+'" title="Xoá dòng">✕</button></td></tr>').join('');
-  box.innerHTML = '<div class="head"><h2>'+(d.id?'Sửa môi trường':'Thêm môi trường')+'</h2><div class="acts"><button type="button" class="primary" id="eSave">💾 Lưu</button><button type="button" id="eCancel">Hủy</button></div></div>'
+  box.innerHTML = '<div class="head"><h2>'+(d.id?'Sửa môi trường':'Thêm môi trường mới')+'</h2><div class="acts"><button type="button" class="primary" id="eSave">💾 Lưu (commit Git)</button><button type="button" id="eCancel">Hủy</button></div></div>'
     +'<div class="row2">'+projField(d)
     +'<label class="field">Tên môi trường<input type="text" id="eName" value="'+esc(d.name)+'" placeholder="vd: UAT DemoPharma"></label>'
     +'<label class="field">Loại<select id="eKind">'+kinds.map(k=>'<option'+(k===d.kind?' selected':'')+'>'+esc(k)+'</option>').join('')+'</select></label></div>'
     +'<label class="field" style="margin-bottom:12px">Ghi chú (không bắt buộc)<input type="text" id="eNote" value="'+esc(d.note)+'" style="width:100%"></label>'
-    +'<table class="ed"><thead><tr><th></th><th>Loại dòng</th><th>Tiêu đề</th><th>Nội dung</th><th>Link / Đính kèm</th><th>🔒</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
-    +'<div class="acts" style="margin-top:10px"><button type="button" class="sm" id="eAddItem" title="Một dòng gồm tiêu đề, nội dung và link/đính kèm">＋ Thêm mục</button><button type="button" class="sm" id="eAddApi" title="Thêm dòng API với tiêu đề và link riêng của dự án">＋ Thêm link API</button><button type="button" class="sm" id="eAddGroup">＋ Thêm nhóm</button><button type="button" class="sm" id="eTpl">Nạp mẫu</button><button type="button" class="sm" id="ePasteBtn">Dán từ Excel</button><label class="chk"><input type="checkbox" id="eShowPw"'+(showPw?' checked':'')+'> Hiện mật khẩu</label></div>'
-    +'<div class="paste" id="pasteBox"><div class="hint" style="margin-bottom:6px">Dán 2 hoặc 3 cột <b>Tiêu đề / Nội dung / Link</b> (Items / Info) copy từ Excel. Dòng TK / MK để trống sẽ bỏ qua (mỗi người dùng user riêng). Dòng không có nội dung và tên thuộc nhóm quen thuộc (Database, BackOffice, SFA, Service Sales, API Ecom, API GE, Image, Hangfire, Promotion) sẽ thành <b>nhóm</b>; cột tên chứa MK / Password sẽ tự đánh dấu 🔒.</div><textarea id="pasteTxt" placeholder="Tiêu đề&#9;Nội dung&#9;Link&#10;Database&#10;Server&#9;10.10.62.109,1437&#10;…"></textarea><div class="acts" style="margin-top:8px"><button type="button" class="primary sm" id="pReplace">Thay toàn bộ các dòng</button><button type="button" class="sm" id="pAppend">Thêm vào cuối</button></div></div>';
+    +'<table class="ed"><thead><tr><th></th><th>Loại dòng</th><th>Tiêu đề</th><th>Nội dung</th><th>Link / Đính kèm</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<div class="acts" style="margin-top:10px"><button type="button" class="sm" id="eAddItem" title="Một dòng gồm tiêu đề, nội dung và link/đính kèm">＋ Thêm mục</button><button type="button" class="sm" id="eAddApi" title="Thêm dòng API với tiêu đề và link riêng của dự án">＋ Thêm link API</button><button type="button" class="sm" id="eAddGroup">＋ Thêm nhóm</button><button type="button" class="sm" id="eTpl">Nạp mẫu</button><button type="button" class="sm" id="ePasteBtn">Dán từ Excel</button><button type="button" class="sm export" id="eImport">📥 Import file Excel</button><button type="button" class="sm" id="eTemplate">⬇ Template Excel</button><input type="file" id="eFile" accept=".xlsx,.xls,.csv" style="display:none"></div>'
+    +'<div class="paste" id="pasteBox"><div class="hint" id="pasteHint" style="margin-bottom:6px">Dán các dòng copy từ Excel (cột <b>Tiêu đề / Nội dung / Link</b>, có thể thêm cột <b>Loại</b> = Nhóm/Mục). Không có cột Loại thì dòng không có nội dung và tên thuộc nhóm quen thuộc (Database, BackOffice, SFA, Service Sales, API Ecom, API GE, Image, Hangfire, Promotion) sẽ thành <b>nhóm</b>.</div><select id="sheetPick" style="display:none;margin-bottom:8px;padding:6px 10px;border-radius:8px;border:1px solid var(--grid-line-strong)"></select><textarea id="pasteTxt" placeholder="Tiêu đề&#9;Nội dung&#9;Link&#10;Database&#10;Server&#9;10.10.62.109,1437&#10;…"></textarea><div class="acts" style="margin-top:8px"><button type="button" class="primary sm" id="pReplace">Thay toàn bộ các dòng</button><button type="button" class="sm" id="pAppend">Thêm vào cuối</button></div></div>';
   syncDraft = () => { d.project = LOCK ? LOCK : ($('eProjSel').value==='__other__' ? $('eProject').value.trim() : $('eProjSel').value); d.name = $('eName').value; d.kind = $('eKind').value; d.note = $('eNote').value; };
   box.querySelectorAll('tr[data-i]').forEach(tr=>{ const i = Number(tr.dataset.i);
     tr.querySelectorAll('[data-f]').forEach(inp=>{ const f = inp.dataset.f;
-      inp.oninput = () => { d.rows[i][f] = f==='secret' ? inp.checked : inp.value; if(f==='key' && !d.rows[i].secret && d.rows[i].type==='item' && SECRET_RE.test(inp.value)){ d.rows[i].secret = true; } };
-      if(f==='type' || f==='secret') inp.onchange = () => { inp.oninput(); syncDraft(); renderEditor(); };
+      inp.oninput = () => { d.rows[i][f] = inp.value; };
+      if(f==='type') inp.onchange = () => { inp.oninput(); syncDraft(); renderEditor(); };
     });
   });
-  const rerender = () => { syncDraft(); renderEditor(); };
   box.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ syncDraft(); d.rows.splice(Number(b.dataset.rm),1); renderEditor(); });
   box.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{ const i = Number(b.dataset.up); if(i>0){ syncDraft(); [d.rows[i-1],d.rows[i]] = [d.rows[i],d.rows[i-1]]; renderEditor(); } });
   box.querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{ const i = Number(b.dataset.dn); if(i<d.rows.length-1){ syncDraft(); [d.rows[i+1],d.rows[i]] = [d.rows[i],d.rows[i+1]]; renderEditor(); } });
-  $('eAddItem').onclick = () => { syncDraft(); d.rows.push(it('')); renderEditor(); box.querySelector('tr:last-child input[data-f=key]').focus(); };
-  $('eAddApi').onclick = () => { syncDraft(); d.rows.push(it('API')); renderEditor(); const t = box.querySelectorAll('tr[data-i]'); t[t.length-1].querySelector('input[data-f=key]').focus(); };
-  $('eAddGroup').onclick = () => { syncDraft(); d.rows.push(g('')); renderEditor(); box.querySelector('tr:last-child input[data-f=key]').focus(); };
-  $('eTpl').onclick = () => { syncDraft(); if(d.rows.some(r=>r.value) && !confirm('Thay các dòng hiện tại bằng mẫu trống?')) return; d.rows = TEMPLATE(); renderEditor(); };
-  $('eShowPw').onchange = () => { showPw = $('eShowPw').checked; rerender(); };
+  const focusLast = () => { const t = box.querySelectorAll('tr[data-i]'); const el = t.length && t[t.length-1].querySelector('input[data-f=key]'); if(el) el.focus(); };
+  $('eAddItem').onclick = () => { syncDraft(); d.rows.push(it('')); renderEditor(); focusLast(); };
+  $('eAddApi').onclick = () => { syncDraft(); d.rows.push(it('API')); renderEditor(); focusLast(); };
+  $('eAddGroup').onclick = () => { syncDraft(); d.rows.push(g('')); renderEditor(); focusLast(); };
+  $('eTpl').onclick = () => { syncDraft(); if(d.rows.some(r=>r.value||r.link) && !confirm('Thay các dòng hiện tại bằng mẫu trống?')) return; d.rows = TEMPLATE(); renderEditor(); };
   $('ePasteBtn').onclick = () => $('pasteBox').classList.toggle('on');
-  $('pReplace').onclick = () => { const rows = parsePaste($('pasteTxt').value); if(!rows.length) return say('err','Không đọc được dòng nào từ nội dung đã dán.'); syncDraft(); d.rows = rows; say('ok','Đã nạp '+rows.length+' dòng từ nội dung dán — kiểm tra lại rồi bấm Lưu.'); renderEditor(); };
-  $('pAppend').onclick = () => { const rows = parsePaste($('pasteTxt').value); if(!rows.length) return say('err','Không đọc được dòng nào từ nội dung đã dán.'); syncDraft(); d.rows = d.rows.concat(rows); say('ok','Đã thêm '+rows.length+' dòng.'); renderEditor(); };
+  $('eTemplate').onclick = downloadTemplate;
+  $('eImport').onclick = () => { $('eFile').value = ''; $('eFile').click(); };
+  $('eFile').onchange = () => importFile($('eFile').files[0]);
+  $('pasteTxt').oninput = () => { pending = null; };
+  const take = () => { const rows = pending || parsePaste($('pasteTxt').value); if(!rows.length){ say('err','Không đọc được dòng nào — kiểm tra lại nội dung dán / file Excel.'); return null; } return rows; };
+  $('pReplace').onclick = () => { const rows = take(); if(!rows) return; syncDraft(); d.rows = rows; pending = null; say('ok','Đã nạp '+rows.length+' dòng — kiểm tra lại rồi bấm Lưu.'); renderEditor(); };
+  $('pAppend').onclick = () => { const rows = take(); if(!rows) return; syncDraft(); d.rows = d.rows.concat(rows); pending = null; say('ok','Đã thêm '+rows.length+' dòng.'); renderEditor(); };
   if(!LOCK) $('eProjSel').onchange = () => { const o = $('eProjSel').value==='__other__'; $('eProject').style.display = o ? '' : 'none'; if(o) $('eProject').focus(); };
-  $('eCancel').onclick = () => { draft = null; say('',''); render(); };
+  $('eCancel').onclick = () => { draft = null; pending = null; say('',''); render(); };
   $('eSave').onclick = saveDraft;
+  if(!d.name) $('eName').focus();
 }
-let syncDraft = () => {};
-function parsePaste(text){
+
+/* ---------- đọc dữ liệu dán / file Excel thành các dòng ---------- */
+const TYPE_WORDS = { 'nhóm':'group', 'nhom':'group', 'group':'group', 'mục':'item', 'muc':'item', 'item':'item' };
+function parseTable(table){
+  const rows = table.map(r=>r.map(c=>String(c==null?'':c).trim()));
+  let map = null, start = 0;
+  for(let i=0;i<Math.min(rows.length,3) && !map;i++){
+    const r = rows[i].map(c=>c.toLowerCase());
+    const k = r.findIndex(c=>/^(tiêu đề|items?)$/.test(c)), v = r.findIndex(c=>/^(nội dung|info)$/.test(c));
+    if(k>=0 && v>=0){ map = { type: r.findIndex(c=>/^loại/.test(c)), key:k, value:v, link: r.findIndex(c=>/^link/.test(c)) }; start = i+1; }
+  }
+  const data = rows.slice(start).filter(r=>r.some(c=>c));
+  if(!map){ // không có dòng tiêu đề: nếu cột đầu toàn "Nhóm/Mục" thì có cột Loại, ngược lại là Tiêu đề/Nội dung/Link
+    const hasType = data.length && data.every(r=>!r[0] || (r[0].toLowerCase() in TYPE_WORDS));
+    map = hasType ? { type:0, key:1, value:2, link:3 } : { type:-1, key:0, value:1, link:2 };
+  }
   const out = [];
-  String(text||'').replace(/\r/g,'').split('\n').forEach(line=>{
-    if(!line.trim()) return;
-    let key, value, link = '';
-    const t = line.indexOf('\t');
-    if(t>=0){ const c = line.split('\t'); key = (c[0]||'').trim(); value = (c[1]||'').trim(); link = c.slice(2).join(' ').trim(); }
-    else { const m = line.match(/^\s*([^:\/]{1,40}?)\s*:\s*(.*)$/); if(m){ key = m[1].trim(); value = m[2].trim(); } else { key = line.trim(); value = ''; } }
+  data.forEach(r=>{
+    const cell = i => (i>=0 && r[i]) || '';
+    const key = cell(map.key), value = cell(map.value), link = cell(map.link);
     if(!key && !value && !link) return;
-    if(!out.length && /^(items?|tiêu đề)$/i.test(key) && /^(info|nội dung)$/i.test(value)) return; // dòng tiêu đề Items/Info
-    if(!value && !link && /^(tk|mk)$/i.test(key)) return; // mỗi người dùng user riêng — không lưu TK/MK trống
-    if(!value && !link && GROUPS.includes(key.toLowerCase())) out.push(g(key));
-    else out.push({ type:'item', key, value, link, secret: SECRET_RE.test(key) });
+    const t = map.type>=0 ? TYPE_WORDS[cell(map.type).toLowerCase()] : null;
+    if(!value && !link && /^(tk|mk)$/i.test(key) && t!=='group') return; // mỗi người dùng user riêng — bỏ TK/MK trống
+    if(t==='group' || (!t && !value && !link && GROUPS.includes(key.toLowerCase()))) out.push(g(key));
+    else out.push({ type:'item', key, value, link });
   });
   return out;
+}
+function parsePaste(text){
+  const table = String(text||'').replace(/\r/g,'').split('\n').filter(l=>l.trim()).map(line=>{
+    if(line.includes('\t')) return line.split('\t');
+    const m = line.match(/^\s*([^:\/]{1,40}?)\s*:\s*(.*)$/); return m ? [m[1], m[2]] : [line];
+  });
+  return parseTable(table);
+}
+async function importFile(file){
+  if(!file) return;
+  try{
+    const wb = XLSX.read(await file.arrayBuffer(), { type:'array' });
+    const names = wb.SheetNames.filter(n=>!/^(tổng hợp|hướng dẫn)$/i.test(n));
+    if(!names.length) throw new Error('File không có sheet dữ liệu.');
+    const pick = $('sheetPick'); $('pasteBox').classList.add('on');
+    const loadSheet = (name) => {
+      const table = XLSX.utils.sheet_to_json(wb.Sheets[name], { header:1, defval:'', raw:false });
+      pending = parseTable(table);
+      $('pasteTxt').value = pending.map(r=>(r.type==='group'?'[Nhóm] ':'')+r.key+(r.value||r.link?'\t'+r.value+(r.link?'\t'+r.link.replace(/\s*\n+\s*/g,' ; '):''):'')).join('\n');
+      say(pending.length?'info':'err', pending.length ? 'Đã đọc <b>'+pending.length+' dòng</b> từ sheet <b>'+esc(name)+'</b> của file <b>'+esc(file.name)+'</b>. Bấm <b>Thay toàn bộ các dòng</b> hoặc <b>Thêm vào cuối</b> để áp dụng.' : 'Sheet <b>'+esc(name)+'</b> không có dòng dữ liệu hợp lệ (cần cột Tiêu đề / Nội dung / Link — tải Template Excel để xem mẫu).');
+    };
+    if(names.length>1){ pick.style.display = ''; pick.innerHTML = names.map(n=>'<option>'+esc(n)+'</option>').join(''); pick.onchange = () => loadSheet(pick.value); }
+    else pick.style.display = 'none';
+    loadSheet(names[0]);
+  }catch(err){ say('err','Không đọc được file Excel: '+esc(err.message)); }
 }
 async function saveDraft(){
   syncDraft(); const d = draft;
   const payload = { project:d.project, name:d.name, kind:d.kind, note:d.note, rows:d.rows };
-  const btn = $('eSave'); btn.disabled = true;
+  const btn = $('eSave'); btn.disabled = true; btn.textContent = 'Đang lưu & commit…';
   try{
     const r = d.id ? await send('PUT','/api/sql-env/'+encodeURIComponent(d.id), payload) : await send('POST','/api/sql-env', payload);
-    sel = r.id || d.id; selProj = d.project.trim(); draft = null; say('ok','Đã lưu môi trường.'); await load(true);
-  }catch(err){ say('err', esc(err.message)); btn.disabled = false; }
+    sel = r.id || d.id; const proj = d.project; draft = null; pending = null;
+    await load(true); if(!LOCK){ $('fProject').value = lastProj = projectCodes().includes(proj) ? proj : ''; render(); }
+    saved(d.id ? 'Đã lưu thay đổi.' : 'Đã thêm môi trường.', r);
+  }catch(err){ say('err', esc(err.message)); btn.disabled = false; btn.textContent = '💾 Lưu (commit Git)'; }
 }
 
 /* ---------- copy / xuất ---------- */
-const MASK = '********';
-const val = r => (r.secret && r.value && $('hideSecrets').checked) ? MASK : r.value;
 async function copyText(text){
   try{ await navigator.clipboard.writeText(text); return true; }
   catch(e){ const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(ta); ta.select(); let ok = false; try{ ok = document.execCommand('copy'); }catch(_){} ta.remove(); return ok; }
 }
 function envText(e){
   const lines = [pLabel(e.project)+' — '+e.name+' ('+e.kind+')'];
-  e.rows.forEach(r=>{ if(r.type==='group'){ lines.push('', '['+r.key+']'); } else if(r.key || r.value || r.link){ lines.push(r.key+': '+[val(r), r.link ? 'Link: '+String(r.link).replace(/\s*\n+\s*/g,' ; ') : ''].filter(Boolean).join(' | ')); } });
+  e.rows.forEach(r=>{ if(r.type==='group'){ lines.push('', '['+r.key+']'); } else if(r.key || r.value || r.link){ lines.push(r.key+': '+[r.value, r.link ? 'Link: '+String(r.link).replace(/\s*\n+\s*/g,' ; ') : ''].filter(Boolean).join(' | ')); } });
   return lines.join('\n');
 }
 const flat = t => String(t||'').replace(/[\t\r\n]+/g,' ');
-function envTsv(e){ return ['Tiêu đề\tNội dung\tLink / Đính kèm'].concat(e.rows.map(r=>r.type==='group' ? r.key+'\t\t' : r.key+'\t'+flat(val(r))+'\t'+flat(r.link))).join('\n'); }
+function envTsv(e){ return ['Tiêu đề\tNội dung\tLink / Đính kèm'].concat(e.rows.map(r=>r.type==='group' ? r.key+'\t\t' : r.key+'\t'+flat(r.value)+'\t'+flat(r.link))).join('\n'); }
 function envHtml(e){
   const cell = 'font-family:Arial;font-size:11pt;padding:5px 8px;border:1px solid #BFC9D6';
   const th = t => '<th style="'+cell+';background:#1F4E79;color:#fff;text-align:left">'+t+'</th>';
   return '<table style="border-collapse:collapse"><tr>'+th('Tiêu đề')+th('Nội dung')+th('Link / Đính kèm')+'</tr>'
-    + e.rows.map(r=>r.type==='group' ? '<tr><td colspan="3" style="'+cell+';background:#D0D8E8;font-weight:bold">'+esc(r.key)+'</td></tr>' : '<tr><td style="'+cell+'">'+esc(r.key)+'</td><td style="'+cell+'">'+esc(val(r))+'</td><td style="'+cell+'">'+linkHtml(r.link)+'</td></tr>').join('')+'</table>';
+    + e.rows.map(r=>r.type==='group' ? '<tr><td colspan="3" style="'+cell+';background:#D0D8E8;font-weight:bold">'+esc(r.key)+'</td></tr>' : '<tr><td style="'+cell+'">'+esc(r.key)+'</td><td style="'+cell+'">'+esc(r.value)+'</td><td style="'+cell+'">'+linkHtml(r.link)+'</td></tr>').join('')+'</table>';
 }
 async function copyEnv(e, mode){
   let ok;
@@ -313,36 +332,56 @@ async function copyEnv(e, mode){
     try{ await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([envHtml(e)],{type:'text/html'}), 'text/plain': new Blob([envTsv(e)],{type:'text/plain'}) })]); ok = true; }
     catch(_){ ok = await copyText(envTsv(e)); }
   } else ok = await copyText(envText(e));
-  say(ok?'ok':'err', ok ? 'Đã copy <b>'+esc(e.name)+'</b> '+(mode==='table'?'dạng bảng — dán thẳng vào Excel / Word.':'dạng văn bản — dán vào Zalo / chat.')+($('hideSecrets').checked?' (mật khẩu đã ẩn)':'') : 'Trình duyệt chặn copy.');
+  say(ok?'ok':'err', ok ? 'Đã copy <b>'+esc(e.name)+'</b> '+(mode==='table'?'dạng bảng — dán thẳng vào Excel / Word.':'dạng văn bản — dán vào Zalo / chat.') : 'Trình duyệt chặn copy.');
 }
 function sheetName(e, used){
   let n = (pLabel(e.project)+' - '+e.name).replace(/[\\\/?*\[\]:]/g,' ').replace(/\s+/g,' ').trim().slice(0,31).trim() || 'Sheet';
   let k = n, c = 2; while(used.has(k.toLowerCase())){ const suf = ' ('+c++ +')'; k = n.slice(0,31-suf.length).trim()+suf; }
   used.add(k.toLowerCase()); return k;
 }
+const XLS_HEAD = ['Loại','Tiêu đề','Nội dung','Link / Đính kèm'];
+const xlsRows = rows => [XLS_HEAD].concat(rows.map(r=>[r.type==='group'?'Nhóm':'Mục', r.key, r.value||'', r.link||'']));
+const xlsSheet = rows => { const ws = XLSX.utils.aoa_to_sheet(xlsRows(rows)); ws['!cols'] = [{wch:8},{wch:26},{wch:56},{wch:56}]; return ws; };
+/** File xuất ra dùng đúng định dạng của template nên Import lại được ở phần Thêm mới / Sửa. */
 function exportExcel(list){
   if(!list.length){ say('err','Không có môi trường nào để xuất.'); return; }
   const wb = XLSX.utils.book_new(); const used = new Set();
   if(list.length>1){
-    const rows = [['Dự án','Môi trường','Loại','Server','Ghi chú','Cập nhật','Người cập nhật']].concat(list.map(e=>[pLabel(e.project), e.name, e.kind, serverOf(e), e.note||'', fmtTime(e.updatedAt), e.updatedBy||'']));
+    const rows = [['Dự án','Môi trường','Loại','Server','Ghi chú','Cập nhật','Người cập nhật']].concat(list.map(e=>{ const s = e.rows.find(x=>x.type==='item' && /^(server|ip db|ip)$/i.test(x.key) && x.value); return [pLabel(e.project), e.name, e.kind, s?s.value:'', e.note||'', fmtTime(e.updatedAt), e.updatedBy||'']; }));
     const ws = XLSX.utils.aoa_to_sheet(rows); ws['!cols'] = [{wch:22},{wch:30},{wch:12},{wch:28},{wch:36},{wch:20},{wch:24}];
     XLSX.utils.book_append_sheet(wb, ws, 'Tổng hợp'); used.add('tổng hợp');
   }
-  list.forEach(e=>{
-    const rows = [['Tiêu đề','Nội dung','Link / Đính kèm']].concat(e.rows.map(r=>r.type==='group' ? [r.key,'',''] : [r.key, val(r), r.link||'']));
-    const ws = XLSX.utils.aoa_to_sheet(rows); ws['!cols'] = [{wch:26},{wch:60},{wch:60}];
-    XLSX.utils.book_append_sheet(wb, ws, sheetName(e, used));
-  });
+  list.forEach(e=>XLSX.utils.book_append_sheet(wb, xlsSheet(e.rows), sheetName(e, used)));
   const safe = s => String(s).replace(/[^\w\-]+/g,'_').replace(/^_+|_+$/g,'');
   const stamp = new Date().toISOString().slice(0,10);
   XLSX.writeFile(wb, list.length===1 ? 'MoiTruong_'+safe(pLabel(list[0].project))+'_'+safe(list[0].name)+'.xlsx' : 'MoiTruong_SQL_Build_'+stamp+'.xlsx');
-  say('ok','Đã xuất Excel ('+list.length+' môi trường'+($('hideSecrets').checked?', mật khẩu đã ẩn':'')+').');
+  say('ok','Đã xuất Excel ('+list.length+' môi trường).');
+}
+function downloadTemplate(){
+  const wb = XLSX.utils.book_new();
+  const rows = TEMPLATE().concat([it('API (thêm dòng cho từng link / tài liệu của dự án)')]);
+  XLSX.utils.book_append_sheet(wb, xlsSheet(rows), 'Template');
+  const guide = [['Hướng dẫn dùng template'],[''],
+    ['1. Sheet "Template": mỗi dòng là 1 Tiêu đề — Nội dung — Link / Đính kèm của môi trường.'],
+    ['2. Cột "Loại": Nhóm = dòng tiêu đề nhóm (vd: Database, BackOffice, Hangfire); Mục = dòng thông tin. Để trống thì tool tự nhận nhóm theo tên quen thuộc.'],
+    ['3. Cột "Nội dung": server, tài khoản, mật khẩu… (nhập chữ thường, không bị che). Cột "Link / Đính kèm": URL hoặc ghi chú file đính kèm; nhiều link thì mỗi link 1 dòng trong ô.'],
+    ['4. Thêm / xoá / đổi thứ tự dòng thoải mái. Dòng TK, MK để trống sẽ bị bỏ qua.'],
+    ['5. Một file có thể có nhiều sheet (mỗi sheet 1 môi trường): khi Import tool cho chọn sheet.'],
+    ['6. Vào Thêm mới (hoặc Sửa) → bấm "📥 Import file Excel" → chọn file → "Thay toàn bộ các dòng" / "Thêm vào cuối" → Lưu.'],
+    ['7. File xuất bằng nút "Excel" cũng đúng định dạng này nên Import lại được.']];
+  const ws = XLSX.utils.aoa_to_sheet(guide); ws['!cols'] = [{wch:130}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Hướng dẫn');
+  XLSX.writeFile(wb, 'Template_Moi_Truong_SQL_Build.xlsx');
+  say('ok','Đã tải <b>Template Excel</b>. Điền xong vào <b>＋ Thêm mới</b> (hoặc Sửa) → <b>📥 Import file Excel</b>.');
 }
 
 /* ---------- sự kiện ---------- */
-$('btnNew').onclick = () => { if(draft && !confirmDiscard()) return; startNew(selProj || ''); };
+$('btnNew').onclick = () => { if(draft && !confirmDiscard()) return; startNew(); };
 $('btnExportAll').onclick = () => exportExcel(filtered());
-$('fSearch').oninput = () => { renderList(); };
+$('btnTemplate').onclick = downloadTemplate;
+let lastProj = '';
+$('fProject').onchange = () => { if(draft && !confirmDiscard()){ $('fProject').value = lastProj; return; } lastProj = $('fProject').value; draft = null; sel = null; armDelete = false; render(); };
+$('fSearch').oninput = () => { if(!draft) render(); };
 window.addEventListener('beforeunload', e => { if(draft){ e.preventDefault(); e.returnValue = ''; } });
 load().catch(err => say('err', 'Không tải được dữ liệu: '+esc(err.message)));
 </script>

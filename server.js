@@ -163,11 +163,12 @@ app.get('/hotfix/moi-truong', requirePageAuth, (req, res) => {
 });
 
 /* ---------- Hotfix: Môi trường SQL Build (thông tin DB / BackOffice / SFA / API / Hangfire của từng server dự án) ----------
-   GET    /api/sql-env        → { items:[{id, project, name, kind, note, rows:[{type,key,value,secret}], updatedAt, updatedBy}], kinds, githubBacked }
+   GET    /api/sql-env        → { items:[{id, project, name, kind, note, rows:[{type,key,value,link}], updatedAt, updatedBy}], kinds, githubBacked }
    POST   /api/sql-env        (cùng dữ liệu, không có id)  → thêm
    PUT    /api/sql-env/:id    (cùng dữ liệu)               → sửa
    DELETE /api/sql-env/:id                                 → xoá
-   Giá trị dòng secret (mật khẩu) mã hoá khi lưu — xem sqlEnv.js. Lưu qua listStore (GitHub nếu đã cấu hình, ngược lại ./data/sql-environments.json). */
+   Mỗi dòng: {type:'group'|'item', key (tiêu đề), value (nội dung), link (link/đính kèm)}; mật khẩu do từng thành viên tự quản lý nên không che/mã hoá (dữ liệu cũ dạng enc: vẫn đọc được — xem sqlEnv.js).
+   Lưu qua listStore: có GITHUB_TOKEN/GITHUB_REPO thì mỗi lần thêm/sửa/xoá là 1 commit (trả về commitUrl), ngược lại ghi ./data/sql-environments.json. */
 app.get('/api/sql-env', requireAuth, async (req, res) => {
   try { res.set('Cache-Control', 'no-store'); res.json({ items: await sqlEnv.list(), kinds: sqlEnv.KINDS, githubBacked: sqlEnv.store.isGithubBacked() }); }
   catch (e) { console.error('[sql-env:get] lỗi:', e.message); res.status(502).json({ error: e.message }); }
