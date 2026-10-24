@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
   :root{--ink:#12233D;--blueprint:#1F4E79;--paper:#EEF2F6;--panel:#FFFFFF;--grid-line:rgba(31,78,121,.14);--grid-line-strong:rgba(31,78,121,.28);--amber:#E8A33D;--success:#3F7D58;--danger:#B23A48;--muted:#5B7089;--radius:10px;}
   *{box-sizing:border-box;}
@@ -169,13 +170,13 @@ function render(){
   const e = envs.find(x=>x.id===sel) || envs[0]; sel = e.id;
   const tabs = '<div class="tabs">'+envs.map(x=>'<div class="tab'+(x.id===e.id?' on':'')+'" data-tab="'+esc(x.id)+'">'+(p?'':'<small>'+esc(pLabel(x.project))+' ·</small>')+'<span>'+esc(x.name)+'</span><span class="badge '+esc(x.kind)+'">'+esc(x.kind)+'</span></div>').join('')+'</div>';
   const body = e.rows.map((r,i)=>{
-    if(r.type==='group') return '<tr class="g"><td colspan="2">'+esc(r.key)+'</td><td colspan="2" style="text-align:right;white-space:nowrap"><button type="button" class="sm" data-gt="'+i+'" title="Copy văn bản của nhóm này">📋 Văn bản</button> <button type="button" class="sm" data-gb="'+i+'" title="Copy bảng của nhóm này">📋 Bảng</button></td></tr>';
+    if(r.type==='group') return '<tr class="g"><td colspan="2">'+esc(r.key)+'</td><td colspan="2" style="text-align:right;white-space:nowrap"><button type="button" class="sm" data-gt="'+i+'" title="Copy văn bản của nhóm này">📋 Văn bản</button> <button type="button" class="sm" data-gb="'+i+'" title="Copy bảng của nhóm này">📋 Bảng</button> <button type="button" class="sm" data-gi="'+i+'" title="Copy ảnh bảng của nhóm này">🖼 Ảnh</button></td></tr>';
     const v = /^https?:\/\//i.test(r.value) ? '<a href="'+esc(r.value)+'" target="_blank" rel="noopener">'+esc(r.value)+'</a>' : esc(r.value);
     return '<tr class="i"><td class="k">'+esc(r.key)+'</td><td class="v">'+v+'</td><td class="lk">'+linkHtml(r.link)+'</td><td class="t">'+(r.value?'<button type="button" class="sm" data-cp="'+i+'" title="Copy nội dung">📋</button> ':'')+(r.link?'<button type="button" class="sm" data-cpl="'+i+'" title="Copy link / đính kèm">🔗</button>':'')+'</td></tr>';
   }).join('');
   box.innerHTML = '<div class="head"><div><h2>'+esc(scope)+'</h2></div></div>'+tabs
     +'<div class="head"><div><div class="meta" style="margin:0">'+(e.updatedAt?'Cập nhật '+esc(fmtTime(e.updatedAt))+(e.updatedBy?' bởi '+esc(e.updatedBy):''):'')+'</div>'+(e.note?'<div class="meta" style="color:var(--ink)">📝 '+esc(e.note)+'</div>':'')+'</div>'
-    +'<div class="acts"><button type="button" class="primary sm" id="bCopyT" title="Dán vào Excel / Word">📋 Copy bảng</button><button type="button" class="sm" id="bCopyX" title="Dán vào Zalo / chat">📋 Copy văn bản</button><button type="button" class="export sm" id="bXls">⬇ Excel</button><button type="button" class="sm" id="bEdit">✏️ Sửa</button><button type="button" class="sm" id="bDup">⎘ Nhân bản</button><button type="button" class="danger sm'+(armDelete?' arm':'')+'" id="bDel">'+(armDelete?'Bấm lần nữa để xoá':'🗑 Xoá')+'</button></div></div>'
+    +'<div class="acts"><button type="button" class="primary sm" id="bCopyT" title="Dán vào Excel / Word (ô chat chỉ nhận chữ — dùng Copy ảnh)">📋 Copy bảng</button><button type="button" class="sm" id="bCopyX" title="Dán vào Zalo / chat dạng chữ">📋 Copy văn bản</button><button type="button" class="sm" id="bCopyI" title="Ảnh bảng có kẻ viền — dán được vào Zalo, chat, Word, PowerPoint">🖼 Copy ảnh</button><button type="button" class="export sm" id="bXls">⬇ Excel</button><button type="button" class="sm" id="bEdit">✏️ Sửa</button><button type="button" class="sm" id="bDup">⎘ Nhân bản</button><button type="button" class="danger sm'+(armDelete?' arm':'')+'" id="bDel">'+(armDelete?'Bấm lần nữa để xoá':'🗑 Xoá')+'</button></div></div>'
     +'<table><thead><tr><th>Tiêu đề</th><th>Nội dung</th><th>Link / Đính kèm</th><th></th></tr></thead><tbody>'+body+'</tbody></table>';
   box.querySelectorAll('[data-tab]').forEach(t=>t.onclick=()=>{ sel = t.dataset.tab; armDelete = false; render(); });
   box.querySelectorAll('[data-cp]').forEach(b=>b.onclick=async()=>{ const r = e.rows[Number(b.dataset.cp)]; const ok = await copyText(r.value); say(ok?'ok':'err', ok?'Đã copy <b>'+esc(r.key)+'</b>.':'Trình duyệt chặn copy.'); });
@@ -183,6 +184,8 @@ function render(){
   $('bCopyT').onclick = () => copyEnv(e, 'table'); $('bCopyX').onclick = () => copyEnv(e, 'text');
   box.querySelectorAll('[data-gt]').forEach(b=>b.onclick=()=>copyEnv(e, 'text', Number(b.dataset.gt)));
   box.querySelectorAll('[data-gb]').forEach(b=>b.onclick=()=>copyEnv(e, 'table', Number(b.dataset.gb)));
+  box.querySelectorAll('[data-gi]').forEach(b=>b.onclick=()=>copyImage(e, Number(b.dataset.gi)));
+  $('bCopyI').onclick = () => copyImage(e);
   $('bXls').onclick = () => exportExcel([e]);
   $('bEdit').onclick = () => { draft = clone(e); pending = null; say('',''); render(); };
   $('bDup').onclick = () => { draft = clone(e); delete draft.id; draft.name = e.name + ' (bản sao)'; pending = null; say('info','Đang tạo bản sao — chỉnh rồi bấm <b>Lưu</b>.'); render(); };
@@ -191,11 +194,11 @@ function render(){
     try{ const r = await send('DELETE','/api/sql-env/'+encodeURIComponent(e.id)); armDelete = false; sel = null; await load(true); saved('Đã xoá môi trường.', r); }catch(err){ say('err', esc(err.message)); }
   };
 }
-/** Thông báo sau khi lưu/xoá: có commit Git thì kèm link, chưa cấu hình Git thì cảnh báo rõ. */
+/** Sau khi lưu/xoá thành công không hiện thông báo — chỉ tải lại màn hình lọc với dữ liệu mới. Chỉ cảnh báo khi server chưa cấu hình Git (dữ liệu chưa được commit). */
 function saved(text, r){
-  if(r && r.commitUrl) say('ok', esc(text)+' Đã <b>commit lên Git</b>: <a href="'+esc(r.commitUrl)+'" target="_blank" rel="noopener">xem commit</a>.');
-  else if(!githubBacked) say('warn', esc(text)+' <b>Chưa commit lên Git</b> vì server chưa cấu hình <code>GITHUB_TOKEN</code> / <code>GITHUB_REPO</code> — dữ liệu mới chỉ lưu trên server và có thể mất khi deploy lại.');
-  else say('ok', esc(text));
+  if(r && r.commitUrl || githubBacked) say('','');
+  else say('warn', '<b>Chưa commit lên Git</b> vì server chưa cấu hình <code>GITHUB_TOKEN</code> / <code>GITHUB_REPO</code> — dữ liệu mới chỉ lưu trên server và có thể mất khi deploy lại.');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 /* ---------- soạn thảo (dùng chung cho Thêm mới và Sửa) ---------- */
@@ -348,7 +351,22 @@ async function copyEnv(e, mode, gi){
     try{ await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([envHtml(e, gi)],{type:'text/html'}), 'text/plain': new Blob([envTsv(e, gi)],{type:'text/plain'}) })]); ok = true; }
     catch(_){ ok = await copyText(envTsv(e, gi)); }
   } else ok = await copyText(envText(e, gi));
-  say(ok?'ok':'err', ok ? 'Đã copy '+what+(mode==='table'?' dạng bảng có kẻ viền — dán thẳng vào Excel / Word.':' dạng văn bản — dán vào Zalo / chat.') : 'Trình duyệt chặn copy.');
+  say(ok?'ok':'err', ok ? 'Đã copy '+what+(mode==='table'?' dạng bảng có kẻ viền — dán vào Excel / Word. (Zalo / chat chỉ nhận chữ nên sẽ ra dạng tab; muốn đúng bảng hãy dùng 🖼 Copy ảnh.)':' dạng văn bản — dán vào Zalo / chat.') : 'Trình duyệt chặn copy.');
+}
+/** Ảnh PNG của bảng có kẻ viền (giống nút Copy bảng) — dán được vào mọi nơi, kể cả Zalo / chat không nhận bảng HTML. Không copy được vào clipboard thì tải file PNG. */
+async function copyImage(e, gi){
+  const what = gi==null ? '<b>'+esc(e.name)+'</b>' : 'nhóm <b>'+esc(e.rows[gi].key)+'</b> của '+esc(e.name);
+  const box = document.createElement('div'); box.style.cssText = 'position:fixed;left:-99999px;top:0;background:#fff;padding:14px;width:fit-content';
+  box.innerHTML = (gi==null ? '<div style="font:bold 12pt Arial;color:#0F2B66;margin-bottom:8px">'+esc(pLabel(e.project)+' — '+e.name+' ('+e.kind+')')+'</div>' : '')+envHtml(e, gi);
+  document.body.appendChild(box);
+  try{
+    if(document.fonts && document.fonts.ready) await document.fonts.ready;
+    const canvas = await html2canvas(box, { scale:2, backgroundColor:'#ffffff', useCORS:true });
+    const blob = await new Promise(r=>canvas.toBlob(r,'image/png'));
+    try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); say('ok','Đã copy '+what+' <b>dạng ảnh</b> — dán (Ctrl/Cmd + V) vào Zalo, chat, Word hoặc PowerPoint.'); }
+    catch(_){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'MoiTruong_'+(e.name||'bang').replace(/[^\w\-]+/g,'_')+'.png'; document.body.appendChild(a); a.click(); a.remove(); say('info','Trình duyệt không cho copy ảnh nên đã <b>tải file PNG</b> về máy — kéo file vào Zalo / chat.'); }
+  }catch(err){ say('err','Không tạo được ảnh: '+esc(err.message)); }
+  finally{ box.remove(); }
 }
 function sheetName(e, used){
   let n = (pLabel(e.project)+' - '+e.name).replace(/[\\\/?*\[\]:]/g,' ').replace(/\s+/g,' ').trim().slice(0,31).trim() || 'Sheet';
