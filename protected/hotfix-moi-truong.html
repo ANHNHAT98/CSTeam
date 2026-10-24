@@ -47,15 +47,19 @@
   table{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff;}
   th{background:#1F4E79;color:#fff;text-align:left;padding:8px 12px;font-weight:600;}
   td{padding:7px 12px;border-bottom:1px solid var(--grid-line);vertical-align:top;word-break:break-word;}
-  td.k{width:26%;font-weight:500;} td.v{font-family:'IBM Plex Mono',monospace;font-size:12.5px;white-space:pre-wrap;width:32%;}
-  td.lk{font-size:12.5px;line-height:1.5;} td.lk a,td.v a{color:var(--blueprint);} td.t{width:84px;text-align:right;white-space:nowrap;}
+  td.k{width:24%;font-weight:600;} td.v{font-family:'IBM Plex Mono',monospace;font-size:13.5px;white-space:pre-wrap;width:34%;}
+  td.lk{font-size:13.5px;line-height:1.55;} td.lk a,td.v a{color:var(--blueprint);} td.t{width:84px;text-align:right;white-space:nowrap;}
   tr.g td{background:#D0D8E8;font-weight:700;color:#0F2B66;border-bottom:1px solid #fff;}
   tr.i td.k{padding-left:26px;}
   .empty{color:var(--muted);padding:34px 0;text-align:center;font-size:14px;line-height:1.7;}
   .hint{color:var(--muted);font-size:12.5px;line-height:1.6;}
   table.ed td{padding:4px 6px;}
   table.ed input[type=text],table.ed select,table.ed textarea{width:100%;font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--grid-line-strong);border-radius:6px;background:#fff;color:var(--ink);}
-  table.ed textarea{resize:vertical;min-height:34px;}
+  table.ed textarea{resize:vertical;min-height:56px;line-height:1.45;overflow:hidden;}
+  table.ed{table-layout:fixed;} table.ed select{padding:6px 4px;} table.ed td{padding:5px 7px;vertical-align:top;} table.ed input[type=text],table.ed select{height:40px;}
+  table.ed tr.i input[data-f=key]{font-weight:600;}
+  table.ed textarea,table.ed input[type=text],table.ed select{font-size:14px !important;}
+  table.ed textarea[data-f=value]{font-family:'IBM Plex Mono',monospace;}
   table.ed tr.g input{font-weight:700;background:#EDF1F8;}
   table.ed td.c{white-space:nowrap;text-align:center;}
   .paste{margin-top:10px;display:none;border:1px dashed var(--grid-line-strong);border-radius:8px;padding:12px;background:#F8FAFC;} .paste.on{display:block;}
@@ -165,7 +169,7 @@ function render(){
   const e = envs.find(x=>x.id===sel) || envs[0]; sel = e.id;
   const tabs = '<div class="tabs">'+envs.map(x=>'<div class="tab'+(x.id===e.id?' on':'')+'" data-tab="'+esc(x.id)+'">'+(p?'':'<small>'+esc(pLabel(x.project))+' ·</small>')+'<span>'+esc(x.name)+'</span><span class="badge '+esc(x.kind)+'">'+esc(x.kind)+'</span></div>').join('')+'</div>';
   const body = e.rows.map((r,i)=>{
-    if(r.type==='group') return '<tr class="g"><td colspan="4">'+esc(r.key)+'</td></tr>';
+    if(r.type==='group') return '<tr class="g"><td colspan="2">'+esc(r.key)+'</td><td colspan="2" style="text-align:right;white-space:nowrap"><button type="button" class="sm" data-gt="'+i+'" title="Copy văn bản của nhóm này">📋 Văn bản</button> <button type="button" class="sm" data-gb="'+i+'" title="Copy bảng của nhóm này">📋 Bảng</button></td></tr>';
     const v = /^https?:\/\//i.test(r.value) ? '<a href="'+esc(r.value)+'" target="_blank" rel="noopener">'+esc(r.value)+'</a>' : esc(r.value);
     return '<tr class="i"><td class="k">'+esc(r.key)+'</td><td class="v">'+v+'</td><td class="lk">'+linkHtml(r.link)+'</td><td class="t">'+(r.value?'<button type="button" class="sm" data-cp="'+i+'" title="Copy nội dung">📋</button> ':'')+(r.link?'<button type="button" class="sm" data-cpl="'+i+'" title="Copy link / đính kèm">🔗</button>':'')+'</td></tr>';
   }).join('');
@@ -177,6 +181,8 @@ function render(){
   box.querySelectorAll('[data-cp]').forEach(b=>b.onclick=async()=>{ const r = e.rows[Number(b.dataset.cp)]; const ok = await copyText(r.value); say(ok?'ok':'err', ok?'Đã copy <b>'+esc(r.key)+'</b>.':'Trình duyệt chặn copy.'); });
   box.querySelectorAll('[data-cpl]').forEach(b=>b.onclick=async()=>{ const r = e.rows[Number(b.dataset.cpl)]; const ok = await copyText(r.link); say(ok?'ok':'err', ok?'Đã copy link / đính kèm của <b>'+esc(r.key)+'</b>.':'Trình duyệt chặn copy.'); });
   $('bCopyT').onclick = () => copyEnv(e, 'table'); $('bCopyX').onclick = () => copyEnv(e, 'text');
+  box.querySelectorAll('[data-gt]').forEach(b=>b.onclick=()=>copyEnv(e, 'text', Number(b.dataset.gt)));
+  box.querySelectorAll('[data-gb]').forEach(b=>b.onclick=()=>copyEnv(e, 'table', Number(b.dataset.gb)));
   $('bXls').onclick = () => exportExcel([e]);
   $('bEdit').onclick = () => { draft = clone(e); pending = null; say('',''); render(); };
   $('bDup').onclick = () => { draft = clone(e); delete draft.id; draft.name = e.name + ' (bản sao)'; pending = null; say('info','Đang tạo bản sao — chỉnh rồi bấm <b>Lưu</b>.'); render(); };
@@ -201,25 +207,27 @@ function projField(d){
 let syncDraft = () => {};
 function renderEditor(){
   const d = draft; const box = $('detail');
-  const rows = d.rows.map((r,i)=>'<tr class="'+(r.type==='group'?'g':'i')+'" data-i="'+i+'"><td class="c" style="width:74px"><button type="button" class="sm" data-up="'+i+'" title="Lên">▲</button><button type="button" class="sm" data-dn="'+i+'" title="Xuống">▼</button></td>'
-    +'<td style="width:92px"><select data-f="type"><option value="item"'+(r.type==='item'?' selected':'')+'>Mục</option><option value="group"'+(r.type==='group'?' selected':'')+'>Nhóm</option></select></td>'
+  const rows = d.rows.map((r,i)=>'<tr class="'+(r.type==='group'?'g':'i')+'" data-i="'+i+'"><td class="c" style="width:68px;padding:5px 2px"><button type="button" class="sm" style="padding:4px 6px" data-up="'+i+'" title="Lên">▲</button><button type="button" class="sm" style="padding:4px 6px" data-dn="'+i+'" title="Xuống">▼</button></td>'
+    +'<td style="width:84px"><select data-f="type"><option value="item"'+(r.type==='item'?' selected':'')+'>Mục</option><option value="group"'+(r.type==='group'?' selected':'')+'>Nhóm</option></select></td>'
     +'<td><input type="text" data-f="key" value="'+esc(r.key)+'" placeholder="'+(r.type==='group'?'Tên nhóm (vd: Database)':'Tiêu đề (vd: Server, API Ecom)')+'"></td>'
     +(r.type==='group'
       ? '<td colspan="2" style="text-align:right"><button type="button" class="sm" data-addin="'+i+'" title="Thêm 1 mục vào cuối nhóm này">＋ Thêm mục vào nhóm</button> <button type="button" class="sm" data-addapi="'+i+'" title="Thêm dòng API vào cuối nhóm này">＋ Link API</button></td>'
       : '<td><textarea data-f="value" rows="1" placeholder="Nội dung">'+esc(r.value)+'</textarea></td><td><textarea data-f="link" rows="1" placeholder="Link hoặc thông tin đính kèm">'+esc(r.link||'')+'</textarea></td>')
-    +'<td class="c" style="width:44px"><button type="button" class="danger sm" data-rm="'+i+'" title="Xoá dòng">✕</button></td></tr>').join('');
+    +'<td class="c" style="width:46px"><button type="button" class="danger sm" data-rm="'+i+'" title="Xoá dòng">✕</button></td></tr>').join('');
   box.innerHTML = '<div class="head"><h2>'+(d.id?'Sửa môi trường':'Thêm môi trường mới')+'</h2><div class="acts"><button type="button" class="primary" id="eSave">💾 Lưu</button><button type="button" id="eCancel">Hủy</button></div></div>'
     +'<div class="row2">'+projField(d)
     +'<label class="field">Tên môi trường<input type="text" id="eName" value="'+esc(d.name)+'" placeholder="vd: UAT DemoPharma"></label>'
     +'<label class="field">Loại<select id="eKind">'+kinds.map(k=>'<option'+(k===d.kind?' selected':'')+'>'+esc(k)+'</option>').join('')+'</select></label></div>'
     +'<label class="field" style="margin-bottom:12px">Ghi chú (không bắt buộc)<input type="text" id="eNote" value="'+esc(d.note)+'" style="width:100%"></label>'
-    +'<table class="ed"><thead><tr><th></th><th>Loại dòng</th><th>Tiêu đề</th><th>Nội dung</th><th>Link / Đính kèm</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<table class="ed"><thead><tr><th style="width:68px"></th><th style="width:84px">Loại dòng</th><th style="width:20%">Tiêu đề</th><th>Nội dung</th><th>Link / Đính kèm</th><th style="width:46px"></th></tr></thead><tbody>'+rows+'</tbody></table>'
     +'<div class="acts" style="margin-top:10px"><button type="button" class="sm" id="eAddItem" title="Thêm 1 mục ở cuối cùng (muốn thêm vào nhóm nào thì bấm nút trên dòng nhóm đó)">＋ Thêm mục (cuối)</button><button type="button" class="sm" id="eAddApi" title="Thêm dòng API ở cuối cùng">＋ Thêm link API (cuối)</button><button type="button" class="sm" id="eAddGroup">＋ Thêm nhóm</button><button type="button" class="danger sm" id="eClear">Xoá toàn bộ</button><button type="button" class="sm export" id="eImport">📥 Import file Excel</button><button type="button" class="sm" id="eTemplate">⬇ Template Excel</button><input type="file" id="eFile" accept=".xlsx,.xls,.csv" style="display:none"></div>'
     +'<div class="paste" id="pasteBox"><div class="hint" id="pasteHint" style="margin-bottom:6px">Xem trước các dòng đọc được từ file Excel. Bấm <b>Thay toàn bộ các dòng</b> hoặc <b>Thêm vào cuối</b> để áp dụng vào form.</div><select id="sheetPick" style="display:none;margin-bottom:8px;padding:6px 10px;border-radius:8px;border:1px solid var(--grid-line-strong)"></select><textarea id="pasteTxt" readonly></textarea><div class="acts" style="margin-top:8px"><button type="button" class="primary sm" id="pReplace">Thay toàn bộ các dòng</button><button type="button" class="sm" id="pAppend">Thêm vào cuối</button><button type="button" class="sm" id="pClose">Đóng</button></div></div>';
   syncDraft = () => { d.project = LOCK ? LOCK : ($('eProjSel').value==='__other__' ? $('eProject').value.trim() : $('eProjSel').value); d.name = $('eName').value; d.kind = $('eKind').value; d.note = $('eNote').value; };
+  const autoGrow = el => { el.style.height = 'auto'; el.style.height = Math.max(56, el.scrollHeight + 2) + 'px'; };
   box.querySelectorAll('tr[data-i]').forEach(tr=>{ const i = Number(tr.dataset.i);
     tr.querySelectorAll('[data-f]').forEach(inp=>{ const f = inp.dataset.f;
-      inp.oninput = () => { d.rows[i][f] = inp.value; };
+      if(inp.tagName==='TEXTAREA') autoGrow(inp);
+      inp.oninput = () => { d.rows[i][f] = inp.value; if(inp.tagName==='TEXTAREA') autoGrow(inp); };
       if(f==='type') inp.onchange = () => { inp.oninput(); syncDraft(); renderEditor(); };
     });
   });
@@ -250,6 +258,7 @@ function renderEditor(){
   $('eCancel').onclick = () => { draft = null; pending = null; say('',''); render(); };
   $('eSave').onclick = saveDraft;
   if(!d.name) $('eName').focus();
+  requestAnimationFrame(()=>box.querySelectorAll('table.ed textarea').forEach(autoGrow));
 }
 
 /* ---------- đọc file Excel import thành các dòng ---------- */
@@ -314,26 +323,32 @@ async function copyText(text){
   try{ await navigator.clipboard.writeText(text); return true; }
   catch(e){ const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(ta); ta.select(); let ok = false; try{ ok = document.execCommand('copy'); }catch(_){} ta.remove(); return ok; }
 }
-function envText(e){
-  const lines = [pLabel(e.project)+' — '+e.name+' ('+e.kind+')'];
-  e.rows.forEach(r=>{ if(r.type==='group'){ lines.push('', '['+r.key+']'); } else if(r.key || r.value || r.link){ lines.push(r.key+': '+[r.value, r.link ? 'Link: '+String(r.link).replace(/\s*\n+\s*/g,' ; ') : ''].filter(Boolean).join(' | ')); } });
+/** Các dòng của 1 nhóm (từ dòng nhóm đến trước nhóm kế tiếp); gi = null → cả môi trường. */
+const rowsOf = (e, gi) => { if(gi==null) return e.rows; let j = gi+1; while(j<e.rows.length && e.rows[j].type!=='group') j++; return e.rows.slice(gi, j); };
+function envText(e, gi){
+  const rows = rowsOf(e, gi); const lines = gi==null ? [pLabel(e.project)+' — '+e.name+' ('+e.kind+')'] : [];
+  rows.forEach(r=>{ if(r.type==='group'){ if(lines.length) lines.push(''); lines.push('['+r.key+']'); } else if(r.key || r.value || r.link){ lines.push(r.key+': '+[r.value, r.link ? 'Link: '+String(r.link).replace(/\s*\n+\s*/g,' ; ') : ''].filter(Boolean).join(' | ')); } });
   return lines.join('\n');
 }
 const flat = t => String(t||'').replace(/[\t\r\n]+/g,' ');
-function envTsv(e){ return ['Tiêu đề\tNội dung\tLink / Đính kèm'].concat(e.rows.map(r=>r.type==='group' ? r.key+'\t\t' : r.key+'\t'+flat(r.value)+'\t'+flat(r.link))).join('\n'); }
-function envHtml(e){
-  const cell = 'font-family:Arial;font-size:11pt;padding:5px 8px;border:1px solid #BFC9D6';
-  const th = t => '<th style="'+cell+';background:#1F4E79;color:#fff;text-align:left">'+t+'</th>';
-  return '<table style="border-collapse:collapse"><tr>'+th('Tiêu đề')+th('Nội dung')+th('Link / Đính kèm')+'</tr>'
-    + e.rows.map(r=>r.type==='group' ? '<tr><td colspan="3" style="'+cell+';background:#D0D8E8;font-weight:bold">'+esc(r.key)+'</td></tr>' : '<tr><td style="'+cell+'">'+esc(r.key)+'</td><td style="'+cell+'">'+esc(r.value)+'</td><td style="'+cell+'">'+linkHtml(r.link)+'</td></tr>').join('')+'</table>';
+function envTsv(e, gi){ return ['Tiêu đề\tNội dung\tLink / Đính kèm'].concat(rowsOf(e, gi).map(r=>r.type==='group' ? r.key+'\t\t' : r.key+'\t'+flat(r.value)+'\t'+flat(r.link))).join('\n'); }
+/** HTML dạng bảng có kẻ viền + màu như giao diện (gắn border/bgcolor/width trực tiếp để Word, Excel, PowerPoint, Zalo giữ đúng khi dán). */
+function envHtml(e, gi){
+  const W = [190, 330, 330], B = '#9FB0C4';
+  const cell = 'font-family:Arial;font-size:11pt;padding:6px 9px;border:1px solid '+B+';vertical-align:top';
+  const th = (t,w) => '<th width="'+w+'" bgcolor="#1F4E79" align="left" style="'+cell+';width:'+w+'px;background:#1F4E79;color:#FFFFFF;text-align:left"><font color="#FFFFFF"><b>'+t+'</b></font></th>';
+  const rows = rowsOf(e, gi).map(r=>r.type==='group'
+    ? '<tr><td colspan="3" bgcolor="#D0D8E8" style="'+cell+';background:#D0D8E8;color:#0F2B66;font-weight:bold"><b>'+esc(r.key)+'</b></td></tr>'
+    : '<tr><td width="'+W[0]+'" style="'+cell+';width:'+W[0]+'px;padding-left:22px;font-weight:bold"><b>'+esc(r.key)+'</b></td><td width="'+W[1]+'" style="'+cell+';width:'+W[1]+'px">'+esc(r.value).replace(/\n/g,'<br>')+'</td><td width="'+W[2]+'" style="'+cell+';width:'+W[2]+'px">'+linkHtml(r.link)+'</td></tr>').join('');
+  return '<table border="1" cellspacing="0" cellpadding="6" width="'+(W[0]+W[1]+W[2])+'" style="border-collapse:collapse;border:1px solid '+B+';font-family:Arial;font-size:11pt"><tr>'+th('Tiêu đề',W[0])+th('Nội dung',W[1])+th('Link / Đính kèm',W[2])+'</tr>'+rows+'</table>';
 }
-async function copyEnv(e, mode){
-  let ok;
+async function copyEnv(e, mode, gi){
+  let ok; const what = gi==null ? '<b>'+esc(e.name)+'</b>' : 'nhóm <b>'+esc(e.rows[gi].key)+'</b> của '+esc(e.name);
   if(mode==='table'){
-    try{ await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([envHtml(e)],{type:'text/html'}), 'text/plain': new Blob([envTsv(e)],{type:'text/plain'}) })]); ok = true; }
-    catch(_){ ok = await copyText(envTsv(e)); }
-  } else ok = await copyText(envText(e));
-  say(ok?'ok':'err', ok ? 'Đã copy <b>'+esc(e.name)+'</b> '+(mode==='table'?'dạng bảng — dán thẳng vào Excel / Word.':'dạng văn bản — dán vào Zalo / chat.') : 'Trình duyệt chặn copy.');
+    try{ await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([envHtml(e, gi)],{type:'text/html'}), 'text/plain': new Blob([envTsv(e, gi)],{type:'text/plain'}) })]); ok = true; }
+    catch(_){ ok = await copyText(envTsv(e, gi)); }
+  } else ok = await copyText(envText(e, gi));
+  say(ok?'ok':'err', ok ? 'Đã copy '+what+(mode==='table'?' dạng bảng có kẻ viền — dán thẳng vào Excel / Word.':' dạng văn bản — dán vào Zalo / chat.') : 'Trình duyệt chặn copy.');
 }
 function sheetName(e, used){
   let n = (pLabel(e.project)+' - '+e.name).replace(/[\\\/?*\[\]:]/g,' ').replace(/\s+/g,' ').trim().slice(0,31).trim() || 'Sheet';
