@@ -3,15 +3,21 @@
     "id": "scr_1792990782879_5boyb",
     "project": "MerapLion_eSales",
     "code": "IN10100",
-    "name": "Chuyển kho (Transfer)",
+    "name": "Nhập Kho",
     "module": "BO",
     "note": "",
     "tables": [
       {
         "name": "IN_Transfer",
         "role": "Bảng chính",
-        "desc": "Header phiếu chuyển kho (khoá: BatNbr, BranchID, TrnsfrDocNbr) — PROC: pcBatch, pcTrnsfrDoc, pdLotTrnsfer, pdTrnsfer, pgReceiptLoad, UpdateTransfer",
+        "desc": "Header phiếu (khoá: BatNbr, BranchID, TrnsfrDocNbr) — PROC: pcBatch, pcTrnsfrDoc, pdLotTrnsfer, pdTrnsfer, pgReceiptLoad, UpdateTransfer",
         "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      },
+      {
+        "name": "Batch",
+        "role": "Bảng chính",
+        "desc": "Lô giao dịch (khoá: BatNbr, BranchID, Module) — PROC: pcBatch",
+        "where": "BatNbr = 'xxx' AND BranchID = 'xxx'"
       },
       {
         "name": "IN_Trans",
@@ -32,39 +38,9 @@
         "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
       },
       {
-        "name": "Batch",
-        "role": "Bảng chính",
-        "desc": "Lô giao dịch (khoá: BatNbr, BranchID, Module) — PROC: pcBatch",
-        "where": "BatNbr = 'xxx' AND BranchID = 'xxx'"
-      },
-      {
-        "name": "IN_ItemSite",
-        "role": "Khác",
-        "desc": "Tồn kho theo từng kho (InvtID, SiteID) — PROC: pdImportInventory",
-        "where": "InvtID = 'xxx' AND SiteID = 'xxx'"
-      },
-      {
         "name": "IN_Inventory",
         "role": "Danh mục",
         "desc": "Danh mục sản phẩm — PROC: pcInvt, pcUnit, pdImportInventory, pdShelfLife, pdTrnsfer, pgReceiptLoad",
-        "where": "InvtID = 'xxx'"
-      },
-      {
-        "name": "IN_InvtCpny",
-        "role": "Danh mục",
-        "desc": "Sản phẩm theo công ty — PROC: pdImportInventory",
-        "where": "InvtID = 'xxx'"
-      },
-      {
-        "name": "IN_ProductDetail",
-        "role": "Danh mục",
-        "desc": "Chi tiết sản phẩm (ProDetailID, InvtID) — PROC: pcProductDetail",
-        "where": "InvtID = 'xxx'"
-      },
-      {
-        "name": "IN_UnitConversion",
-        "role": "Danh mục",
-        "desc": "Quy đổi đơn vị tính — PROC: pcUnit, pcUnitConversion",
         "where": "InvtID = 'xxx'"
       },
       {
@@ -77,24 +53,18 @@
         "name": "IN_SiteCpny",
         "role": "Danh mục",
         "desc": "Kho theo công ty — PROC: pcFromSite, pcSite",
-        "where": "SiteId = 'xxx'"
+        "where": "SiteId = 'xxx' AND CpnyID = 'xxx'"
       },
       {
-        "name": "IN_TagHeader",
+        "name": "IN_UnitConversion",
         "role": "Danh mục",
-        "desc": "Header Tag (TAGID, BranchID, SiteID) — PROC: pcSite",
-        "where": "BranchID = 'xxx' AND SiteID = 'xxx'"
-      },
-      {
-        "name": "IN_POSMHeader",
-        "role": "Danh mục",
-        "desc": "Danh mục POSM — PROC: pcPOSM",
-        "where": "PosmID = 'xxx'"
+        "desc": "Quy đổi đơn vị tính — PROC: pcUnit, pcUnitConversion",
+        "where": "InvtID = 'xxx'"
       },
       {
         "name": "SI_ReasonCode",
         "role": "Danh mục",
-        "desc": "Lý do (mã lý do huỷ/điều chỉnh) — PROC: pcReasonCancel, pcReasonCode",
+        "desc": "Lý do (mã lý do) — PROC: pcReasonCancel, pcReasonCode",
         "where": "ReasonID = 'xxx'"
       },
       {
@@ -104,19 +74,643 @@
         "where": "Code = 'xxx'"
       },
       {
-        "name": "IN_Setup",
-        "role": "Cấu hình",
-        "desc": "Thiết lập IN theo chi nhánh (đánh số chứng từ) — PROC: pdINNumbering",
-        "where": "BranchID = 'xxx'"
+        "name": "IN_InvtCpny",
+        "role": "Danh mục",
+        "desc": "Sản phẩm theo công ty — PROC: pdImportInventory",
+        "where": "InvtID = 'xxx' AND CpnyID = 'xxx'"
+      },
+      {
+        "name": "IN_POSMHeader",
+        "role": "Danh mục",
+        "desc": "Danh mục POSM — PROC: pcPOSM",
+        "where": "PosmID = 'xxx'"
+      },
+      {
+        "name": "IN_ProductDetail",
+        "role": "Danh mục",
+        "desc": "Chi tiết sản phẩm (ProDetailID, InvtID) — PROC: pcProductDetail",
+        "where": "InvtID = 'xxx'"
+      },
+      {
+        "name": "IN_TagHeader",
+        "role": "Danh mục",
+        "desc": "Header Tag (TAGID, BranchID, SiteID) — PROC: pcSite",
+        "where": "TAGID = 'xxx' AND BranchID = 'xxx' AND SiteID = 'xxx'"
       },
       {
         "name": "Users",
         "role": "Danh mục",
         "desc": "Người dùng — PROC: pcSlsDelivery",
         "where": "UserName = 'xxx'"
+      },
+      {
+        "name": "IN_Setup",
+        "role": "Cấu hình",
+        "desc": "Thiết lập IN theo chi nhánh (đánh số chứng từ) — PROC: pdINNumbering",
+        "where": "BranchID = 'xxx' AND SetupID = 'xxx'"
+      },
+      {
+        "name": "IN_ItemSite",
+        "role": "Khác",
+        "desc": "Tồn kho theo từng kho (InvtID, SiteID) — PROC: pdImportInventory",
+        "where": "InvtID = 'xxx' AND SiteID = 'xxx'"
       }
     ],
-    "updatedAt": "2026-10-26T04:59:42.542Z",
+    "updatedAt": "2026-10-26T07:22:52.674Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1792999373015_wwsjp",
+    "project": "MerapLion_eSales",
+    "code": "IN10200",
+    "name": "Xuất Kho",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "Batch",
+        "role": "Bảng chính",
+        "desc": "Lô giao dịch (khoá: BatNbr, BranchID, Module) — PROC: pcBatch",
+        "where": "BatNbr = 'xxx' AND BranchID = 'xxx'"
+      },
+      {
+        "name": "IN_Trans",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết dòng hàng giao dịch kho (khoá: BatNbr, BranchID, LineRef, RefNbr) — PROC: pgIssueLoad",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      },
+      {
+        "name": "IN_Inventory",
+        "role": "Danh mục",
+        "desc": "Danh mục sản phẩm — PROC: pcInvt, pcUnit, pdExport, pgIssueLoad",
+        "where": "InvtID = 'xxx'"
+      },
+      {
+        "name": "IN_InvtCpny",
+        "role": "Danh mục",
+        "desc": "Sản phẩm theo công ty — PROC: pcInvt, pdExport",
+        "where": "InvtID = 'xxx' AND CpnyID = 'xxx'"
+      },
+      {
+        "name": "IN_UnitConversion",
+        "role": "Danh mục",
+        "desc": "Quy đổi đơn vị tính — PROC: pcUnit, pcUnitConversion",
+        "where": "InvtID = 'xxx'"
+      },
+      {
+        "name": "SI_ReasonCode",
+        "role": "Danh mục",
+        "desc": "Lý do (mã lý do) — PROC: pcReasonCancel, pcReasonCode",
+        "where": "ReasonID = 'xxx'"
+      },
+      {
+        "name": "SI_ReasonType",
+        "role": "Danh mục",
+        "desc": "Loại lý do — PROC: pcReasonCancel, pcReasonCode",
+        "where": "Code = 'xxx'"
+      },
+      {
+        "name": "IN_POSMHeader",
+        "role": "Danh mục",
+        "desc": "Danh mục POSM — PROC: pcPOSM",
+        "where": "PosmID = 'xxx'"
+      },
+      {
+        "name": "IN_Site",
+        "role": "Danh mục",
+        "desc": "Danh mục kho — PROC: pcSite",
+        "where": "SiteId = 'xxx'"
+      },
+      {
+        "name": "IN_SiteCpny",
+        "role": "Danh mục",
+        "desc": "Kho theo công ty — PROC: pcSite",
+        "where": "SiteId = 'xxx' AND CpnyID = 'xxx'"
+      },
+      {
+        "name": "IN_Setup",
+        "role": "Cấu hình",
+        "desc": "Thiết lập IN theo chi nhánh (đánh số chứng từ) — PROC: pdINNumbering",
+        "where": "BranchID = 'xxx' AND SetupID = 'xxx'"
+      },
+      {
+        "name": "IN_ItemSite",
+        "role": "Khác",
+        "desc": "Tồn kho theo từng kho (InvtID, SiteID) — PROC: pdExport",
+        "where": "InvtID = 'xxx' AND SiteID = 'xxx'"
+      }
+    ],
+    "updatedAt": "2026-10-26T07:22:52.674Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1792999373015_ugbiv",
+    "project": "MerapLion_eSales",
+    "code": "IN10300",
+    "name": "Chuyển Kho",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "Batch",
+        "role": "Bảng chính",
+        "desc": "Lô giao dịch (khoá: BatNbr, BranchID, Module) — PROC: pcBatch, pcToReceiptID, pgFirstLoad, ppBatchTemp",
+        "where": "BatNbr = 'xxx' AND BranchID = 'xxx'"
+      },
+      {
+        "name": "IN_Transfer",
+        "role": "Bảng chính",
+        "desc": "Header phiếu (khoá: BatNbr, BranchID, TrnsfrDocNbr) — PROC: pcBatch, pcToReceiptID, pgFirstLoad, ppBatchTemp",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      },
+      {
+        "name": "IN_Trans",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết dòng hàng giao dịch kho (khoá: BatNbr, BranchID, LineRef, RefNbr) — PROC: pcBatch, pcToReceiptID, pdCheckQtyInvtInGrd, pdGetcheckQtyInvt, pdGetLineRef, pdGetReceiptInfoTrans, pgFirstLoad, pgTransferLoad, ppBatchTemp",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      },
+      {
+        "name": "IN_Inventory",
+        "role": "Danh mục",
+        "desc": "Danh mục sản phẩm — PROC: pcInvt, pcUnit, pdGetDataItemTrans, pdGetReceiptInfoTrans, pdUOM, pgIN_ItemSite, pgLotTransVanSale, pgTransferLoad",
+        "where": "InvtID = 'xxx'"
+      },
+      {
+        "name": "IN_Site",
+        "role": "Danh mục",
+        "desc": "Danh mục kho — PROC: pcFromSiteFirst, pcSite, pcToSite, pcToSiteFirst, pdGetcheckSite",
+        "where": "SiteId = 'xxx'"
+      },
+      {
+        "name": "IN_SiteCpny",
+        "role": "Danh mục",
+        "desc": "Kho theo công ty — PROC: pcFromSiteFirst, pcSite, pcToSite, pcToSiteFirst, pdGetcheckSite",
+        "where": "SiteId = 'xxx' AND CpnyID = 'xxx'"
+      },
+      {
+        "name": "IN_UnitConversion",
+        "role": "Danh mục",
+        "desc": "Quy đổi đơn vị tính — PROC: pcUnit, pcUnitConversion, pdCheckQtyInvtInGrd, pdGetDataItemTrans",
+        "where": "InvtID = 'xxx'"
+      },
+      {
+        "name": "SYS_Language",
+        "role": "Danh mục",
+        "desc": "Ngôn ngữ / chuỗi hiển thị theo mã — PROC: pcHandle, pcStatus, pcStatusFirst",
+        "where": "Code = 'xxx'"
+      },
+      {
+        "name": "SI_ReasonCode",
+        "role": "Danh mục",
+        "desc": "Lý do (mã lý do) — PROC: pcReasonCode, pgFirstLoad",
+        "where": "ReasonID = 'xxx'"
+      },
+      {
+        "name": "SI_ShipVia",
+        "role": "Danh mục",
+        "desc": "Phương thức vận chuyển — PROC: pcShipVia, pdGetDataSite",
+        "where": "ShipViaID = 'xxx'"
+      },
+      {
+        "name": "SI_ReasonType",
+        "role": "Danh mục",
+        "desc": "Loại lý do — PROC: pcReasonCode",
+        "where": "Code = 'xxx'"
+      },
+      {
+        "name": "Users",
+        "role": "Danh mục",
+        "desc": "Người dùng — PROC: pcReasonCode",
+        "where": "UserName = 'xxx'"
+      },
+      {
+        "name": "OM_UserDefault",
+        "role": "Cấu hình",
+        "desc": "Mặc định theo người dùng (UserID, DfltBranchID) — PROC: pdCheckQtyInvtInGrd, pdGetcheckSite, pdGetDataSite, pdOM_UserDefault",
+        "where": "UserID = 'xxx' AND DfltBranchID = 'xxx'"
+      },
+      {
+        "name": "IN_MaxTranfers",
+        "role": "Cấu hình",
+        "desc": "Giới hạn số lượng chuyển tối đa (BranchID, InvtID, PeriodID) — PROC: pdCheckQtyInvtInGrd",
+        "where": "BranchID = 'xxx' AND InvtID = 'xxx' AND PeriodID = 'xxx'"
+      },
+      {
+        "name": "IN_Setup",
+        "role": "Cấu hình",
+        "desc": "Thiết lập IN theo chi nhánh (đánh số chứng từ) — PROC: pdINNumbering",
+        "where": "BranchID = 'xxx' AND SetupID = 'xxx'"
+      },
+      {
+        "name": "IN_ItemSite",
+        "role": "Khác",
+        "desc": "Tồn kho theo từng kho (InvtID, SiteID) — PROC: pdCheckQty, pdGetDataItemTrans, pgIN_ItemSite",
+        "where": "InvtID = 'xxx' AND SiteID = 'xxx'"
+      },
+      {
+        "name": "IN_ItemLot",
+        "role": "Khác",
+        "desc": "Tồn kho theo lô (SiteID, InvtID, WhseLoc, LotSerNbr) — PROC: pgLotTransVanSale",
+        "where": "SiteID = 'xxx' AND InvtID = 'xxx'"
+      }
+    ],
+    "updatedAt": "2026-10-26T07:22:52.674Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1792999373015_rs237",
+    "project": "MerapLion_eSales",
+    "code": "IN10400",
+    "name": "Điều Chỉnh Kho",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "Batch",
+        "role": "Bảng chính",
+        "desc": "Lô giao dịch (khoá: BatNbr, BranchID, Module) — PROC: pcBatch, pcBatPO102, pcINAdjustmentBatch, pgDataPO102",
+        "where": "BatNbr = 'xxx' AND BranchID = 'xxx'"
+      },
+      {
+        "name": "IN_Trans",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết dòng hàng giao dịch kho (khoá: BatNbr, BranchID, LineRef, RefNbr) — PROC: pcBatch, pgAdjustmentLoad, pgDataPO102",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      },
+      {
+        "name": "IN_LotTrans",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết lô / số serial theo dòng — PROC: pgDataPO102, pgIN_LotTrans",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      },
+      {
+        "name": "IN_Inventory",
+        "role": "Danh mục",
+        "desc": "Danh mục sản phẩm — PROC: pcInventoryActiveByBranch, pcUnit, pdGetLot, pdImportInventory, pgAdjustmentLoad, pgDataPO102, pgIN_LotTrans",
+        "where": "InvtID = 'xxx'"
+      },
+      {
+        "name": "IN_InvtCpny",
+        "role": "Danh mục",
+        "desc": "Sản phẩm theo công ty — PROC: pcInventoryActiveByBranch, pdImportInventory",
+        "where": "InvtID = 'xxx' AND CpnyID = 'xxx'"
+      },
+      {
+        "name": "IN_UnitConversion",
+        "role": "Danh mục",
+        "desc": "Quy đổi đơn vị tính — PROC: pcUnit, pcUnitConversion",
+        "where": "InvtID = 'xxx'"
+      },
+      {
+        "name": "SI_Cycle",
+        "role": "Danh mục",
+        "desc": "Kỳ / chu kỳ kế toán (YearNbr, CycleNbr, QuarterNbr) — PROC: pcPerPost, pdConfig",
+        "where": "YearNbr = 'xxx' AND CycleNbr = 'xxx' AND QuarterNbr = 'xxx'"
+      },
+      {
+        "name": "AP_Vendor",
+        "role": "Danh mục",
+        "desc": "Nhà cung cấp — PROC: pcVender",
+        "where": "VendID = 'xxx'"
+      },
+      {
+        "name": "IN_Site",
+        "role": "Danh mục",
+        "desc": "Danh mục kho — PROC: pcSiteAll",
+        "where": "SiteId = 'xxx'"
+      },
+      {
+        "name": "IN_SiteCpny",
+        "role": "Danh mục",
+        "desc": "Kho theo công ty — PROC: pcSiteAll",
+        "where": "SiteId = 'xxx' AND CpnyID = 'xxx'"
+      },
+      {
+        "name": "IN_SiteLocation",
+        "role": "Danh mục",
+        "desc": "Vị trí trong kho (SiteID, WhseLoc) — PROC: pcWhseLoc",
+        "where": "SiteID = 'xxx' AND WhseLoc = 'xxx'"
+      },
+      {
+        "name": "IN_TagHeader",
+        "role": "Danh mục",
+        "desc": "Header Tag (TAGID, BranchID, SiteID) — PROC: pcSiteAll",
+        "where": "TAGID = 'xxx' AND BranchID = 'xxx' AND SiteID = 'xxx'"
+      },
+      {
+        "name": "SI_ReasonCode",
+        "role": "Danh mục",
+        "desc": "Lý do (mã lý do) — PROC: pcReasonCode",
+        "where": "ReasonID = 'xxx'"
+      },
+      {
+        "name": "SI_ReasonType",
+        "role": "Danh mục",
+        "desc": "Loại lý do — PROC: pcReasonCode",
+        "where": "Code = 'xxx'"
+      },
+      {
+        "name": "IN_Setup",
+        "role": "Cấu hình",
+        "desc": "Thiết lập IN theo chi nhánh (đánh số chứng từ) — PROC: pdINNumbering",
+        "where": "BranchID = 'xxx' AND SetupID = 'xxx'"
+      },
+      {
+        "name": "OM_UserDefault",
+        "role": "Cấu hình",
+        "desc": "Mặc định theo người dùng (UserID, DfltBranchID) — PROC: pdConfig",
+        "where": "UserID = 'xxx' AND DfltBranchID = 'xxx'"
+      },
+      {
+        "name": "IN_ItemLot",
+        "role": "Khác",
+        "desc": "Tồn kho theo lô (SiteID, InvtID, WhseLoc, LotSerNbr) — PROC: pdGetLot, pgDataPO102, pgIN_LotTrans",
+        "where": "SiteID = 'xxx' AND InvtID = 'xxx'"
+      },
+      {
+        "name": "IN_ItemSite",
+        "role": "Khác",
+        "desc": "Tồn kho theo từng kho (InvtID, SiteID) — PROC: GetItemSite, pdImportInventory, pgAdjustmentLoad",
+        "where": "InvtID = 'xxx' AND SiteID = 'xxx'"
+      },
+      {
+        "name": "IN_ItemLoc",
+        "role": "Khác",
+        "desc": "Tồn kho theo vị trí kho (InvtID, SiteID, WhseLoc) — PROC: GetItemSite, pgIN_LotTrans",
+        "where": "InvtID = 'xxx' AND SiteID = 'xxx' AND WhseLoc = 'xxx'"
+      },
+      {
+        "name": "PO_Invoice",
+        "role": "Khác",
+        "desc": "Hoá đơn mua hàng (dữ liệu nguồn từ PO) — PROC: pcInvcNbr, pgDataPO102",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      },
+      {
+        "name": "PO_LotTrans",
+        "role": "Khác",
+        "desc": "Lô nhận hàng PO (dữ liệu nguồn) — PROC: pgDataPO102",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      },
+      {
+        "name": "PO_Trans",
+        "role": "Khác",
+        "desc": "Chi tiết nhận hàng PO (dữ liệu nguồn) — PROC: pgDataPO102",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      }
+    ],
+    "updatedAt": "2026-10-26T07:22:52.674Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1792999373015_yhucf",
+    "project": "MerapLion_eSales",
+    "code": "IN11500",
+    "name": "Phiếu Xuất Kho Kiêm Vận Chuyển Nội Bộ",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "Batch",
+        "role": "Bảng chính",
+        "desc": "Lô giao dịch (khoá: BatNbr, BranchID, Module) — PROC: pcBatch, PCBATPO102, pdGetDataHeaderFooterXml, pgDataPO102",
+        "where": "BatNbr = 'xxx' AND BranchID = 'xxx'"
+      },
+      {
+        "name": "IN_Transfer",
+        "role": "Bảng chính",
+        "desc": "Header phiếu (khoá: BatNbr, BranchID, TrnsfrDocNbr) — PROC: pcBatch, pcHandle, pdGetDataHeaderFooterXml",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      },
+      {
+        "name": "IN_Trans",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết dòng hàng giao dịch kho (khoá: BatNbr, BranchID, LineRef, RefNbr) — PROC: pcBatch, pdCheckQtyInvtInGrd, pdGetcheckQtyInvt, pdGetDataBodyXml, pdGetLineRef, pgDataPO102, pgTransferLoad",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      },
+      {
+        "name": "IN_LotTrans",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết lô / số serial theo dòng — PROC: pdGetDataBodyXml, pgDataPO102",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      },
+      {
+        "name": "IN_Inventory",
+        "role": "Danh mục",
+        "desc": "Danh mục sản phẩm — PROC: pcInvt, pcUnit, pcUnitGrd, pdGetDataBodyXml, pdGetDataItemTrans, pdUOM, pgDataPO102, pgIN_ItemSite, pgLotTransVanSale, pgTransferLoad",
+        "where": "InvtID = 'xxx'"
+      },
+      {
+        "name": "IN_UnitConversion",
+        "role": "Danh mục",
+        "desc": "Quy đổi đơn vị tính — PROC: pcUnit, pcUnitConversion, pcUnitGrd, pdCheckQtyInvtInGrd, pdGetDataBodyXml, pdGetDataItemTrans",
+        "where": "InvtID = 'xxx'"
+      },
+      {
+        "name": "IN_Site",
+        "role": "Danh mục",
+        "desc": "Danh mục kho — PROC: pcSite, pcToSite, pdGetDataHeaderFooterXml, pgDataPO102",
+        "where": "SiteId = 'xxx'"
+      },
+      {
+        "name": "IN_SiteCpny",
+        "role": "Danh mục",
+        "desc": "Kho theo công ty — PROC: pcSite, pcToSite",
+        "where": "SiteId = 'xxx' AND CpnyID = 'xxx'"
+      },
+      {
+        "name": "SI_ReasonCode",
+        "role": "Danh mục",
+        "desc": "Lý do (mã lý do) — PROC: pcReasonCode, pdGetDataHeaderFooterXml",
+        "where": "ReasonID = 'xxx'"
+      },
+      {
+        "name": "SI_ReasonType",
+        "role": "Danh mục",
+        "desc": "Loại lý do — PROC: pcReasonCode, pdGetDataHeaderFooterXml",
+        "where": "Code = 'xxx'"
+      },
+      {
+        "name": "SI_ShipVia",
+        "role": "Danh mục",
+        "desc": "Phương thức vận chuyển — PROC: pcShipVia, pdGetDataSite",
+        "where": "ShipViaID = 'xxx'"
+      },
+      {
+        "name": "SYS_Company",
+        "role": "Danh mục",
+        "desc": "Công ty / chi nhánh — PROC: pdConfigInvc, pdGetDataHeaderFooterXml",
+        "where": "CpnyID = 'xxx'"
+      },
+      {
+        "name": "AP_Vendor",
+        "role": "Danh mục",
+        "desc": "Nhà cung cấp — PROC: pcVender",
+        "where": "VendID = 'xxx'"
+      },
+      {
+        "name": "AP_VendorMap",
+        "role": "Danh mục",
+        "desc": "Nhà cung cấp theo chi nhánh — PROC: pdGetDataHeaderFooterXml",
+        "where": "BranchID = 'xxx' AND VendID = 'xxx'"
+      },
+      {
+        "name": "AR_Customer",
+        "role": "Danh mục",
+        "desc": "Khách hàng (CustId, BranchID) — PROC: pdGetDataHeaderFooterXml",
+        "where": "CustId = 'xxx' AND BranchID = 'xxx'"
+      },
+      {
+        "name": "AR_Customer_InvoiceCustomer",
+        "role": "Danh mục",
+        "desc": "Khách hàng ↔ khách hàng xuất hoá đơn — PROC: pdGetDataHeaderFooterXml",
+        "where": "CustID = 'xxx' AND CustIDInvoice = 'xxx'"
+      },
+      {
+        "name": "AR_CustomerInvoice",
+        "role": "Danh mục",
+        "desc": "Khách hàng xuất hoá đơn — PROC: pdGetDataHeaderFooterXml",
+        "where": "CustIDInvoice = 'xxx'"
+      },
+      {
+        "name": "AR_MasterPayments",
+        "role": "Danh mục",
+        "desc": "Danh mục hình thức thanh toán — PROC: pdGetDataHeaderFooterXml",
+        "where": "Code = 'xxx'"
+      },
+      {
+        "name": "SI_Country",
+        "role": "Danh mục",
+        "desc": "Quốc gia — PROC: pdGetDataHeaderFooterXml",
+        "where": "CountryID = 'xxx'"
+      },
+      {
+        "name": "SI_District",
+        "role": "Danh mục",
+        "desc": "Quận / huyện — PROC: pdGetDataHeaderFooterXml",
+        "where": "Country = 'xxx' AND State = 'xxx' AND District = 'xxx'"
+      },
+      {
+        "name": "SI_State",
+        "role": "Danh mục",
+        "desc": "Tỉnh / thành — PROC: pdGetDataHeaderFooterXml",
+        "where": "Country = 'xxx' AND State = 'xxx'"
+      },
+      {
+        "name": "SI_Ward",
+        "role": "Danh mục",
+        "desc": "Phường / xã — PROC: pdGetDataHeaderFooterXml",
+        "where": "Country = 'xxx' AND State = 'xxx' AND District = 'xxx' AND Ward = 'xxx'"
+      },
+      {
+        "name": "OM_UserDefault",
+        "role": "Cấu hình",
+        "desc": "Mặc định theo người dùng (UserID, DfltBranchID) — PROC: pdCheckQtyInvtInGrd, pdGetDataSite, pdOM_UserDefault",
+        "where": "UserID = 'xxx' AND DfltBranchID = 'xxx'"
+      },
+      {
+        "name": "OM_APIViettelSecretKey",
+        "role": "Cấu hình",
+        "desc": "Khoá bí mật gọi API Viettel — thông tin nhạy cảm, cẩn thận khi SELECT / chia sẻ kết quả — PROC: pcBatch, ppInsertOM_APIViettelSecretKey",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      },
+      {
+        "name": "SYS_Configurations",
+        "role": "Cấu hình",
+        "desc": "Cấu hình hệ thống (Code) — PROC: pdConfigInvc, ppConfigCancelCallAPI",
+        "where": "Code = 'xxx'"
+      },
+      {
+        "name": "AR_Setup",
+        "role": "Cấu hình",
+        "desc": "Thiết lập AR theo chi nhánh — PROC: pdConfigInvc",
+        "where": "BranchID = 'xxx' AND SetupId = 'xxx'"
+      },
+      {
+        "name": "IN_MaxTranfers",
+        "role": "Cấu hình",
+        "desc": "Giới hạn số lượng chuyển tối đa (BranchID, InvtID, PeriodID) — PROC: pdCheckQtyInvtInGrd",
+        "where": "BranchID = 'xxx' AND InvtID = 'xxx' AND PeriodID = 'xxx'"
+      },
+      {
+        "name": "IN_Setup",
+        "role": "Cấu hình",
+        "desc": "Thiết lập IN theo chi nhánh (đánh số chứng từ) — PROC: pdINNumbering",
+        "where": "BranchID = 'xxx' AND SetupID = 'xxx'"
+      },
+      {
+        "name": "OM_CircularEffect",
+        "role": "Cấu hình",
+        "desc": "Thông tư hiệu lực theo chi nhánh — PROC: pdConfigInvc",
+        "where": "BranchID = 'xxx'"
+      },
+      {
+        "name": "SA_InvoiceNotation",
+        "role": "Cấu hình",
+        "desc": "Ký hiệu hoá đơn theo công ty — PROC: pdConfigInvc",
+        "where": "CpnyID = 'xxx'"
+      },
+      {
+        "name": "SA_InvoiceNotationDetail",
+        "role": "Cấu hình",
+        "desc": "Chi tiết ký hiệu hoá đơn — PROC: ppUpdDeliveryVoucherNbr",
+        "where": "Id = 'xxx' AND CpnyID = 'xxx'"
+      },
+      {
+        "name": "API_ViettelHistory",
+        "role": "Lịch sử / Log",
+        "desc": "Lịch sử gọi API Viettel — PROC: ppCheckCallAPIViettel",
+        "where": "ID = 'xxx'"
+      },
+      {
+        "name": "IN_ItemSite",
+        "role": "Khác",
+        "desc": "Tồn kho theo từng kho (InvtID, SiteID) — PROC: pdCheckQty, pdGetDataItemTrans, pgIN_ItemSite",
+        "where": "InvtID = 'xxx' AND SiteID = 'xxx'"
+      },
+      {
+        "name": "API_BeforeCallAPIViettel",
+        "role": "Khác",
+        "desc": "Dữ liệu chuẩn bị trước khi gọi API Viettel (BatNbr, BranchID) — PROC: pdGetDataHeaderFooterXml, ppInsertHistoryCallAPIViettel",
+        "where": "BatNbr = 'xxx' AND BranchID = 'xxx'"
+      },
+      {
+        "name": "IN_ItemLot",
+        "role": "Khác",
+        "desc": "Tồn kho theo lô (SiteID, InvtID, WhseLoc, LotSerNbr) — PROC: pgDataPO102, pgLotTransVanSale",
+        "where": "SiteID = 'xxx' AND InvtID = 'xxx'"
+      },
+      {
+        "name": "PO_Invoice",
+        "role": "Khác",
+        "desc": "Hoá đơn mua hàng (dữ liệu nguồn từ PO) — PROC: pcInvcNbr, pgDataPO102",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      },
+      {
+        "name": "SA_DeliveryVoucherNbr",
+        "role": "Khác",
+        "desc": "Số phiếu giao hàng / voucher theo chi nhánh — PROC: pdGetDataHeaderFooterXml, ppGetVoucherNbr",
+        "where": "BranchID = 'xxx' AND ID = 'xxx'"
+      },
+      {
+        "name": "PO_LotTrans",
+        "role": "Khác",
+        "desc": "Lô nhận hàng PO (dữ liệu nguồn) — PROC: pgDataPO102",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      },
+      {
+        "name": "PO_Receipt",
+        "role": "Khác",
+        "desc": "Phiếu nhận hàng PO (dữ liệu nguồn) — PROC: pgDataPO102",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      },
+      {
+        "name": "PO_Trans",
+        "role": "Khác",
+        "desc": "Chi tiết nhận hàng PO (dữ liệu nguồn) — PROC: pgDataPO102",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      }
+    ],
+    "updatedAt": "2026-10-26T07:22:52.674Z",
     "updatedBy": "admin"
   }
 ]
