@@ -65,7 +65,7 @@
       {
         "type": "item",
         "key": "Password",
-        "value": "",
+        "value": "Hqs0fteSal3sd0to2021",
         "link": "",
         "files": []
       },
@@ -95,7 +95,7 @@
       {
         "type": "item",
         "key": "ProjectCode",
-        "value": "",
+        "value": "MERAPDMS",
         "link": "",
         "files": []
       },
@@ -151,7 +151,7 @@
       {
         "type": "item",
         "key": "Hangfire",
-        "value": "",
+        "value": "https://dms.meraplion.com/MerapUAT_HangFire/hangfire",
         "link": "",
         "files": []
       },
@@ -170,7 +170,7 @@
         "files": []
       }
     ],
-    "updatedAt": "2026-10-24T07:49:21.675Z",
+    "updatedAt": "2026-10-26T04:13:10.238Z",
     "updatedBy": "admin"
   }
 ]
