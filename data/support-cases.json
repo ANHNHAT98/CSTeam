@@ -1,1 +1,35 @@
-[]
+[
+  {
+    "id": "case_1792989760235_49sppj",
+    "project": "Merap",
+    "title": "Kiểm tra báo cáo API Doanh Thu không hiển thị đơn (OE00094)",
+    "symptom": "",
+    "cause": "API công nợ (Api_GetARDoc) chỉ lấy phiếu thu đã xử lý hoàn tất, lọc theo ngày phiếu thu.",
+    "sql": "",
+    "solution": "1. Kiểm tra đơn -> hóa đơn\nSELECT BranchID, OrderNbr, ARBatNbr, ARRefNbr, InvcNbr FROM OM_SalesOrd WHERE OrderNbr = 'HL0-1026-09598'\n\n2. Kiểm tra phiếu thu cấn trừ hóa đơn\nSELECT AdjgBatNbr, AdjgRefNbr, AdjgDocType, AdjAmt, Reversal FROM AR_Adjust\nWHERE BranchID = 'HCM001' AND AdjdBatNbr = '0302795' AND AdjdRefNbr = 'IN0265679'\n\n3. Kiểm tra phiếu thu + batch (ngày phiếu, đã duyệt, giờ/người duyệt)\nSELECT d.DocType, d.Rlsed, d.DocDate, b.Status, b.LUpd_DateTime, b.LUpd_Prog, b.LUpd_User\nFROM AR_Doc d JOIN Batch b ON b.BranchID = d.BranchID AND b.BatNbr = d.BatNbr AND b.Module = 'AR'\nWHERE d.BranchID = 'HCM001' AND d.BatNbr = '0304317'\n\n4. Kiểm tra mapping ngân hàng (số tham chiếu NH)\nSELECT ID, BatNbr, Status FROM AR_TransactionMapping WHERE BranchID = 'HCM001' AND BatNbr = '0304317'\n\n5. Xem nội dung PROC\nEXEC sp_helptext 'Api_GetARDoc'\nEXEC sp_helptext 'PR_Api_RawdataGetARDoc'\n\n6. Xử lý\nEXEC Api_GetARDoc '20261023'",
+    "tags": "",
+    "module": "BO",
+    "images": [
+      {
+        "id": "f_mvoriq39rfkiw",
+        "name": "anh-dan-20261026043432.png",
+        "size": 289375,
+        "assetId": "677017987",
+        "by": "admin",
+        "at": "2026-10-26T04:34:36.601Z"
+      },
+      {
+        "id": "f_mvorj66tmslai",
+        "name": "Ảnh màn hình 2026-10-26 lúc 11.34.50.png",
+        "size": 348379,
+        "assetId": "677018497",
+        "by": "admin",
+        "at": "2026-10-26T04:34:56.004Z"
+      }
+    ],
+    "createdAt": "2026-10-26T04:42:39.861Z",
+    "updatedAt": "2026-10-26T04:42:39.861Z",
+    "createdBy": "admin",
+    "updatedBy": "admin"
+  }
+]
