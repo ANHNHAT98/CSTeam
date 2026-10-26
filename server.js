@@ -1295,13 +1295,18 @@ app.post('/api/jira/sla-bulk', requireAuth, async (req, res) => {
   }
 });
 
-/* ---------- API: Case Hỗ Trợ (thư viện case thường gặp + cách xử lý) ----------
-   Ghi qua GitHub Contents API nếu đã cấu hình GITHUB_TOKEN/GITHUB_REPO (tạo commit thật,
-   Render auto-deploy sẽ tự nhận và deploy lại) — fallback lưu file local nếu chưa cấu hình. */
+/* ---------- API: Case Hỗ Trợ (thư viện case thường gặp: mô tả sự cố, nguyên nhân, câu lệnh SQL / kiểm tra PROC, cách xử lý, hình ảnh) ----------
+   GET    /api/support-cases                       → { cases:[{id, project, title, symptom, cause, solution, module (API|BO|APP|Manager), sql/tags (case cũ), images:[{id,name,size,assetId,...}], ...}], modules, githubBacked }
+   POST   /api/support-cases                       (có id = sửa, không id = thêm) → { case, commitUrl }
+   DELETE /api/support-cases/:id
+   POST   /api/support-cases/upload                (multipart, field "file") → { file } để gắn vào case rồi Lưu; DELETE /api/support-cases/upload/:assetId → bỏ ảnh chưa lưu
+   GET    /api/support-cases/:id/file/:fileId      → xem/tải ảnh (cần đăng nhập)
+   Dữ liệu ghi qua listStore (GitHub nếu đã cấu hình GITHUB_TOKEN/GITHUB_REPO — mỗi lần lưu là 1 commit — ngược lại ./data/support-cases.json); ảnh lưu ở GitHub Releases (xem supportCasesStore.js / envFiles.js). */
 app.get('/api/support-cases', requireAuth, async (req, res) => {
   try {
+    res.set('Cache-Control', 'no-store');
     const cases = await supportCases.readAll();
-    res.json({ cases, githubBacked: supportCases.isGithubBacked() });
+    res.json({ cases, modules: supportCases.MODULES, githubBacked: supportCases.isGithubBacked() });
   } catch (e) {
     console.error('[support-cases:get] lỗi:', e.message);
     res.status(502).json({ error: e.message });
@@ -1310,12 +1315,35 @@ app.get('/api/support-cases', requireAuth, async (req, res) => {
 
 app.post('/api/support-cases', requireAuth, async (req, res) => {
   try {
-    const result = await supportCases.upsert(req.body || {});
+    const result = await supportCases.upsert(req.body || {}, req.session.username);
     res.json({ ok: true, ...result });
   } catch (e) {
     console.error('[support-cases:post] lỗi:', e.message);
     res.status(400).json({ error: e.message });
   }
+});
+
+const caseUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: supportCases.images.MAX_BYTES, files: 1 } }).single('file');
+app.post('/api/support-cases/upload', requireAuth, (req, res) => {
+  caseUpload(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'File lớn hơn 20MB — hãy giảm dung lượng ảnh.' : err.message });
+    if (!req.file) return res.status(400).json({ error: 'Chưa chọn file.' });
+    try {
+      const name = Buffer.from(req.file.originalname, 'latin1').toString('utf8'); // multer đọc tên theo latin1 → đổi lại UTF-8
+      res.json({ ok: true, file: await supportCases.images.save(req.file.buffer, name, req.session.username) });
+    } catch (e) { console.error('[support-cases:upload] lỗi:', e.message); res.status(400).json({ error: e.message }); }
+  });
+});
+app.delete('/api/support-cases/upload/:assetId', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, ...(await supportCases.discardUpload(req.params.assetId)) }); }
+  catch (e) { console.error('[support-cases:discard] lỗi:', e.message); res.status(400).json({ error: e.message }); }
+});
+app.get('/api/support-cases/:id/file/:fileId', requireAuth, async (req, res) => {
+  try {
+    const f = await supportCases.findImage(req.params.id, req.params.fileId);
+    if (!f) return res.status(404).json({ error: 'Không tìm thấy file (có thể đã bị xoá).' });
+    await require('./envFiles').sendFile(supportCases.images, res, f);
+  } catch (e) { console.error('[support-cases:file] lỗi:', e.message); if (!res.headersSent) res.status(502).json({ error: e.message }); }
 });
 
 app.delete('/api/support-cases/:id', requireAuth, async (req, res) => {

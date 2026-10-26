@@ -1,117 +1,88 @@
-// Luu/doc danh sach "Case Ho Tro" (cac case thuong gap + cach xu ly).
-// Uu tien nguon that: file trong repo GitHub (qua githubClient) -> moi lan ghi se tao 1
-// commit that -> Render (dang auto-deploy) se tu dong deploy lai, du lieu ton tai vinh vien
-// trong code, khong bi mat khi container restart.
-// Neu chua cau hinh GITHUB_TOKEN/GITHUB_REPO: fallback doc/ghi file local (chi de test,
-// SE MAT du lieu khi container restart/redeploy vi Render khong co dia luu tru co dinh).
+'use strict';
+// Thư viện "Case Hỗ Trợ" (các case thường gặp + nguyên nhân + câu lệnh SQL / kiểm tra PROC + cách xử lý + hình ảnh).
+// Lưu qua listStore.js: có GITHUB_TOKEN/GITHUB_REPO → mỗi lần thêm/sửa/xoá là 1 commit vào data/support-cases.json (không mất khi container restart);
+// chưa cấu hình → ghi ./data/support-cases.json (chỉ để chạy thử, MẤT khi redeploy nếu không mount volume ./data).
+// Hình ảnh: tải lên kho riêng (envFiles.createFileStore → GitHub Releases tag "support-case-files"), bản ghi chỉ giữ meta ảnh.
+// Case cũ (chỉ có project/title/symptom/cause/solution/tags) vẫn đọc bình thường — các trường mới là sql, images và module (phân hệ: API / BO / APP / Manager).
+// Giao diện hiện gộp: "Tiêu đề + mô tả sự cố" (dòng đầu = title, các dòng sau = symptom) và "Cách xử lý + câu lệnh SQL" (lưu trong solution; sql chỉ còn ở case cũ).
 
-const fs = require('fs');
-const path = require('path');
-const github = require('./githubClient');
+const { createListStore } = require('./listStore');
+const { createFileStore, cleanFiles } = require('./envFiles');
 
-const REPO_FILE_PATH = 'data/support-cases.json';
-const LOCAL_FILE = path.join(__dirname, 'data', 'support-cases.json');
+const store = createListStore({ repoFilePath: 'data/support-cases.json', localFile: 'data/support-cases.json' });
+const images = createFileStore({
+  tag: 'support-case-files', title: 'Ảnh Case Hỗ Trợ', description: 'Ảnh/tài liệu đính kèm do tool Case Hỗ Trợ quản lý — đừng xoá tay.',
+  localDir: 'support-case-files', allowed: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf', 'txt', 'sql', 'zip'], maxBytes: 20 * 1024 * 1024,
+});
+const MAX_IMAGES = 20;
+const MODULES = ['API', 'BO', 'APP', 'Manager']; // phân hệ (chọn 1 trong combobox)
+const newId = () => 'case_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+const filesOf = (c) => (c && c.images) || [];
 
-function readLocal() {
-  try {
-    return JSON.parse(fs.readFileSync(LOCAL_FILE, 'utf8'));
-  } catch (e) {
-    return [];
-  }
-}
-function writeLocal(list) {
-  fs.mkdirSync(path.dirname(LOCAL_FILE), { recursive: true });
-  fs.writeFileSync(LOCAL_FILE, JSON.stringify(list, null, 2), 'utf8');
-}
+const isGithubBacked = () => store.isGithubBacked();
+const readAll = async () => (await store.readAll()).map((c) => ({ ...c, sql: c.sql || '', module: c.module || '', images: c.images || [] }));
 
-function isGithubBacked() {
-  return github.isConfigured();
-}
-
-/** Doc toan bo danh sach case. */
-async function readAll() {
-  if (isGithubBacked()) {
-    const { content } = await github.getFile(REPO_FILE_PATH);
-    if (content === null) return [];
-    try {
-      return JSON.parse(content);
-    } catch (e) {
-      throw new Error('File support-cases.json trên GitHub bị lỗi định dạng JSON: ' + e.message);
-    }
-  }
-  return readLocal();
-}
-
-function newId() {
-  return 'case_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-}
-
-/**
- * Them moi (khong truyen id) hoac cap nhat (truyen id) 1 case.
- * Tra ve { case, commitUrl } — commitUrl chi co khi ghi qua GitHub.
- */
-async function upsert(input) {
-  const now = new Date().toISOString();
-  const fields = {
-    project: (input.project || '').trim(),
-    title: (input.title || '').trim(),
-    symptom: (input.symptom || '').trim(),
-    cause: (input.cause || '').trim(),
-    solution: (input.solution || '').trim(),
-    tags: (input.tags || '').trim(),
+/** Làm sạch + kiểm tra dữ liệu nhập vào. Câu lệnh SQL giữ nguyên xuống dòng/thụt lề (chỉ cắt khoảng trắng đầu-cuối). */
+function clean(input) {
+  const f = {
+    project: String(input.project || '').trim().slice(0, 80),
+    title: String(input.title || '').trim().slice(0, 200),
+    symptom: String(input.symptom || '').trim().slice(0, 10000),
+    cause: String(input.cause || '').trim().slice(0, 10000),
+    sql: String(input.sql || '').replace(/\r\n/g, '\n').replace(/^\s*\n|\s+$/g, '').slice(0, 30000),
+    solution: String(input.solution || '').trim().slice(0, 10000),
+    tags: String(input.tags || '').trim().slice(0, 300), // tag tự do của case cũ — giữ nguyên, giao diện mới dùng phân hệ (module)
+    module: MODULES.includes(input.module) ? input.module : '',
+    images: cleanFiles(input.images, MAX_IMAGES),
   };
-  if (!fields.title) throw new Error('Thiếu Tiêu đề case.');
+  if (!f.title) throw new Error('Thiếu Tiêu đề case.');
+  return f;
+}
 
-  if (isGithubBacked()) {
-    const { content, sha } = await github.getFile(REPO_FILE_PATH);
-    const list = content ? JSON.parse(content) : [];
-    let saved;
+/** Thêm mới (không truyền id) hoặc cập nhật (truyền id). Trả về { case, commitUrl }. */
+async function upsert(input, user) {
+  const fields = clean(input); const now = new Date().toISOString(); let saved; let dropped = [];
+  const r = await store.mutate((all) => {
+    const list = all.slice();
     if (input.id) {
       const idx = list.findIndex((c) => c.id === input.id);
       if (idx === -1) throw new Error('Không tìm thấy case với id: ' + input.id);
-      saved = { ...list[idx], ...fields, updatedAt: now };
+      const keep = new Set(fields.images.map((x) => x.assetId));
+      dropped = filesOf(list[idx]).filter((x) => !keep.has(x.assetId));
+      saved = { ...list[idx], ...fields, updatedAt: now, updatedBy: user || '' };
       list[idx] = saved;
     } else {
-      saved = { id: newId(), ...fields, createdAt: now, updatedAt: now };
+      saved = { id: newId(), ...fields, createdAt: now, updatedAt: now, createdBy: user || '', updatedBy: user || '' };
       list.push(saved);
     }
-    const commitMsg = input.id
-      ? `case: cập nhật "${fields.title}"`
-      : `case: thêm "${fields.title}"`;
-    const result = await github.putFile(REPO_FILE_PATH, JSON.stringify(list, null, 2), sha, commitMsg);
-    writeLocal(list);
-    return { case: saved, commitUrl: result.commit && result.commit.html_url };
-  }
-
-  const list = readLocal();
-  let saved;
-  if (input.id) {
-    const idx = list.findIndex((c) => c.id === input.id);
-    if (idx === -1) throw new Error('Không tìm thấy case với id: ' + input.id);
-    saved = { ...list[idx], ...fields, updatedAt: now };
-    list[idx] = saved;
-  } else {
-    saved = { id: newId(), ...fields, createdAt: now, updatedAt: now };
-    list.push(saved);
-  }
-  writeLocal(list);
-  return { case: saved, commitUrl: null };
+    return { list, result: {} };
+  }, input.id ? `case: cập nhật "${fields.title}"` : `case: thêm "${fields.title}"`);
+  await Promise.all(dropped.map((x) => images.remove(x.assetId).catch((e) => console.error('[support-cases] không xoá được ảnh cũ:', e.message))));
+  return { case: saved, commitUrl: r.commitUrl };
 }
 
 async function remove(id) {
-  if (isGithubBacked()) {
-    const { content, sha } = await github.getFile(REPO_FILE_PATH);
-    const list = content ? JSON.parse(content) : [];
-    const filtered = list.filter((c) => c.id !== id);
-    if (filtered.length === list.length) throw new Error('Không tìm thấy case với id: ' + id);
-    const result = await github.putFile(REPO_FILE_PATH, JSON.stringify(filtered, null, 2), sha, `case: xoá 1 case (id ${id})`);
-    writeLocal(filtered);
-    return { commitUrl: result.commit && result.commit.html_url };
-  }
-  const list = readLocal();
-  const filtered = list.filter((c) => c.id !== id);
-  writeLocal(filtered);
-  return { commitUrl: null };
+  let dropped = [];
+  const r = await store.mutate((all) => {
+    const c = all.find((x) => x.id === id);
+    if (!c) throw new Error('Không tìm thấy case với id: ' + id);
+    dropped = filesOf(c);
+    return { list: all.filter((x) => x.id !== id), result: {} };
+  }, `case: xoá 1 case (id ${id})`);
+  await Promise.all(dropped.map((x) => images.remove(x.assetId).catch((e) => console.error('[support-cases] không xoá được ảnh:', e.message))));
+  return { commitUrl: r.commitUrl };
 }
 
-module.exports = { readAll, upsert, remove, isGithubBacked };
+async function findImage(caseId, fileId) {
+  const c = (await store.readAll()).find((x) => x.id === caseId);
+  return filesOf(c).find((f) => f.id === fileId) || null;
+}
+
+/** Bỏ ảnh vừa tải lên nhưng chưa được lưu vào case nào (người dùng huỷ form). */
+async function discardUpload(assetId) {
+  const used = (await store.readAll()).some((c) => filesOf(c).some((f) => f.assetId === assetId));
+  if (!used) await images.remove(assetId);
+  return { removed: !used };
+}
+
+module.exports = { readAll, upsert, remove, isGithubBacked, images, findImage, discardUpload, MAX_IMAGES, MODULES };

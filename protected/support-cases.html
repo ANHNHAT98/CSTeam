@@ -33,26 +33,23 @@
   .sub{color:var(--muted);font-size:13.5px;margin:0 0 22px;line-height:1.6;}
 
   .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:22px;margin-bottom:20px;}
-  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:0 0 4px;}
-  .panel .panel-sub{color:var(--muted);font-size:12px;margin:0 0 16px;}
+  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:16px;margin:0 0 4px;}
+  .panel .panel-sub{color:var(--muted);font-size:12.5px;margin:0 0 16px;}
 
   .btn{appearance:none;border:none;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;padding:10px 16px;border-radius:8px;display:inline-flex;align-items:center;gap:8px;}
   .btn-primary{background:var(--amber);color:#3A2405;box-shadow:0 2px 0 var(--amber-deep);}
   .btn-primary:disabled{background:#D8DEE6;color:#8B98A6;box-shadow:none;cursor:not-allowed;}
   .btn-ghost{background:transparent;color:var(--blueprint);border:1px solid var(--grid-line-strong);}
   .btn-danger{background:transparent;color:var(--danger);border:1px solid rgba(178,58,72,.4);}
+  .btn-danger.arm{background:var(--danger);color:#fff;}
   .btn-mini{font-family:'IBM Plex Mono',monospace;font-size:11.5px;padding:5px 10px;border-radius:6px;}
   .actions{display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap;}
 
   .status{font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);margin-top:10px;white-space:pre-wrap;}
-  .status.ok{color:var(--success);}
-  .status.err{color:var(--danger);}
-  .status.busy{color:var(--blueprint);}
-  .backend-badge{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:4px 10px;border-radius:20px;margin-bottom:14px;}
-  .backend-badge.gh{background:rgba(63,125,88,.12);color:var(--success);}
-  .backend-badge.local{background:rgba(232,163,61,.15);color:var(--amber-deep);}
+  .status.ok{color:var(--success);} .status.err{color:var(--danger);} .status.busy{color:var(--blueprint);}
+  .backend-badge{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:4px 10px;border-radius:20px;margin-bottom:14px;background:rgba(232,163,61,.15);color:var(--amber-deep);}
 
-  .filter-row{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:4px;}
+  .filter-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
   .filter-row input[type=text], .filter-row select{
     font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;padding:9px 11px;border-radius:7px;
     border:1px solid var(--grid-line-strong);background:#fff;color:var(--ink);
@@ -62,28 +59,47 @@
 
   .case-card{border:1px solid var(--grid-line-strong);border-radius:9px;padding:16px 18px;margin-bottom:12px;background:#fbfcfe;}
   .case-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;cursor:pointer;}
-  .case-title{font-family:'Space Grotesk',sans-serif;font-size:14.5px;font-weight:700;margin:0 0 4px;}
+  .case-title{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;margin:0 0 6px;}
   .case-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
   .case-chip{font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:2px 8px;border-radius:12px;background:rgba(31,78,121,.08);color:var(--blueprint);}
   .case-chip.tag{background:rgba(95,167,120,.12);color:var(--success);}
+  .case-chip.has{background:rgba(232,163,61,.18);color:var(--amber-deep);}
+  .case-date{font-size:11.5px;color:var(--muted);}
   .case-toggle{font-size:18px;color:var(--muted);user-select:none;flex:0 0 auto;}
   .case-body{display:none;margin-top:14px;padding-top:14px;border-top:1px dashed var(--grid-line-strong);}
   .case-body.open{display:block;}
-  .case-field{margin-bottom:10px;}
-  .case-field label{display:block;font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;}
-  .case-field .val{font-size:13px;line-height:1.6;white-space:pre-wrap;}
+  .case-field{margin-bottom:14px;}
+  .case-field > label{display:flex;align-items:center;gap:10px;font-size:10.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;}
+  .case-field .val{font-size:13.5px;line-height:1.65;white-space:pre-wrap;}
+  .fixbox{background:#F6F9FC;border:1px solid var(--grid-line-strong);border-radius:8px;padding:12px 14px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word;margin:0;max-height:480px;overflow:auto;}
+  .case-chip.mod{background:rgba(31,78,121,.14);color:var(--blueprint-deep);font-weight:600;}
+  .code{background:#0F2138;color:#E6EEF8;border-radius:8px;padding:12px 14px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.55;white-space:pre;overflow:auto;max-height:420px;margin:0;}
+  .thumbs{display:flex;gap:10px;flex-wrap:wrap;}
+  .thumb{position:relative;width:150px;height:110px;border:1px solid var(--grid-line-strong);border-radius:8px;overflow:hidden;background:#fff;cursor:zoom-in;flex:0 0 auto;}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .thumb.file{display:flex;align-items:center;justify-content:center;text-align:center;font-size:12px;padding:8px;cursor:pointer;word-break:break-all;color:var(--blueprint);text-decoration:none;}
+  .thumb .x{position:absolute;top:4px;right:4px;background:rgba(178,58,72,.92);color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px;line-height:22px;padding:0;}
+  .thumb .cap{position:absolute;left:0;right:0;bottom:0;background:rgba(15,33,56,.7);color:#fff;font-size:10.5px;padding:2px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .case-card-actions{display:flex;gap:8px;margin-top:12px;}
+  .case-by{font-size:11.5px;color:var(--muted);margin-top:10px;}
 
   /* ---- form thêm/sửa ---- */
-  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px;}
   @media(max-width:700px){.form-grid{grid-template-columns:1fr;}}
   .form-field label{display:block;font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-bottom:6px;}
   .form-field input[type=text], .form-field select, .form-field textarea{
-    width:100%;font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;padding:9px 11px;border-radius:7px;
+    width:100%;font-family:'IBM Plex Sans',sans-serif;font-size:14px;padding:10px 12px;border-radius:7px;
     border:1px solid var(--grid-line-strong);background:#fff;color:var(--ink);
   }
-  .form-field textarea{min-height:80px;resize:vertical;font-family:'IBM Plex Sans',sans-serif;}
+  .form-field textarea{min-height:110px;resize:vertical;line-height:1.55;}
+  .form-field textarea.sql{min-height:240px;font-family:'IBM Plex Mono',monospace;font-size:13px;background:#F6F9FC;tab-size:2;white-space:pre;overflow:auto;}
+  .form-field .hint{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.5;}
   .form-field.full{grid-column:1/-1;}
+  .drop{border:2px dashed var(--grid-line-strong);border-radius:10px;padding:16px;background:#F8FAFC;text-align:center;color:var(--muted);font-size:13px;transition:background .15s,border-color .15s;}
+  .drop.over{background:#EAF1F8;border-color:var(--blueprint);}
+  .drop .thumbs{justify-content:flex-start;margin-top:12px;text-align:left;}
+  .lightbox{position:fixed;inset:0;background:rgba(10,20,35,.88);display:none;align-items:center;justify-content:center;z-index:50;padding:24px;cursor:zoom-out;}
+  .lightbox.on{display:flex;} .lightbox img{max-width:100%;max-height:100%;border-radius:6px;background:#fff;}
 </style>
 </head>
 <body>
@@ -94,75 +110,104 @@
 
 <div class="wrap">
   <h1 id="pageTitle">Thư viện Case Hỗ Trợ</h1>
-  <p class="sub" id="pageSub">Tổng hợp các case thường gặp trong quá trình hỗ trợ &amp; cách xử lý — xem lại nhanh khi gặp case tương tự, hoặc thêm case mới ngay tại đây.</p>
+  <p class="sub" id="pageSub">Tổng hợp các case thường gặp trong quá trình hỗ trợ — mô tả sự cố, nguyên nhân, cách xử lý / câu lệnh SQL (kiểm tra PROC) và hình ảnh, phân theo phân hệ. Lọc để xem lại nhanh khi gặp case tương tự; bấm <b>Tạo mới</b> để thêm, <b>Sửa</b> để chỉnh rồi <b>Lưu</b>.</p>
+  <div id="backendBadge"></div>
 
-  <div class="panel">
-    <div id="backendBadge"></div>
-    <h2>+ Thêm case mới</h2>
-    <div class="panel-sub">Điền thông tin rồi bấm Lưu — case sẽ hiện ngay trong danh sách bên dưới.</div>
-    <div class="form-grid">
-      <div class="form-field">
-        <label>DỰ ÁN</label>
-        <input type="text" id="f_project" placeholder="VD: ABI, Anvy, MerapLion, Sabeco_PG, FES, ANKO, HAIHA, JOTUN, Chung...">
-        <div id="projectLockNote" style="font-size:11px;color:var(--muted);margin-top:4px;display:none;"></div>
+  <!-- ===== Màn hình 1: danh sách + lọc ===== -->
+  <div id="viewList">
+    <div class="panel">
+      <div class="filter-row">
+        <input type="text" id="searchInput" placeholder="Tìm theo mô tả sự cố, nguyên nhân, cách xử lý / câu lệnh SQL...">
+        <select id="projectFilter"><option value="">Tất cả dự án</option></select>
+        <select id="moduleFilter"><option value="">Tất cả phân hệ</option></select>
+        <button class="btn btn-primary" id="newBtn">＋ Tạo mới</button>
+        <button class="btn btn-ghost btn-mini" id="reloadBtn">⟳ Tải lại</button>
+        <button class="btn btn-ghost btn-mini" id="exportBtn">⬇ Xuất Excel</button>
       </div>
-      <div class="form-field">
-        <label>TIÊU ĐỀ CASE *</label>
-        <input type="text" id="f_title" placeholder="VD: Lỗi không lưu được kiểm tồn trên SFA">
-      </div>
-      <div class="form-field full">
-        <label>MÔ TẢ VẤN ĐỀ</label>
-        <textarea id="f_symptom" placeholder="Triệu chứng, cách tái hiện lỗi..."></textarea>
-      </div>
-      <div class="form-field full">
-        <label>NGUYÊN NHÂN</label>
-        <textarea id="f_cause" placeholder="Nguyên nhân gốc rễ (nếu đã xác định được)..."></textarea>
-      </div>
-      <div class="form-field full">
-        <label>CÁCH XỬ LÝ</label>
-        <textarea id="f_solution" placeholder="Các bước xử lý / hướng dẫn khắc phục..."></textarea>
-      </div>
-      <div class="form-field full">
-        <label>TAGS (cách nhau bằng dấu phẩy)</label>
-        <input type="text" id="f_tags" placeholder="VD: SFA, tồn kho, checkout">
-      </div>
+      <div class="status" id="listStatus"></div>
     </div>
-    <div class="actions">
-      <button class="btn btn-primary" id="saveBtn">💾 Lưu case</button>
-      <button class="btn btn-ghost" id="cancelEditBtn" style="display:none;">Huỷ sửa</button>
+    <div class="panel">
+      <h2>Danh sách case (<span id="caseCount">0</span>)</h2>
+      <div id="caseList" style="margin-top:14px;"></div>
     </div>
-    <div class="status" id="formStatus"></div>
   </div>
 
-  <div class="panel">
-    <h2>Danh sách case (<span id="caseCount">0</span>)</h2>
-    <div class="filter-row">
-      <input type="text" id="searchInput" placeholder="Tìm theo tiêu đề, mô tả, nguyên nhân, cách xử lý, tag...">
-      <select id="projectFilter"><option value="">Tất cả dự án</option></select>
-      <button class="btn btn-ghost btn-mini" id="reloadBtn">⟳ Tải lại</button>
-      <button class="btn btn-ghost btn-mini" id="exportBtn">⬇ Xuất Excel</button>
+  <!-- ===== Màn hình 2: tạo mới / sửa ===== -->
+  <div id="viewForm" style="display:none;">
+    <div class="panel">
+      <h2 id="formTitle">Tạo case mới</h2>
+      <div class="panel-sub">Điền thông tin rồi bấm Lưu. Cách xử lý / câu lệnh SQL được giữ nguyên xuống dòng và thụt lề. Có thể dán ảnh (Ctrl/Cmd + V), kéo thả hoặc chọn file ảnh.</div>
+      <div class="form-grid">
+        <div class="form-field" id="projectField">
+          <label>DỰ ÁN</label>
+          <input type="text" id="f_project" list="projList" placeholder="VD: ABI, Anvy, MerapLion, Sabeco_PG, FES, ANKO, HAIHA, JOTUN, Chung...">
+          <datalist id="projList"></datalist>
+        </div>
+        <div class="form-field">
+          <label>PHÂN HỆ</label>
+          <select id="f_module"><option value="">— Chọn phân hệ —</option></select>
+        </div>
+        <div class="form-field full">
+          <label>MÔ TẢ SỰ CỐ * (dòng đầu là tiêu đề case)</label>
+          <textarea id="f_desc" style="min-height:150px" placeholder="Dòng 1: tiêu đề ngắn, VD: Lỗi không lưu được kiểm tồn trên SFA&#10;Các dòng sau: triệu chứng, cách tái hiện lỗi, màn hình / thông báo lỗi..."></textarea>
+        </div>
+        <div class="form-field full">
+          <label>NGUYÊN NHÂN</label>
+          <textarea id="f_cause" placeholder="Nguyên nhân gốc rễ (nếu đã xác định được)..."></textarea>
+        </div>
+        <div class="form-field full">
+          <label>CÁCH XỬ LÝ / CÂU LỆNH SQL (KIỂM TRA PROC)</label>
+          <textarea id="f_fix" class="sql" spellcheck="false" placeholder="Các bước xử lý, kèm câu lệnh SQL / kiểm tra PROC nếu có. VD:&#10;1. Kiểm tra dữ liệu đơn hàng&#10;SELECT * FROM OM_SalesOrd WHERE OrderNbr = 'xxx'&#10;2. Xem nội dung PROC&#10;EXEC sp_helptext 'OM10100_pdOrder'"></textarea>
+          <div class="hint">Giữ nguyên xuống dòng và thụt lề; người xem có nút Copy để lấy lại nhanh.</div>
+        </div>
+        <div class="form-field full">
+          <label>HÌNH ẢNH</label>
+          <div class="drop" id="drop">
+            <button type="button" class="btn btn-ghost btn-mini" id="pickBtn">📎 Chọn ảnh</button>
+            <span style="margin-left:8px">hoặc kéo thả / dán ảnh (Ctrl/Cmd + V) vào đây — ảnh, tối đa 20MB mỗi file</span>
+            <input type="file" id="fileInput" multiple accept="image/*,.pdf,.txt,.sql,.zip" style="display:none">
+            <div class="thumbs" id="formThumbs"></div>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="saveBtn">💾 Lưu</button>
+        <button class="btn btn-ghost" id="cancelBtn">Hủy</button>
+      </div>
+      <div class="status" id="formStatus"></div>
     </div>
-    <div class="status" id="listStatus"></div>
-    <div id="caseList" style="margin-top:14px;"></div>
   </div>
 </div>
+<div class="lightbox" id="lightbox"><img id="lightboxImg" alt=""></div>
 
 <script>
 let allCases = [];
 let editingId = null;
+let modules = ['API','BO','APP','Manager'];
+let formTags = ''; // tag tự do của case cũ — giữ nguyên khi lưu
+let formImages = [];   // meta ảnh của case đang soạn (ảnh mới tải lên có thêm _preview để xem trước)
+let freshAssets = [];  // ảnh vừa tải lên trong lần soạn này (chưa lưu) — huỷ form thì dọn
+let dirty = false;
 
 const $ = id => document.getElementById(id);
-function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function setFormStatus(msg, cls){ $('formStatus').textContent = msg; $('formStatus').className = 'status ' + (cls||''); }
 function setListStatus(msg, cls){ $('listStatus').textContent = msg; $('listStatus').className = 'status ' + (cls||''); }
+const fmtSize = n => n>=1048576 ? (n/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(n/1024))+' KB';
+const fmtDate = s => { if(!s) return ''; const d = new Date(s); return isNaN(d) ? '' : d.toLocaleDateString('vi-VN'); };
+const isImg = name => /\.(png|jpe?g|gif|webp)$/i.test(name||'');
+const descOf = c => [c.title, c.symptom].filter(Boolean).join('\n');                 // ô "Mô tả sự cố": dòng đầu = tiêu đề
+const fixOf = c => [c.solution, c.sql].filter(Boolean).join('\n\n');                   // ô "Cách xử lý / câu lệnh SQL" (case cũ có sql riêng thì gộp vào)
+const fileUrl = (caseId, f) => '/api/support-cases/'+encodeURIComponent(caseId)+'/file/'+encodeURIComponent(f.id);
 
-// Dự án cố định theo trang (đến từ menu "Dự Án → ABI/Merap/AnVy/Sabeco → Case Hỗ Trợ", vd
-// /tickets/support-cases?project=ABI) — nếu có, khoá field Dự án trong form thêm/sửa và tự
-// lọc sẵn danh sách theo đúng dự án đó, tránh gõ tay bị lệch chính tả (VD "Abi" vs "ABI").
+// Dự án cố định theo trang (từ menu "Dự Án → ABI/Merap/AnVy/Sabeco → Case Hỗ Trợ", vd /tickets/support-cases?project=ABI):
+// khoá field Dự án trong form và tự lọc sẵn danh sách theo đúng dự án đó, tránh gõ lệch chính tả (VD "Abi" vs "ABI").
 const LOCKED_PROJECT = new URLSearchParams(window.location.search).get('project') || '';
 if (LOCKED_PROJECT){
-  document.getElementById('pageTitle').textContent = `Case Hỗ Trợ — ${LOCKED_PROJECT}`;
-  document.getElementById('pageSub').textContent = `Các case thường gặp khi hỗ trợ dự án ${LOCKED_PROJECT} và cách xử lý — xem lại nhanh khi gặp case tương tự, hoặc thêm case mới ngay tại đây.`;
+  $('pageTitle').textContent = `Case Hỗ Trợ — ${LOCKED_PROJECT}`;
+  $('pageSub').innerHTML = `Các case thường gặp khi hỗ trợ dự án <b>${escapeHtml(LOCKED_PROJECT)}</b>: mô tả sự cố, nguyên nhân, cách xử lý / câu lệnh SQL (kiểm tra PROC) và hình ảnh, phân theo phân hệ. Lọc để xem lại nhanh khi gặp case tương tự; bấm <b>Tạo mới</b> để thêm, <b>Sửa</b> để chỉnh rồi <b>Lưu</b>.`;
+  $('projectFilter').style.display = 'none';
+  $('projectField').style.display = 'none'; // dự án đã theo menu → không cần nhập
 }
 
 async function fetchJson(url, options){
@@ -171,60 +216,67 @@ async function fetchJson(url, options){
   let data;
   try{ data = raw ? JSON.parse(raw) : {}; }
   catch(e){ throw new Error(`Server trả về không phải JSON (HTTP ${res.status}). Nội dung: ${raw.slice(0,150)}`); }
+  if (res.status === 401){ location.href = '/?next=' + encodeURIComponent(location.pathname + location.search); throw new Error('Phiên đăng nhập đã hết'); }
   if (!res.ok) throw new Error(data.error || `Lỗi HTTP ${res.status}`);
   return data;
 }
 
+/* ---------------- danh sách ---------------- */
 async function loadCases(){
   setListStatus('Đang tải danh sách case…', 'busy');
   try{
     const data = await fetchJson('/api/support-cases');
     allCases = Array.isArray(data.cases) ? data.cases : [];
-    const badge = $('backendBadge');
-    if (data.githubBacked){
-      badge.innerHTML = '<span class="backend-badge gh">● Đang lưu qua GitHub — mỗi lần thêm/sửa sẽ tạo 1 commit, Render tự deploy lại</span>';
-    } else {
-      badge.innerHTML = '<span class="backend-badge local">● Chưa cấu hình GitHub — đang lưu tạm trên server, CÓ THỂ MẤT khi redeploy. Cấu hình GITHUB_TOKEN/GITHUB_REPO để lưu vĩnh viễn.</span>';
-    }
-    renderProjectFilter();
+    if (Array.isArray(data.modules) && data.modules.length) modules = data.modules;
+    $('backendBadge').innerHTML = data.githubBacked ? '' : '<span class="backend-badge">● Chưa cấu hình GitHub — đang lưu tạm trên server, CÓ THỂ MẤT khi redeploy. Cấu hình GITHUB_TOKEN/GITHUB_REPO để lưu vĩnh viễn.</span>';
+    renderFilters();
     if (LOCKED_PROJECT) $('projectFilter').value = LOCKED_PROJECT;
     renderList();
-    setListStatus(`Đã tải ${allCases.length} case.`, 'ok');
+    setListStatus('', '');
   }catch(err){
     console.error(err);
     setListStatus('Lỗi tải danh sách: ' + err.message, 'err');
   }
 }
 
-function renderProjectFilter(){
-  const sel = $('projectFilter');
-  const current = sel.value;
+const tagsOf = c => (c.tags || '').split(',').map(t => t.trim()).filter(Boolean); // tag tự do của case cũ (chỉ hiển thị)
+function renderFilters(){
+  const ps = $('projectFilter'), ms = $('moduleFilter'); const pc = ps.value, mc = ms.value;
   const projects = Array.from(new Set(allCases.map(c => c.project).filter(Boolean))).sort();
-  sel.innerHTML = '<option value="">Tất cả dự án</option>' + projects.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
-  sel.value = current;
+  ps.innerHTML = '<option value="">Tất cả dự án</option>' + projects.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+  ps.value = pc;
+  ms.innerHTML = '<option value="">Tất cả phân hệ</option>' + modules.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+  ms.value = modules.includes(mc) ? mc : '';
+  $('f_module').innerHTML = '<option value="">— Chọn phân hệ —</option>' + modules.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+  $('projList').innerHTML = Array.from(new Set(['Chung', ...projects])).map(p => `<option value="${escapeHtml(p)}">`).join('');
 }
 
-function matchesFilter(c, q, project){
+function matchesFilter(c, q, project, mod){
   if (project && c.project !== project) return false;
+  if (mod && c.module !== mod) return false;
   if (!q) return true;
-  const hay = [c.title, c.symptom, c.cause, c.solution, c.tags, c.project].join(' ').toLowerCase();
+  const hay = [c.title, c.symptom, c.cause, c.sql, c.solution, c.tags, c.module, c.project].join(' ').toLowerCase();
   return hay.includes(q.toLowerCase());
 }
 
+let armDeleteId = null;
 function renderList(){
   const q = $('searchInput').value.trim();
-  const project = $('projectFilter').value;
-  const filtered = allCases.filter(c => matchesFilter(c, q, project))
+  const project = LOCKED_PROJECT || $('projectFilter').value;
+  const mod = $('moduleFilter').value;
+  const scope = allCases.filter(c => !LOCKED_PROJECT || c.project === LOCKED_PROJECT);
+  const filtered = scope.filter(c => matchesFilter(c, q, project, mod))
     .sort((a,b) => (b.updatedAt||'').localeCompare(a.updatedAt||''));
-  $('caseCount').textContent = allCases.length;
+  $('caseCount').textContent = filtered.length === scope.length ? scope.length : `${filtered.length}/${scope.length}`;
 
   if (!filtered.length){
-    $('caseList').innerHTML = '<p style="color:var(--muted);font-size:13px;">Không có case nào khớp bộ lọc.</p>';
+    $('caseList').innerHTML = `<p style="color:var(--muted);font-size:13px;">${scope.length ? 'Không có case nào khớp bộ lọc.' : 'Chưa có case nào. Bấm <b>＋ Tạo mới</b> để thêm case đầu tiên.'}</p>`;
     return;
   }
+  const open = new Set([...document.querySelectorAll('.case-body.open')].map(e => e.id));
 
   $('caseList').innerHTML = filtered.map(c => {
-    const tags = (c.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+    const imgs = c.images || [];
     return `
     <div class="case-card" data-id="${escapeHtml(c.id)}">
       <div class="case-card-head" data-toggle="${escapeHtml(c.id)}">
@@ -232,118 +284,162 @@ function renderList(){
           <div class="case-title">${escapeHtml(c.title)}</div>
           <div class="case-meta">
             ${c.project ? `<span class="case-chip">${escapeHtml(c.project)}</span>` : ''}
-            ${tags.map(t => `<span class="case-chip tag">#${escapeHtml(t)}</span>`).join('')}
+            ${c.module ? `<span class="case-chip mod">${escapeHtml(c.module)}</span>` : ''}
+            ${tagsOf(c).map(t => `<span class="case-chip tag">#${escapeHtml(t)}</span>`).join('')}
+            ${imgs.length ? `<span class="case-chip has">🖼 ${imgs.length} ảnh</span>` : ''}
+            <span class="case-date">${escapeHtml(fmtDate(c.updatedAt))}</span>
           </div>
         </div>
         <div class="case-toggle">▾</div>
       </div>
-      <div class="case-body" id="body-${escapeHtml(c.id)}">
-        ${c.symptom ? `<div class="case-field"><label>Mô tả vấn đề</label><div class="val">${escapeHtml(c.symptom)}</div></div>` : ''}
+      <div class="case-body${open.has('body-'+c.id) ? ' open' : ''}" id="body-${escapeHtml(c.id)}">
+        ${c.symptom ? `<div class="case-field"><label>Mô tả sự cố</label><div class="val">${escapeHtml(c.symptom)}</div></div>` : ''}
         ${c.cause ? `<div class="case-field"><label>Nguyên nhân</label><div class="val">${escapeHtml(c.cause)}</div></div>` : ''}
-        ${c.solution ? `<div class="case-field"><label>Cách xử lý</label><div class="val">${escapeHtml(c.solution)}</div></div>` : ''}
+        ${fixOf(c) ? `<div class="case-field"><label>Cách xử lý / câu lệnh SQL <button class="btn btn-ghost btn-mini" data-copyfix="${escapeHtml(c.id)}">📋 Copy</button></label><pre class="fixbox">${escapeHtml(fixOf(c))}</pre></div>` : ''}
+        ${imgs.length ? `<div class="case-field"><label>Hình ảnh</label><div class="thumbs">${imgs.map(f => isImg(f.name)
+            ? `<div class="thumb" data-zoom="${escapeHtml(fileUrl(c.id,f))}" title="${escapeHtml(f.name)}"><img loading="lazy" src="${escapeHtml(fileUrl(c.id,f))}" alt=""><div class="cap">${escapeHtml(f.name)}</div></div>`
+            : `<a class="thumb file" href="${escapeHtml(fileUrl(c.id,f))}" download>📎 ${escapeHtml(f.name)}<br><small>${fmtSize(f.size)}</small></a>`).join('')}</div></div>` : ''}
         <div class="case-card-actions">
           <button class="btn btn-ghost btn-mini" data-edit="${escapeHtml(c.id)}">✎ Sửa</button>
-          <button class="btn btn-danger btn-mini" data-delete="${escapeHtml(c.id)}">🗑 Xoá</button>
+          <button class="btn btn-danger btn-mini${armDeleteId===c.id?' arm':''}" data-delete="${escapeHtml(c.id)}">${armDeleteId===c.id?'Bấm lần nữa để xoá':'🗑 Xoá'}</button>
         </div>
+        ${c.updatedBy ? `<div class="case-by">Cập nhật ${escapeHtml(fmtDate(c.updatedAt))} bởi ${escapeHtml(c.updatedBy)}${c.createdBy && c.createdBy !== c.updatedBy ? ` · tạo bởi ${escapeHtml(c.createdBy)}` : ''}</div>` : ''}
       </div>
     </div>`;
   }).join('');
 
-  document.querySelectorAll('[data-toggle]').forEach(el => {
-    el.addEventListener('click', () => {
-      const body = $('body-' + el.dataset.toggle);
-      body.classList.toggle('open');
-    });
-  });
-  document.querySelectorAll('[data-edit]').forEach(el => {
-    el.addEventListener('click', (e) => { e.stopPropagation(); startEdit(el.dataset.edit); });
-  });
-  document.querySelectorAll('[data-delete]').forEach(el => {
-    el.addEventListener('click', (e) => { e.stopPropagation(); deleteCase(el.dataset.delete); });
-  });
+  document.querySelectorAll('[data-toggle]').forEach(el => el.addEventListener('click', () => $('body-' + el.dataset.toggle).classList.toggle('open')));
+  document.querySelectorAll('[data-edit]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); startEdit(el.dataset.edit); }));
+  document.querySelectorAll('[data-delete]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); deleteCase(el.dataset.delete); }));
+  document.querySelectorAll('[data-zoom]').forEach(el => el.addEventListener('click', () => { $('lightboxImg').src = el.dataset.zoom; $('lightbox').classList.add('on'); }));
+  document.querySelectorAll('[data-copyfix]').forEach(el => el.addEventListener('click', async e => {
+    e.stopPropagation(); const c = allCases.find(x => x.id === el.dataset.copyfix);
+    try{ await navigator.clipboard.writeText(fixOf(c)); el.textContent = '✓ Đã copy'; setTimeout(() => el.textContent = '📋 Copy', 1500); }catch(_){ el.textContent = 'Trình duyệt chặn copy'; }
+  }));
 }
+$('lightbox').addEventListener('click', () => $('lightbox').classList.remove('on'));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('lightbox').classList.remove('on'); });
 
-function startEdit(id){
-  const c = allCases.find(x => x.id === id);
-  if (!c) return;
-  editingId = id;
-  $('f_project').value = c.project || '';
-  $('f_title').value = c.title || '';
-  $('f_symptom').value = c.symptom || '';
-  $('f_cause').value = c.cause || '';
-  $('f_solution').value = c.solution || '';
-  $('f_tags').value = c.tags || '';
-  $('cancelEditBtn').style.display = 'inline-flex';
-  $('saveBtn').textContent = '💾 Lưu thay đổi';
+/* ---------------- màn hình tạo mới / sửa ---------------- */
+function showView(name){
+  $('viewList').style.display = name === 'list' ? '' : 'none';
+  $('viewForm').style.display = name === 'form' ? '' : 'none';
+  $('backendBadge').style.display = name === 'list' ? '' : 'none';
   window.scrollTo({ top:0, behavior:'smooth' });
-  setFormStatus(`Đang sửa case: ${c.title}`, '');
 }
 
-function clearForm(){
-  editingId = null;
-  ['f_project','f_title','f_symptom','f_cause','f_solution','f_tags'].forEach(id => $(id).value = '');
-  if (LOCKED_PROJECT) $('f_project').value = LOCKED_PROJECT;
-  $('cancelEditBtn').style.display = 'none';
-  $('saveBtn').textContent = '💾 Lưu case';
+function fillForm(c){
+  $('f_project').value = c ? (c.project || '') : (LOCKED_PROJECT || '');
+  $('f_module').value = c && modules.includes(c.module) ? c.module : '';
+  $('f_desc').value = c ? descOf(c) : '';
+  $('f_cause').value = c ? (c.cause || '') : '';
+  $('f_fix').value = c ? fixOf(c) : '';
+  formTags = c ? (c.tags || '') : '';
+  formImages = c ? (c.images || []).map(f => ({ ...f, _url: fileUrl(c.id, f) })) : [];
+  freshAssets = []; dirty = false; setFormStatus('', '');
+  renderFormThumbs();
 }
 
-// Nếu vào trang qua menu 1 dự án cụ thể (?project=...) thì khoá sẵn field Dự án trong form,
-// tránh gõ tay bị lệch chính tả (VD "Abi" khác "ABI" sẽ không lọc chung được với nhau).
-if (LOCKED_PROJECT){
-  const pf = $('f_project');
-  pf.value = LOCKED_PROJECT;
-  pf.readOnly = true;
-  pf.style.background = '#F0F3F7';
-  const note = $('projectLockNote');
-  note.style.display = 'block';
-  note.textContent = `Đã khoá theo dự án "${LOCKED_PROJECT}" (vào từ menu Dự Án). Muốn case thuộc dự án khác, vào lại từ menu đúng dự án đó.`;
+function startNew(){
+  editingId = null; fillForm(null);
+  $('formTitle').textContent = 'Tạo case mới';
+  showView('form'); $('f_desc').focus();
+}
+function startEdit(id){
+  const c = allCases.find(x => x.id === id); if (!c) return;
+  editingId = id; fillForm(c);
+  $('formTitle').textContent = 'Sửa case';
+  showView('form');
+}
+async function closeForm(){ // thoát form: dọn ảnh vừa tải lên mà chưa lưu
+  freshAssets.forEach(a => fetch('/api/support-cases/upload/' + encodeURIComponent(a), { method:'DELETE' }).catch(() => {}));
+  freshAssets = []; formImages = []; dirty = false; editingId = null; showView('list');
 }
 
-$('cancelEditBtn').addEventListener('click', () => { clearForm(); setFormStatus('Đã huỷ sửa.', ''); });
+function renderFormThumbs(){
+  $('formThumbs').innerHTML = formImages.map((f, i) => (isImg(f.name) && f._url)
+    ? `<div class="thumb" data-zoom="${escapeHtml(f._url)}" title="${escapeHtml(f.name)}"><img src="${escapeHtml(f._url)}" alt=""><div class="cap">${escapeHtml(f.name)} · ${fmtSize(f.size)}</div><button type="button" class="x" data-rmimg="${i}" title="Bỏ ảnh này">✕</button></div>`
+    : `<div class="thumb file" title="${escapeHtml(f.name)}">📎 ${escapeHtml(f.name)}<br><small>${fmtSize(f.size)}</small><button type="button" class="x" data-rmimg="${i}" title="Bỏ file này">✕</button></div>`).join('');
+  $('formThumbs').querySelectorAll('[data-zoom]').forEach(el => el.addEventListener('click', e => { if (e.target.closest('.x')) return; $('lightboxImg').src = el.dataset.zoom; $('lightbox').classList.add('on'); }));
+  $('formThumbs').querySelectorAll('[data-rmimg]').forEach(el => el.addEventListener('click', e => {
+    e.stopPropagation(); const f = formImages.splice(Number(el.dataset.rmimg), 1)[0]; dirty = true;
+    const k = freshAssets.indexOf(f.assetId);
+    if (k >= 0){ freshAssets.splice(k, 1); fetch('/api/support-cases/upload/' + encodeURIComponent(f.assetId), { method:'DELETE' }).catch(() => {}); } // ảnh vừa tải, chưa lưu → xoá luôn
+    renderFormThumbs();
+  }));
+}
+
+async function uploadFiles(files){
+  const list = [...files]; if (!list.length) return;
+  for (const file of list){
+    if (formImages.length >= 20){ setFormStatus('Tối đa 20 ảnh / file cho mỗi case.', 'err'); break; }
+    setFormStatus(`Đang tải lên ${file.name} (${fmtSize(file.size)})…`, 'busy');
+    try{
+      const fd = new FormData(); fd.append('file', file, file.name || 'anh-dan.png');
+      const r = await fetchJson('/api/support-cases/upload', { method:'POST', body: fd });
+      formImages.push({ ...r.file, _url: isImg(file.name) ? URL.createObjectURL(file) : '' });
+      freshAssets.push(r.file.assetId); dirty = true; renderFormThumbs(); setFormStatus('', '');
+    }catch(err){ setFormStatus(`Không tải được ${file.name}: ${err.message}`, 'err'); }
+  }
+}
+$('pickBtn').addEventListener('click', () => { $('fileInput').value = ''; $('fileInput').click(); });
+$('fileInput').addEventListener('change', () => uploadFiles($('fileInput').files));
+['dragenter','dragover'].forEach(ev => $('drop').addEventListener(ev, e => { e.preventDefault(); $('drop').classList.add('over'); }));
+['dragleave','drop'].forEach(ev => $('drop').addEventListener(ev, e => { e.preventDefault(); $('drop').classList.remove('over'); }));
+$('drop').addEventListener('drop', e => uploadFiles(e.dataTransfer.files));
+document.addEventListener('paste', e => { // dán ảnh (Ctrl/Cmd + V) khi đang ở form
+  if ($('viewForm').style.display === 'none') return;
+  const files = [...(e.clipboardData && e.clipboardData.items || [])].filter(i => i.kind === 'file' && i.type.startsWith('image/')).map(i => {
+    const f = i.getAsFile(); const ext = (i.type.split('/')[1] || 'png').replace('jpeg','jpg');
+    return new File([f], `anh-dan-${new Date().toISOString().slice(0,19).replace(/[-:T]/g,'')}.${ext}`, { type: i.type });
+  });
+  if (files.length){ e.preventDefault(); uploadFiles(files); }
+});
+
+['f_project','f_module','f_desc','f_cause','f_fix'].forEach(id => $(id).addEventListener('input', () => { dirty = true; }));
+window.addEventListener('beforeunload', e => { if (dirty && $('viewForm').style.display !== 'none'){ e.preventDefault(); e.returnValue = ''; } });
+
+$('newBtn').addEventListener('click', startNew);
+$('cancelBtn').addEventListener('click', () => { if (dirty && !confirm('Bỏ các thay đổi chưa lưu?')) return; closeForm(); });
 
 $('saveBtn').addEventListener('click', async () => {
-  const title = $('f_title').value.trim();
-  if (!title){ setFormStatus('Cần nhập Tiêu đề case.', 'err'); return; }
-
+  // Ô "Mô tả sự cố": dòng đầu không rỗng = tiêu đề case, phần còn lại = mô tả chi tiết
+  const lines = $('f_desc').value.replace(/\r/g, '').trim().split('\n');
+  const title = (lines.shift() || '').trim();
+  if (!title){ setFormStatus('Cần nhập Mô tả sự cố (dòng đầu là tiêu đề case).', 'err'); $('f_desc').focus(); return; }
+  const project = LOCKED_PROJECT || $('f_project').value.trim();
+  if (!project){ setFormStatus('Cần chọn / nhập Dự án.', 'err'); $('f_project').focus(); return; }
   const payload = {
     id: editingId || undefined,
-    project: $('f_project').value.trim(),
+    project,
+    module: $('f_module').value,
     title,
-    symptom: $('f_symptom').value.trim(),
-    cause: $('f_cause').value.trim(),
-    solution: $('f_solution').value.trim(),
-    tags: $('f_tags').value.trim(),
+    symptom: lines.join('\n').trim(),
+    cause: $('f_cause').value,
+    solution: $('f_fix').value,
+    sql: '', // đã gộp vào Cách xử lý
+    tags: formTags,
+    images: formImages.map(({ _url, ...f }) => f),
   };
-
-  $('saveBtn').disabled = true;
-  setFormStatus(payload.id ? 'Đang lưu thay đổi…' : 'Đang thêm case mới…', 'busy');
+  $('saveBtn').disabled = true; $('saveBtn').textContent = 'Đang lưu…';
+  setFormStatus('', '');
   try{
-    const data = await fetchJson('/api/support-cases', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const commitNote = data.commitUrl ? ` Đã tạo commit trên GitHub: ${data.commitUrl}` : ' (lưu tạm trên server — chưa cấu hình GitHub nên chưa được commit).';
-    setFormStatus((payload.id ? 'Đã lưu thay đổi.' : 'Đã thêm case mới.') + commitNote, 'ok');
-    clearForm();
-    await loadCases();
+    await fetchJson('/api/support-cases', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+    freshAssets = []; dirty = false; formImages = []; editingId = null; // đã lưu: ảnh thuộc về case, không dọn nữa
+    await loadCases(); showView('list');
   }catch(err){
     console.error(err);
     setFormStatus('Lỗi: ' + err.message, 'err');
   }finally{
-    $('saveBtn').disabled = false;
+    $('saveBtn').disabled = false; $('saveBtn').textContent = '💾 Lưu';
   }
 });
 
 async function deleteCase(id){
-  const c = allCases.find(x => x.id === id);
-  if (!c) return;
-  if (!confirm(`Xoá case "${c.title}"? Không thể hoàn tác.`)) return;
-  setListStatus('Đang xoá…', 'busy');
+  if (armDeleteId !== id){ armDeleteId = id; renderList(); setTimeout(() => { if (armDeleteId === id){ armDeleteId = null; if ($('viewList').style.display !== 'none') renderList(); } }, 4000); return; }
+  armDeleteId = null; setListStatus('Đang xoá…', 'busy');
   try{
-    const data = await fetchJson('/api/support-cases/' + encodeURIComponent(id), { method:'DELETE' });
-    const commitNote = data.commitUrl ? ` Đã tạo commit trên GitHub.` : '';
-    setListStatus('Đã xoá case.' + commitNote, 'ok');
+    await fetchJson('/api/support-cases/' + encodeURIComponent(id), { method:'DELETE' });
     await loadCases();
   }catch(err){
     console.error(err);
@@ -353,17 +449,19 @@ async function deleteCase(id){
 
 $('searchInput').addEventListener('input', renderList);
 $('projectFilter').addEventListener('change', renderList);
+$('moduleFilter').addEventListener('change', renderList);
 $('reloadBtn').addEventListener('click', loadCases);
 
 $('exportBtn').addEventListener('click', () => {
-  if (!allCases.length){ setListStatus('Chưa có case nào để xuất.', 'err'); return; }
-  const aoa = [['Dự án','Tiêu đề','Mô tả vấn đề','Nguyên nhân','Cách xử lý','Tags','Cập nhật lần cuối']];
-  allCases.forEach(c => aoa.push([c.project, c.title, c.symptom, c.cause, c.solution, c.tags, c.updatedAt]));
+  const rows = allCases.filter(c => !LOCKED_PROJECT || c.project === LOCKED_PROJECT);
+  if (!rows.length){ setListStatus('Chưa có case nào để xuất.', 'err'); return; }
+  const aoa = [['Dự án','Phân hệ','Mô tả sự cố (tiêu đề)','Chi tiết sự cố','Nguyên nhân','Cách xử lý / câu lệnh SQL','Tag cũ','Số ảnh','Cập nhật lần cuối','Người cập nhật']];
+  rows.forEach(c => aoa.push([c.project, c.module||'', c.title, c.symptom, c.cause, fixOf(c), c.tags, (c.images||[]).length, c.updatedAt, c.updatedBy||'']));
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = [{wch:14},{wch:30},{wch:34},{wch:28},{wch:34},{wch:20},{wch:20}];
+  ws['!cols'] = [{wch:14},{wch:10},{wch:34},{wch:34},{wch:28},{wch:52},{wch:16},{wch:8},{wch:20},{wch:16}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Case Ho Tro');
-  XLSX.writeFile(wb, 'Thu_Vien_Case_Ho_Tro.xlsx');
+  XLSX.writeFile(wb, 'Thu_Vien_Case_Ho_Tro' + (LOCKED_PROJECT ? '_' + LOCKED_PROJECT : '') + '.xlsx');
 });
 
 loadCases();
