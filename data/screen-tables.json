@@ -1,0 +1,122 @@
+[
+  {
+    "id": "scr_1792990782879_5boyb",
+    "project": "MerapLion_eSales",
+    "code": "IN10100",
+    "name": "Chuyển kho (Transfer)",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "IN_Transfer",
+        "role": "Bảng chính",
+        "desc": "Header phiếu chuyển kho (khoá: BatNbr, BranchID, TrnsfrDocNbr) — PROC: pcBatch, pcTrnsfrDoc, pdLotTrnsfer, pdTrnsfer, pgReceiptLoad, UpdateTransfer",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      },
+      {
+        "name": "IN_Trans",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết dòng hàng giao dịch kho (khoá: BatNbr, BranchID, LineRef, RefNbr) — PROC: pcBatch, pcTrnsfrDoc, pdLotTrnsfer, pdTrnsfer, pgReceiptLoad",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      },
+      {
+        "name": "IN_LotTrans",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết lô / số serial theo dòng — PROC: pdLotTrnsfer, pgLotTrans",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      },
+      {
+        "name": "IN_LotTrans_ProDetail",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết lô theo ProDetailCode — PROC: pgLotTrans_ProDetail",
+        "where": "BranchID = 'xxx' AND BatNbr = 'xxx'"
+      },
+      {
+        "name": "Batch",
+        "role": "Bảng chính",
+        "desc": "Lô giao dịch (khoá: BatNbr, BranchID, Module) — PROC: pcBatch",
+        "where": "BatNbr = 'xxx' AND BranchID = 'xxx'"
+      },
+      {
+        "name": "IN_ItemSite",
+        "role": "Khác",
+        "desc": "Tồn kho theo từng kho (InvtID, SiteID) — PROC: pdImportInventory",
+        "where": "InvtID = 'xxx' AND SiteID = 'xxx'"
+      },
+      {
+        "name": "IN_Inventory",
+        "role": "Danh mục",
+        "desc": "Danh mục sản phẩm — PROC: pcInvt, pcUnit, pdImportInventory, pdShelfLife, pdTrnsfer, pgReceiptLoad",
+        "where": "InvtID = 'xxx'"
+      },
+      {
+        "name": "IN_InvtCpny",
+        "role": "Danh mục",
+        "desc": "Sản phẩm theo công ty — PROC: pdImportInventory",
+        "where": "InvtID = 'xxx'"
+      },
+      {
+        "name": "IN_ProductDetail",
+        "role": "Danh mục",
+        "desc": "Chi tiết sản phẩm (ProDetailID, InvtID) — PROC: pcProductDetail",
+        "where": "InvtID = 'xxx'"
+      },
+      {
+        "name": "IN_UnitConversion",
+        "role": "Danh mục",
+        "desc": "Quy đổi đơn vị tính — PROC: pcUnit, pcUnitConversion",
+        "where": "InvtID = 'xxx'"
+      },
+      {
+        "name": "IN_Site",
+        "role": "Danh mục",
+        "desc": "Danh mục kho — PROC: pcBatch, pcFromSite, pcSite, pcTrnsfrDoc",
+        "where": "SiteId = 'xxx'"
+      },
+      {
+        "name": "IN_SiteCpny",
+        "role": "Danh mục",
+        "desc": "Kho theo công ty — PROC: pcFromSite, pcSite",
+        "where": "SiteId = 'xxx'"
+      },
+      {
+        "name": "IN_TagHeader",
+        "role": "Danh mục",
+        "desc": "Header Tag (TAGID, BranchID, SiteID) — PROC: pcSite",
+        "where": "BranchID = 'xxx' AND SiteID = 'xxx'"
+      },
+      {
+        "name": "IN_POSMHeader",
+        "role": "Danh mục",
+        "desc": "Danh mục POSM — PROC: pcPOSM",
+        "where": "PosmID = 'xxx'"
+      },
+      {
+        "name": "SI_ReasonCode",
+        "role": "Danh mục",
+        "desc": "Lý do (mã lý do huỷ/điều chỉnh) — PROC: pcReasonCancel, pcReasonCode",
+        "where": "ReasonID = 'xxx'"
+      },
+      {
+        "name": "SI_ReasonType",
+        "role": "Danh mục",
+        "desc": "Loại lý do — PROC: pcReasonCancel, pcReasonCode",
+        "where": "Code = 'xxx'"
+      },
+      {
+        "name": "IN_Setup",
+        "role": "Cấu hình",
+        "desc": "Thiết lập IN theo chi nhánh (đánh số chứng từ) — PROC: pdINNumbering",
+        "where": "BranchID = 'xxx'"
+      },
+      {
+        "name": "Users",
+        "role": "Danh mục",
+        "desc": "Người dùng — PROC: pcSlsDelivery",
+        "where": "UserName = 'xxx'"
+      }
+    ],
+    "updatedAt": "2026-10-26T04:59:42.542Z",
+    "updatedBy": "admin"
+  }
+]
