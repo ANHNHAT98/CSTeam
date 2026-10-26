@@ -163,7 +163,7 @@ app.get('/duan/table-man-hinh', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'duan-table-man-hinh.html'));
 });
 
-/* ---------- Dự án: Table màn hình (danh sách table của từng màn hình theo dự án — để nhân viên SELECT đúng table khi kiểm tra) ----------
+/* ---------- Dự án: Table Dự Án (danh sách table của từng màn hình theo dự án — để nhân viên SELECT đúng table khi kiểm tra) ----------
    GET    /api/screen-tables                  → { items:[{id, project, code, name, module, note, tables:[{name, role, desc, where}], updatedAt, updatedBy}], modules, roles, githubBacked }
    POST   /api/screen-tables                  (có id = sửa, không id = thêm; (project, code) là duy nhất) → { screen, commitUrl }
    POST   /api/screen-tables/import           { project, rows:[{code,name,module,table,role,desc,where}] } → { added, updated, tables, commitUrl } (1 commit)
@@ -1325,7 +1325,7 @@ app.post('/api/jira/sla-bulk', requireAuth, async (req, res) => {
 });
 
 /* ---------- API: Case Hỗ Trợ (thư viện case thường gặp: mô tả sự cố, nguyên nhân, câu lệnh SQL / kiểm tra PROC, cách xử lý, hình ảnh) ----------
-   GET    /api/support-cases                       → { cases:[{id, project, title, symptom, cause, solution, module (API|BO|APP|Manager), sql/tags (case cũ), images:[{id,name,size,assetId,...}], ...}], modules, githubBacked }
+   GET    /api/support-cases                       → { cases:[{id, project, title, symptom, cause, solution, module (API|BO|APP|Manager|Report), sql/tags (case cũ), images:[{id,name,size,assetId,...}], ...}], modules, githubBacked }
    POST   /api/support-cases                       (có id = sửa, không id = thêm) → { case, commitUrl }
    DELETE /api/support-cases/:id
    POST   /api/support-cases/upload                (multipart, field "file") → { file } để gắn vào case rồi Lưu; DELETE /api/support-cases/upload/:assetId → bỏ ảnh chưa lưu

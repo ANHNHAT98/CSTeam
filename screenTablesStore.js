@@ -1,14 +1,14 @@
 'use strict';
-/* Menu Dự án → "Table màn hình": danh sách các table của từng màn hình theo dự án, để nhân viên biết SELECT đúng table khi kiểm tra.
-   Mỗi bản ghi = 1 màn hình của 1 dự án: { id, project, code (mã màn hình, vd OM10100), name (tên màn hình), module (API|BO|APP|Manager hoặc ''), note,
+/* Menu Dự án → "Table Dự Án": danh sách các table của từng màn hình theo dự án, để nhân viên biết SELECT đúng table khi kiểm tra.
+   Mỗi bản ghi = 1 màn hình của 1 dự án: { id, project, code (mã màn hình, vd OM10100), name (tên màn hình), module (API|BO|APP|Manager|Report hoặc ''), note,
      tables:[{ name (tên table), role (vai trò), desc (mô tả), where (điều kiện WHERE gợi ý, vd OrderNbr = '...') }], updatedAt, updatedBy }.
    (project, code) là duy nhất. Lưu qua listStore.js: có GITHUB_TOKEN/GITHUB_REPO → mỗi lần thêm/sửa/xoá/import là 1 commit vào data/screen-tables.json; chưa cấu hình → ghi ./data/screen-tables.json. */
 
 const { createListStore } = require('./listStore');
 
 const store = createListStore({ repoFilePath: 'data/screen-tables.json', localFile: 'data/screen-tables.json' });
-const MODULES = ['API', 'BO', 'APP', 'Manager'];
-const ROLES = ['Bảng chính', 'Bảng chi tiết', 'Danh mục', 'Cấu hình', 'Lịch sử / Log', 'Khác'];
+const MODULES = ['API', 'BO', 'APP', 'Manager', 'Report'];
+const ROLES = ['Bảng chính', 'Bảng chi tiết', 'Danh mục', 'Cấu hình', 'Lịch sử / Log', 'Khác']; // cũng là thứ tự sắp xếp table trong 1 màn hình
 const MAX_TABLES = 100;
 const newId = () => 'scr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
 const lc = (s) => String(s || '').trim().toLowerCase();
@@ -30,6 +30,7 @@ function clean(input) {
     desc: String((t && t.desc) || '').trim().slice(0, 300),
     where: String((t && t.where) || '').trim().replace(/^where\s+/i, '').slice(0, 300),
   })).filter((t) => t.name).filter((t) => { const k = lc(t.name); if (seen.has(k)) return false; seen.add(k); return true; });
+  tables.sort((a, b) => ROLES.indexOf(a.role) - ROLES.indexOf(b.role)); // Bảng chính → Bảng chi tiết → Danh mục → Cấu hình → Lịch sử/Log → Khác (giữ nguyên thứ tự nhập trong cùng vai trò)
   for (const t of tables) if (!/^[A-Za-z0-9_.\[\]#$@]{1,128}$/.test(t.name)) throw new Error(`Tên table không hợp lệ: "${t.name}" (chỉ gồm chữ, số, _ . [ ] #).`);
   return { project, code, name: String(input.name || '').trim().slice(0, 200), module: MODULES.includes(input.module) ? input.module : '', note: String(input.note || '').trim().slice(0, 500), tables };
 }
@@ -51,7 +52,7 @@ async function upsert(input, user) {
       saved = { id: newId(), ...f, updatedAt: now, updatedBy: user || '' }; items.push(saved);
     }
     return { list: items, result: {} };
-  }, `Table màn hình: ${input.id ? 'sửa' : 'thêm'} ${f.project} / ${f.code}${user ? ' (' + user + ')' : ''}`);
+  }, `Table Dự Án: ${input.id ? 'sửa' : 'thêm'} ${f.project} / ${f.code}${user ? ' (' + user + ')' : ''}`);
   return { screen: saved, commitUrl: r.commitUrl };
 }
 
@@ -82,7 +83,7 @@ async function importRows(project, rows, user) {
       else { items.push({ id: newId(), ...f, updatedAt: now, updatedBy: user || '' }); added++; }
     }
     return { list: items, result: {} };
-  }, `Table màn hình: import ${cleaned.length} màn hình (${proj})${user ? ' (' + user + ')' : ''}`);
+  }, `Table Dự Án: import ${cleaned.length} màn hình (${proj})${user ? ' (' + user + ')' : ''}`);
   return { added, updated, tables: tableCount, commitUrl: r.commitUrl };
 }
 
@@ -90,7 +91,7 @@ async function remove(id) {
   return store.mutate((all) => {
     if (!all.some((x) => x.id === id)) throw new Error('Không tìm thấy màn hình (có thể đã bị xoá).');
     return { list: all.filter((x) => x.id !== id), result: {} };
-  }, 'Table màn hình: xoá 1 màn hình');
+  }, 'Table Dự Án: xoá 1 màn hình');
 }
 
 module.exports = { store, MODULES, ROLES, list, upsert, importRows, remove, clean };

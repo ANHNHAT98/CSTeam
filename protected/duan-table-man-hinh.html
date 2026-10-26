@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Table màn hình</title>
+<title>Table Dự Án</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -68,10 +68,10 @@
 </style>
 </head>
 <body>
-<div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb" id="crumb">/ dự án / table màn hình</span></div>
+<div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb" id="crumb">/ dự án / table dự án</span></div>
 <div class="wrap">
-  <h1 id="h1">Table màn hình</h1>
-  <p class="sub" id="sub">Danh sách các <b>table của từng màn hình</b> theo dự án — tra nhanh để <b>SELECT đúng table</b> khi kiểm tra dữ liệu. Tìm theo mã / tên màn hình hoặc tên table; bấm tên table để copy câu SELECT.</p>
+  <h1 id="h1">Table Dự Án</h1>
+  <p class="sub" id="sub">Danh sách các <b>table của từng màn hình</b> theo dự án — tra nhanh để <b>SELECT đúng table</b> khi kiểm tra dữ liệu. Tìm theo mã / tên màn hình hoặc tên table; dùng nút 📋 SELECT để copy câu SELECT.</p>
 
   <div class="panel" id="toolbar">
     <div class="bar">
@@ -103,10 +103,10 @@ const say = (kind, text) => { $('msg').innerHTML = text ? '<div class="msg '+kin
 
 /* ---------- dữ liệu ---------- */
 const LOCK = new URLSearchParams(location.search).get('project') || ''; // mở từ menu Dự án → chỉ làm việc với 1 dự án
-let items = [], modules = ['API','BO','APP','Manager'], roles = ['Bảng chính','Bảng chi tiết','Danh mục','Cấu hình','Lịch sử / Log','Khác'], projLabels = {};
+let items = [], modules = ['API','BO','APP','Manager','Report'], roles = ['Bảng chính','Bảng chi tiết','Danh mục','Cấu hình','Lịch sử / Log','Khác'], projLabels = {};
 let githubBacked = false, view = 'screens', draft = null, importPlan = null, armDeleteId = null;
 const pLabel = c => projLabels[c] || c;
-const curProject = () => LOCK; // dự án gắn theo menu Dự Án → (dự án) → Table màn hình
+const curProject = () => LOCK; // dự án gắn theo menu Dự Án → (dự án) → Table Dự Án
 const lc = s => String(s||'').trim().toLowerCase();
 const fmtDate = s => { if(!s) return ''; const d = new Date(s); return isNaN(d) ? '' : d.toLocaleString('vi-VN'); };
 const selectSql = t => 'SELECT TOP 100 * FROM '+t.name+' WITH (NOLOCK)'+(t.where ? '\nWHERE '+t.where : '');
@@ -119,6 +119,7 @@ async function load(){
   const [d, p] = await Promise.all([api('/api/screen-tables'), api('/api/ticket-instructions').catch(()=>[])]);
   items = d.items || []; githubBacked = !!d.githubBacked;
   if(Array.isArray(d.modules) && d.modules.length) modules = d.modules; if(Array.isArray(d.roles) && d.roles.length) roles = d.roles;
+  items.forEach(s=>{ s.tables = (s.tables||[]).map((t,i)=>({t,i})).sort((a,b)=>(roles.indexOf(a.t.role)<0?99:roles.indexOf(a.t.role))-(roles.indexOf(b.t.role)<0?99:roles.indexOf(b.t.role)) || a.i-b.i).map(x=>x.t); }); // Bảng chính → Bảng chi tiết → Danh mục → Cấu hình → Khác
   projLabels = {}; p.forEach(x => { projLabels[x.code] = x.label || x.name || x.code; });
   $('fModule').innerHTML = '<option value="">Tất cả phân hệ</option>'+modules.map(m=>'<option>'+esc(m)+'</option>').join('');
   if(LOCK) applyLock(); else { $('toolbar').style.display = 'none'; }
@@ -126,9 +127,9 @@ async function load(){
 }
 function applyLock(){
   const n = pLabel(LOCK);
-  $('h1').textContent = 'Table màn hình — '+n; document.title = 'Table màn hình — '+n;
-  $('crumb').textContent = '/ dự án / '+n.toLowerCase()+' / table màn hình';
-  $('sub').innerHTML = 'Các <b>table của từng màn hình</b> dự án <b>'+esc(n)+'</b> — tra nhanh để <b>SELECT đúng table</b> khi kiểm tra dữ liệu. Tìm theo mã / tên màn hình hoặc tên table; bấm tên table để copy câu SELECT.';
+  $('h1').textContent = 'Table Dự Án — '+n; document.title = 'Table Dự Án — '+n;
+  $('crumb').textContent = '/ dự án / '+n.toLowerCase()+' / table dự án';
+  $('sub').innerHTML = 'Các <b>table của từng màn hình</b> dự án <b>'+esc(n)+'</b> — tra nhanh để <b>SELECT đúng table</b> khi kiểm tra dữ liệu. Tìm theo mã / tên màn hình hoặc tên table; dùng nút 📋 SELECT để copy câu SELECT.';
 }
 function filtered(){
   const p = curProject(), m = $('fModule').value, q = lc($('fSearch').value);
@@ -155,17 +156,16 @@ function render(){
 /** Mở trang không qua menu dự án: chỉ liệt kê dự án để chọn (dự án luôn gắn theo menu, không nhập tay). */
 function renderLauncher(){
   const codes = [...new Set([...Object.keys(projLabels), ...items.map(x=>x.project)])].sort((a,b)=>pLabel(a).localeCompare(pLabel(b),'vi'));
-  $('main').innerHTML = '<div class="panel"><div class="hint" style="margin-bottom:10px">Table màn hình được quản lý theo từng dự án — chọn dự án (hoặc vào từ menu <b>Dự Án → (tên dự án) → Table màn hình</b>):</div><div class="acts" style="margin:0">'
+  $('main').innerHTML = '<div class="panel"><div class="hint" style="margin-bottom:10px">Table Dự Án được quản lý theo từng dự án — chọn dự án (hoặc vào từ menu <b>Dự Án → (tên dự án) → Table Dự Án</b>):</div><div class="acts" style="margin:0">'
     + codes.map(c=>'<a href="?project='+encodeURIComponent(c)+'" style="text-decoration:none"><button type="button">'+esc(pLabel(c))+' <span class="chip cnt">'+items.filter(x=>x.project===c).length+' màn hình</span></button></a>').join('')+'</div></div>';
 }
 const roleCls = r => { const i = roles.indexOf(r); return i===0?'r0':i===1?'r1':i===2?'r2':''; };
 function screensHtml(list){
   const open = $('fSearch').value.trim() || list.length<=3;
   return list.map(s=>{
-    const chips = s.tables.slice(0,8).map(t=>'<span class="chip tbl" data-sel="'+esc(s.id)+'|'+esc(t.name)+'" title="Bấm để copy câu SELECT">'+esc(t.name)+'</span>').join('') + (s.tables.length>8?'<span class="chip">+'+(s.tables.length-8)+'</span>':'');
     const rows = s.tables.map(t=>'<tr><td class="tn">'+esc(t.name)+'</td><td><span class="role '+roleCls(t.role)+'">'+esc(t.role)+'</span></td><td>'+esc(t.desc)+'</td><td class="mono">'+esc(t.where)+'</td><td class="t"><button type="button" class="sm" data-sel="'+esc(s.id)+'|'+esc(t.name)+'" title="Copy câu SELECT của table này">📋 SELECT</button> <button type="button" class="sm" data-name="'+esc(t.name)+'" title="Copy tên table">📋 Tên</button></td></tr>').join('');
     return '<div class="scr" data-id="'+esc(s.id)+'"><div class="scr-head" data-toggle="'+esc(s.id)+'"><div><div><span class="scr-code">'+esc(s.code)+'</span><span class="scr-name">'+esc(s.name)+'</span></div>'
-      +'<div class="scr-meta">'+(LOCK?'':'<span class="chip">'+esc(pLabel(s.project))+'</span>')+(s.module?'<span class="chip mod">'+esc(s.module)+'</span>':'')+'<span class="chip cnt">'+s.tables.length+' table</span>'+chips+'</div></div><div class="scr-toggle">▾</div></div>'
+      +'<div class="scr-meta">'+(LOCK?'':'<span class="chip">'+esc(pLabel(s.project))+'</span>')+(s.module?'<span class="chip mod">'+esc(s.module)+'</span>':'')+'<span class="chip cnt">'+s.tables.length+' table</span></div></div><div class="scr-toggle">▾</div></div>'
       +'<div class="scr-body'+(open?' open':'')+'" id="b-'+esc(s.id)+'">'+(s.note?'<div class="hint" style="margin-top:10px">📝 '+esc(s.note)+'</div>':'')
       +(s.tables.length?'<table><thead><tr><th>Table</th><th>Vai trò</th><th>Mô tả</th><th>WHERE gợi ý</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="hint" style="margin-top:10px">Màn hình chưa có table nào — bấm Sửa để thêm.</div>')
       +'<div class="acts"><button type="button" class="primary sm" data-allnames="'+esc(s.id)+'">📋 Copy tên các table</button><button type="button" class="sm" data-allsql="'+esc(s.id)+'">📋 Copy tất cả SELECT</button><button type="button" class="sm" data-edit="'+esc(s.id)+'">✎ Sửa</button><button type="button" class="danger sm'+(armDeleteId===s.id?' arm':'')+'" data-del="'+esc(s.id)+'">'+(armDeleteId===s.id?'Bấm lần nữa để xoá':'🗑 Xoá')+'</button></div>'
@@ -261,15 +261,15 @@ function downloadTemplate(){
     ['','','','OM_SalesOrdDet','Bảng chi tiết','Chi tiết đơn hàng',"OrderNbr = 'xxx'"]];
   const g = XLSX.utils.aoa_to_sheet(guide); g['!cols'] = [{wch:120}];
   XLSX.utils.book_append_sheet(wb, g, 'Hướng dẫn');
-  XLSX.writeFile(wb, 'Template_Table_Man_Hinh.xlsx');
+  XLSX.writeFile(wb, 'Template_Table_Du_An.xlsx');
 }
 function exportExcel(){
   const list = filtered(); if(!list.length){ say('err','Không có màn hình nào để xuất.'); return; }
   const aoa = [['Dự án'].concat(XLS_HEAD)];
   list.forEach(s=>{ if(!s.tables.length) aoa.push([pLabel(s.project), s.code, s.name, s.module||'', '', '', '', '']); s.tables.forEach(t=>aoa.push([pLabel(s.project), s.code, s.name, s.module||'', t.name, t.role, t.desc, t.where])); });
   const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = [{wch:16},{wch:16},{wch:30},{wch:12},{wch:28},{wch:16},{wch:34},{wch:36}];
-  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Table màn hình');
-  XLSX.writeFile(wb, 'Table_Man_Hinh'+'_'+pLabel(curProject()).replace(/[^\w\-]+/g,'_')+'.xlsx');
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Table Dự Án');
+  XLSX.writeFile(wb, 'Table_Du_An'+'_'+pLabel(curProject()).replace(/[^\w\-]+/g,'_')+'.xlsx');
 }
 const norm = s => String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase().trim();
 const COLS = { code:/^(ma man hinh|man hinh|screen|screen code|code|ma)$/, name:/^(ten man hinh|screen name|ten)$/, module:/^(phan he|module)$/, table:/^(table|ten table|bang|ten bang)$/, role:/^(vai tro|role)$/, desc:/^(mo ta|desc|description|ghi chu)$/, where:/^(dieu kien where goi y|dieu kien|where|where goi y)$/ };

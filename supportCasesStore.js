@@ -3,7 +3,7 @@
 // Lưu qua listStore.js: có GITHUB_TOKEN/GITHUB_REPO → mỗi lần thêm/sửa/xoá là 1 commit vào data/support-cases.json (không mất khi container restart);
 // chưa cấu hình → ghi ./data/support-cases.json (chỉ để chạy thử, MẤT khi redeploy nếu không mount volume ./data).
 // Hình ảnh: tải lên kho riêng (envFiles.createFileStore → GitHub Releases tag "support-case-files"), bản ghi chỉ giữ meta ảnh.
-// Case cũ (chỉ có project/title/symptom/cause/solution/tags) vẫn đọc bình thường — các trường mới là sql, images và module (phân hệ: API / BO / APP / Manager).
+// Case cũ (chỉ có project/title/symptom/cause/solution/tags) vẫn đọc bình thường — các trường mới là sql, images và module (phân hệ: API / BO / APP / Manager / Report).
 // Giao diện hiện gộp: "Tiêu đề + mô tả sự cố" (dòng đầu = title, các dòng sau = symptom) và "Cách xử lý + câu lệnh SQL" (lưu trong solution; sql chỉ còn ở case cũ).
 
 const { createListStore } = require('./listStore');
@@ -15,7 +15,7 @@ const images = createFileStore({
   localDir: 'support-case-files', allowed: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf', 'txt', 'sql', 'zip'], maxBytes: 20 * 1024 * 1024,
 });
 const MAX_IMAGES = 20;
-const MODULES = ['API', 'BO', 'APP', 'Manager']; // phân hệ (chọn 1 trong combobox)
+const MODULES = ['API', 'BO', 'APP', 'Manager', 'Report']; // phân hệ (chọn 1 trong combobox)
 const newId = () => 'case_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
 const filesOf = (c) => (c && c.images) || [];
 
