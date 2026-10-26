@@ -14,6 +14,7 @@ const { buildCustomerReport, slaDueAt, parseNaive, fmtNaive } = require('./custo
 const kpiSla = require('./kpiSla');
 const kpiComplaint = require('./kpiComplaint');
 const sqlEnv = require('./sqlEnv');
+const screenTables = require('./screenTablesStore');
 const kpiDefect = require('./kpiDefect');
 const kpiCr = require('./kpiCr');
 const kpiAi = require('./kpiAi');
@@ -155,6 +156,34 @@ app.get('/hotfix/gom-build', requirePageAuth, (req, res) => {
 
 app.get('/hotfix/backup-build', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'hotfix-backup-build.html'));
+});
+
+app.get('/duan/table-man-hinh', requirePageAuth, (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'protected', 'duan-table-man-hinh.html'));
+});
+
+/* ---------- Dự án: Table màn hình (danh sách table của từng màn hình theo dự án — để nhân viên SELECT đúng table khi kiểm tra) ----------
+   GET    /api/screen-tables                  → { items:[{id, project, code, name, module, note, tables:[{name, role, desc, where}], updatedAt, updatedBy}], modules, roles, githubBacked }
+   POST   /api/screen-tables                  (có id = sửa, không id = thêm; (project, code) là duy nhất) → { screen, commitUrl }
+   POST   /api/screen-tables/import           { project, rows:[{code,name,module,table,role,desc,where}] } → { added, updated, tables, commitUrl } (1 commit)
+   DELETE /api/screen-tables/:id
+   Lưu qua listStore (GitHub nếu đã cấu hình GITHUB_TOKEN/GITHUB_REPO — mỗi lần lưu là 1 commit — ngược lại ./data/screen-tables.json). */
+app.get('/api/screen-tables', requireAuth, async (req, res) => {
+  try { res.set('Cache-Control', 'no-store'); res.json({ items: await screenTables.list(), modules: screenTables.MODULES, roles: screenTables.ROLES, githubBacked: screenTables.store.isGithubBacked() }); }
+  catch (e) { console.error('[screen-tables:get] lỗi:', e.message); res.status(502).json({ error: e.message }); }
+});
+app.post('/api/screen-tables/import', requireAuth, async (req, res) => {
+  try { const b = req.body || {}; res.json({ ok: true, ...(await screenTables.importRows(b.project, b.rows, req.session.username)) }); }
+  catch (e) { console.error('[screen-tables:import] lỗi:', e.message); res.status(400).json({ error: e.message }); }
+});
+app.post('/api/screen-tables', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, ...(await screenTables.upsert(req.body || {}, req.session.username)) }); }
+  catch (e) { console.error('[screen-tables:post] lỗi:', e.message); res.status(400).json({ error: e.message }); }
+});
+app.delete('/api/screen-tables/:id', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, ...(await screenTables.remove(req.params.id)) }); }
+  catch (e) { console.error('[screen-tables:delete] lỗi:', e.message); res.status(400).json({ error: e.message }); }
 });
 
 app.get('/hotfix/moi-truong', requirePageAuth, (req, res) => {

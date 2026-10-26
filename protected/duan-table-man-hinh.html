@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Table màn hình</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{--ink:#12233D;--blueprint:#1F4E79;--paper:#EEF2F6;--panel:#FFFFFF;--grid-line:rgba(31,78,121,.14);--grid-line-strong:rgba(31,78,121,.28);--amber:#E8A33D;--success:#3F7D58;--danger:#B23A48;--muted:#5B7089;--radius:10px;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;min-height:100vh;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:32px 32px;}
+  .ops-topbar{background:#12233D;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:14px;}
+  .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;opacity:.9;}
+  .ops-topbar a:hover{opacity:1;text-decoration:underline;}
+  .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
+  .wrap{max-width:1200px;margin:0 auto;padding:28px 24px 80px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;line-height:1.6;}
+  .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;}
+  .bar{display:flex;gap:10px 12px;flex-wrap:wrap;align-items:flex-end;}
+  .field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted);font-weight:600;}
+  .field select,.field input[type=text]{font:inherit;font-size:13.5px;font-weight:500;color:var(--ink);padding:8px 12px;border-radius:8px;border:1px solid var(--grid-line-strong);background:#fff;min-width:200px;}
+  button{font:inherit;font-size:13.5px;padding:8px 14px;border-radius:8px;border:1px solid var(--blueprint);background:#fff;color:var(--blueprint);cursor:pointer;font-weight:600;}
+  button.primary{background:var(--blueprint);color:#fff;}
+  button.export{border-color:var(--success);color:var(--success);}
+  button.danger{border-color:var(--danger);color:var(--danger);}
+  button.danger.arm{background:var(--danger);color:#fff;}
+  button.sm{padding:4px 10px;font-size:12.5px;}
+  button:disabled{opacity:.5;cursor:default;}
+  .msg{padding:11px 14px;border-radius:8px;font-size:13.5px;margin-bottom:14px;line-height:1.55;}
+  .msg.err{background:#FBE9EB;border:1px solid #E3A7AF;color:#8B2A36;} .msg.info{background:#EAF1F8;border:1px solid var(--grid-line-strong);} .msg.ok{background:#EAF5EE;border:1px solid #B5D8C3;color:#2C5E43;} .msg.warn{background:#FFF6E3;border:1px solid #EBCB8B;color:#7A5410;}
+  .tabs{display:flex;gap:6px;margin:0 0 14px;border-bottom:2px solid var(--grid-line-strong);}
+  .tab{padding:8px 16px;border:1px solid var(--grid-line-strong);border-bottom:none;border-radius:8px 8px 0 0;background:#fff;cursor:pointer;font-size:13.5px;font-weight:600;position:relative;top:2px;}
+  .tab.on{background:var(--blueprint);color:#fff;border-color:var(--blueprint);}
+  .scr{border:1px solid var(--grid-line-strong);border-radius:9px;margin-bottom:12px;background:#fbfcfe;}
+  .scr-head{display:flex;justify-content:space-between;gap:12px;padding:13px 16px;cursor:pointer;align-items:flex-start;}
+  .scr-code{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:15px;color:var(--blueprint);}
+  .scr-name{font-weight:600;font-size:14.5px;margin-left:8px;}
+  .scr-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:7px;}
+  .chip{font-family:'IBM Plex Mono',monospace;font-size:11px;padding:2px 8px;border-radius:12px;background:rgba(31,78,121,.08);color:var(--blueprint);white-space:nowrap;}
+  .chip.mod{background:rgba(31,78,121,.16);font-weight:600;} .chip.cnt{background:rgba(232,163,61,.2);color:#8A5A0B;}
+  .chip.tbl{background:#fff;border:1px solid var(--grid-line-strong);cursor:copy;} .chip.tbl:hover{background:#EAF1F8;} .chip.tbl.done{background:#EAF5EE;border-color:#B5D8C3;color:#2C5E43;}
+  .scr-toggle{color:var(--muted);font-size:18px;user-select:none;}
+  .scr-body{display:none;padding:2px 16px 14px;border-top:1px dashed var(--grid-line-strong);} .scr-body.open{display:block;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff;margin-top:10px;}
+  th{background:#1F4E79;color:#fff;text-align:left;padding:7px 11px;font-weight:600;}
+  td{padding:7px 11px;border-bottom:1px solid var(--grid-line);vertical-align:top;word-break:break-word;}
+  td.mono{font-family:'IBM Plex Mono',monospace;font-size:12.5px;} td.tn{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;}
+  td.t{white-space:nowrap;text-align:right;width:170px;}
+  .role{font-size:11px;font-weight:600;border-radius:12px;padding:1px 9px;background:#E4EBF3;color:var(--blueprint);white-space:nowrap;}
+  .role.r0{background:#FFF3DC;color:#8A5A0B;} .role.r1{background:#EAF1F8;} .role.r2{background:#EAF5EE;color:#2C5E43;}
+  .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px;}
+  .by{font-size:11.5px;color:var(--muted);margin-top:8px;}
+  .empty{color:var(--muted);padding:30px 0;text-align:center;font-size:14px;line-height:1.7;}
+  .hint{color:var(--muted);font-size:12.5px;line-height:1.6;}
+  .row2{display:grid;grid-template-columns:200px 1fr 170px;gap:12px;margin-bottom:12px;}
+  @media(max-width:700px){.row2{grid-template-columns:1fr;}}
+  .row2 .field input,.row2 .field select{min-width:0;width:100%;}
+  table.ed{table-layout:fixed;} table.ed td{padding:5px 6px;vertical-align:top;}
+  table.ed input[type=text],table.ed select{width:100%;font:inherit;font-size:13.5px;padding:7px 9px;height:38px;border:1px solid var(--grid-line-strong);border-radius:6px;background:#fff;color:var(--ink);}
+  table.ed input.mono{font-family:'IBM Plex Mono',monospace;font-weight:600;}
+  .box{margin-top:10px;border:1px dashed var(--grid-line-strong);border-radius:8px;padding:12px;background:#F8FAFC;}
+  .box textarea{width:100%;min-height:90px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;padding:8px 10px;border:1px solid var(--grid-line-strong);border-radius:8px;}
+</style>
+</head>
+<body>
+<div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb" id="crumb">/ dự án / table màn hình</span></div>
+<div class="wrap">
+  <h1 id="h1">Table màn hình</h1>
+  <p class="sub" id="sub">Danh sách các <b>table của từng màn hình</b> theo dự án — tra nhanh để <b>SELECT đúng table</b> khi kiểm tra dữ liệu. Tìm theo mã / tên màn hình hoặc tên table; bấm tên table để copy câu SELECT.</p>
+
+  <div class="panel" id="toolbar">
+    <div class="bar">
+      <label class="field">Tìm kiếm <input type="text" id="fSearch" placeholder="Mã / tên màn hình, tên table, mô tả…"></label>
+      <label class="field">Phân hệ <select id="fModule"></select></label>
+      <button type="button" class="primary" id="btnNew">＋ Thêm màn hình</button>
+      <button type="button" class="export" id="btnImport" title="Nhập hàng loạt màn hình + table từ file Excel theo template">📥 Import Excel</button>
+      <button type="button" id="btnTemplate">⬇ Template Excel</button>
+      <button type="button" class="export" id="btnExport">⬇ Xuất Excel</button>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none">
+    </div>
+  </div>
+
+  <div id="msg"></div>
+  <div id="main"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function api(url, opt){
+  const r = await fetch(url, opt); const j = await r.json().catch(()=>({error:'Phản hồi không hợp lệ (HTTP '+r.status+')'}));
+  if(r.status===401){ location.href='/?next='+encodeURIComponent(location.pathname+location.search); throw new Error('Phiên đăng nhập đã hết'); }
+  if(!r.ok) throw new Error(j.error || ('HTTP '+r.status));
+  return j;
+}
+const send = (method, url, body) => api(url, { method, headers:{'Content-Type':'application/json'}, body: body ? JSON.stringify(body) : undefined });
+const say = (kind, text) => { $('msg').innerHTML = text ? '<div class="msg '+kind+'">'+text+'</div>' : ''; };
+
+/* ---------- dữ liệu ---------- */
+const LOCK = new URLSearchParams(location.search).get('project') || ''; // mở từ menu Dự án → chỉ làm việc với 1 dự án
+let items = [], modules = ['API','BO','APP','Manager'], roles = ['Bảng chính','Bảng chi tiết','Danh mục','Cấu hình','Lịch sử / Log','Khác'], projLabels = {};
+let githubBacked = false, view = 'screens', draft = null, importPlan = null, armDeleteId = null;
+const pLabel = c => projLabels[c] || c;
+const curProject = () => LOCK; // dự án gắn theo menu Dự Án → (dự án) → Table màn hình
+const lc = s => String(s||'').trim().toLowerCase();
+const fmtDate = s => { if(!s) return ''; const d = new Date(s); return isNaN(d) ? '' : d.toLocaleString('vi-VN'); };
+const selectSql = t => 'SELECT TOP 100 * FROM '+t.name+' WITH (NOLOCK)'+(t.where ? '\nWHERE '+t.where : '');
+async function copyText(text){
+  try{ await navigator.clipboard.writeText(text); return true; }
+  catch(e){ const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(ta); ta.select(); let ok = false; try{ ok = document.execCommand('copy'); }catch(_){} ta.remove(); return ok; }
+}
+
+async function load(){
+  const [d, p] = await Promise.all([api('/api/screen-tables'), api('/api/ticket-instructions').catch(()=>[])]);
+  items = d.items || []; githubBacked = !!d.githubBacked;
+  if(Array.isArray(d.modules) && d.modules.length) modules = d.modules; if(Array.isArray(d.roles) && d.roles.length) roles = d.roles;
+  projLabels = {}; p.forEach(x => { projLabels[x.code] = x.label || x.name || x.code; });
+  $('fModule').innerHTML = '<option value="">Tất cả phân hệ</option>'+modules.map(m=>'<option>'+esc(m)+'</option>').join('');
+  if(LOCK) applyLock(); else { $('toolbar').style.display = 'none'; }
+  render();
+}
+function applyLock(){
+  const n = pLabel(LOCK);
+  $('h1').textContent = 'Table màn hình — '+n; document.title = 'Table màn hình — '+n;
+  $('crumb').textContent = '/ dự án / '+n.toLowerCase()+' / table màn hình';
+  $('sub').innerHTML = 'Các <b>table của từng màn hình</b> dự án <b>'+esc(n)+'</b> — tra nhanh để <b>SELECT đúng table</b> khi kiểm tra dữ liệu. Tìm theo mã / tên màn hình hoặc tên table; bấm tên table để copy câu SELECT.';
+}
+function filtered(){
+  const p = curProject(), m = $('fModule').value, q = lc($('fSearch').value);
+  return items.filter(s => (!p || s.project===p) && (!m || s.module===m) &&
+      (!q || [s.code, s.name, s.note, pLabel(s.project)].concat(s.tables.flatMap(t=>[t.name, t.desc, t.where])).join(' ').toLowerCase().includes(q)))
+    .sort((a,b)=>pLabel(a.project).localeCompare(pLabel(b.project),'vi') || a.code.localeCompare(b.code,'vi',{numeric:true}));
+}
+
+/* ---------- hiển thị ---------- */
+function render(){
+  if(!LOCK) return renderLauncher();
+  if(draft) return renderEditor();
+  if(importPlan) return renderImportPlan();
+  const list = filtered(); const p = curProject();
+  const tableCount = new Set(list.flatMap(s=>s.tables.map(t=>lc(t.name)))).size;
+  const head = '<div class="tabs"><div class="tab'+(view==='screens'?' on':'')+'" data-view="screens">Theo màn hình ('+list.length+')</div><div class="tab'+(view==='tables'?' on':'')+'" data-view="tables">Theo table ('+tableCount+')</div></div>';
+  let body;
+  if(!list.length) body = '<div class="panel"><div class="empty">'+(items.length && ($('fSearch').value||$('fModule').value) ? 'Không có màn hình nào khớp bộ lọc.' : 'Chưa có màn hình nào'+(p?' cho dự án này':'')+'.<br>Bấm <b>＋ Thêm màn hình</b> hoặc <b>📥 Import Excel</b> (tải <b>Template Excel</b> để xem mẫu).')+'</div></div>';
+  else body = view==='screens' ? screensHtml(list) : tablesHtml(list);
+  $('main').innerHTML = head + body;
+  $('main').querySelectorAll('[data-view]').forEach(t=>t.onclick=()=>{ view = t.dataset.view; render(); });
+  bindActions();
+}
+/** Mở trang không qua menu dự án: chỉ liệt kê dự án để chọn (dự án luôn gắn theo menu, không nhập tay). */
+function renderLauncher(){
+  const codes = [...new Set([...Object.keys(projLabels), ...items.map(x=>x.project)])].sort((a,b)=>pLabel(a).localeCompare(pLabel(b),'vi'));
+  $('main').innerHTML = '<div class="panel"><div class="hint" style="margin-bottom:10px">Table màn hình được quản lý theo từng dự án — chọn dự án (hoặc vào từ menu <b>Dự Án → (tên dự án) → Table màn hình</b>):</div><div class="acts" style="margin:0">'
+    + codes.map(c=>'<a href="?project='+encodeURIComponent(c)+'" style="text-decoration:none"><button type="button">'+esc(pLabel(c))+' <span class="chip cnt">'+items.filter(x=>x.project===c).length+' màn hình</span></button></a>').join('')+'</div></div>';
+}
+const roleCls = r => { const i = roles.indexOf(r); return i===0?'r0':i===1?'r1':i===2?'r2':''; };
+function screensHtml(list){
+  const open = $('fSearch').value.trim() || list.length<=3;
+  return list.map(s=>{
+    const chips = s.tables.slice(0,8).map(t=>'<span class="chip tbl" data-sel="'+esc(s.id)+'|'+esc(t.name)+'" title="Bấm để copy câu SELECT">'+esc(t.name)+'</span>').join('') + (s.tables.length>8?'<span class="chip">+'+(s.tables.length-8)+'</span>':'');
+    const rows = s.tables.map(t=>'<tr><td class="tn">'+esc(t.name)+'</td><td><span class="role '+roleCls(t.role)+'">'+esc(t.role)+'</span></td><td>'+esc(t.desc)+'</td><td class="mono">'+esc(t.where)+'</td><td class="t"><button type="button" class="sm" data-sel="'+esc(s.id)+'|'+esc(t.name)+'" title="Copy câu SELECT của table này">📋 SELECT</button> <button type="button" class="sm" data-name="'+esc(t.name)+'" title="Copy tên table">📋 Tên</button></td></tr>').join('');
+    return '<div class="scr" data-id="'+esc(s.id)+'"><div class="scr-head" data-toggle="'+esc(s.id)+'"><div><div><span class="scr-code">'+esc(s.code)+'</span><span class="scr-name">'+esc(s.name)+'</span></div>'
+      +'<div class="scr-meta">'+(LOCK?'':'<span class="chip">'+esc(pLabel(s.project))+'</span>')+(s.module?'<span class="chip mod">'+esc(s.module)+'</span>':'')+'<span class="chip cnt">'+s.tables.length+' table</span>'+chips+'</div></div><div class="scr-toggle">▾</div></div>'
+      +'<div class="scr-body'+(open?' open':'')+'" id="b-'+esc(s.id)+'">'+(s.note?'<div class="hint" style="margin-top:10px">📝 '+esc(s.note)+'</div>':'')
+      +(s.tables.length?'<table><thead><tr><th>Table</th><th>Vai trò</th><th>Mô tả</th><th>WHERE gợi ý</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="hint" style="margin-top:10px">Màn hình chưa có table nào — bấm Sửa để thêm.</div>')
+      +'<div class="acts"><button type="button" class="primary sm" data-allnames="'+esc(s.id)+'">📋 Copy tên các table</button><button type="button" class="sm" data-allsql="'+esc(s.id)+'">📋 Copy tất cả SELECT</button><button type="button" class="sm" data-edit="'+esc(s.id)+'">✎ Sửa</button><button type="button" class="danger sm'+(armDeleteId===s.id?' arm':'')+'" data-del="'+esc(s.id)+'">'+(armDeleteId===s.id?'Bấm lần nữa để xoá':'🗑 Xoá')+'</button></div>'
+      +(s.updatedAt?'<div class="by">Cập nhật '+esc(fmtDate(s.updatedAt))+(s.updatedBy?' bởi '+esc(s.updatedBy):'')+'</div>':'')+'</div></div>';
+  }).join('');
+}
+function tablesHtml(list){ // tra ngược: table → các màn hình dùng nó
+  const map = new Map();
+  list.forEach(s=>s.tables.forEach(t=>{ const k = lc(t.name); const e = map.get(k) || { name:t.name, uses:[], where:'' }; e.uses.push({ s, t }); if(!e.where && t.where) e.where = t.where; map.set(k, e); }));
+  const q = lc($('fSearch').value);
+  const rows = [...map.values()].sort((a,b)=>a.name.localeCompare(b.name,'vi')).map(e=>'<tr><td class="tn">'+esc(e.name)+'</td><td>'+e.uses.map(u=>'<span class="chip" title="'+esc(u.t.desc||'')+'">'+(LOCK?'':esc(pLabel(u.s.project))+' · ')+esc(u.s.code)+(u.s.name?' · '+esc(u.s.name):'')+' ('+esc(u.t.role)+')</span>').join(' ')+'</td><td class="t"><button type="button" class="sm" data-selname="'+esc(e.name)+'|'+esc(e.where)+'">📋 SELECT</button> <button type="button" class="sm" data-name="'+esc(e.name)+'">📋 Tên</button></td></tr>').join('');
+  return '<div class="panel"><div class="hint">Mỗi table kèm các màn hình đang dùng nó — biết ngay table này thuộc màn hình nào.</div><table><thead><tr><th style="width:26%">Table</th><th>Dùng ở màn hình</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+function bindActions(){
+  const m = $('main'); const byId = id => items.find(x=>x.id===id);
+  const flash = (el, ok) => { const old = el.textContent; el.classList.add('done'); el.textContent = ok ? '✓ Đã copy' : 'Chặn copy'; setTimeout(()=>{ el.textContent = old; el.classList.remove('done'); }, 1200); };
+  m.querySelectorAll('[data-toggle]').forEach(h=>h.onclick=e=>{ if(e.target.closest('[data-sel]')) return; $('b-'+h.dataset.toggle).classList.toggle('open'); });
+  m.querySelectorAll('[data-sel]').forEach(b=>b.onclick=async e=>{ e.stopPropagation(); const [id, name] = b.dataset.sel.split('|'); const t = byId(id).tables.find(x=>x.name===name); flash(b, await copyText(selectSql(t))); });
+  m.querySelectorAll('[data-selname]').forEach(b=>b.onclick=async()=>{ const v = b.dataset.selname, k = v.indexOf('|'); const name = v.slice(0,k), where = v.slice(k+1); flash(b, await copyText(selectSql({ name, where }))); });
+  m.querySelectorAll('[data-name]').forEach(b=>b.onclick=async()=>flash(b, await copyText(b.dataset.name)));
+  m.querySelectorAll('[data-allnames]').forEach(b=>b.onclick=async()=>flash(b, await copyText(byId(b.dataset.allnames).tables.map(t=>t.name).join('\n'))));
+  m.querySelectorAll('[data-allsql]').forEach(b=>b.onclick=async()=>{ const s = byId(b.dataset.allsql); flash(b, await copyText(s.tables.map(t=>'-- '+t.name+(t.desc?' — '+t.desc:'')+'\n'+selectSql(t)+';').join('\n\n'))); });
+  m.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{ draft = JSON.parse(JSON.stringify(byId(b.dataset.edit))); say('',''); render(); window.scrollTo(0,0); });
+  m.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
+    const id = b.dataset.del;
+    if(armDeleteId!==id){ armDeleteId = id; render(); setTimeout(()=>{ if(armDeleteId===id){ armDeleteId = null; if(!draft && !importPlan) render(); } }, 4000); return; }
+    armDeleteId = null;
+    try{ await send('DELETE','/api/screen-tables/'+encodeURIComponent(id)); await load(); afterWrite(); }catch(err){ say('err', esc(err.message)); }
+  });
+}
+/** Lưu/xoá/import thành công thì không hiện thông báo; chỉ cảnh báo khi server chưa cấu hình Git (chưa commit). */
+function afterWrite(){ if(githubBacked) say('',''); else say('warn','<b>Chưa commit lên Git</b> vì server chưa cấu hình <code>GITHUB_TOKEN</code> / <code>GITHUB_REPO</code> — dữ liệu mới chỉ lưu trên server và có thể mất khi deploy lại.'); }
+
+/* ---------- thêm / sửa 1 màn hình ---------- */
+const newTable = () => ({ name:'', role:'Bảng chính', desc:'', where:'' });
+function startNew(){
+  const p = curProject();
+  draft = { project:p, code:'', name:'', module:'', note:'', tables:[newTable()] }; say('',''); render();
+}
+function renderEditor(){
+  const d = draft; const isNew = !d.id;
+  const rows = d.tables.map((t,i)=>'<tr data-i="'+i+'"><td style="width:66px;text-align:center;padding:5px 2px"><button type="button" class="sm" style="padding:4px 6px" data-up="'+i+'">▲</button><button type="button" class="sm" style="padding:4px 6px" data-dn="'+i+'">▼</button></td>'
+    +'<td><input type="text" class="mono" data-f="name" value="'+esc(t.name)+'" placeholder="Tên table (vd: OM_SalesOrd)"></td>'
+    +'<td style="width:140px"><select data-f="role">'+roles.map(r=>'<option'+(r===t.role?' selected':'')+'>'+esc(r)+'</option>').join('')+'</select></td>'
+    +'<td><input type="text" data-f="desc" value="'+esc(t.desc)+'" placeholder="Mô tả (vd: Header đơn hàng)"></td>'
+    +'<td><input type="text" data-f="where" value="'+esc(t.where)+'" placeholder="WHERE gợi ý (vd: OrderNbr = \'...\')"></td>'
+    +'<td style="width:44px;text-align:center"><button type="button" class="danger sm" data-rm="'+i+'" title="Bỏ table này">✕</button></td></tr>').join('');
+  $('main').innerHTML = '<div class="panel"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px"><h2 style="margin:0;font-family:\'Space Grotesk\',sans-serif;font-size:17px">'+(isNew?'Thêm màn hình':'Sửa màn hình')+' — '+esc(pLabel(d.project))+'</h2><div class="acts" style="margin:0"><button type="button" class="primary" id="eSave">💾 Lưu</button><button type="button" id="eCancel">Hủy</button></div></div>'
+    +'<div class="row2"><label class="field">Mã màn hình *<input type="text" id="eCode" value="'+esc(d.code)+'" placeholder="vd: OM10100"></label><label class="field">Tên màn hình<input type="text" id="eName" value="'+esc(d.name)+'" placeholder="vd: Nhập đơn hàng"></label>'
+    +'<label class="field">Phân hệ<select id="eModule"><option value="">— Chọn —</option>'+modules.map(m=>'<option'+(m===d.module?' selected':'')+'>'+esc(m)+'</option>').join('')+'</select></label></div>'
+    +'<label class="field" style="margin-bottom:12px">Ghi chú (không bắt buộc)<input type="text" id="eNote" value="'+esc(d.note)+'" style="width:100%"></label>'
+    +'<table class="ed"><thead><tr><th style="width:66px"></th><th style="width:24%">Table *</th><th style="width:140px">Vai trò</th><th>Mô tả</th><th>WHERE gợi ý</th><th style="width:44px"></th></tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<div class="acts"><button type="button" class="sm" id="eAdd">＋ Thêm table</button><button type="button" class="sm" id="ePasteBtn">Dán nhiều tên table</button></div>'
+    +'<div class="box" id="pasteBox" style="display:none"><div class="hint" style="margin-bottom:6px">Dán danh sách tên table (mỗi dòng 1 table, hoặc cách nhau bằng dấu phẩy / khoảng trắng). Table đã có sẽ bỏ qua.</div><textarea id="pasteTxt" placeholder="OM_SalesOrd&#10;OM_SalesOrdDet&#10;OM_OrdAddr"></textarea><div class="acts"><button type="button" class="primary sm" id="pAdd">Thêm vào danh sách</button></div></div></div>';
+  const sync = () => { d.code = $('eCode').value; d.name = $('eName').value; d.module = $('eModule').value; d.note = $('eNote').value; };
+  $('main').querySelectorAll('tr[data-i]').forEach(tr=>{ const i = Number(tr.dataset.i); tr.querySelectorAll('[data-f]').forEach(inp=>{ inp.oninput = () => { d.tables[i][inp.dataset.f] = inp.value; }; }); });
+  const focusLast = () => { const r = $('main').querySelectorAll('tr[data-i]'); const el = r.length && r[r.length-1].querySelector('[data-f=name]'); if(el) el.focus(); };
+  $('main').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ sync(); d.tables.splice(Number(b.dataset.rm),1); renderEditor(); });
+  $('main').querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{ const i = Number(b.dataset.up); if(i>0){ sync(); [d.tables[i-1],d.tables[i]] = [d.tables[i],d.tables[i-1]]; renderEditor(); } });
+  $('main').querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{ const i = Number(b.dataset.dn); if(i<d.tables.length-1){ sync(); [d.tables[i+1],d.tables[i]] = [d.tables[i],d.tables[i+1]]; renderEditor(); } });
+  $('eAdd').onclick = () => { sync(); d.tables.push(newTable()); renderEditor(); focusLast(); };
+  $('ePasteBtn').onclick = () => { const b = $('pasteBox'); b.style.display = b.style.display==='none' ? '' : 'none'; };
+  $('pAdd').onclick = () => {
+    sync(); const names = $('pasteTxt').value.split(/[\s,;]+/).map(s=>s.trim()).filter(Boolean); const have = new Set(d.tables.map(t=>lc(t.name)));
+    d.tables = d.tables.filter(t=>t.name.trim());
+    names.forEach(n=>{ if(!have.has(lc(n))){ have.add(lc(n)); d.tables.push({ ...newTable(), name:n }); } });
+    renderEditor();
+  };
+  $('eCancel').onclick = () => { draft = null; say('',''); render(); };
+  $('eSave').onclick = async () => {
+    sync(); const btn = $('eSave'); btn.disabled = true; btn.textContent = 'Đang lưu…';
+    try{ await send('POST','/api/screen-tables', d); draft = null; await load(); afterWrite(); window.scrollTo(0,0); }
+    catch(err){ say('err', esc(err.message)); btn.disabled = false; btn.textContent = '💾 Lưu'; }
+  };
+  if(isNew) $('eCode').focus();
+}
+
+/* ---------- Excel: template / xuất / import ---------- */
+const XLS_HEAD = ['Mã màn hình','Tên màn hình','Phân hệ','Table','Vai trò','Mô tả','Điều kiện WHERE gợi ý'];
+function downloadTemplate(){
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([XLS_HEAD]); ws['!cols'] = [{wch:16},{wch:30},{wch:12},{wch:28},{wch:16},{wch:34},{wch:36}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Template');
+  const guide = [['Hướng dẫn dùng template'],[''],
+    ['1. Sheet "Template": mỗi dòng là 1 TABLE của 1 màn hình. Màn hình có nhiều table thì lặp lại Mã màn hình ở từng dòng (hoặc chỉ ghi ở dòng đầu, các dòng dưới để trống mã/tên/phân hệ — tool tự điền theo dòng trên).'],
+    ['2. Bắt buộc: Mã màn hình và Table. Các cột còn lại tuỳ chọn.'],
+    ['3. Phân hệ: API, BO, APP hoặc Manager. Vai trò: Bảng chính, Bảng chi tiết, Danh mục, Cấu hình, Lịch sử / Log, Khác (không khớp thì thành "Khác").'],
+    ['4. Điều kiện WHERE gợi ý: phần sau chữ WHERE, vd  OrderNbr = \'xxx\'  — tool dùng để dựng câu SELECT mẫu.'],
+    ['5. Màn hình đã có trong dự án (trùng Mã màn hình) sẽ được cập nhật theo file; mã mới thì thêm mới. Import 1 lần = 1 commit.'],
+    ['6. File xuất bằng nút "Xuất Excel" cũng đúng định dạng này nên Import lại được.'],
+    [''],['Ví dụ (KHÔNG nhập vào sheet Template nếu không dùng thật):'],
+    ['OM10100','Nhập đơn hàng','BO','OM_SalesOrd','Bảng chính','Header đơn hàng',"OrderNbr = 'xxx'"],
+    ['','','','OM_SalesOrdDet','Bảng chi tiết','Chi tiết đơn hàng',"OrderNbr = 'xxx'"]];
+  const g = XLSX.utils.aoa_to_sheet(guide); g['!cols'] = [{wch:120}];
+  XLSX.utils.book_append_sheet(wb, g, 'Hướng dẫn');
+  XLSX.writeFile(wb, 'Template_Table_Man_Hinh.xlsx');
+}
+function exportExcel(){
+  const list = filtered(); if(!list.length){ say('err','Không có màn hình nào để xuất.'); return; }
+  const aoa = [['Dự án'].concat(XLS_HEAD)];
+  list.forEach(s=>{ if(!s.tables.length) aoa.push([pLabel(s.project), s.code, s.name, s.module||'', '', '', '', '']); s.tables.forEach(t=>aoa.push([pLabel(s.project), s.code, s.name, s.module||'', t.name, t.role, t.desc, t.where])); });
+  const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = [{wch:16},{wch:16},{wch:30},{wch:12},{wch:28},{wch:16},{wch:34},{wch:36}];
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Table màn hình');
+  XLSX.writeFile(wb, 'Table_Man_Hinh'+'_'+pLabel(curProject()).replace(/[^\w\-]+/g,'_')+'.xlsx');
+}
+const norm = s => String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase().trim();
+const COLS = { code:/^(ma man hinh|man hinh|screen|screen code|code|ma)$/, name:/^(ten man hinh|screen name|ten)$/, module:/^(phan he|module)$/, table:/^(table|ten table|bang|ten bang)$/, role:/^(vai tro|role)$/, desc:/^(mo ta|desc|description|ghi chu)$/, where:/^(dieu kien where goi y|dieu kien|where|where goi y)$/ };
+async function readExcel(file){
+  const wb = XLSX.read(await file.arrayBuffer(), { type:'array' });
+  for(const name of wb.SheetNames.filter(n=>!/^huong dan$/.test(norm(n)))){
+    const table = XLSX.utils.sheet_to_json(wb.Sheets[name], { header:1, defval:'', raw:false });
+    for(let h=0; h<Math.min(table.length,5); h++){
+      const head = table[h].map(norm); const idx = {}; Object.keys(COLS).forEach(k=>{ idx[k] = head.findIndex(c=>COLS[k].test(c)); });
+      if(idx.code>=0 && idx.table>=0){
+        const rows = []; let last = { code:'', name:'', module:'' };
+        table.slice(h+1).forEach(r=>{
+          const cell = k => idx[k]>=0 ? String(r[idx[k]]==null?'':r[idx[k]]).trim() : '';
+          if(!r.some(c=>String(c).trim())) return;
+          const code = cell('code') || last.code; const name = cell('code') ? cell('name') : (cell('name') || last.name); const mod = cell('code') ? cell('module') : (cell('module') || last.module);
+          last = { code, name, module: modules.find(m=>lc(m)===lc(mod)) || '' };
+          rows.push({ code, name, module: last.module, table: cell('table'), role: cell('role'), desc: cell('desc'), where: cell('where') });
+        });
+        return { sheet:name, rows };
+      }
+    }
+  }
+  throw new Error('Không tìm thấy dòng tiêu đề có cột "Mã màn hình" và "Table" — tải Template Excel để xem mẫu.');
+}
+async function startImport(file){
+  const project = curProject();
+  try{
+    const { sheet, rows } = await readExcel(file);
+    const codes = new Map(); rows.forEach(r=>{ if(r.code) codes.set(lc(r.code), (codes.get(lc(r.code))||0) + (r.table?1:0)); });
+    if(!codes.size) throw new Error('File không có dòng dữ liệu hợp lệ (cần Mã màn hình).');
+    const exist = new Set(items.filter(s=>s.project===project).map(s=>lc(s.code)));
+    importPlan = { project, rows, sheet, fileName:file.name, screens:codes.size, tables:[...codes.values()].reduce((a,b)=>a+b,0), updated:[...codes.keys()].filter(c=>exist.has(c)).length };
+    say('',''); render();
+  }catch(err){ say('err','Không đọc được file Excel: '+esc(err.message)); }
+}
+function renderImportPlan(){
+  const p = importPlan;
+  $('main').innerHTML = '<div class="panel"><h2 style="margin:0 0 8px;font-family:\'Space Grotesk\',sans-serif;font-size:17px">Import Excel — '+esc(pLabel(p.project))+'</h2>'
+    +'<p class="hint">File <b>'+esc(p.fileName)+'</b> (sheet <b>'+esc(p.sheet)+'</b>): <b>'+p.screens+' màn hình</b>, <b>'+p.tables+' table</b> — <b>'+(p.screens-p.updated)+' màn hình mới</b>, <b>'+p.updated+' màn hình đã có sẽ được cập nhật</b> (thay tên, phân hệ và danh sách table theo file). Áp dụng = 1 lần commit.</p>'
+    +'<div class="acts"><button type="button" class="primary" id="iApply">✔ Áp dụng import</button><button type="button" id="iCancel">Bỏ</button></div></div>';
+  $('iCancel').onclick = () => { importPlan = null; render(); };
+  $('iApply').onclick = async () => {
+    const b = $('iApply'); b.disabled = true; b.textContent = 'Đang import…';
+    try{ await send('POST','/api/screen-tables/import', { project:p.project, rows:p.rows }); importPlan = null; await load(); afterWrite(); }
+    catch(err){ say('err', esc(err.message)); b.disabled = false; b.textContent = '✔ Áp dụng import'; }
+  };
+}
+
+/* ---------- sự kiện ---------- */
+$('btnNew').onclick = () => { if(importPlan) importPlan = null; startNew(); };
+$('btnImport').onclick = () => { $('fileInput').value = ''; $('fileInput').click(); };
+$('fileInput').onchange = () => { if($('fileInput').files[0]) startImport($('fileInput').files[0]); };
+$('btnTemplate').onclick = downloadTemplate;
+$('btnExport').onclick = exportExcel;
+$('fModule').onchange = () => { if(!draft) render(); };
+$('fSearch').oninput = () => { if(!draft && !importPlan) render(); };
+window.addEventListener('beforeunload', e => { if(draft){ e.preventDefault(); e.returnValue = ''; } });
+load().catch(err => say('err', 'Không tải được dữ liệu: '+esc(err.message)));
+</script>
+</body>
+</html>
