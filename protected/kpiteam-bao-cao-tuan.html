@@ -181,6 +181,7 @@
       <div class="metric"><label>Pending</label><input type="number" id="m_pending" value="0"></div>
       <div class="metric"><label>Re-open</label><input type="number" id="m_reopen" value="0"></div>
     </div>
+    <div class="list-hint no-print" id="asOfHint"></div>
 
     <ol class="checklist-numbered" style="margin-top:14px;">
       <li>Time hỗ trợ: <input type="text" id="m_hours" value="0H" style="border:none;background:transparent;font-weight:700;width:80px;font-family:'IBM Plex Mono',monospace;"></li>
@@ -520,7 +521,8 @@ fetchBtn.addEventListener('click', async () => {
     qsWeek.set('opening_from', fromDate.value);
     qsWeek.set('opening_to', toDate.value);
     const weekData = await fetchJson('/api/erp/tickets?' + qsWeek.toString());
-    const weekRows = Array.isArray(weekData.data) ? weekData.data : [];
+    // Mục 1, 2, 4: chỉ tính ticket có Opening On nằm trong khoảng Từ ngày → Đến ngày (ERP đã lọc; trình duyệt lọc chặt thêm 1 lớp phòng khi ERP trả dư)
+    const weekRows = (Array.isArray(weekData.data) ? weekData.data : []).filter(r => inRange(parseFrappeDate(r.opening_date || r.creation), from, to));
 
     // Fetch B: TOÀN BỘ ticket đang ở trạng thái chưa Closed (không giới hạn ngày) — dùng để
     // tính mục 5 (tồn đọng mở TRƯỚC tuần lọc). Số lượng backlog thường nhỏ nên an toàn với limit.
@@ -580,9 +582,10 @@ fetchBtn.addEventListener('click', async () => {
     // vì cách cộng dồn cũ có thể bị hụt số khi 1 số ticket thiếu/lỗi field opening_date.
     // mục 5 (tồn đọng TRƯỚC tuần lọc) suy ra ngược lại = Tổng tồn đọng − ticket mở trong tuần
     // còn đang mở (openedThisWeek) — đảm bảo 2 số luôn cộng khớp với tổng thật.
-    const openedThisWeek = BACKLOG_STATUSES.reduce((sum, s) => sum + backlogBreakdown[s], 0);
+    // Mục 3 (Ticket tồn đọng tuần/tháng trước): ticket khác Closed (đang tồn đọng) có Opening On TRƯỚC "Từ ngày".
+    // Mục 5 (Tổng ticket tồn đọng còn lại): giữ nguyên = toàn bộ ticket đang tồn đọng đến hiện tại.
     const backlogNow = backlogRows.length;
-    backlogPrevAll = backlogNow - openedThisWeek;
+    backlogPrevAll = backlogRows.filter(r => { const d = parseFrappeDate(r.opening_date || r.creation); return d && d < from; }).length;
 
     document.getElementById('m_closed').value = closedInWeek;
     BACKLOG_STATUSES.forEach(s => {
@@ -656,6 +659,7 @@ fetchBtn.addEventListener('click', async () => {
       hoursNote = ' (lỗi lấy timesheet: ' + tsErr.message + ' — nhập tay)';
     }
 
+    document.getElementById('asOfHint').textContent = `Các ô trạng thái, "Ticket nhận" và "Ticket xử lý" chỉ tính ticket có Opening On từ ${fromDate.value} đến ${toDate.value} (trạng thái hiện tại). "Ticket tồn đọng tuần trước" = ticket chưa Closed có Opening On trước ${fromDate.value}.`;
     setStatus(`Xong — ${weekRows.length} ticket mở trong tuần, ${backlogRows.length} ticket đang tồn đọng (mọi thời điểm), đã điền ${doneWeekSubjectsCount} ticket Closed (có modified trong tuần) vào "Thực hiện trong tuần", "Xử lý tuần sau" = ${nextWeekSubjects.length} ticket tồn đọng (khớp tổng tồn đọng ${backlogNow}) và tự nhận xét so với tuần trước.${hoursNote}`, hoursNote ? 'err' : 'ok');
     renderCharts();
   }catch(err){

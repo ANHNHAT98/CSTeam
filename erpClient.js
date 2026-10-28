@@ -188,24 +188,31 @@ async function fetchTimesheetReport({ from_date, to_date, project } = {}) {
   return erpFetch(`/api/method/frappe.desk.query_report.run?${qs.toString()}`);
 }
 
-/** Log thay đổi (DocType Version) của Ticket trong khoảng ngày — dùng dò ticket chuyển Closed → mở lại. Cần quyền đọc Version. */
-async function fetchVersions({ from, to, maxRows = 20000 } = {}) {
-  const filters = [['ref_doctype', '=', 'Ticket']];
-  if (from) filters.push(['creation', '>=', `${from} 00:00:00`]);
-  if (to) filters.push(['creation', '<=', `${to} 23:59:59`]);
+/** Log thay đổi (DocType Version) của Ticket trong khoảng ngày — dùng dò ticket chuyển Closed → mở lại, và dựng lại trạng thái tại 1 ngày. Cần quyền đọc Version.
+    docnames: chỉ lấy log của các ticket này (chia lô để URL không quá dài). */
+async function fetchVersions({ from, to, docnames, maxRows = 20000 } = {}) {
+  const base = [['ref_doctype', '=', 'Ticket']];
+  if (from) base.push(['creation', '>=', `${from} 00:00:00`]);
+  if (to) base.push(['creation', '<=', `${to} 23:59:59`]);
   const page = 1000; const all = [];
-  for (let start = 0; start < maxRows; start += page) {
-    const qs = new URLSearchParams();
-    qs.set('filters', JSON.stringify(filters));
-    qs.set('fields', JSON.stringify(['docname', 'data', 'creation', 'owner']));
-    qs.set('order_by', 'creation asc');
-    qs.set('limit_page_length', String(page));
-    qs.set('limit_start', String(start));
-    const r = await erpFetch(`/api/resource/Version?${qs.toString()}`);
-    const rows = r.data || [];
-    all.push(...rows);
-    if (rows.length < page) break;
-  }
+  const run = async (filters) => {
+    for (let start = 0; start < maxRows; start += page) {
+      const qs = new URLSearchParams();
+      qs.set('filters', JSON.stringify(filters));
+      qs.set('fields', JSON.stringify(['docname', 'data', 'creation', 'owner']));
+      qs.set('order_by', 'creation asc');
+      qs.set('limit_page_length', String(page));
+      qs.set('limit_start', String(start));
+      const r = await erpFetch(`/api/resource/Version?${qs.toString()}`);
+      const rows = r.data || [];
+      all.push(...rows);
+      if (rows.length < page) break;
+    }
+  };
+  if (Array.isArray(docnames)) {
+    const list = [...new Set(docnames)].filter(Boolean);
+    for (let i = 0; i < list.length; i += 80) await run(base.concat([['docname', 'in', list.slice(i, i + 80)]]));
+  } else await run(base);
   return all;
 }
 

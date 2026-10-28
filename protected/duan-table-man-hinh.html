@@ -17,7 +17,7 @@
   .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;opacity:.9;}
   .ops-topbar a:hover{opacity:1;text-decoration:underline;}
   .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
-  .wrap{max-width:1200px;margin:0 auto;padding:28px 24px 80px;}
+  .wrap{max-width:none;margin:0 auto;padding:28px 28px 80px;} /* dùng hết chiều ngang màn hình để cột Table không bị xuống dòng */
   h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 4px;}
   .sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;line-height:1.6;}
   .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;}
@@ -49,7 +49,8 @@
   table{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff;margin-top:10px;}
   th{background:#1F4E79;color:#fff;text-align:left;padding:7px 11px;font-weight:600;}
   td{padding:7px 11px;border-bottom:1px solid var(--grid-line);vertical-align:top;word-break:break-word;}
-  td.mono{font-family:'IBM Plex Mono',monospace;font-size:12.5px;} td.tn{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;}
+  td.mono{font-family:'IBM Plex Mono',monospace;font-size:12.5px;} td.tn{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;white-space:nowrap;word-break:normal;width:1%;padding-right:22px;}
+  td.rl{white-space:nowrap;width:1%;}
   td.t{white-space:nowrap;text-align:right;width:170px;}
   .role{font-size:11px;font-weight:600;border-radius:12px;padding:1px 9px;background:#E4EBF3;color:var(--blueprint);white-space:nowrap;}
   .role.r0{background:#FFF3DC;color:#8A5A0B;} .role.r1{background:#EAF1F8;} .role.r2{background:#EAF5EE;color:#2C5E43;}
@@ -151,6 +152,7 @@ function render(){
   else body = view==='screens' ? screensHtml(list) : tablesHtml(list);
   $('main').innerHTML = head + body;
   $('main').querySelectorAll('[data-view]').forEach(t=>t.onclick=()=>{ view = t.dataset.view; render(); });
+  if(view==='tables' && list.length) wireTableFilter();
   bindActions();
 }
 /** Mở trang không qua menu dự án: chỉ liệt kê dự án để chọn (dự án luôn gắn theo menu, không nhập tay). */
@@ -163,21 +165,41 @@ const roleCls = r => { const i = roles.indexOf(r); return i===0?'r0':i===1?'r1':
 function screensHtml(list){
   const open = $('fSearch').value.trim() || list.length<=3;
   return list.map(s=>{
-    const rows = s.tables.map(t=>'<tr><td class="tn">'+esc(t.name)+'</td><td><span class="role '+roleCls(t.role)+'">'+esc(t.role)+'</span></td><td>'+esc(t.desc)+'</td><td class="mono">'+esc(t.where)+'</td><td class="t"><button type="button" class="sm" data-sel="'+esc(s.id)+'|'+esc(t.name)+'" title="Copy câu SELECT của table này">📋 SELECT</button> <button type="button" class="sm" data-name="'+esc(t.name)+'" title="Copy tên table">📋 Tên</button></td></tr>').join('');
+    const rows = s.tables.map(t=>'<tr><td class="tn">'+esc(t.name)+'</td><td class="rl"><span class="role '+roleCls(t.role)+'">'+esc(t.role)+'</span></td><td>'+esc(t.desc)+'</td><td class="mono">'+esc(t.where)+'</td><td class="t"><button type="button" class="sm" data-sel="'+esc(s.id)+'|'+esc(t.name)+'" title="Copy câu SELECT của table này">📋 SELECT</button> <button type="button" class="sm" data-name="'+esc(t.name)+'" title="Copy tên table">📋 Tên</button></td></tr>').join('');
     return '<div class="scr" data-id="'+esc(s.id)+'"><div class="scr-head" data-toggle="'+esc(s.id)+'"><div><div><span class="scr-code">'+esc(s.code)+'</span><span class="scr-name">'+esc(s.name)+'</span></div>'
       +'<div class="scr-meta">'+(LOCK?'':'<span class="chip">'+esc(pLabel(s.project))+'</span>')+(s.module?'<span class="chip mod">'+esc(s.module)+'</span>':'')+'<span class="chip cnt">'+s.tables.length+' table</span></div></div><div class="scr-toggle">▾</div></div>'
       +'<div class="scr-body'+(open?' open':'')+'" id="b-'+esc(s.id)+'">'+(s.note?'<div class="hint" style="margin-top:10px">📝 '+esc(s.note)+'</div>':'')
-      +(s.tables.length?'<table><thead><tr><th>Table</th><th>Vai trò</th><th>Mô tả</th><th>WHERE gợi ý</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="hint" style="margin-top:10px">Màn hình chưa có table nào — bấm Sửa để thêm.</div>')
+      +(s.tables.length?'<table><thead><tr><th style="width:1%;white-space:nowrap">Table</th><th style="width:1%;white-space:nowrap">Vai trò</th><th>Mô tả</th><th style="width:34%">WHERE gợi ý</th><th style="width:1%"></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="hint" style="margin-top:10px">Màn hình chưa có table nào — bấm Sửa để thêm.</div>')
       +'<div class="acts"><button type="button" class="primary sm" data-allnames="'+esc(s.id)+'">📋 Copy tên các table</button><button type="button" class="sm" data-allsql="'+esc(s.id)+'">📋 Copy tất cả SELECT</button><button type="button" class="sm" data-edit="'+esc(s.id)+'">✎ Sửa</button><button type="button" class="danger sm'+(armDeleteId===s.id?' arm':'')+'" data-del="'+esc(s.id)+'">'+(armDeleteId===s.id?'Bấm lần nữa để xoá':'🗑 Xoá')+'</button></div>'
       +(s.updatedAt?'<div class="by">Cập nhật '+esc(fmtDate(s.updatedAt))+(s.updatedBy?' bởi '+esc(s.updatedBy):'')+'</div>':'')+'</div></div>';
   }).join('');
 }
-function tablesHtml(list){ // tra ngược: table → các màn hình dùng nó
+let tblFilter = { q:'', role:'' };
+let tblEntries = [];
+function tableEntries(list){ // tra ngược: table → các màn hình dùng nó
   const map = new Map();
   list.forEach(s=>s.tables.forEach(t=>{ const k = lc(t.name); const e = map.get(k) || { name:t.name, uses:[], where:'' }; e.uses.push({ s, t }); if(!e.where && t.where) e.where = t.where; map.set(k, e); }));
-  const q = lc($('fSearch').value);
-  const rows = [...map.values()].sort((a,b)=>a.name.localeCompare(b.name,'vi')).map(e=>'<tr><td class="tn">'+esc(e.name)+'</td><td>'+e.uses.map(u=>'<span class="chip" title="'+esc(u.t.desc||'')+'">'+(LOCK?'':esc(pLabel(u.s.project))+' · ')+esc(u.s.code)+(u.s.name?' · '+esc(u.s.name):'')+' ('+esc(u.t.role)+')</span>').join(' ')+'</td><td class="t"><button type="button" class="sm" data-selname="'+esc(e.name)+'|'+esc(e.where)+'">📋 SELECT</button> <button type="button" class="sm" data-name="'+esc(e.name)+'">📋 Tên</button></td></tr>').join('');
-  return '<div class="panel"><div class="hint">Mỗi table kèm các màn hình đang dùng nó — biết ngay table này thuộc màn hình nào.</div><table><thead><tr><th style="width:26%">Table</th><th>Dùng ở màn hình</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name,'vi'));
+}
+function tableRowsHtml(){
+  const q = lc(tblFilter.q), role = tblFilter.role;
+  const rows = tblEntries.filter(e=>(!q || lc(e.name).includes(q) || e.uses.some(u=>lc(u.t.desc).includes(q))) && (!role || e.uses.some(u=>u.t.role===role)));
+  const c = $('tblCount'); if(c) c.textContent = 'Hiện '+rows.length+' / '+tblEntries.length+' table';
+  if(!rows.length) return '<tr><td colspan="3" class="empty">Không có table nào khớp bộ lọc.</td></tr>';
+  return rows.map(e=>'<tr><td class="tn">'+esc(e.name)+'</td><td>'+e.uses.map(u=>'<span class="chip" title="'+esc(u.t.desc||'')+'">'+(LOCK?'':esc(pLabel(u.s.project))+' · ')+esc(u.s.code)+(u.s.name?' · '+esc(u.s.name):'')+' ('+esc(u.t.role)+')</span>').join(' ')+'</td><td class="t"><button type="button" class="sm" data-selname="'+esc(e.name)+'|'+esc(e.where)+'">📋 SELECT</button> <button type="button" class="sm" data-name="'+esc(e.name)+'">📋 Tên</button></td></tr>').join('');
+}
+function tablesHtml(list){
+  tblEntries = tableEntries(list);
+  return '<div class="panel"><div class="bar" style="margin-bottom:12px"><label class="field">Lọc theo table<input type="text" id="tblQ" value="'+esc(tblFilter.q)+'" placeholder="Gõ tên table (vd: UnitConversion, IN_Trans)…"></label>'
+    +'<label class="field">Vai trò<select id="tblRole"><option value="">Tất cả vai trò</option>'+roles.map(r=>'<option'+(r===tblFilter.role?' selected':'')+'>'+esc(r)+'</option>').join('')+'</select></label><span class="hint" id="tblCount" style="padding-bottom:9px"></span></div>'
+    +'<div class="hint">Mỗi table kèm các màn hình đang dùng nó — biết ngay table này thuộc màn hình nào.</div>'
+    +'<table><thead><tr><th style="width:1%;white-space:nowrap">Table</th><th>Dùng ở màn hình</th><th style="width:1%"></th></tr></thead><tbody id="tblBody">'+tableRowsHtml()+'</tbody></table></div>';
+}
+function wireTableFilter(){ // lọc ngay trong bảng, không vẽ lại cả trang để không mất con trỏ khi gõ
+  const refresh = () => { $('tblBody').innerHTML = tableRowsHtml(); bindActions(); };
+  $('tblQ').oninput = () => { tblFilter.q = $('tblQ').value; refresh(); };
+  $('tblRole').onchange = () => { tblFilter.role = $('tblRole').value; refresh(); };
+  tableRowsHtml(); // cập nhật dòng đếm ngay lần đầu
 }
 function bindActions(){
   const m = $('main'); const byId = id => items.find(x=>x.id===id);

@@ -564,9 +564,18 @@ Thư viện các case thường gặp khi hỗ trợ dự án. Gồm 2 màn hìn
 
 ### Table Dự Án (`/duan/table-man-hinh`, menu Dự Án → (dự án) → Table Dự Án)
 Danh sách **các table của từng màn hình** theo dự án để nhân viên SELECT đúng table khi kiểm tra dữ liệu. Mỗi màn hình có: **mã** (vd OM10100), **tên**, **phân hệ** (API / BO / APP / Manager / Report), ghi chú và danh sách table — mỗi table gồm **tên**, **vai trò** (Bảng chính / Bảng chi tiết / Danh mục / Cấu hình / Lịch sử-Log / Khác), **mô tả** và **WHERE gợi ý** (vd `OrderNbr = 'xxx'`). (dự án, mã màn hình) là duy nhất.
-- **Xem / tìm:** tab **Theo màn hình** (bấm vào từng màn hình để mở bảng table của nó) và tab **Theo table** (tra ngược: table này thuộc những màn hình nào). Ô tìm kiếm khớp mã/tên màn hình, tên table, mô tả; lọc theo phân hệ.
+- **Xem / tìm:** tab **Theo màn hình** (bấm vào từng màn hình để mở bảng table của nó) và tab **Theo table** (tra ngược: table này thuộc những màn hình nào; có bộ lọc riêng theo **tên table** và **vai trò**, hiện "X / Y table"). Ô tìm kiếm khớp mã/tên màn hình, tên table, mô tả; lọc theo phân hệ.
 - **Thứ tự table trong màn hình** luôn theo vai trò: **Bảng chính → Bảng chi tiết → Danh mục → Cấu hình → Lịch sử / Log → Khác** (cùng vai trò thì giữ thứ tự nhập); áp dụng khi xem, copy, xuất Excel và khi lưu / import.
 - **Copy:** 📋 SELECT từng table (`SELECT TOP 100 * FROM <table> WITH (NOLOCK)` + `WHERE` gợi ý), 📋 Tên, 📋 Copy tên các table của màn hình, 📋 Copy tất cả SELECT của màn hình.
 - **Thêm / sửa / xoá:** form có thêm table từng dòng, lên-xuống, **Dán nhiều tên table** (mỗi dòng 1 table hoặc cách nhau dấu phẩy); xoá bấm 2 lần. Lưu = commit lên Git; không hiện thông báo thành công (chỉ cảnh báo khi chưa cấu hình Git).
 - **Excel:** **⬇ Template Excel** (cột `Mã màn hình | Tên màn hình | Phân hệ | Table | Vai trò | Mô tả | Điều kiện WHERE gợi ý`, mỗi dòng 1 table; màn hình nhiều table thì để trống mã/tên ở các dòng dưới), **📥 Import Excel** (xem trước số màn hình mới/cập nhật rồi áp dụng — 1 lần = 1 commit; màn hình trùng mã thì thay tên/phân hệ/danh sách table theo file), **⬇ Xuất Excel** (đúng định dạng template nên import lại được). Dự án luôn gắn theo menu (không có ô chọn dự án); mở trang không qua menu thì chỉ hiện danh sách dự án để chọn.
 - Dữ liệu ở `data/screen-tables.json` (qua `listStore.js`: có `GITHUB_TOKEN`/`GITHUB_REPO` thì mỗi lần lưu là 1 commit; ngược lại ghi file local). API: `GET/POST /api/screen-tables`, `POST /api/screen-tables/import`, `DELETE /api/screen-tables/:id`. Mã: `screenTablesStore.js`, `protected/duan-table-man-hinh.html`.
+
+### Báo Cáo Tuần ERP — cách tính các số theo khoảng ngày
+Lọc **Từ ngày → Đến ngày** theo **Opening On** của ticket (trạng thái là trạng thái hiện tại của ticket):
+- **Mục 1 — các ô Closed / Open / Assign / Working / Reviewing / Waiting / Pending / Re-open:** chỉ đếm ticket có Opening On nằm trong khoảng lọc (server lọc `opening_date`, trình duyệt lọc chặt thêm 1 lớp), theo trạng thái hiện tại.
+- **Time hỗ trợ:** giữ nguyên (tổng giờ Timesheet trong khoảng).
+- **Ticket nhận trong tuần/tháng:** tổng ticket có Opening On trong khoảng lọc.
+- **Ticket tồn đọng tuần/tháng trước:** ticket **chưa Closed** (đang ở Open/Assign/Working/Reviewing/Waiting/Pending/Re-open) có Opening On **trước "Từ ngày"**.
+- **Ticket xử lý trong tuần/tháng:** ticket có Opening On trong khoảng lọc và trạng thái **Closed** (cũng là ô Closed ở mục 1 và danh sách "Thực hiện trong tuần").
+- **Tổng ticket tồn đọng còn lại:** giữ nguyên = toàn bộ ticket đang tồn đọng đến hiện tại (khớp biểu đồ "tồn đọng hiện tại" và danh sách "Xử lý tuần sau").
