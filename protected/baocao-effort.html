@@ -62,6 +62,10 @@
   .detail table td,.detail table th{text-align:left;white-space:normal;} .detail table th{cursor:default;} .detail table th:hover{background:#1F4E79;}
   .tag{font-size:11px;font-weight:700;border-radius:12px;padding:1px 9px;background:#E4EBF3;color:var(--blueprint);white-space:nowrap;} .tag.task{background:#FFF3DC;color:#8A5A0B;}
   .hint{color:var(--muted);font-size:12.5px;line-height:1.6;}
+  .pbar{display:inline-block;width:64px;height:8px;border-radius:4px;background:#E4EBF3;vertical-align:middle;margin-left:6px;overflow:hidden;} .pbar i{display:block;height:100%;background:var(--success);}
+  .g{font-size:11.5px;font-weight:700;border-radius:12px;padding:2px 10px;white-space:nowrap;} .g.t{background:#EAF5EE;color:#2C5E43;} .g.k{background:#EAF1F8;color:var(--blueprint);} .g.b{background:#FFF3DC;color:#8A5A0B;} .g.c{background:#FBE9EB;color:#8B2A36;}
+  th.grp{background:#163A5C;cursor:default;text-align:center;border-left:1px solid #fff;} th.grp:hover{background:#163A5C;}
+  .kpi.k5{border-top-color:var(--success);}
 </style>
 </head>
 <body>
@@ -94,7 +98,8 @@
 
     <div class="panel" id="chartPanel">
       <div class="charts">
-        <div class="cbox full"><h3>Effort theo thành viên — số lượng ticket + task được assign</h3><div style="position:relative" id="wrap1"><canvas id="c1"></canvas></div></div>
+        <div class="cbox"><h3>Effort được assign — số lượng ticket + task</h3><div style="position:relative" id="wrap1"><canvas id="c1"></canvas></div></div>
+        <div class="cbox"><h3>Khả năng xử lý — đã xử lý / chưa xử lý (ticket + task)</h3><div style="position:relative" id="wrap4"><canvas id="c4"></canvas></div></div>
         <div class="cbox"><h3>Ticket theo mức ưu tiên (từng thành viên)</h3><div style="position:relative" id="wrap2"><canvas id="c2"></canvas></div></div>
         <div class="cbox"><h3>Xu hướng theo tuần <select id="trendMember"></select></h3><div style="position:relative;height:300px"><canvas id="c3"></canvas></div></div>
       </div>
@@ -106,7 +111,7 @@
         <div class="acts"><button type="button" class="primary sm" id="btnCopy">📋 Copy bảng</button><button type="button" class="sm" id="btnImg">🖼 Copy ảnh biểu đồ</button><button type="button" class="export sm" id="btnXls">⬇ Xuất Excel</button></div>
       </div>
       <div style="overflow-x:auto"><table id="tbl"></table></div>
-      <div class="hint" style="margin-top:8px">Bấm tiêu đề cột để sắp xếp, bấm 1 thành viên để xem danh sách ticket / task đã được assign. Mỗi ticket/task chỉ tính 1 lần cho mỗi người; ticket giao cho nhiều người thì mỗi người đều có 1 lượt.</div>
+      <div class="hint" style="margin-top:8px"><b>Đã xử lý</b> = ticket ở trạng thái Closed + task SynergyHub đã xong; <b>% xử lý</b> = đã xử lý ÷ được assign. <b>TB xử lý</b> = thời gian trung bình từ mở ticket đến Closed của các ticket đã đóng (giờ theo quy tắc SLA: giờ làm việc T2–T6 08:00–17:30 trừ nghỉ trưa và ngày lễ; Critical/Urgent tính 24h liên tục). <b>Đánh giá</b> theo % xử lý chung: Tốt ≥ 80% · Khá ≥ 60% · Trung bình ≥ 40% · Cần cải thiện &lt; 40%. Ticket giao cho nhiều người thì mọi người đều được ghi nhận đã xử lý khi ticket Closed (ERP không cho biết ai đóng). Bấm tiêu đề cột để sắp xếp, bấm 1 thành viên để xem danh sách ticket / task đã được assign. Mỗi ticket/task chỉ tính 1 lần cho mỗi người; ticket giao cho nhiều người thì mỗi người đều có 1 lượt.</div>
     </div>
     <div class="panel detail" id="detail" style="display:none"></div>
   </div>
@@ -163,10 +168,11 @@ function render(){
   $('result').style.display = '';
   const list = sel();
   const tT = list.reduce((s,m)=>s+m.tickets.total,0), tK = list.reduce((s,m)=>s+m.tasks.total,0);
+  const proc = list.reduce((x,m)=>x+m.processed,0), asg = tT+tK;
   $('kpis').innerHTML = `<div class="kpi"><div class="l">Thành viên</div><div class="v">${list.length}</div><div class="d">có ít nhất 1 ticket/task được assign</div></div>`
-    +`<div class="kpi k2"><div class="l">Ticket được assign (lượt)</div><div class="v">${tT}</div><div class="d">${data.totals.distinctTickets} ticket khác nhau</div></div>`
-    +`<div class="kpi k3"><div class="l">Task được assign (lượt)</div><div class="v">${tK}</div><div class="d">${data.totals.distinctTasks} task khác nhau</div></div>`
-    +`<div class="kpi k4"><div class="l">Trung bình / thành viên</div><div class="v">${list.length ? (Math.round((tT+tK)/list.length*10)/10) : 0}</div><div class="d">ticket + task được assign</div></div>`;
+    +`<div class="kpi k2"><div class="l">Ticket được assign (lượt)</div><div class="v">${tT}</div><div class="d">${data.totals.distinctTickets} ticket khác nhau · đã Closed ${list.reduce((x,m)=>x+m.tickets.closed,0)}</div></div>`
+    +`<div class="kpi k3"><div class="l">Task được assign (lượt)</div><div class="v">${tK}</div><div class="d">${data.totals.distinctTasks} task khác nhau · đã xong ${list.reduce((x,m)=>x+m.tasks.done,0)}</div></div>`
+    +`<div class="kpi k4"><div class="l">Đã xử lý / được assign</div><div class="v">${proc}/${asg}</div><div class="d">khả năng xử lý chung ${asg ? Math.round(proc/asg*1000)/10 : 0}% · TB ${list.length ? (Math.round(asg/list.length*10)/10) : 0} lượt/người</div></div>`;
   $('memChips').innerHTML = '<span class="t">Thành viên:</span>'+data.members.map(m=>'<label class="'+(memSel.has(m.key)?'on':'')+'" title="'+esc(m.email||m.key)+'"><input type="checkbox" data-m="'+esc(m.key)+'"'+(memSel.has(m.key)?' checked':'')+'> '+esc(label(m))+' <small>('+m.total+')</small></label>').join('')
     +'<button type="button" class="sm" id="mAll">Tất cả</button><button type="button" class="sm" id="mNone">Bỏ chọn</button>';
   $('memChips').querySelectorAll('input').forEach(i=>i.onchange=()=>{ i.checked ? memSel.add(i.dataset.m) : memSel.delete(i.dataset.m); render(); });
@@ -174,17 +180,32 @@ function render(){
   $('mNone').onclick = () => { memSel = new Set(); render(); };
   renderTable(); renderCharts(); renderDetail();
 }
-const cols = [['name','Thành viên',m=>label(m)],['tickets','Ticket',m=>m.tickets.total],['closed','Đã Closed',m=>m.tickets.closed],['open','Đang xử lý',m=>m.tickets.open],
-  ['p1','Critical/Urgent',m=>m.tickets.p1],['high','High',m=>m.tickets.high],['medium','Medium',m=>m.tickets.medium],['low','Low / khác',m=>m.tickets.low],
-  ['tasks','Task',m=>m.tasks.total],['tasksDone','Task xong',m=>m.tasks.done],['total','Tổng effort',m=>m.total]];
+/* [khoá, nhãn, hàm lấy giá trị, kiểu hiển thị] — 'pct' = phần trăm kèm thanh, 'grade' = nhãn đánh giá */
+const gcls = g => g==='Tốt'?'t':g==='Khá'?'k':g==='Trung bình'?'b':g==='Cần cải thiện'?'c':'';
+const cols = [['name','Thành viên',m=>label(m)],
+  ['tickets','Ticket được assign',m=>m.tickets.total],['closed','Đã xử lý (Closed)',m=>m.tickets.closed],['open','Ticket chưa xử lý',m=>m.tickets.open],['ticketRate','% xử lý ticket',m=>m.ticketRate,'pct'],['avgHours','TB xử lý (giờ)',m=>m.avgHours,'num1'],
+  ['tasks','Task được assign',m=>m.tasks.total],['tasksDone','Task xong',m=>m.tasks.done],['taskRate','% task xong',m=>m.taskRate,'pct'],
+  ['total','Tổng được assign',m=>m.total],['processed','Tổng đã xử lý',m=>m.processed],['pending','Tổng chưa xử lý',m=>m.pending],['rate','% xử lý chung',m=>m.rate,'pct'],['grade','Đánh giá',m=>m.grade,'grade'],
+  ['p1','Critical/Urgent',m=>m.tickets.p1],['high','High',m=>m.tickets.high],['medium','Medium',m=>m.tickets.medium],['low','Low / khác',m=>m.tickets.low]];
+const fmtCell = (c, v) => c[3]==='pct' ? (v==null ? '—' : v+'%<span class="pbar"><i style="width:'+Math.min(100,v)+'%"></i></span>') : c[3]==='grade' ? '<span class="g '+gcls(v)+'">'+esc(v)+'</span>' : c[3]==='num1' ? (v==null ? '—' : v) : v;
+const plain = (c, v) => c[3]==='pct' ? (v==null ? '' : v+'%') : (c[3]==='num1' && v==null ? '' : v);
+function totalOf(list, key){
+  const sum = f => list.reduce((s,m)=>s+f(m),0);
+  const T = { tickets:sum(m=>m.tickets.total), closed:sum(m=>m.tickets.closed), open:sum(m=>m.tickets.open), tasks:sum(m=>m.tasks.total), tasksDone:sum(m=>m.tasks.done), total:sum(m=>m.total), processed:sum(m=>m.processed), pending:sum(m=>m.pending),
+    p1:sum(m=>m.tickets.p1), high:sum(m=>m.tickets.high), medium:sum(m=>m.tickets.medium), low:sum(m=>m.tickets.low) };
+  const pc = (a,b) => b ? Math.round(a/b*1000)/10 : null;
+  T.ticketRate = pc(T.closed,T.tickets); T.taskRate = pc(T.tasksDone,T.tasks); T.rate = pc(T.processed,T.total);
+  const hn = sum(m=>m.handling.n); T.avgHours = hn ? Math.round(sum(m=>m.handling.minutes)/hn/6)/10 : null;
+  T.grade = T.rate==null ? '—' : T.rate>=80?'Tốt':T.rate>=60?'Khá':T.rate>=40?'Trung bình':'Cần cải thiện';
+  return T[key];
+}
 function renderTable(){
-  const list = sel().slice().sort((a,b)=>{ const c = cols.find(x=>x[0]===sortKey) || cols[10]; const va = c[2](a), vb = c[2](b); return (typeof va==='string' ? va.localeCompare(vb,'vi') : va-vb)*sortDir; });
-  const sum = f => list.reduce((s,m)=>s+f(m),0); const grand = sum(m=>m.total) || 1;
+  const list = sel().slice().sort((a,b)=>{ const c = cols.find(x=>x[0]===sortKey) || cols[9]; const va = c[2](a), vb = c[2](b); const na = va==null?-1:va, nb = vb==null?-1:vb; return (typeof na==='string' ? na.localeCompare(nb,'vi') : na-nb)*sortDir; });
   if(!list.length){ $('tbl').innerHTML = '<tbody><tr><td class="empty" style="text-align:center">Không có thành viên nào được chọn / không có dữ liệu trong khoảng ngày.</td></tr></tbody>'; return; }
-  $('tbl').innerHTML = '<thead><tr>'+cols.map(c=>'<th data-s="'+c[0]+'">'+c[1]+(sortKey===c[0]?(sortDir<0?' ▼':' ▲'):'')+'</th>').join('')+'<th style="cursor:default">% team</th></tr></thead><tbody>'
-    + list.map(m=>'<tr class="m'+(openKey===m.key?' on':'')+'" data-k="'+esc(m.key)+'" title="'+esc(m.email||m.key)+'"><td>'+esc(label(m))+'</td>'+cols.slice(1).map(c=>'<td'+(c[0]==='total'?' class="big"':'')+'>'+c[2](m)+'</td>').join('')
-      +'<td class="bartd">'+Math.round(m.total/grand*1000)/10+'%<span class="mini" style="width:'+Math.round(m.total/grand*70)+'px"></span></td></tr>').join('')
-    + '<tr class="tot"><td>Tổng</td>'+cols.slice(1).map(c=>'<td>'+sum(c[2])+'</td>').join('')+'<td>100%</td></tr></tbody>';
+  const grp = '<tr><th class="grp" style="border-left:0"></th><th class="grp" colspan="5">TICKET (ERP)</th><th class="grp" colspan="3">TASK (SynergyHub)</th><th class="grp" colspan="5">TỔNG HỢP — KHẢ NĂNG XỬ LÝ</th><th class="grp" colspan="4">TICKET THEO ƯU TIÊN</th></tr>';
+  $('tbl').innerHTML = '<thead>'+grp+'<tr>'+cols.map(c=>'<th data-s="'+c[0]+'">'+c[1]+(sortKey===c[0]?(sortDir<0?' ▼':' ▲'):'')+'</th>').join('')+'</tr></thead><tbody>'
+    + list.map(m=>'<tr class="m'+(openKey===m.key?' on':'')+'" data-k="'+esc(m.key)+'" title="'+esc(m.email||m.key)+'">'+cols.map((c,i)=>'<td'+(c[0]==='total'||c[0]==='rate'?' class="big"':'')+'>'+(i===0?esc(c[2](m)):fmtCell(c,c[2](m)))+'</td>').join('')+'</tr>').join('')
+    + '<tr class="tot"><td>Tổng</td>'+cols.slice(1).map(c=>'<td>'+fmtCell(c,totalOf(list,c[0]))+'</td>').join('')+'</tr></tbody>';
   $('tbl').querySelectorAll('th[data-s]').forEach(th=>th.onclick=()=>{ const k = th.dataset.s; sortDir = sortKey===k ? -sortDir : (k==='name'?1:-1); sortKey = k; renderTable(); });
   $('tbl').querySelectorAll('tr.m').forEach(tr=>tr.onclick=()=>{ openKey = openKey===tr.dataset.k ? null : tr.dataset.k; renderTable(); renderDetail(); if(openKey) $('detail').scrollIntoView({behavior:'smooth',block:'nearest'}); });
 }
@@ -193,7 +214,7 @@ function renderDetail(){
   if(!m){ $('detail').style.display = 'none'; return; }
   $('detail').style.display = '';
   const rows = m.items.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-  $('detail').innerHTML = '<h2>'+esc(label(m))+' — '+m.tickets.total+' ticket · '+m.tasks.total+' task được assign</h2><div style="overflow-x:auto"><table><thead><tr><th>Loại</th><th>Mã</th><th>Nội dung</th><th>Dự án</th><th>Ưu tiên</th><th>Trạng thái</th><th>'+(data.mode==='assigned'?'Ngày giao / hạn task':'Ngày mở / hạn task')+'</th></tr></thead><tbody>'
+  $('detail').innerHTML = '<h2>'+esc(label(m))+' — '+m.tickets.total+' ticket · '+m.tasks.total+' task được assign · đã xử lý '+m.processed+'/'+m.total+(m.rate==null?'':' ('+m.rate+'%)')+'</h2><div style="overflow-x:auto"><table><thead><tr><th>Loại</th><th>Mã</th><th>Nội dung</th><th>Dự án</th><th>Ưu tiên</th><th>Trạng thái</th><th>'+(data.mode==='assigned'?'Ngày giao / hạn task':'Ngày mở / hạn task')+'</th></tr></thead><tbody>'
     + rows.map(r=>'<tr><td><span class="tag'+(r.kind==='task'?' task':'')+'">'+(r.kind==='task'?'Task':'Ticket')+'</span></td><td>'+esc(r.id)+'</td><td>'+esc(r.title)+'</td><td>'+esc(r.project)+'</td><td>'+esc(r.priority)+'</td><td>'+esc(r.status)+'</td><td>'+esc(r.date)+'</td></tr>').join('')
     + '</tbody></table></div>'+(rows.length >= 300 ? '<div class="hint">Hiển thị tối đa 300 ticket + 300 task gần nhất; số tổng ở bảng là đầy đủ.</div>' : '');
 }
@@ -203,11 +224,16 @@ function destroy(k){ if(charts[k]){ charts[k].destroy(); delete charts[k]; } }
 function renderCharts(){
   const list = sel().slice().sort((a,b)=>b.total-a.total); const names = list.map(label);
   const h = Math.max(240, list.length*30+90);
-  ['wrap1','wrap2'].forEach(id=>$(id).style.height = h+'px');
+  ['wrap1','wrap2','wrap4'].forEach(id=>$(id).style.height = h+'px');
   const horiz = { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' }, tooltip:{ mode:'index', intersect:false } }, scales:{ x:{ stacked:true, beginAtZero:true, ticks:{ precision:0 } }, y:{ stacked:true } } };
   destroy('c1'); charts.c1 = new Chart($('c1'), { type:'bar', data:{ labels:names, datasets:[
     { label:'Ticket', data:list.map(m=>m.tickets.total), backgroundColor:'#1F4E79' }, { label:'Task SynergyHub', data:list.map(m=>m.tasks.total), backgroundColor:'#E8A33D' } ] },
     options:{ ...horiz, animation:false, plugins:{ ...horiz.plugins, tooltip:{ mode:'index', intersect:false, callbacks:{ footer: items => 'Tổng: '+items.reduce((s,i)=>s+i.parsed.x,0) } } } } });
+  // khả năng xử lý: đã xử lý / chưa xử lý (ticket + task), nhãn kèm % xử lý
+  const byRate = list.slice();
+  destroy('c4'); charts.c4 = new Chart($('c4'), { type:'bar', data:{ labels:byRate.map(m=>label(m)+(m.rate==null?'':' — '+m.rate+'%')), datasets:[
+    { label:'Đã xử lý', data:byRate.map(m=>m.processed), backgroundColor:'#3F7D58' }, { label:'Chưa xử lý', data:byRate.map(m=>m.pending), backgroundColor:'#C9D3DF' } ] },
+    options:{ ...horiz, animation:false, plugins:{ ...horiz.plugins, tooltip:{ mode:'index', intersect:false, callbacks:{ footer: items => { const m = byRate[items[0].dataIndex]; return 'Được assign: '+m.total+(m.rate==null?'':' · Tỷ lệ xử lý: '+m.rate+'%'); } } } } } });
   destroy('c2'); charts.c2 = new Chart($('c2'), { type:'bar', data:{ labels:names, datasets: PRIO.map(([k,lab,col])=>({ label:lab, data:list.map(m=>m.tickets[k]), backgroundColor:col })) }, options:{ ...horiz, animation:false } });
   // xu hướng theo tuần — chọn 1 thành viên hoặc cả nhóm đang chọn
   const tm = $('trendMember'); const cur = tm.value;
@@ -221,11 +247,11 @@ function renderCharts(){
 $('trendMember').onchange = renderCharts;
 
 /* ---------- copy / xuất ---------- */
-const headers = () => cols.map(c=>c[1]).concat(['% team']);
+const headers = () => cols.map(c=>c[1]);
 function tableRows(){
-  const list = sel().slice().sort((a,b)=>b.total-a.total); const grand = list.reduce((s,m)=>s+m.total,0) || 1;
-  const rows = list.map(m=>cols.map(c=>c[2](m)).concat([Math.round(m.total/grand*1000)/10+'%']));
-  rows.push(['Tổng'].concat(cols.slice(1).map(c=>list.reduce((s,m)=>s+c[2](m),0)), ['100%']));
+  const list = sel().slice().sort((a,b)=>b.total-a.total);
+  const rows = list.map(m=>cols.map((c,i)=>i===0?c[2](m):plain(c,c[2](m))));
+  rows.push(['Tổng'].concat(cols.slice(1).map(c=>plain(c,totalOf(list,c[0])))));
   return rows;
 }
 async function copyText(text){ try{ await navigator.clipboard.writeText(text); return true; }catch(e){ const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText='position:fixed;left:-9999px'; document.body.appendChild(ta); ta.select(); let ok=false; try{ ok=document.execCommand('copy'); }catch(_){} ta.remove(); return ok; } }
@@ -247,7 +273,7 @@ $('btnImg').onclick = async () => {
 };
 $('btnXls').onclick = () => {
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet([headers()].concat(tableRows())); ws['!cols'] = [{wch:24}].concat(headers().slice(1).map(()=>({wch:14})));
+  const ws = XLSX.utils.aoa_to_sheet([headers()].concat(tableRows())); ws['!cols'] = [{wch:24}].concat(headers().slice(1).map(()=>({wch:16})));
   XLSX.utils.book_append_sheet(wb, ws, 'Effort theo thành viên');
   const det = [['Thành viên','Email','Loại','Mã','Nội dung','Dự án','Ưu tiên','Trạng thái',data.mode==='assigned'?'Ngày giao / hạn task':'Ngày mở / hạn task']];
   sel().forEach(m=>m.items.forEach(r=>det.push([label(m), m.email||'', r.kind==='task'?'Task':'Ticket', r.id, r.title, r.project, r.priority, r.status, r.date])));

@@ -526,7 +526,7 @@ app.get('/api/bao-cao/effort', requireAuth, async (req, res) => {
           const k = `${tk.name}|${who}`; const d = String(td.creation || '').slice(0, 10);
           if (!seen.has(k) || d < seen.get(k).date) seen.set(k, { tk, who, date: d });
         }
-        for (const { tk, who, date } of seen.values()) ticketPairs.push({ name: tk.name, subject: tk.subject, project: tk.project, status: tk.status, priority: tk.priority, assignee: who, date });
+        for (const { tk, who, date } of seen.values()) ticketPairs.push({ name: tk.name, subject: tk.subject, project: tk.project, status: tk.status, priority: tk.priority, assignee: who, date, openedAt: tk.opening_date || tk.creation, resolvedAt: tk.resolution_date || (tk.status === 'Closed' ? tk.modified : '') });
       } else {
         const r = await erp.fetchTickets({ projects, openingFrom: from, openingTo: to, limit });
         const rows = r.data || r; diagnostics.tickets = rows.length;
@@ -535,7 +535,7 @@ app.get('/api/bao-cao/effort', requireAuth, async (req, res) => {
         for (const tk of rows) {
           let cur = []; try { const a = JSON.parse(tk._assign || '[]'); if (Array.isArray(a)) cur = a; } catch (_) { /* _assign rỗng */ }
           const who = new Set([...cur, ...(hist[tk.name] || [])].map((x) => String(x).trim().toLowerCase()).filter(Boolean));
-          for (const w of who) ticketPairs.push({ name: tk.name, subject: tk.subject, project: tk.project, status: tk.status, priority: tk.priority, assignee: w, date: String(tk.opening_date || tk.creation || '').slice(0, 10) });
+          for (const w of who) ticketPairs.push({ name: tk.name, subject: tk.subject, project: tk.project, status: tk.status, priority: tk.priority, assignee: w, date: String(tk.opening_date || tk.creation || '').slice(0, 10), openedAt: tk.opening_date || tk.creation, resolvedAt: tk.resolution_date || (tk.status === 'Closed' ? tk.modified : '') });
         }
       }
     }
