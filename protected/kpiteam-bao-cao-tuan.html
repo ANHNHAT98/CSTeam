@@ -194,23 +194,24 @@
     <div class="rep-section-h" style="margin-top:20px;">Biểu đồ tuần</div>
     <div id="chartPanel">
       <div class="chart-block">
-        <h4>Tình trạng ticket (tồn đọng hiện tại)</h4>
+        <h4 id="chartBacklogTitle">Tình trạng ticket tồn đọng còn lại</h4>
         <div class="donut-wrap" id="chartDonutBacklog"></div>
       </div>
       <div class="chart-block">
-        <h4 id="chartWeekTitle">Tình trạng ticket (trong khoảng ngày đã chọn)</h4>
+        <h4 id="chartWeekTitle">Tình trạng ticket mở trong khoảng (theo bộ lọc ngày)</h4>
         <div class="donut-wrap" id="chartDonutWeek"></div>
       </div>
       <div class="chart-block">
-        <h4>Nhận / Xử lý / Tồn đọng</h4>
+        <h4 id="chartFlowTitle">Tồn đọng / Nhận / Xử lý</h4>
         <div id="chartVbar"></div>
+        <div class="list-hint" id="chartFlowNote" style="margin-top:6px"></div>
       </div>
     </div>
 
     <div class="rep-section-h">2. Nhận xét / Vấn đề</div>
     <div class="sub-h">Nhận xét chung về tình hình support tuần/tháng báo cáo so với tuần trước:</div>
     <textarea class="freeform" id="txt_nhanxet" placeholder="Ví dụ: khối lượng ticket ổn định so với tuần trước, không phát sinh sự cố nghiêm trọng…"></textarea>
-    <div class="list-hint">Tự động điền sẵn nhận xét so sánh tổng ticket nhận &amp; ticket Critical/Urgent so với tuần trước khi bấm "Lấy dữ liệu" — có thể sửa/thêm/xoá tuỳ ý.</div>
+    <div class="list-hint">Tự động điền sẵn đánh giá dựa trên <b>ticket mở (Opening On)</b> của khoảng lọc so với khoảng ngay trước đó (cùng độ dài): số ticket mở, theo mức độ ưu tiên, tỉ lệ đã Closed, tồn đọng và kết luận tăng/giảm/ổn định — bấm "Lấy dữ liệu" để điền; có thể sửa/thêm/xoá tuỳ ý.</div>
 
     <div class="sub-h">Thực hiện trong tuần: <span class="range" id="doneWeekRange">(…)</span></div>
     <textarea class="list-input" id="txt_thuchien">Review rls app và các rls BO
@@ -267,7 +268,7 @@ function setStatus(msg, cls){ statusText.textContent = msg; statusText.className
 const CHART_PALETTE = {
   Closed:'#5FA778', Open:'#B5533C', Assign:'#E3A857', Working:'#2E6F95',
   Reviewing:'#5B4B8A', Waiting:'#8FA6B3', Pending:'#C9821F', 'Re-open':'#8B2E2E',
-  'Nhận': '#2E6F95', 'Xử lý': '#5FA778', 'Tồn đọng trước': '#8FA6B3', 'Tồn đọng': '#B5533C',
+  'Tồn đọng tuần trước': '#8FA6B3', 'Nhận': '#2E6F95', 'Xử lý': '#5FA778', 'Tồn đọng còn lại': '#B5533C',
 };
 const CHART_DEFAULT_COLORS = ['#2E6F95','#E3A857','#5FA778','#B5533C','#5B4B8A','#8FA6B3'];
 function chartColor(label, idx){ return CHART_PALETTE[label] || CHART_DEFAULT_COLORS[idx % CHART_DEFAULT_COLORS.length]; }
@@ -312,8 +313,8 @@ function vbarChartSvg(counts, opts){
   }).join('') + '</div>';
 }
 
-// Breakdown trạng thái của TOÀN BỘ ticket tồn đọng hiện tại (không giới hạn ngày mở) —
-// tính từ backlogRows sau mỗi lần fetch, dùng riêng cho donut "tồn đọng hiện tại".
+// Breakdown trạng thái của ticket tồn đọng còn lại (chưa Closed, Opening On ≤ "Đến ngày") —
+// tính từ backlogRows sau mỗi lần fetch, dùng cho donut "tồn đọng còn lại" (tổng khớp mục 5).
 let fullBacklogByStatus = {};
 
 function renderCharts(){
@@ -322,16 +323,26 @@ function renderCharts(){
     Closed: v('m_closed'), Open: v('m_open'), Assign: v('m_assign'), Working: v('m_working'),
     Reviewing: v('m_reviewing'), Waiting: v('m_waiting'), Pending: v('m_pending'), 'Re-open': v('m_reopen'),
   };
+  // thứ tự theo dòng chảy: tồn đọng trước + nhận − xử lý = tồn đọng còn lại
   const flowCounts = {
-    'Nhận': v('m_received'), 'Xử lý': v('m_processed'),
-    'Tồn đọng trước': v('m_backlogPrev'), 'Tồn đọng': v('m_backlogNow'),
+    'Tồn đọng tuần trước': v('m_backlogPrev'), 'Nhận': v('m_received'), 'Xử lý': v('m_processed'), 'Tồn đọng còn lại': v('m_backlogNow'),
   };
   document.getElementById('chartDonutBacklog').innerHTML = donutChartSvg(fullBacklogByStatus) + `<div style="flex:1">${chartLegendHtml(fullBacklogByStatus)}</div>`;
   document.getElementById('chartDonutWeek').innerHTML = donutChartSvg(weekStatusCounts) + `<div style="flex:1">${chartLegendHtml(weekStatusCounts)}</div>`;
   document.getElementById('chartVbar').innerHTML = vbarChartSvg(flowCounts);
 
+  // chú thích phép tính dưới biểu đồ cột; lệch (do sửa tay) thì báo để biết số không còn khớp
+  const calc = flowCounts['Tồn đọng tuần trước'] + flowCounts['Nhận'] - flowCounts['Xử lý'];
+  const ok = calc === flowCounts['Tồn đọng còn lại'];
+  const note = document.getElementById('chartFlowNote');
+  note.textContent = `Tồn đọng tuần trước ${flowCounts['Tồn đọng tuần trước']} + Nhận ${flowCounts['Nhận']} − Xử lý ${flowCounts['Xử lý']} = ${calc}` + (ok ? ` (khớp Tồn đọng còn lại)` : ` — lệch so với Tồn đọng còn lại ${flowCounts['Tồn đọng còn lại']}`);
+  note.style.color = ok ? '' : 'var(--danger)';
+
+  const fmt = iso => iso.split('-').reverse().join('/');
   if (fromDate.value && toDate.value){
-    document.getElementById('chartWeekTitle').textContent = `Tình trạng ticket (${fromDate.value} → ${toDate.value})`;
+    document.getElementById('chartWeekTitle').textContent = `Tình trạng ticket mở trong khoảng (${fmt(fromDate.value)} → ${fmt(toDate.value)})`;
+    document.getElementById('chartBacklogTitle').textContent = `Tình trạng ticket tồn đọng còn lại (đến hết ${fmt(toDate.value)})`;
+    document.getElementById('chartFlowTitle').textContent = `Tồn đọng / Nhận / Xử lý (${fmt(fromDate.value)} → ${fmt(toDate.value)})`;
   }
 }
 renderCharts(); // vẽ sẵn với giá trị mặc định (0) khi mới mở trang
@@ -530,7 +541,10 @@ fetchBtn.addEventListener('click', async () => {
     qsBacklog.set('projects', JSON.stringify([project]));
     qsBacklog.set('statuses', JSON.stringify(BACKLOG_STATUSES));
     const backlogData = await fetchJson('/api/erp/tickets?' + qsBacklog.toString());
-    const backlogRows = Array.isArray(backlogData.data) ? backlogData.data : [];
+    const backlogAllRows = Array.isArray(backlogData.data) ? backlogData.data : [];
+    // Mục 5 "Tổng ticket tồn đọng còn lại" = ticket chưa Closed có Opening On ≤ "Đến ngày" (= tồn đọng tuần trước + ticket mở trong khoảng lọc còn chưa Closed).
+    // Ticket mở SAU "Đến ngày" (thuộc kỳ sau) không tính vào kỳ báo cáo này.
+    const backlogRows = backlogAllRows.filter(r => { const d = parseFrappeDate(r.opening_date || r.creation); return d && d <= to; });
 
     // Fetch C: ticket mở trong TUẦN/KHOẢNG TRƯỚC ĐÓ (cùng độ dài, ngay trước "Từ ngày") —
     // dùng để so sánh xu hướng tăng/giảm, tự điền gợi ý vào "Nhận xét/Vấn đề".
@@ -543,7 +557,8 @@ fetchBtn.addEventListener('click', async () => {
     qsPrevWeek.set('opening_from', toISO(prevFrom));
     qsPrevWeek.set('opening_to', toISO(prevTo));
     const prevWeekData = await fetchJson('/api/erp/tickets?' + qsPrevWeek.toString());
-    const prevWeekRows = Array.isArray(prevWeekData.data) ? prevWeekData.data : [];
+    // kỳ trước cũng chỉ tính ticket có Opening On nằm trong khoảng kỳ trước (lọc chặt như kỳ hiện tại)
+    const prevWeekRows = (Array.isArray(prevWeekData.data) ? prevWeekData.data : []).filter(r => inRange(parseFrappeDate(r.opening_date || r.creation), prevFrom, prevTo));
 
     const backlogBreakdown = {};
     BACKLOG_STATUSES.forEach(s => backlogBreakdown[s] = 0);
@@ -596,23 +611,32 @@ fetchBtn.addEventListener('click', async () => {
     document.getElementById('m_processed').value = closedInWeek;
     document.getElementById('m_backlogNow').value = backlogNow;
 
-    // Tự động so sánh với tuần/khoảng trước đó (cùng độ dài) rồi điền gợi ý vào "Nhận xét/Vấn đề":
-    // 1) tổng ticket nhận trong khoảng lọc so với khoảng trước — tăng/giảm bao nhiêu.
-    // 2) ticket mức Critical/Urgent phát sinh trong khoảng lọc so với khoảng trước.
-    function isUrgentCritical(r){
-      const p = String(r.priority || '').trim().toLowerCase();
-      return p === 'critical' || p === 'urgent';
-    }
-    const prevReceived = prevWeekRows.length;
-    const curUrgentCritical = weekRows.filter(isUrgentCritical).length;
-    const prevUrgentCritical = prevWeekRows.filter(isUrgentCritical).length;
-    const receivedDiff = receivedInWeek - prevReceived;
-    const urgentDiff = curUrgentCritical - prevUrgentCritical;
+    // Tự động đánh giá điền vào "Nhận xét/Vấn đề": DỰA TRÊN TICKET MỞ (Opening On) của khoảng lọc so với khoảng ngay trước đó (cùng độ dài).
+    const unit = periodDays >= 28 ? 'tháng' : 'tuần';
+    const fmtD = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+    const prio = r => { const p = String(r.priority || '').trim().toLowerCase(); return (p === 'critical' || p === 'urgent') ? 'Critical/Urgent' : (p === 'high' ? 'High' : 'Medium/Low'); };
+    const countPrio = rows => { const m = { 'Critical/Urgent': 0, 'High': 0, 'Medium/Low': 0 }; rows.forEach(r => m[prio(r)]++); return m; };
     const trend = (diff) => diff > 0 ? `tăng ${diff}` : (diff < 0 ? `giảm ${Math.abs(diff)}` : 'không đổi');
+    const pctTxt = (cur, prev) => prev > 0 ? ` (${cur >= prev ? '+' : '−'}${Math.abs(Math.round((cur - prev) / prev * 100))}%)` : '';
+    const prevReceived = prevWeekRows.length;
+    const receivedDiff = receivedInWeek - prevReceived;
+    const curP = countPrio(weekRows); const prevP = countPrio(prevWeekRows);
+    const prioLine = Object.keys(curP).map(k => `${k} ${curP[k]} (${unit} trước ${prevP[k]}, ${trend(curP[k] - prevP[k])})`).join(' · ');
+    const closedPct = receivedInWeek ? Math.round(closedInWeek / receivedInWeek * 100) : 0;
+    const changePct = prevReceived > 0 ? (receivedInWeek - prevReceived) / prevReceived * 100 : null;
+    let verdict;
+    if (prevReceived === 0 && receivedInWeek === 0) verdict = `Không phát sinh ticket mới ở cả hai ${unit}.`;
+    else if (changePct === null) verdict = `${unit[0].toUpperCase() + unit.slice(1)} trước không có ticket mở nên chưa so sánh được xu hướng.`;
+    else if (changePct > 20) verdict = `Lượng ticket mở tăng đáng kể so với ${unit} trước.`;
+    else if (changePct < -20) verdict = `Lượng ticket mở giảm rõ rệt so với ${unit} trước.`;
+    else verdict = `Lượng ticket mở tương đối ổn định so với ${unit} trước.`;
+    const urgentUp = curP['Critical/Urgent'] > prevP['Critical/Urgent'];
     const nhanxetAuto =
-      `Tổng ticket nhận trong tuần: ${receivedInWeek} (tuần trước: ${prevReceived}) — ${trend(receivedDiff)} ticket so với tuần trước.\n` +
-      `Ticket mức độ Critical/Urgent phát sinh trong tuần: ${curUrgentCritical} (tuần trước: ${prevUrgentCritical}) — ${trend(urgentDiff)} ticket so với tuần trước.\n` +
-      `Tổng ticket tồn đọng hiện tại: ${backlogNow}.`;
+      `Ticket mở (Opening On ${fmtD(from)} → ${fmtD(to)}): ${receivedInWeek} ticket (${unit} trước ${fmtD(prevFrom)} → ${fmtD(prevTo)}: ${prevReceived}) — ${trend(receivedDiff)} ticket${pctTxt(receivedInWeek, prevReceived)} so với ${unit} trước.\n` +
+      `Theo mức độ ưu tiên: ${prioLine}.\n` +
+      `Đã xử lý (Closed) ${closedInWeek}/${receivedInWeek} ticket mở trong ${unit}${receivedInWeek ? ` (${closedPct}%)` : ''}; còn ${receivedInWeek - closedInWeek} ticket chưa Closed.\n` +
+      `Tồn đọng: ${backlogPrevAll} ticket chưa Closed từ trước ${fmtD(from)}; tổng ticket tồn đọng còn lại ${backlogNow}.\n` +
+      `Đánh giá: ${verdict}${urgentUp ? ` Ticket Critical/Urgent tăng ${curP['Critical/Urgent'] - prevP['Critical/Urgent']} so với ${unit} trước, cần lưu ý.` : ''}`;
     document.getElementById('txt_nhanxet').value = nhanxetAuto;
 
     // "Xử lý tuần sau": liệt kê Subject các ticket tồn đọng, SỐ DÒNG = đúng "Tổng ticket tồn đọng
@@ -659,8 +683,8 @@ fetchBtn.addEventListener('click', async () => {
       hoursNote = ' (lỗi lấy timesheet: ' + tsErr.message + ' — nhập tay)';
     }
 
-    document.getElementById('asOfHint').textContent = `Các ô trạng thái, "Ticket nhận" và "Ticket xử lý" chỉ tính ticket có Opening On từ ${fromDate.value} đến ${toDate.value} (trạng thái hiện tại). "Ticket tồn đọng tuần trước" = ticket chưa Closed có Opening On trước ${fromDate.value}.`;
-    setStatus(`Xong — ${weekRows.length} ticket mở trong tuần, ${backlogRows.length} ticket đang tồn đọng (mọi thời điểm), đã điền ${doneWeekSubjectsCount} ticket Closed (có modified trong tuần) vào "Thực hiện trong tuần", "Xử lý tuần sau" = ${nextWeekSubjects.length} ticket tồn đọng (khớp tổng tồn đọng ${backlogNow}) và tự nhận xét so với tuần trước.${hoursNote}`, hoursNote ? 'err' : 'ok');
+    document.getElementById('asOfHint').textContent = `Các ô trạng thái, "Ticket nhận" và "Ticket xử lý" chỉ tính ticket có Opening On từ ${fromDate.value} đến ${toDate.value} (trạng thái hiện tại). "Ticket tồn đọng tuần trước" = ticket chưa Closed có Opening On trước ${fromDate.value}. "Tổng tồn đọng còn lại" = ticket chưa Closed có Opening On đến hết ${toDate.value} (= tồn đọng trước + ticket mở trong khoảng chưa Closed).`;
+    setStatus(`Xong — ${weekRows.length} ticket mở trong tuần, ${backlogRows.length} ticket tồn đọng còn lại (Opening On ≤ ${toDate.value}${backlogAllRows.length > backlogRows.length ? `; ${backlogAllRows.length - backlogRows.length} ticket mở sau ngày này không tính` : ''}), đã điền ${doneWeekSubjectsCount} ticket Closed (có modified trong tuần) vào "Thực hiện trong tuần", "Xử lý tuần sau" = ${nextWeekSubjects.length} ticket tồn đọng (khớp tổng tồn đọng ${backlogNow}) và tự nhận xét so với tuần trước.${hoursNote}`, hoursNote ? 'err' : 'ok');
     renderCharts();
   }catch(err){
     console.error(err);

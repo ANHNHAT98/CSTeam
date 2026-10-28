@@ -231,6 +231,27 @@ async function fetchTodoAssignees(names) {
   return out;
 }
 
+/** Các lần giao việc (DocType ToDo, bỏ ToDo đã huỷ) của Ticket được TẠO trong khoảng ngày — dùng cho Báo Cáo Effort (đếm ticket được assign). */
+async function fetchTodos({ from, to, maxRows = 30000 } = {}) {
+  const filters = [['reference_type', '=', 'Ticket'], ['status', '!=', 'Cancelled']];
+  if (from) filters.push(['creation', '>=', `${from} 00:00:00`]);
+  if (to) filters.push(['creation', '<=', `${to} 23:59:59`]);
+  const page = 1000; const all = [];
+  for (let start = 0; start < maxRows; start += page) {
+    const qs = new URLSearchParams();
+    qs.set('filters', JSON.stringify(filters));
+    qs.set('fields', JSON.stringify(['reference_name', 'allocated_to', 'creation', 'status']));
+    qs.set('order_by', 'creation asc');
+    qs.set('limit_page_length', String(page));
+    qs.set('limit_start', String(start));
+    const r = await erpFetch(`/api/resource/ToDo?${qs.toString()}`);
+    const rows = r.data || [];
+    all.push(...rows);
+    if (rows.length < page) break;
+  }
+  return all;
+}
+
 /** Lấy ticket theo danh sách mã (chia lô để URL không quá dài). */
 async function fetchTicketsByNames(names) {
   const out = []; const list = [...new Set(names)].filter(Boolean);
@@ -675,6 +696,7 @@ module.exports = {
   fetchVersions,
   fetchTicketsByNames,
   fetchTodoAssignees,
+  fetchTodos,
   callMethod: (name, params) => erpPost(`/api/method/${name}`, params || {}), // gọi hàm whitelisted bất kỳ (SynergyHub...) bằng tài khoản ERP đã cấu hình
   getTicketMeta,
   searchLink,

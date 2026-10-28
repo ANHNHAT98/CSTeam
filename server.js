@@ -15,6 +15,7 @@ const kpiSla = require('./kpiSla');
 const kpiComplaint = require('./kpiComplaint');
 const sqlEnv = require('./sqlEnv');
 const screenTables = require('./screenTablesStore');
+const effortReport = require('./effortReport');
 const kpiDefect = require('./kpiDefect');
 const kpiCr = require('./kpiCr');
 const kpiAi = require('./kpiAi');
@@ -295,6 +296,10 @@ app.get('/kpiteam/complaint', requirePageAuth, (req, res) => {
 app.get('/bao-cao/tuan-erp', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'kpiteam-bao-cao-tuan.html'));
 });
+app.get('/bao-cao/effort', requirePageAuth, (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'protected', 'baocao-effort.html'));
+});
 app.get('/bao-cao/cs-am', requirePageAuth, (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.sendFile(path.join(__dirname, 'protected', 'baocao-cs-am.html'));
@@ -485,6 +490,70 @@ app.get('/api/kpi/crplan-auto', requireAuth, async (req, res) => {
       diagnostics: { ...data.diagnostics, tasksInSynergyHub: data.tasks.length, assignedToMember: mine.length, afterProjectFilter: inProj.length, noPlannedForMember: inProj.filter((t) => !t.planned).length },
     });
   } catch (e) { console.error('[kpi/crplan-auto] lỗi:', e.message); res.status(502).json({ error: e.message, tried: e.tried || [] }); }
+});
+
+/* ---------- Báo Cáo Effort: effort từng thành viên = SỐ LƯỢNG ticket (ERP) + task (SynergyHub) được assign ----------
+   GET /api/bao-cao/effort?from=YYYY-MM-DD&to=YYYY-MM-DD[&projects=[mã dự án ERP]][&mode=assigned|opened][&sources=ticket,task]
+     mode=assigned (mặc định): ticket được GIAO trong khoảng (ToDo tạo trong khoảng) · mode=opened: ticket có Opening On trong khoảng (người xử lý = _assign + lịch sử ToDo, kể cả ticket đã đóng)
+     task SynergyHub: tính theo hạn dự kiến (planned) nằm trong khoảng; không lọc theo dự án ERP.
+   Cách gộp/đếm: effortReport.js */
+app.get('/api/bao-cao/effort', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  const isDay = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
+  const from = String(req.query.from || ''); const to = String(req.query.to || '');
+  if (!isDay(from) || !isDay(to) || from > to) return res.status(400).json({ error: 'Khoảng ngày không hợp lệ (Từ ngày ≤ Đến ngày).' });
+  if ((new Date(`${to}T00:00:00Z`) - new Date(`${from}T00:00:00Z`)) / 86400000 > 400) return res.status(400).json({ error: 'Khoảng ngày tối đa 400 ngày.' });
+  const mode = req.query.mode === 'opened' ? 'opened' : 'assigned';
+  const sources = String(req.query.sources || 'ticket,task').split(',').map((x) => x.trim());
+  const all = loadInstructionProjects().map((p) => p.code);
+  const asked = parseJsonArrayParam(req.query.projects).filter((p) => all.includes(p));
+  const projects = asked.length ? asked : all;
+  const warnings = []; const limit = 5000;
+  const ticketPairs = []; const taskPairs = [];
+  const diagnostics = { mode, projects: projects.length };
+  try {
+    if (sources.includes('ticket')) {
+      if (mode === 'assigned') {
+        const todos = await erp.fetchTodos({ from, to });
+        const names = [...new Set(todos.map((x) => x.reference_name).filter(Boolean))];
+        const tickets = names.length ? await erp.fetchTicketsByNames(names) : [];
+        const byName = new Map(tickets.filter((x) => projects.includes(x.project)).map((x) => [x.name, x]));
+        diagnostics.todos = todos.length; diagnostics.ticketsFound = tickets.length; diagnostics.ticketsInProjects = byName.size;
+        const seen = new Map(); // (ticket, người) → ngày giao sớm nhất trong khoảng
+        for (const td of todos) {
+          const tk = byName.get(td.reference_name); const who = String(td.allocated_to || '').trim().toLowerCase();
+          if (!tk || !who) continue;
+          const k = `${tk.name}|${who}`; const d = String(td.creation || '').slice(0, 10);
+          if (!seen.has(k) || d < seen.get(k).date) seen.set(k, { tk, who, date: d });
+        }
+        for (const { tk, who, date } of seen.values()) ticketPairs.push({ name: tk.name, subject: tk.subject, project: tk.project, status: tk.status, priority: tk.priority, assignee: who, date });
+      } else {
+        const r = await erp.fetchTickets({ projects, openingFrom: from, openingTo: to, limit });
+        const rows = r.data || r; diagnostics.tickets = rows.length;
+        if (rows.length >= limit) warnings.push(`Chạm giới hạn ${limit} ticket — số liệu có thể thiếu.`);
+        const hist = rows.length ? await erp.fetchTodoAssignees(rows.map((x) => x.name)) : {};
+        for (const tk of rows) {
+          let cur = []; try { const a = JSON.parse(tk._assign || '[]'); if (Array.isArray(a)) cur = a; } catch (_) { /* _assign rỗng */ }
+          const who = new Set([...cur, ...(hist[tk.name] || [])].map((x) => String(x).trim().toLowerCase()).filter(Boolean));
+          for (const w of who) ticketPairs.push({ name: tk.name, subject: tk.subject, project: tk.project, status: tk.status, priority: tk.priority, assignee: w, date: String(tk.opening_date || tk.creation || '').slice(0, 10) });
+        }
+      }
+    }
+  } catch (e) { console.error('[bao-cao/effort] ticket lỗi:', e.message); return res.status(502).json({ error: 'Không lấy được ticket / giao việc từ ERP: ' + e.message }); }
+  if (sources.includes('task')) {
+    try {
+      const data = await loadSynergyTasks({});
+      diagnostics.synergyTasks = data.tasks.length;
+      for (const tk of data.tasks) {
+        if (!tk.planned || tk.planned < from || tk.planned > to) continue;
+        for (const who of tk.assignees) taskPairs.push({ id: tk.id, name: tk.name, project: tk.project, status: tk.status, done: tk.done, completedByStatus: tk.completedByStatus, planned: tk.planned, assignee: who });
+      }
+      diagnostics.taskPairs = taskPairs.length;
+      if (!data.tasks.length) warnings.push('SynergyHub không trả về task nào.');
+    } catch (e) { warnings.push('Không lấy được task SynergyHub: ' + e.message + ' — báo cáo chỉ gồm ticket.'); }
+  }
+  const out = effortReport.build({ ticketPairs, taskPairs, from, to });
+  res.json({ from, to, mode, sources, projects, ...out, warnings, diagnostics });
 });
 
 /* ---------- Dashboard Support Tuần của từng dự án ----------

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Báo Cáo Effort</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>
+  :root{--ink:#12233D;--blueprint:#1F4E79;--paper:#EEF2F6;--panel:#FFFFFF;--grid-line:rgba(31,78,121,.14);--grid-line-strong:rgba(31,78,121,.28);--amber:#E8A33D;--success:#3F7D58;--danger:#B23A48;--muted:#5B7089;--radius:10px;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;min-height:100vh;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:32px 32px;}
+  .ops-topbar{background:#12233D;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:14px;}
+  .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;opacity:.9;}
+  .ops-topbar a:hover{opacity:1;text-decoration:underline;}
+  .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
+  .wrap{max-width:1500px;margin:0 auto;padding:28px 28px 90px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;line-height:1.6;}
+  .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;}
+  .panel h2{font-family:'Space Grotesk',sans-serif;font-size:15.5px;margin:0 0 10px;}
+  .bar{display:flex;gap:10px 14px;flex-wrap:wrap;align-items:flex-end;}
+  .field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted);font-weight:600;}
+  .field input[type=date],.field select{font:inherit;font-size:13.5px;font-weight:500;color:var(--ink);padding:8px 12px;border-radius:8px;border:1px solid var(--grid-line-strong);background:#fff;min-width:170px;}
+  button{font:inherit;font-size:13.5px;padding:8px 14px;border-radius:8px;border:1px solid var(--blueprint);background:#fff;color:var(--blueprint);cursor:pointer;font-weight:600;}
+  button.primary{background:var(--blueprint);color:#fff;}
+  button.export{border-color:var(--success);color:var(--success);}
+  button.sm{padding:4px 10px;font-size:12.5px;}
+  button:disabled{opacity:.5;cursor:default;}
+  .chips{display:flex;gap:6px 8px;flex-wrap:wrap;font-size:13px;align-items:center;margin-top:12px;}
+  .chips .t{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px;}
+  .chips label{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--grid-line-strong);border-radius:8px;padding:4px 10px;cursor:pointer;}
+  .chips label.on{border-color:var(--blueprint);background:#EAF1F8;font-weight:600;}
+  .status{font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);margin-top:12px;white-space:pre-wrap;}
+  .status.err{color:var(--danger);} .status.ok{color:var(--success);} .status.busy{color:var(--blueprint);}
+  .msg{padding:11px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;line-height:1.55;background:#FFF6E3;border:1px solid #EBCB8B;color:#7A5410;}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+  @media(max-width:800px){.kpis{grid-template-columns:repeat(2,1fr);}}
+  .kpi{background:#fff;border:1px solid var(--grid-line-strong);border-top:5px solid var(--blueprint);border-radius:10px;padding:12px 14px;}
+  .kpi .l{font-size:12.5px;color:var(--muted);font-weight:600;} .kpi .v{font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:700;line-height:1.25;}
+  .kpi .d{font-size:11.5px;color:var(--muted);} .kpi.k2{border-top-color:var(--amber);} .kpi.k3{border-top-color:#6C5B9E;} .kpi.k4{border-top-color:var(--success);}
+  .charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;} @media(max-width:1000px){.charts{grid-template-columns:1fr;}}
+  .charts .full{grid-column:1/-1;}
+  .cbox{position:relative;} .cbox h3{font-family:'Space Grotesk',sans-serif;font-size:14px;margin:0 0 8px;display:flex;justify-content:space-between;gap:8px;align-items:center;}
+  .cbox h3 select{font:inherit;font-size:12.5px;padding:3px 8px;border-radius:6px;border:1px solid var(--grid-line-strong);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff;}
+  th{background:#1F4E79;color:#fff;text-align:right;padding:8px 10px;font-weight:600;white-space:nowrap;cursor:pointer;user-select:none;}
+  th:first-child{text-align:left;} th:hover{background:#2A5F92;}
+  td{padding:7px 10px;border-bottom:1px solid var(--grid-line);text-align:right;white-space:nowrap;}
+  td:first-child{text-align:left;font-weight:600;}
+  tr.m{cursor:pointer;} tr.m:hover td{background:#F5F8FB;} tr.m.on td{background:#EAF1F8;}
+  tr.tot td{background:#D0D8E8;font-weight:700;border-top:2px solid #fff;}
+  td.big{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;color:var(--blueprint);}
+  .bartd{min-width:120px;} .mini{display:inline-block;height:8px;border-radius:4px;background:var(--blueprint);vertical-align:middle;margin-left:6px;}
+  .empty{color:var(--muted);padding:34px 0;text-align:center;font-size:14px;line-height:1.7;}
+  .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .detail table td,.detail table th{text-align:left;white-space:normal;} .detail table th{cursor:default;} .detail table th:hover{background:#1F4E79;}
+  .tag{font-size:11px;font-weight:700;border-radius:12px;padding:1px 9px;background:#E4EBF3;color:var(--blueprint);white-space:nowrap;} .tag.task{background:#FFF3DC;color:#8A5A0B;}
+  .hint{color:var(--muted);font-size:12.5px;line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb">/ báo cáo / báo cáo effort</span></div>
+<div class="wrap">
+  <h1>Báo Cáo Effort</h1>
+  <p class="sub">Đánh giá effort xử lý của từng thành viên theo <b>số lượng ticket (ERP) và task (SynergyHub) được assign</b> trong khoảng ngày — gồm cả người đang được giao lẫn người từng được giao. Có bảng tổng hợp, 3 biểu đồ, xuất Excel và copy.</p>
+
+  <div class="panel">
+    <div class="bar">
+      <label class="field">Từ ngày <input type="date" id="fFrom"></label>
+      <label class="field">Đến ngày <input type="date" id="fTo"></label>
+      <label class="field">Ticket tính theo
+        <select id="fMode">
+          <option value="assigned">Ngày được giao (assign)</option>
+          <option value="opened">Ngày mở ticket (Opening On)</option>
+        </select>
+      </label>
+      <label class="chips" style="margin:0"><label id="srcT" class="on"><input type="checkbox" id="chkTicket" checked> Ticket ERP</label><label id="srcK" class="on"><input type="checkbox" id="chkTask" checked> Task SynergyHub</label></label>
+      <button type="button" class="primary" id="btnLoad">⇩ Lấy dữ liệu &amp; tính effort</button>
+    </div>
+    <div class="chips" id="projChips"></div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div id="msgs"></div>
+  <div id="result" style="display:none">
+    <div class="kpis" id="kpis"></div>
+    <div class="panel"><div class="chips" id="memChips" style="margin-top:0"></div></div>
+
+    <div class="panel" id="chartPanel">
+      <div class="charts">
+        <div class="cbox full"><h3>Effort theo thành viên — số lượng ticket + task được assign</h3><div style="position:relative" id="wrap1"><canvas id="c1"></canvas></div></div>
+        <div class="cbox"><h3>Ticket theo mức ưu tiên (từng thành viên)</h3><div style="position:relative" id="wrap2"><canvas id="c2"></canvas></div></div>
+        <div class="cbox"><h3>Xu hướng theo tuần <select id="trendMember"></select></h3><div style="position:relative;height:300px"><canvas id="c3"></canvas></div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+        <h2 style="margin:0">Bảng effort theo thành viên</h2>
+        <div class="acts"><button type="button" class="primary sm" id="btnCopy">📋 Copy bảng</button><button type="button" class="sm" id="btnImg">🖼 Copy ảnh biểu đồ</button><button type="button" class="export sm" id="btnXls">⬇ Xuất Excel</button></div>
+      </div>
+      <div style="overflow-x:auto"><table id="tbl"></table></div>
+      <div class="hint" style="margin-top:8px">Bấm tiêu đề cột để sắp xếp, bấm 1 thành viên để xem danh sách ticket / task đã được assign. Mỗi ticket/task chỉ tính 1 lần cho mỗi người; ticket giao cho nhiều người thì mỗi người đều có 1 lượt.</div>
+    </div>
+    <div class="panel detail" id="detail" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function api(url){
+  const r = await fetch(url); const j = await r.json().catch(()=>({error:'Phản hồi không hợp lệ (HTTP '+r.status+')'}));
+  if(r.status===401){ location.href='/?next='+encodeURIComponent(location.pathname+location.search); throw new Error('Phiên đăng nhập đã hết'); }
+  if(!r.ok) throw new Error(j.error || ('HTTP '+r.status));
+  return j;
+}
+const setStatus = (kind, text) => { $('status').className = 'status '+(kind||''); $('status').textContent = text||''; };
+const todayVN = () => new Date(Date.now()+7*3600*1000).toISOString().slice(0,10);
+const PRIO = [['p1','Critical/Urgent','#B23A48'],['high','High','#E8A33D'],['medium','Medium','#2E6F95'],['low','Low / khác','#8FA6B3']];
+const FALLBACK = [['MerapLion_eSales','Merap'],['ABI_eSales_Support','ABI'],['ANVY_eSale_Support','AnVy'],['Sabeco_PG','Sabeco PG'],['Sabeco_B2B_Support','Sabeco B2B'],['FES_eSales','FES'],['ANKO_eSales_Support','ANKO'],['HaiHa_eSales_Support','HAIHA'],['Jotun_VN_eSales','JOTUN']];
+let projects = FALLBACK.map(([code,name])=>({code,name})), pSel = new Set(), data = null, memSel = new Set(), sortKey = 'total', sortDir = -1, openKey = null, charts = {};
+const label = m => m.key.replace(/(^|[._\s-])([a-zà-ỹ])/g,(x,a,b)=>a+b.toUpperCase());
+
+/* ---------- bộ lọc ---------- */
+function renderProj(){
+  $('projChips').innerHTML = '<span class="t">Dự án (ticket):</span>'+projects.map(p=>'<label class="'+(pSel.has(p.code)?'on':'')+'"><input type="checkbox" data-p="'+esc(p.code)+'"'+(pSel.has(p.code)?' checked':'')+'> '+esc(p.name)+'</label>').join('')
+    +'<button type="button" class="sm" id="pAll">Chọn tất cả</button><button type="button" class="sm" id="pNone">Bỏ chọn</button>';
+  $('projChips').querySelectorAll('input').forEach(i=>i.onchange=()=>{ i.checked ? pSel.add(i.dataset.p) : pSel.delete(i.dataset.p); renderProj(); });
+  $('pAll').onclick = () => { pSel = new Set(projects.map(p=>p.code)); renderProj(); };
+  $('pNone').onclick = () => { pSel = new Set(); renderProj(); };
+}
+['chkTicket','chkTask'].forEach(id=>$(id).onchange = () => { $(id==='chkTicket'?'srcT':'srcK').classList.toggle('on', $(id).checked); });
+
+async function load(){
+  const from = $('fFrom').value, to = $('fTo').value;
+  if(!from || !to){ setStatus('err','Chưa chọn khoảng ngày.'); return; }
+  const sources = [$('chkTicket').checked && 'ticket', $('chkTask').checked && 'task'].filter(Boolean);
+  if(!sources.length){ setStatus('err','Chọn ít nhất 1 nguồn (Ticket ERP hoặc Task SynergyHub).'); return; }
+  if(sources.includes('ticket') && !pSel.size){ setStatus('err','Chưa chọn dự án nào cho ticket.'); return; }
+  $('btnLoad').disabled = true; setStatus('busy','Đang lấy dữ liệu từ ERP / SynergyHub…');
+  try{
+    const q = new URLSearchParams({ from, to, mode:$('fMode').value, sources:sources.join(','), projects:JSON.stringify([...pSel]) });
+    data = await api('/api/bao-cao/effort?'+q.toString());
+    memSel = new Set(data.members.map(m=>m.key)); openKey = null;
+    $('msgs').innerHTML = (data.warnings||[]).map(w=>'<div class="msg">⚠ '+esc(w)+'</div>').join('');
+    render();
+    const d = data.diagnostics||{};
+    setStatus('ok', `Xong — ${data.totals.members} thành viên, ${data.totals.ticketAssigns} lượt ticket (${data.totals.distinctTickets} ticket) và ${data.totals.taskAssigns} lượt task`+(sources.includes('ticket') && data.mode==='assigned' ? ` · ${d.todos||0} lượt giao việc trong khoảng ngày` : ''));
+  }catch(err){ console.error(err); setStatus('err','Lỗi: '+err.message); }
+  finally{ $('btnLoad').disabled = false; }
+}
+
+/* ---------- hiển thị ---------- */
+const sel = () => (data ? data.members.filter(m=>memSel.has(m.key)) : []);
+function render(){
+  $('result').style.display = '';
+  const list = sel();
+  const tT = list.reduce((s,m)=>s+m.tickets.total,0), tK = list.reduce((s,m)=>s+m.tasks.total,0);
+  $('kpis').innerHTML = `<div class="kpi"><div class="l">Thành viên</div><div class="v">${list.length}</div><div class="d">có ít nhất 1 ticket/task được assign</div></div>`
+    +`<div class="kpi k2"><div class="l">Ticket được assign (lượt)</div><div class="v">${tT}</div><div class="d">${data.totals.distinctTickets} ticket khác nhau</div></div>`
+    +`<div class="kpi k3"><div class="l">Task được assign (lượt)</div><div class="v">${tK}</div><div class="d">${data.totals.distinctTasks} task khác nhau</div></div>`
+    +`<div class="kpi k4"><div class="l">Trung bình / thành viên</div><div class="v">${list.length ? (Math.round((tT+tK)/list.length*10)/10) : 0}</div><div class="d">ticket + task được assign</div></div>`;
+  $('memChips').innerHTML = '<span class="t">Thành viên:</span>'+data.members.map(m=>'<label class="'+(memSel.has(m.key)?'on':'')+'" title="'+esc(m.email||m.key)+'"><input type="checkbox" data-m="'+esc(m.key)+'"'+(memSel.has(m.key)?' checked':'')+'> '+esc(label(m))+' <small>('+m.total+')</small></label>').join('')
+    +'<button type="button" class="sm" id="mAll">Tất cả</button><button type="button" class="sm" id="mNone">Bỏ chọn</button>';
+  $('memChips').querySelectorAll('input').forEach(i=>i.onchange=()=>{ i.checked ? memSel.add(i.dataset.m) : memSel.delete(i.dataset.m); render(); });
+  $('mAll').onclick = () => { memSel = new Set(data.members.map(m=>m.key)); render(); };
+  $('mNone').onclick = () => { memSel = new Set(); render(); };
+  renderTable(); renderCharts(); renderDetail();
+}
+const cols = [['name','Thành viên',m=>label(m)],['tickets','Ticket',m=>m.tickets.total],['closed','Đã Closed',m=>m.tickets.closed],['open','Đang xử lý',m=>m.tickets.open],
+  ['p1','Critical/Urgent',m=>m.tickets.p1],['high','High',m=>m.tickets.high],['medium','Medium',m=>m.tickets.medium],['low','Low / khác',m=>m.tickets.low],
+  ['tasks','Task',m=>m.tasks.total],['tasksDone','Task xong',m=>m.tasks.done],['total','Tổng effort',m=>m.total]];
+function renderTable(){
+  const list = sel().slice().sort((a,b)=>{ const c = cols.find(x=>x[0]===sortKey) || cols[10]; const va = c[2](a), vb = c[2](b); return (typeof va==='string' ? va.localeCompare(vb,'vi') : va-vb)*sortDir; });
+  const sum = f => list.reduce((s,m)=>s+f(m),0); const grand = sum(m=>m.total) || 1;
+  if(!list.length){ $('tbl').innerHTML = '<tbody><tr><td class="empty" style="text-align:center">Không có thành viên nào được chọn / không có dữ liệu trong khoảng ngày.</td></tr></tbody>'; return; }
+  $('tbl').innerHTML = '<thead><tr>'+cols.map(c=>'<th data-s="'+c[0]+'">'+c[1]+(sortKey===c[0]?(sortDir<0?' ▼':' ▲'):'')+'</th>').join('')+'<th style="cursor:default">% team</th></tr></thead><tbody>'
+    + list.map(m=>'<tr class="m'+(openKey===m.key?' on':'')+'" data-k="'+esc(m.key)+'" title="'+esc(m.email||m.key)+'"><td>'+esc(label(m))+'</td>'+cols.slice(1).map(c=>'<td'+(c[0]==='total'?' class="big"':'')+'>'+c[2](m)+'</td>').join('')
+      +'<td class="bartd">'+Math.round(m.total/grand*1000)/10+'%<span class="mini" style="width:'+Math.round(m.total/grand*70)+'px"></span></td></tr>').join('')
+    + '<tr class="tot"><td>Tổng</td>'+cols.slice(1).map(c=>'<td>'+sum(c[2])+'</td>').join('')+'<td>100%</td></tr></tbody>';
+  $('tbl').querySelectorAll('th[data-s]').forEach(th=>th.onclick=()=>{ const k = th.dataset.s; sortDir = sortKey===k ? -sortDir : (k==='name'?1:-1); sortKey = k; renderTable(); });
+  $('tbl').querySelectorAll('tr.m').forEach(tr=>tr.onclick=()=>{ openKey = openKey===tr.dataset.k ? null : tr.dataset.k; renderTable(); renderDetail(); if(openKey) $('detail').scrollIntoView({behavior:'smooth',block:'nearest'}); });
+}
+function renderDetail(){
+  const m = openKey && data.members.find(x=>x.key===openKey);
+  if(!m){ $('detail').style.display = 'none'; return; }
+  $('detail').style.display = '';
+  const rows = m.items.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  $('detail').innerHTML = '<h2>'+esc(label(m))+' — '+m.tickets.total+' ticket · '+m.tasks.total+' task được assign</h2><div style="overflow-x:auto"><table><thead><tr><th>Loại</th><th>Mã</th><th>Nội dung</th><th>Dự án</th><th>Ưu tiên</th><th>Trạng thái</th><th>'+(data.mode==='assigned'?'Ngày giao / hạn task':'Ngày mở / hạn task')+'</th></tr></thead><tbody>'
+    + rows.map(r=>'<tr><td><span class="tag'+(r.kind==='task'?' task':'')+'">'+(r.kind==='task'?'Task':'Ticket')+'</span></td><td>'+esc(r.id)+'</td><td>'+esc(r.title)+'</td><td>'+esc(r.project)+'</td><td>'+esc(r.priority)+'</td><td>'+esc(r.status)+'</td><td>'+esc(r.date)+'</td></tr>').join('')
+    + '</tbody></table></div>'+(rows.length >= 300 ? '<div class="hint">Hiển thị tối đa 300 ticket + 300 task gần nhất; số tổng ở bảng là đầy đủ.</div>' : '');
+}
+
+/* ---------- biểu đồ ---------- */
+function destroy(k){ if(charts[k]){ charts[k].destroy(); delete charts[k]; } }
+function renderCharts(){
+  const list = sel().slice().sort((a,b)=>b.total-a.total); const names = list.map(label);
+  const h = Math.max(240, list.length*30+90);
+  ['wrap1','wrap2'].forEach(id=>$(id).style.height = h+'px');
+  const horiz = { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' }, tooltip:{ mode:'index', intersect:false } }, scales:{ x:{ stacked:true, beginAtZero:true, ticks:{ precision:0 } }, y:{ stacked:true } } };
+  destroy('c1'); charts.c1 = new Chart($('c1'), { type:'bar', data:{ labels:names, datasets:[
+    { label:'Ticket', data:list.map(m=>m.tickets.total), backgroundColor:'#1F4E79' }, { label:'Task SynergyHub', data:list.map(m=>m.tasks.total), backgroundColor:'#E8A33D' } ] },
+    options:{ ...horiz, animation:false, plugins:{ ...horiz.plugins, tooltip:{ mode:'index', intersect:false, callbacks:{ footer: items => 'Tổng: '+items.reduce((s,i)=>s+i.parsed.x,0) } } } } });
+  destroy('c2'); charts.c2 = new Chart($('c2'), { type:'bar', data:{ labels:names, datasets: PRIO.map(([k,lab,col])=>({ label:lab, data:list.map(m=>m.tickets[k]), backgroundColor:col })) }, options:{ ...horiz, animation:false } });
+  // xu hướng theo tuần — chọn 1 thành viên hoặc cả nhóm đang chọn
+  const tm = $('trendMember'); const cur = tm.value;
+  tm.innerHTML = '<option value="">Tất cả thành viên đang chọn</option>'+list.map(m=>'<option value="'+esc(m.key)+'">'+esc(label(m))+'</option>').join(''); tm.value = list.some(m=>m.key===cur) ? cur : '';
+  const pick = tm.value ? list.filter(m=>m.key===tm.value) : list;
+  const wk = data.weeks.map(w=>({ w, t:pick.reduce((s,m)=>s+m.weekly[w].tickets,0), k:pick.reduce((s,m)=>s+m.weekly[w].tasks,0) }));
+  const fmt = iso => iso.slice(8,10)+'/'+iso.slice(5,7);
+  destroy('c3'); charts.c3 = new Chart($('c3'), { type:'bar', data:{ labels:wk.map(x=>'Tuần '+fmt(x.w)), datasets:[ { label:'Ticket', data:wk.map(x=>x.t), backgroundColor:'#1F4E79' }, { label:'Task SynergyHub', data:wk.map(x=>x.k), backgroundColor:'#E8A33D' } ] },
+    options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{ legend:{ position:'bottom' } }, scales:{ x:{ stacked:true }, y:{ stacked:true, beginAtZero:true, ticks:{ precision:0 } } } } });
+}
+$('trendMember').onchange = renderCharts;
+
+/* ---------- copy / xuất ---------- */
+const headers = () => cols.map(c=>c[1]).concat(['% team']);
+function tableRows(){
+  const list = sel().slice().sort((a,b)=>b.total-a.total); const grand = list.reduce((s,m)=>s+m.total,0) || 1;
+  const rows = list.map(m=>cols.map(c=>c[2](m)).concat([Math.round(m.total/grand*1000)/10+'%']));
+  rows.push(['Tổng'].concat(cols.slice(1).map(c=>list.reduce((s,m)=>s+c[2](m),0)), ['100%']));
+  return rows;
+}
+async function copyText(text){ try{ await navigator.clipboard.writeText(text); return true; }catch(e){ const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText='position:fixed;left:-9999px'; document.body.appendChild(ta); ta.select(); let ok=false; try{ ok=document.execCommand('copy'); }catch(_){} ta.remove(); return ok; } }
+$('btnCopy').onclick = async () => {
+  const rows = tableRows(); const tsv = [headers()].concat(rows).map(r=>r.join('\t')).join('\n');
+  const cell = 'font-family:Arial;font-size:11pt;padding:5px 8px;border:1px solid #9FB0C4';
+  const html = '<table border="1" cellspacing="0" style="border-collapse:collapse"><tr>'+headers().map(h=>'<th bgcolor="#1F4E79" style="'+cell+';background:#1F4E79;color:#fff"><font color="#FFFFFF">'+esc(h)+'</font></th>').join('')+'</tr>'
+    + rows.map((r,i)=>'<tr>'+r.map((v,j)=>'<td style="'+cell+(j?';text-align:right':'')+(i===rows.length-1?';background:#D0D8E8;font-weight:bold':'')+'">'+esc(v)+'</td>').join('')+'</tr>').join('')+'</table>';
+  let ok; try{ await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html],{type:'text/html'}), 'text/plain': new Blob([tsv],{type:'text/plain'}) })]); ok = true; }catch(_){ ok = await copyText(tsv); }
+  setStatus(ok?'ok':'err', ok ? 'Đã copy bảng effort — dán vào Excel / Word (nơi chỉ nhận chữ sẽ ra dạng tab; muốn đúng hình dùng Copy ảnh).' : 'Trình duyệt chặn copy.');
+};
+$('btnImg').onclick = async () => {
+  try{
+    const canvas = await html2canvas($('chartPanel'), { scale:2, backgroundColor:'#ffffff', useCORS:true });
+    const blob = await new Promise(r=>canvas.toBlob(r,'image/png'));
+    try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); setStatus('ok','Đã copy ảnh 3 biểu đồ — dán (Ctrl/Cmd + V) vào Zalo, Word, PowerPoint.'); }
+    catch(_){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'Bao_Cao_Effort_bieu_do.png'; document.body.appendChild(a); a.click(); a.remove(); setStatus('ok','Trình duyệt không cho copy ảnh nên đã tải file PNG về máy.'); }
+  }catch(err){ setStatus('err','Không tạo được ảnh: '+err.message); }
+};
+$('btnXls').onclick = () => {
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([headers()].concat(tableRows())); ws['!cols'] = [{wch:24}].concat(headers().slice(1).map(()=>({wch:14})));
+  XLSX.utils.book_append_sheet(wb, ws, 'Effort theo thành viên');
+  const det = [['Thành viên','Email','Loại','Mã','Nội dung','Dự án','Ưu tiên','Trạng thái',data.mode==='assigned'?'Ngày giao / hạn task':'Ngày mở / hạn task']];
+  sel().forEach(m=>m.items.forEach(r=>det.push([label(m), m.email||'', r.kind==='task'?'Task':'Ticket', r.id, r.title, r.project, r.priority, r.status, r.date])));
+  const w2 = XLSX.utils.aoa_to_sheet(det); w2['!cols'] = [{wch:20},{wch:28},{wch:8},{wch:22},{wch:60},{wch:22},{wch:12},{wch:14},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, w2, 'Chi tiết');
+  const wk = [['Tuần bắt đầu','Tuần kết thúc','Ticket','Task']].concat(data.weekly.map(w=>[w.weekStart,w.weekEnd,w.tickets,w.tasks]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wk), 'Theo tuần');
+  XLSX.writeFile(wb, 'Bao_Cao_Effort_'+data.from+'_'+data.to+'.xlsx');
+};
+
+/* ---------- khởi động ---------- */
+$('btnLoad').onclick = load;
+(async function init(){
+  const t = todayVN(); $('fTo').value = t; $('fFrom').value = t.slice(0,8)+'01';
+  try{ const list = await api('/api/ticket-instructions'); if(Array.isArray(list) && list.length) projects = list.map(p=>({ code:p.code, name:p.name||p.label||p.code })); }catch(_){}
+  pSel = new Set(projects.map(p=>p.code)); renderProj();
+})();
+</script>
+</body>
+</html>
