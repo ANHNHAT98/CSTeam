@@ -123,7 +123,7 @@
       {
         "type": "item",
         "key": "API link",
-        "value": "",
+        "value": "https://dms.meraplion.com/MerapLion_APItoken/swagger/index.html",
         "link": "",
         "files": []
       },
@@ -170,7 +170,7 @@
         "files": []
       }
     ],
-    "updatedAt": "2026-10-26T04:13:10.238Z",
+    "updatedAt": "2026-11-03T07:32:50.470Z",
     "updatedBy": "admin"
   }
 ]
