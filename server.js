@@ -6,7 +6,7 @@ const express = require('express');
 const session = require('express-session');
 const multer = require('multer');
 const erp = require('./erpClient');
-const BUILD = '2026-10-11.10'; // đối chiếu với trang Tạo Ticket để phát hiện deploy thiếu file
+const BUILD = '2026-11-04.1'; // đối chiếu với trang Tạo Ticket để phát hiện deploy thiếu file
 console.log(`[build] Ops Console ${BUILD}`);
 const { applyTicketDefaults } = require('./ticketDefaults');
 const weekly = require('./weeklyReport');
@@ -496,7 +496,7 @@ app.get('/api/kpi/crplan-auto', requireAuth, async (req, res) => {
    GET /api/bao-cao/effort?from=YYYY-MM-DD&to=YYYY-MM-DD[&projects=[mã dự án ERP]][&mode=assigned|opened][&sources=ticket,task]
      mode=assigned (mặc định): ticket được GIAO trong khoảng (ToDo tạo trong khoảng) · mode=opened: ticket có Opening On trong khoảng (người xử lý = _assign + lịch sử ToDo, kể cả ticket đã đóng)
      task SynergyHub: tính theo hạn dự kiến (planned) nằm trong khoảng; không lọc theo dự án ERP.
-   Cách gộp/đếm: effortReport.js */
+   Trả thêm groups {support:[email], handler:[email]} (ticket-creators.json: creators / assignees) để lọc theo nhóm; thành viên của 2 nhóm luôn có mặt (0 nếu chưa được assign). Cách gộp/đếm: effortReport.js */
 app.get('/api/bao-cao/effort', requireAuth, async (req, res) => {
   if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
   const isDay = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
@@ -552,8 +552,11 @@ app.get('/api/bao-cao/effort', requireAuth, async (req, res) => {
       if (!data.tasks.length) warnings.push('SynergyHub không trả về task nào.');
     } catch (e) { warnings.push('Không lấy được task SynergyHub: ' + e.message + ' — báo cáo chỉ gồm ticket.'); }
   }
-  const out = effortReport.build({ ticketPairs, taskPairs, from, to });
-  res.json({ from, to, mode, sources, projects, ...out, warnings, diagnostics });
+  // Nhóm support = người tạo ticket (creators), nhóm xử lý = người xử lý chuyển Assign (assignees) — cấu hình ở ticket-creators.json (trang Tạo Ticket)
+  const pc = loadProjectCreators();
+  const groups = { support: pc.creators, handler: pc.assignees };
+  const out = effortReport.build({ ticketPairs, taskPairs, from, to, extraMembers: [...pc.creators, ...pc.assignees] });
+  res.json({ from, to, mode, sources, projects, ...out, groups, warnings, diagnostics });
 });
 
 /* ---------- Dashboard Support Tuần của từng dự án ----------
@@ -1124,6 +1127,30 @@ function loadProjectCreators() {
   }
 }
 
+/* ---------- Nhóm người dùng ERP (User Group) — như ô "Assign To User Group" trong hộp thoại Assign To của ERP ----------
+   GET /api/erp/user-groups?txt=           → ["Tên nhóm", ...]
+   GET /api/erp/user-group-members?group=  → { group, members: [{ email, name }] } */
+app.get('/api/erp/user-groups', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  try {
+    res.json(await erp.listUserGroups(String(req.query.txt || '')));
+  } catch (e) {
+    console.error('[erp/user-groups] lỗi:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+app.get('/api/erp/user-group-members', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  const group = String(req.query.group || '').trim();
+  if (!group) return res.status(400).json({ error: 'Thiếu tên nhóm (group).' });
+  try {
+    res.json(await erp.getUserGroupMembers(group));
+  } catch (e) {
+    console.error('[erp/user-group-members] lỗi:', e.message);
+    res.status(e.status === 404 ? 404 : 502).json({ error: e.status === 404 ? `Không tìm thấy nhóm "${group}" trên ERP.` : e.message });
+  }
+});
+
 app.get('/api/erp/ticket-creators', requireAuth, (req, res) => {
   res.json(loadProjectCreators());
 });
@@ -1263,19 +1290,28 @@ app.post('/api/erp/tickets', requireAuth, async (req, res) => {
       return res.status(400).json({ error: `"${creatorEmail}" không phải người dùng đang hoạt động trên ERP.` });
     }
 
-    // Người xử lý (Assign): danh sách email (mặc định = người tạo), chỉ nhận email trong danh sách cho phép.
+    // Người xử lý (Assign): danh sách email (mặc định = người tạo), chỉ nhận email trong danh sách cho phép
+    // hoặc là thành viên của nhóm ERP (User Group) đã chọn ở ô "Assign To User Group".
+    const assignGroup = String((req.body && req.body.assign_group) || '').trim();
+    let groupMembers = [];
+    if (assignGroup) {
+      try { groupMembers = (await erp.getUserGroupMembers(assignGroup)).members.map((m) => m.email); }
+      catch (e) { return res.status(400).json({ error: `Không đọc được nhóm "${assignGroup}" trên ERP: ${e.message}` }); }
+    }
+    const allowedAssign = new Set([...cfg.assignable, ...groupMembers]);
     const rawAssign = req.body && req.body.assign_to;
     const assignList = [...new Set((Array.isArray(rawAssign) ? rawAssign : String(rawAssign || '').split(/[,;\s]+/)).map((x) => String(x || '').trim().toLowerCase()).filter(Boolean))];
     if (assignList.length > 10) return res.status(400).json({ error: 'Tối đa 10 người xử lý.' });
     for (const e of assignList) {
-      if (!cfg.assignable.includes(e)) return res.status(400).json({ error: `Người xử lý "${e}" không nằm trong danh sách cho phép.` });
+      if (!allowedAssign.has(e)) return res.status(400).json({ error: `Người xử lý "${e}" không nằm trong danh sách cho phép${assignGroup ? ` hay nhóm "${assignGroup}"` : ''}.` });
       if (!(await erp.userExists(e))) return res.status(400).json({ error: `"${e}" không phải người dùng đang hoạt động trên ERP.` });
     }
-    // Chỉ khi chọn thêm người thuộc NHÓM NGƯỜI XỬ LÝ (assignees, khác người tạo) thì chuyển Status sang Assign;
-    // chỉ người tạo, hoặc người tạo khác (không thuộc nhóm), hoặc không giao ai thì giữ Open.
-    const hasOtherAssignee = assignList.some((e) => e !== creatorEmail && cfg.assignees.includes(e));
+    // Chỉ khi chọn thêm người thuộc NHÓM NGƯỜI XỬ LÝ (assignees, khác người tạo) — hoặc thành viên nhóm ERP đã chọn mà không phải
+    // người tạo ticket (creators) — thì chuyển Status sang Assign; chỉ người tạo / người tạo khác / không giao ai thì giữ Open.
+    const isHandler = (e) => cfg.assignees.includes(e) || (groupMembers.includes(e) && !cfg.creators.includes(e));
+    const hasOtherAssignee = assignList.some((e) => e !== creatorEmail && isHandler(e));
 
-    if (dryRun) return res.json({ dry_run: true, payload, rejected, autofilled, creator: creatorEmail, method: direct ? 'direct' : 'on-behalf', assign_to: assignList, will_set_status_assign: hasOtherAssignee });
+    if (dryRun) return res.json({ dry_run: true, payload, rejected, autofilled, creator: creatorEmail, method: direct ? 'direct' : 'on-behalf', assign_to: assignList, assign_group: assignGroup || null, will_set_status_assign: hasOtherAssignee });
 
     const key = `${creatorEmail}|${payload.project || ''}|${String(payload.subject || '').trim().toLowerCase()}`;
     const last = recentCreates.get(key);

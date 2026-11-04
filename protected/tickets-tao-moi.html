@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+<script src="/beer-loader.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ticket dự án — Tạo Ticket ERP</title>
@@ -56,6 +57,15 @@
   details.how{margin-top:10px;font-size:13px;color:var(--muted);line-height:1.7;}
   details.how summary{cursor:pointer;font-weight:600;color:var(--ink);}
   button.btn.sec{background:#fff;color:var(--blueprint);}
+  .ug{margin-bottom:16px;}
+  .ug-row{display:flex;gap:8px;max-width:420px;}
+  .ug-row button{font:inherit;width:40px;flex:none;border:1px solid var(--grid-line-strong);border-radius:8px;background:#fff;color:var(--danger);cursor:pointer;font-size:16px;}
+  .ug-members{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center;}
+  .ug-members .mem{font:inherit;font-size:12.5px;padding:4px 11px;border-radius:999px;border:1px solid var(--grid-line-strong);background:#fff;color:var(--ink);cursor:pointer;}
+  .ug-members .mem:hover{border-color:var(--blueprint);}
+  .ug-members .mem.on{background:var(--blueprint);border-color:var(--blueprint);color:#fff;}
+  .ug-members .mem small{opacity:.7;}
+  .ug-members .lnk{font:inherit;font-size:12px;border:0;background:none;color:var(--blueprint);text-decoration:underline;cursor:pointer;padding:0 4px;}
   button.btn:disabled{opacity:.5;cursor:not-allowed;}
   .msg{padding:12px 14px;border-radius:8px;font-size:13.5px;line-height:1.6;margin-top:14px;white-space:pre-wrap;word-break:break-word;}
   .msg.ok{background:#E6F2EA;border:1px solid #9CC9AB;color:#1F5A38;}
@@ -71,7 +81,7 @@
   <h1 id="pageTitle">Tạo Ticket trên ERP</h1>
   <p class="sub">Form dựng tự động từ cấu trúc DocType <b>Ticket</b> trên ERP (đúng tên trường, bắt buộc, danh sách chọn). Bấm <b>Kiểm tra</b> để xem dữ liệu sẽ gửi mà chưa tạo; bấm <b>Tạo ticket</b> sẽ ghi ticket thật vào ERP bằng tài khoản <code>ERP_USER</code> của server.</p>
 
-  <div class="hint" id="buildInfo" style="margin:-8px 0 10px">Trang Tạo Ticket · bản 2026-10-11.10</div>
+  <div class="hint" id="buildInfo" style="margin:-8px 0 10px">Trang Tạo Ticket · bản 2026-11-04.1</div>
 
   <div class="panel" id="instrPanel">
     <h2 id="instrTitle">Hướng dẫn AI gen ticket</h2>
@@ -106,6 +116,11 @@
     <div id="warn"></div>
     <div id="form" class="grid"></div>
     <div id="assignBox" style="margin-top:18px">
+      <div class="ug">
+        <label for="ugInput">Assign To User Group <span style="font-weight:400">— nhóm người dùng trên ERP</span></label>
+        <div class="ug-row"><input id="ugInput" list="dl_ug" autocomplete="off" placeholder="Chọn nhóm trên ERP…"><datalist id="dl_ug"></datalist><button type="button" id="ugClear" title="Bỏ chọn nhóm">×</button></div>
+        <div class="ug-members" id="ugMembers"></div>
+      </div>
       <label>Người xử lý (Assign)</label>
       <div class="chips" id="assignChips"></div>
       <select id="assignAdd" style="max-width:420px;margin-top:8px"><option value="">+ Thêm người xử lý khác…</option></select>
@@ -368,7 +383,7 @@ async function send(dry, force){
   if(bad){ show('err', 'Không thể gửi trường '+esc(bad.label)+': chưa đọc được cấu trúc bảng con "'+esc(bad.options)+'" từ ERP.'); return; }
   const btns=['btnCheck','btnCreate']; btns.forEach(b=>$(b).disabled=true);
   try{
-    const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,force:!!force,creator_email:$('creator').value,assign_to:assignList})});
+    const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,force:!!force,creator_email:$('creator').value,assign_to:assignList,assign_group:assignGroupParam()})});
     if(dry){
       show('info','Dữ liệu hợp lệ — <b>chưa tạo ticket</b>. Payload sẽ gửi sang ERP:<pre>'+esc(JSON.stringify(r.payload,null,2))+'</pre>'+(r.rejected&&r.rejected.length?'<br>Trường bị bỏ qua: '+esc(r.rejected.join(', ')):'')+autoText(r.autofilled));
     }else{
@@ -577,7 +592,7 @@ async function bulkRun(dry){
     if(q.status==='created') continue;
     const {fields} = jsonToPayload(q.data);
     try{
-      const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,creator_email:$('creator').value,assign_to:assignList})});
+      const r = await api('/api/erp/tickets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields,dry_run:dry,creator_email:$('creator').value,assign_to:assignList,assign_group:assignGroupParam()})});
       if(dry){ q.status='checked'; q.msg='✓ hợp lệ'; } else {
         q.status='created'; q.msg='✓ đã tạo '+r.name+((r.assigned_to&&r.assigned_to.length)?' → giao '+[].concat(r.assigned_to).join(', ')+(r.status_set?' ('+r.status_set+')':''):'')+(r.warning?' ⚠ '+r.warning:'')+(r.assign_warning?' ⚠ '+r.assign_warning:'');
         if(q.attach && attachments.length){
@@ -710,7 +725,7 @@ async function uploadAttachments(ticketName, opts){
 })();
 
 /* ===== Đối chiếu phiên bản trang với server: khác nhau = deploy thiếu file ===== */
-const PAGE_BUILD = '2026-10-11.10';
+const PAGE_BUILD = '2026-11-04.1';
 (async function checkBuild(){
   const el = $('buildInfo'); if(!el) return;
   el.addEventListener('click', async e=>{
@@ -730,22 +745,82 @@ const PAGE_BUILD = '2026-10-11.10';
 /* ===== Người tạo ticket: chỉ chọn trong danh sách email cấu hình (ticket-creators.json) ===== */
 let CREATOR_CFG = { serviceAccount:'', creators:[], defaults:{}, assignees:[], assignable:[] };
 let assignList = [], lastCreator = '';
+/* ===== Assign To User Group: chọn nhóm người dùng trên ERP → hiện thành viên nhóm để chọn làm người xử lý ===== */
+let UG = { name:'', members:[], error:'' };               // nhóm đang chọn + thành viên (email, họ tên) lấy từ ERP
+const UG_KEY = 'ticketUserGroup:'+(LOCKED||'*');
+const inGroup = e => UG.members.some(m=>m.email===e);
+const memberName = e => { const m = UG.members.find(x=>x.email===e); return m && m.name ? m.name : ''; };
+/** Chỉ gửi tên nhóm khi có chọn người trong nhóm — server dùng nó để kiểm tra thành viên. */
+function assignGroupParam(){ return UG.name && assignList.some(inGroup) ? UG.name : ''; }
+function renderGroupMembers(){
+  const box = $('ugMembers');
+  if(!UG.name){ box.innerHTML = '<span class="hint">Chọn một nhóm để hiện danh sách thành viên, bấm vào tên để thêm/bỏ người xử lý.</span>'; return; }
+  if(UG.error){ box.innerHTML = '<span style="color:var(--danger);font-size:12.5px">Không tải được thành viên nhóm: '+esc(UG.error)+'</span>'; return; }
+  if(UG.loading){ box.innerHTML = '<span class="hint">Đang tải thành viên nhóm từ ERP…</span>'; return; }
+  if(!UG.members.length){ box.innerHTML = '<span class="hint">Nhóm <b>'+esc(UG.name)+'</b> chưa có thành viên nào trên ERP.</span>'; return; }
+  const allOn = UG.members.every(m=>assignList.includes(m.email));
+  box.innerHTML = UG.members.map(m=>{ const on = assignList.includes(m.email);
+      return `<button type="button" class="mem${on?' on':''}" data-e="${esc(m.email)}" title="${esc(m.email)}">${on?'✓ ':''}${esc(m.name||m.email)}${m.name?' <small>'+esc(m.email.split('@')[0])+'</small>':''}</button>`; }).join('')
+    + `<button type="button" class="lnk" id="ugAll">${allOn?'Bỏ chọn cả nhóm':'Chọn cả nhóm ('+UG.members.length+')'}</button>`;
+  box.querySelectorAll('.mem').forEach(b=>b.onclick=()=>{ const e=b.dataset.e, i=assignList.indexOf(e); if(i>=0) assignList.splice(i,1); else assignList.push(e); renderAssign(); });
+  $('ugAll').onclick = ()=>{
+    if(allOn) assignList = assignList.filter(e=>!inGroup(e));
+    else UG.members.forEach(m=>{ if(!assignList.includes(m.email)) assignList.push(m.email); });
+    renderAssign();
+  };
+}
+async function selectGroup(name){
+  name = String(name||'').trim();
+  if(name===UG.name && !UG.error) return;
+  // đổi nhóm: bỏ những người chỉ có trong nhóm cũ (không thuộc danh sách cấu hình) để server không từ chối
+  const cfgOk = e => (CREATOR_CFG.assignable||[]).includes(e);
+  assignList = assignList.filter(e=>cfgOk(e) || !inGroup(e));
+  UG = { name, members:[], error:'', loading:!!name };
+  try{ name ? localStorage.setItem(UG_KEY, name) : localStorage.removeItem(UG_KEY); }catch(_){}
+  renderAssign();
+  if(!name) return;
+  try{
+    const r = await api('/api/erp/user-group-members?group='+encodeURIComponent(name));
+    if(UG.name!==name) return;
+    UG.members = r.members || [];
+  }catch(e){ if(UG.name!==name) return; UG.error = e.message; }
+  UG.loading = false;
+  renderAssign();
+}
+let ugListLoaded = false;
+async function loadGroupList(){
+  if(ugListLoaded) return; ugListLoaded = true;
+  try{ const list = await api('/api/erp/user-groups'); $('dl_ug').innerHTML = list.map(g=>`<option value="${esc(g)}">`).join(''); }
+  catch(e){ ugListLoaded = false; $('ugMembers').innerHTML = '<span style="color:var(--danger);font-size:12.5px">Không tải được danh sách nhóm: '+esc(e.message)+'</span>'; }
+}
+$('ugInput').addEventListener('focus', loadGroupList);
+$('ugInput').addEventListener('change', ()=>selectGroup($('ugInput').value));
+$('ugInput').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); selectGroup($('ugInput').value); } });
+$('ugClear').onclick = ()=>{ $('ugInput').value=''; selectGroup(''); };
+function restoreGroup(){ loadGroupList(); let g=''; try{ g = localStorage.getItem(UG_KEY) || ''; }catch(_){} if(g){ $('ugInput').value = g; selectGroup(g); } else renderGroupMembers(); }
+
 /** Người xử lý khác người tạo -> ticket chuyển Status Assign; chỉ người tạo (hoặc không giao) -> giữ Open. */
 function renderAssign(){
   const cr = ($('creator')||{}).value || '';
-  $('assignChips').innerHTML = assignList.map((e,i)=>`<span class="chip">${esc(e)}${e===cr?' <span class="hint">(người tạo)</span>':''}<button type="button" data-i="${i}" title="Bỏ">×</button></span>`).join('') || '<span class="hint">Chưa giao cho ai</span>';
+  const label = e => { const n = memberName(e); return n ? esc(n)+' <span class="hint">'+esc(e)+'</span>' : esc(e); };
+  $('assignChips').innerHTML = assignList.map((e,i)=>`<span class="chip" title="${esc(e)}">${label(e)}${e===cr?' <span class="hint">(người tạo)</span>':''}<button type="button" data-i="${i}" title="Bỏ">×</button></span>`).join('') || '<span class="hint">Chưa giao cho ai</span>';
   $('assignChips').querySelectorAll('button').forEach(b=>b.onclick=()=>{ assignList.splice(Number(b.dataset.i),1); renderAssign(); });
-  const handlers = CREATOR_CFG.assignees || [];
-  const all = (CREATOR_CFG.assignable && CREATOR_CFG.assignable.length ? CREATOR_CFG.assignable : [...handlers, ...CREATOR_CFG.creators]);
-  const optH = handlers.filter(e=>!assignList.includes(e)), optC = all.filter(e=>!handlers.includes(e) && !assignList.includes(e));
-  const opt = e=>`<option value="${esc(e)}">${esc(e)}</option>`;
+  const handlers = CREATOR_CFG.assignees || [], creators = CREATOR_CFG.creators || [];
+  const all = (CREATOR_CFG.assignable && CREATOR_CFG.assignable.length ? CREATOR_CFG.assignable : [...handlers, ...creators]);
+  const optG = UG.members.map(m=>m.email).filter(e=>!assignList.includes(e));
+  const optH = handlers.filter(e=>!assignList.includes(e) && !optG.includes(e)), optC = all.filter(e=>!handlers.includes(e) && !assignList.includes(e) && !optG.includes(e));
+  const opt = e=>`<option value="${esc(e)}">${memberName(e)?esc(memberName(e))+' — ':''}${esc(e)}</option>`;
   $('assignAdd').innerHTML = '<option value="">+ Thêm người xử lý khác…</option>'
+    + (optG.length ? `<optgroup label="Nhóm ${esc(UG.name)} (ERP)">${optG.map(opt).join('')}</optgroup>` : '')
     + (optH.length ? `<optgroup label="Người xử lý (chuyển Assign)">${optH.map(opt).join('')}</optgroup>` : '')
     + (optC.length ? `<optgroup label="Thành viên khác (giữ Open)">${optC.map(opt).join('')}</optgroup>` : '');
-  const trigger = assignList.filter(e=>e!==cr && handlers.includes(e));
+  // giống server: người trong nhóm Người xử lý, hoặc thành viên nhóm ERP không phải người tạo ticket → chuyển Assign
+  const isHandler = e => handlers.includes(e) || (inGroup(e) && !creators.includes(e));
+  const trigger = assignList.filter(e=>e!==cr && isHandler(e));
   $('assignHint').innerHTML = trigger.length
-    ? 'Có người xử lý <b>'+esc(trigger.join(', '))+'</b> → ticket chuyển trạng thái <b>Assign</b>.'
-    : 'Ticket giữ trạng thái <b>Open</b>. Chỉ khi chọn thêm một người trong nhóm <b>Người xử lý</b> thì mới chuyển sang <b>Assign</b>.';
+    ? 'Có người xử lý <b>'+esc(trigger.map(e=>memberName(e)||e).join(', '))+'</b> → ticket chuyển trạng thái <b>Assign</b>.'
+    : 'Ticket giữ trạng thái <b>Open</b>. Chỉ khi chọn thêm một người trong nhóm <b>Người xử lý</b>'+(UG.name?' hoặc nhóm <b>'+esc(UG.name)+'</b>':'')+' thì mới chuyển sang <b>Assign</b>.';
+  renderGroupMembers();
 }
 $('assignAdd').onchange = ()=>{ const v=$('assignAdd').value; if(v && !assignList.includes(v)) assignList.push(v); renderAssign(); };
 async function initCreators(){
@@ -771,7 +846,7 @@ async function initCreators(){
     assignList = [...new Set(assignList)]; lastCreator = sel.value; renderAssign();
   };
 }
-initCreators();
+initCreators().then(restoreGroup);
 
 api('/api/erp/ticket-meta').then(m=>{ build(m); $('btnLoadJson').disabled=false; }).catch(e=>{
   $('loading').innerHTML = `<div class="msg err">Không tải được cấu trúc form: ${esc(e.message)}</div>`;

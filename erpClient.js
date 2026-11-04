@@ -532,6 +532,51 @@ async function assignTicket(ticketName, emails, description = '') {
   return { assigned: true, todo: r.message || null };
 }
 
+/* ===================== NHÓM NGƯỜI DÙNG (User Group) =====================
+   Giống ô "Assign To User Group" trong hộp thoại Assign To của ERP: DocType "User Group", thành viên nằm ở bảng con
+   (User Group Member, cột "user" = email). Đọc thành viên để trang Tạo Ticket chọn người xử lý. Đệm 10 phút. */
+const userGroupCache = new Map(); // tên nhóm -> { at, data }
+const USER_GROUP_TTL = 10 * 60 * 1000;
+
+async function listUserGroups(txt = '') {
+  return (await searchLink('User Group', txt, 200)).map((x) => x.value).filter(Boolean);
+}
+
+async function getUserGroupMembers(groupName) {
+  const name = String(groupName || '').trim();
+  const hit = userGroupCache.get(name);
+  if (hit && Date.now() - hit.at < USER_GROUP_TTL) return hit.data;
+  const r = await erpFetch(`/api/resource/${encodeURIComponent('User Group')}/${encodeURIComponent(name)}`);
+  const doc = r.data || r || {};
+  // Không phụ thuộc tên bảng con: lấy mọi dòng con có cột "user"
+  const emails = new Set();
+  for (const v of Object.values(doc)) {
+    if (!Array.isArray(v)) continue;
+    v.forEach((row) => { if (row && typeof row === 'object' && row.user) emails.add(String(row.user).trim().toLowerCase()); });
+  }
+  let members = [...emails].map((email) => ({ email, name: '' }));
+  if (members.length) {
+    try { // lấy họ tên + bỏ người dùng đã khoá; không có quyền đọc User thì chỉ hiện email
+      const qs = new URLSearchParams({
+        filters: JSON.stringify([['name', 'in', [...emails]]]),
+        fields: JSON.stringify(['name', 'full_name', 'enabled']),
+        limit_page_length: '500',
+      });
+      const u = await erpFetch(`/api/resource/User?${qs.toString()}`);
+      const by = new Map((u.data || []).map((x) => [String(x.name).toLowerCase(), x]));
+      members = members
+        .filter((m) => { const x = by.get(m.email); return !x || Number(x.enabled) !== 0; })
+        .map((m) => ({ email: m.email, name: (by.get(m.email) || {}).full_name || '' }));
+    } catch (e) {
+      console.error(`[erp/user-group] không đọc được họ tên thành viên nhóm ${name}:`, e.message);
+    }
+  }
+  members.sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email, 'vi'));
+  const data = { group: doc.name || name, members };
+  userGroupCache.set(name, { at: Date.now(), data });
+  return data;
+}
+
 /** Đặt Status = ERP_ASSIGN_STATUS (mặc định "Assign"). Chỉ gọi khi có người xử lý KHÁC người tạo. Trả về giá trị đã đặt hoặc null. */
 async function setAssignStatus(ticketName) {
   if (!ASSIGN_STATUS) return null;
@@ -676,6 +721,7 @@ async function refreshCache() {
   metaCache = { at: 0, data: null };
   masterCache = { at: 0, data: null };
   linkedCache.clear();
+  userGroupCache.clear();
   try { require('fs').unlinkSync(CACHE_FILE); } catch (_) { /* chưa có file */ }
   return getTicketMeta();
 }
@@ -708,6 +754,8 @@ module.exports = {
   userExists,
   assignTicket,
   setAssignStatus,
+  listUserGroups,
+  getUserGroupMembers,
   uploadAttachment,
   embedImagesInDescription,
   createTicketOnBehalf,

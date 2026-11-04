@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
+<script src="/beer-loader.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Báo Cáo Effort</title>
@@ -19,7 +20,7 @@
   .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;opacity:.9;}
   .ops-topbar a:hover{opacity:1;text-decoration:underline;}
   .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
-  .wrap{max-width:1500px;margin:0 auto;padding:28px 28px 90px;}
+  .wrap{max-width:1600px;margin:0 auto;padding:28px 28px 90px;}
   h1{font-family:'Space Grotesk',sans-serif;font-size:24px;margin:0 0 4px;}
   .sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;line-height:1.6;}
   .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;}
@@ -33,48 +34,71 @@
   button.sm{padding:4px 10px;font-size:12.5px;}
   button:disabled{opacity:.5;cursor:default;}
   .chips{display:flex;gap:6px 8px;flex-wrap:wrap;font-size:13px;align-items:center;margin-top:12px;}
+  .chips:first-child{margin-top:0;}
   .chips .t{font-size:12px;color:var(--muted);font-weight:600;margin-right:2px;}
   .chips label{display:flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--grid-line-strong);border-radius:8px;padding:4px 10px;cursor:pointer;}
   .chips label.on{border-color:var(--blueprint);background:#EAF1F8;font-weight:600;}
+  .chips label.grp{border-color:var(--amber);} .chips label.grp.on{background:#FFF3DC;}
   .status{font-size:12.5px;font-family:'IBM Plex Mono',monospace;color:var(--muted);margin-top:12px;white-space:pre-wrap;}
   .status.err{color:var(--danger);} .status.ok{color:var(--success);} .status.busy{color:var(--blueprint);}
   .msg{padding:11px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;line-height:1.55;background:#FFF6E3;border:1px solid #EBCB8B;color:#7A5410;}
   .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
-  @media(max-width:800px){.kpis{grid-template-columns:repeat(2,1fr);}}
+  .kpis.s{grid-template-columns:repeat(8,1fr);gap:10px;margin-bottom:12px;}
+  @media(max-width:1100px){.kpis.s{grid-template-columns:repeat(4,1fr);}} @media(max-width:800px){.kpis{grid-template-columns:repeat(2,1fr);}}
   .kpi{background:#fff;border:1px solid var(--grid-line-strong);border-top:5px solid var(--blueprint);border-radius:10px;padding:12px 14px;}
   .kpi .l{font-size:12.5px;color:var(--muted);font-weight:600;} .kpi .v{font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:700;line-height:1.25;}
+  .kpis.s .kpi{padding:9px 11px;} .kpis.s .kpi .v{font-size:23px;} .kpis.s .kpi .l{font-size:11.5px;}
   .kpi .d{font-size:11.5px;color:var(--muted);} .kpi.k2{border-top-color:var(--amber);} .kpi.k3{border-top-color:#6C5B9E;} .kpi.k4{border-top-color:var(--success);}
+  .tabs{display:flex;gap:6px;margin:0 0 14px;border-bottom:2px solid var(--grid-line-strong);}
+  .tab{padding:9px 18px;border:1px solid var(--grid-line-strong);border-bottom:none;border-radius:8px 8px 0 0;background:#fff;cursor:pointer;font-size:14px;font-weight:600;position:relative;top:2px;}
+  .tab.on{background:var(--blueprint);color:#fff;border-color:var(--blueprint);}
   .charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;} @media(max-width:1000px){.charts{grid-template-columns:1fr;}}
-  .charts .full{grid-column:1/-1;}
-  .cbox{position:relative;} .cbox h3{font-family:'Space Grotesk',sans-serif;font-size:14px;margin:0 0 8px;display:flex;justify-content:space-between;gap:8px;align-items:center;}
+  .cbox h3{font-family:'Space Grotesk',sans-serif;font-size:14px;margin:0 0 8px;display:flex;justify-content:space-between;gap:8px;align-items:center;}
   .cbox h3 select{font:inherit;font-size:12.5px;padding:3px 8px;border-radius:6px;border:1px solid var(--grid-line-strong);}
   table{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff;}
   th{background:#1F4E79;color:#fff;text-align:right;padding:8px 10px;font-weight:600;white-space:nowrap;cursor:pointer;user-select:none;}
   th:first-child{text-align:left;} th:hover{background:#2A5F92;}
+  th.grp{background:#163A5C;cursor:default;text-align:center;border-left:1px solid #fff;} th.grp:hover{background:#163A5C;}
   td{padding:7px 10px;border-bottom:1px solid var(--grid-line);text-align:right;white-space:nowrap;}
   td:first-child{text-align:left;font-weight:600;}
-  tr.m{cursor:pointer;} tr.m:hover td{background:#F5F8FB;} tr.m.on td{background:#EAF1F8;}
+  tr.m{cursor:pointer;} tr.m:hover td{background:#F5F8FB;}
   tr.tot td{background:#D0D8E8;font-weight:700;border-top:2px solid #fff;}
   td.big{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;color:var(--blueprint);}
-  .bartd{min-width:120px;} .mini{display:inline-block;height:8px;border-radius:4px;background:var(--blueprint);vertical-align:middle;margin-left:6px;}
   .empty{color:var(--muted);padding:34px 0;text-align:center;font-size:14px;line-height:1.7;}
   .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
-  .detail table td,.detail table th{text-align:left;white-space:normal;} .detail table th{cursor:default;} .detail table th:hover{background:#1F4E79;}
+  .pbar{display:inline-block;width:64px;height:8px;border-radius:4px;background:#E4EBF3;vertical-align:middle;margin-left:6px;overflow:hidden;} .pbar i{display:block;height:100%;background:var(--success);}
+  .g{font-size:11.5px;font-weight:700;border-radius:12px;padding:2px 10px;white-space:nowrap;display:inline-block;} .g.t{background:#EAF5EE;color:#2C5E43;} .g.k{background:#EAF1F8;color:var(--blueprint);} .g.b{background:#FFF3DC;color:#8A5A0B;} .g.c{background:#FBE9EB;color:#8B2A36;}
+  .tg{font-size:10.5px;font-weight:700;border-radius:10px;padding:1px 7px;background:#E4EBF3;color:var(--blueprint);margin-left:4px;white-space:nowrap;} .tg:first-child{margin-left:0;} .tg.h{background:#FFF3DC;color:#8A5A0B;} .tg.o{background:#F0F2F5;color:var(--muted);}
   .tag{font-size:11px;font-weight:700;border-radius:12px;padding:1px 9px;background:#E4EBF3;color:var(--blueprint);white-space:nowrap;} .tag.task{background:#FFF3DC;color:#8A5A0B;}
   .hint{color:var(--muted);font-size:12.5px;line-height:1.6;}
-  .pbar{display:inline-block;width:64px;height:8px;border-radius:4px;background:#E4EBF3;vertical-align:middle;margin-left:6px;overflow:hidden;} .pbar i{display:block;height:100%;background:var(--success);}
-  .g{font-size:11.5px;font-weight:700;border-radius:12px;padding:2px 10px;white-space:nowrap;} .g.t{background:#EAF5EE;color:#2C5E43;} .g.k{background:#EAF1F8;color:var(--blueprint);} .g.b{background:#FFF3DC;color:#8A5A0B;} .g.c{background:#FBE9EB;color:#8B2A36;}
-  th.grp{background:#163A5C;cursor:default;text-align:center;border-left:1px solid #fff;} th.grp:hover{background:#163A5C;}
-  .kpi.k5{border-top-color:var(--success);}
+  /* thẻ đánh giá từng thành viên */
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;} @media(max-width:1200px){.cards{grid-template-columns:repeat(2,1fr);}} @media(max-width:760px){.cards{grid-template-columns:1fr;}}
+  .mcard{background:#fff;border:1px solid var(--grid-line-strong);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;}
+  .mcard .hd{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;} .mcard .nm{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;margin-bottom:3px;}
+  .mcard .mid{display:flex;gap:14px;align-items:center;} .mcard .ks{font-size:13px;line-height:1.75;flex:1;} .mcard .ks b{font-family:'Space Grotesk',sans-serif;}
+  .sbar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:#E4EBF3;} .sbar i{display:block;height:100%;}
+  .leg{display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:4px;} .leg span::before{content:'';display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--c);margin-right:4px;}
+  .sorter{display:flex;gap:10px;align-items:center;margin-bottom:12px;font-size:13px;color:var(--muted);font-weight:600;} .sorter select{font:inherit;font-size:13px;padding:5px 10px;border-radius:8px;border:1px solid var(--grid-line-strong);}
+  /* báo cáo chi tiết */
+  .rpt{background:#fff;padding:22px 24px;border:1px solid var(--grid-line-strong);border-radius:12px;}
+  .rpt h2.t{font-family:'Space Grotesk',sans-serif;font-size:21px;margin:0 0 2px;} .rpt .per{color:var(--muted);font-size:13px;margin-bottom:14px;line-height:1.6;}
+  .rpt h3{font-family:'Space Grotesk',sans-serif;font-size:15px;margin:18px 0 8px;border-bottom:1px solid var(--grid-line-strong);padding-bottom:5px;}
+  .rpt .charts .cbox{border:1px solid var(--grid-line);border-radius:10px;padding:10px 12px;}
+  .rpt .charts .cbox h3{border:0;margin:0 0 6px;padding:0;font-size:14px;}
+  .rpt textarea{width:100%;min-height:150px;font:inherit;font-size:13.5px;line-height:1.65;padding:10px 12px;border:1px solid var(--grid-line-strong);border-radius:8px;resize:vertical;}
+  .cmp td,.cmp th{text-align:right;} .cmp td:first-child,.cmp th:first-child{text-align:left;} .cmp th{cursor:default;} .cmp th:hover{background:#1F4E79;}
+  .up{color:var(--success);font-weight:700;} .dn{color:var(--danger);font-weight:700;}
+  .lst td,.lst th{text-align:left;white-space:normal;} .lst th{cursor:default;} .lst th:hover{background:#1F4E79;}
+  @media print{.ops-topbar,.no-print,.tabs,#filters,#memPanel,#kpis{display:none !important;} body{background:#fff;} .wrap{padding:0;max-width:none;} .rpt{border:none;padding:0;}}
 </style>
 </head>
 <body>
 <div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb">/ báo cáo / báo cáo effort</span></div>
 <div class="wrap">
-  <h1>Báo Cáo Effort</h1>
-  <p class="sub">Đánh giá effort xử lý của từng thành viên theo <b>số lượng ticket (ERP) và task (SynergyHub) được assign</b> trong khoảng ngày — gồm cả người đang được giao lẫn người từng được giao. Có bảng tổng hợp, 3 biểu đồ, xuất Excel và copy.</p>
+  <h1 class="no-print">Báo Cáo Effort</h1>
+  <p class="sub no-print">Đánh giá effort xử lý của từng thành viên theo <b>số lượng ticket (ERP) và task (SynergyHub) được assign</b> trong khoảng ngày — gồm cả người đang được giao lẫn người từng được giao. Lọc theo <b>nhóm support</b> (người tạo ticket) và <b>nhóm xử lý</b> (người được chọn thêm để xử lý); xem ở 3 tab: so sánh, đánh giá từng thành viên, báo cáo chi tiết cho manager.</p>
 
-  <div class="panel">
+  <div class="panel no-print" id="filters">
     <div class="bar">
       <label class="field">Từ ngày <input type="date" id="fFrom"></label>
       <label class="field">Đến ngày <input type="date" id="fTo"></label>
@@ -84,36 +108,63 @@
           <option value="opened">Ngày mở ticket (Opening On)</option>
         </select>
       </label>
-      <label class="chips" style="margin:0"><label id="srcT" class="on"><input type="checkbox" id="chkTicket" checked> Ticket ERP</label><label id="srcK" class="on"><input type="checkbox" id="chkTask" checked> Task SynergyHub</label></label>
+      <div class="chips" style="margin:0"><label id="srcT" class="on"><input type="checkbox" id="chkTicket" checked> Ticket ERP</label><label id="srcK" class="on"><input type="checkbox" id="chkTask" checked> Task SynergyHub</label></div>
       <button type="button" class="primary" id="btnLoad">⇩ Lấy dữ liệu &amp; tính effort</button>
     </div>
     <div class="chips" id="projChips"></div>
     <div class="status" id="status"></div>
   </div>
 
-  <div id="msgs"></div>
+  <div id="msgs" class="no-print"></div>
   <div id="result" style="display:none">
     <div class="kpis" id="kpis"></div>
-    <div class="panel"><div class="chips" id="memChips" style="margin-top:0"></div></div>
+    <div class="panel no-print" id="memPanel">
+      <div class="chips" id="grpChips"></div>
+      <div class="chips" id="memChips"></div>
+    </div>
 
-    <div class="panel" id="chartPanel">
-      <div class="charts">
-        <div class="cbox"><h3>Effort được assign — số lượng ticket + task</h3><div style="position:relative" id="wrap1"><canvas id="c1"></canvas></div></div>
-        <div class="cbox"><h3>Khả năng xử lý — đã xử lý / chưa xử lý (ticket + task)</h3><div style="position:relative" id="wrap4"><canvas id="c4"></canvas></div></div>
-        <div class="cbox"><h3>Ticket theo mức ưu tiên (từng thành viên)</h3><div style="position:relative" id="wrap2"><canvas id="c2"></canvas></div></div>
-        <div class="cbox"><h3>Xu hướng theo tuần <select id="trendMember"></select></h3><div style="position:relative;height:300px"><canvas id="c3"></canvas></div></div>
+    <div class="tabs no-print">
+      <div class="tab on" data-tab="cmp">① So sánh thành viên</div>
+      <div class="tab" data-tab="cards">② Đánh giá từng thành viên</div>
+      <div class="tab" data-tab="detail">③ Báo cáo chi tiết (manager)</div>
+    </div>
+
+    <!-- TAB 1 -->
+    <div id="tab-cmp">
+      <div class="panel" id="chartPanel">
+        <div class="charts">
+          <div class="cbox"><h3>Effort được assign — số lượng ticket + task</h3><div style="position:relative" id="wrap1"><canvas id="c1"></canvas></div></div>
+          <div class="cbox"><h3>Khả năng xử lý — đã xử lý / chưa xử lý (ticket + task)</h3><div style="position:relative" id="wrap4"><canvas id="c4"></canvas></div></div>
+          <div class="cbox"><h3>Ticket theo mức ưu tiên (từng thành viên)</h3><div style="position:relative" id="wrap2"><canvas id="c2"></canvas></div></div>
+          <div class="cbox"><h3>Xu hướng theo tuần <select id="trendMember"></select></h3><div style="position:relative;height:300px"><canvas id="c3"></canvas></div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+          <h2 style="margin:0">Bảng so sánh effort giữa các thành viên</h2>
+          <div class="acts"><button type="button" class="primary sm" id="btnCopy">📋 Copy bảng</button><button type="button" class="sm" id="btnImg">🖼 Copy ảnh biểu đồ</button><button type="button" class="export sm" id="btnXls">⬇ Xuất Excel</button></div>
+        </div>
+        <div style="overflow-x:auto"><table id="tbl"></table></div>
+        <div class="hint" style="margin-top:8px"><b>Đã xử lý</b> = ticket ở trạng thái Closed + task SynergyHub đã xong; <b>% xử lý</b> = đã xử lý ÷ được assign. <b>TB xử lý</b> = thời gian trung bình từ mở ticket đến Closed của ticket đã đóng (giờ theo quy tắc SLA: giờ làm việc T2–T6 08:00–17:30 trừ nghỉ trưa và ngày lễ; Critical/Urgent tính 24h liên tục). <b>Đánh giá</b> theo % xử lý chung: Tốt ≥ 80% · Khá ≥ 60% · Trung bình ≥ 40% · Cần cải thiện &lt; 40%. Ticket giao nhiều người thì mọi người đều được ghi nhận đã xử lý khi ticket Closed (ERP không cho biết ai đóng). Bấm tiêu đề cột để sắp xếp; bấm 1 dòng (hoặc nút Chi tiết) để mở báo cáo chi tiết của thành viên.</div>
       </div>
     </div>
 
-    <div class="panel">
-      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
-        <h2 style="margin:0">Bảng effort theo thành viên</h2>
-        <div class="acts"><button type="button" class="primary sm" id="btnCopy">📋 Copy bảng</button><button type="button" class="sm" id="btnImg">🖼 Copy ảnh biểu đồ</button><button type="button" class="export sm" id="btnXls">⬇ Xuất Excel</button></div>
-      </div>
-      <div style="overflow-x:auto"><table id="tbl"></table></div>
-      <div class="hint" style="margin-top:8px"><b>Đã xử lý</b> = ticket ở trạng thái Closed + task SynergyHub đã xong; <b>% xử lý</b> = đã xử lý ÷ được assign. <b>TB xử lý</b> = thời gian trung bình từ mở ticket đến Closed của các ticket đã đóng (giờ theo quy tắc SLA: giờ làm việc T2–T6 08:00–17:30 trừ nghỉ trưa và ngày lễ; Critical/Urgent tính 24h liên tục). <b>Đánh giá</b> theo % xử lý chung: Tốt ≥ 80% · Khá ≥ 60% · Trung bình ≥ 40% · Cần cải thiện &lt; 40%. Ticket giao cho nhiều người thì mọi người đều được ghi nhận đã xử lý khi ticket Closed (ERP không cho biết ai đóng). Bấm tiêu đề cột để sắp xếp, bấm 1 thành viên để xem danh sách ticket / task đã được assign. Mỗi ticket/task chỉ tính 1 lần cho mỗi người; ticket giao cho nhiều người thì mỗi người đều có 1 lượt.</div>
+    <!-- TAB 2 -->
+    <div id="tab-cards" style="display:none">
+      <div class="sorter">Sắp xếp: <select id="cardSort"><option value="total">Khối lượng được assign</option><option value="rate">% xử lý chung</option><option value="processed">Số đã xử lý</option><option value="name">Tên</option></select></div>
+      <div class="cards" id="cardGrid"></div>
     </div>
-    <div class="panel detail" id="detail" style="display:none"></div>
+
+    <!-- TAB 3 -->
+    <div id="tab-detail" style="display:none">
+      <div class="panel no-print">
+        <div class="bar">
+          <label class="field">Thành viên <select id="detailMember" style="min-width:260px"></select></label>
+          <div class="acts"><button type="button" class="primary sm" id="rCopy">📋 Copy báo cáo (văn bản)</button><button type="button" class="sm" id="rImg">🖼 Copy ảnh báo cáo</button><button type="button" class="export sm" id="rXls">⬇ Xuất Excel</button><button type="button" class="sm" id="rPrint">🖨 In / lưu PDF</button></div>
+        </div>
+      </div>
+      <div id="rptBox"></div>
+    </div>
   </div>
 </div>
 
@@ -128,12 +179,21 @@ async function api(url){
 }
 const setStatus = (kind, text) => { $('status').className = 'status '+(kind||''); $('status').textContent = text||''; };
 const todayVN = () => new Date(Date.now()+7*3600*1000).toISOString().slice(0,10);
+const fmtD = iso => iso ? iso.split('-').reverse().join('/') : '';
 const PRIO = [['p1','Critical/Urgent','#B23A48'],['high','High','#E8A33D'],['medium','Medium','#2E6F95'],['low','Low / khác','#8FA6B3']];
+const prioGroup = p => { const x = String(p||'').trim().toLowerCase(); return (x==='critical'||x==='urgent') ? 'p1' : x==='high' ? 'high' : x==='medium' ? 'medium' : 'low'; };
 const FALLBACK = [['MerapLion_eSales','Merap'],['ABI_eSales_Support','ABI'],['ANVY_eSale_Support','AnVy'],['Sabeco_PG','Sabeco PG'],['Sabeco_B2B_Support','Sabeco B2B'],['FES_eSales','FES'],['ANKO_eSales_Support','ANKO'],['HaiHa_eSales_Support','HAIHA'],['Jotun_VN_eSales','JOTUN']];
-let projects = FALLBACK.map(([code,name])=>({code,name})), pSel = new Set(), data = null, memSel = new Set(), sortKey = 'total', sortDir = -1, openKey = null, charts = {};
+let projects = FALLBACK.map(([code,name])=>({code,name})), pSel = new Set(), data = null, memSel = new Set(), grpSel = { support:true, handler:true, other:true };
+let tab = 'cmp', sortKey = 'total', sortDir = -1, detailKey = '', charts = {}, supportSet = new Set(), handlerSet = new Set();
 const label = m => m.key.replace(/(^|[._\s-])([a-zà-ỹ])/g,(x,a,b)=>a+b.toUpperCase());
+const gcls = g => g==='Tốt'?'t':g==='Khá'?'k':g==='Trung bình'?'b':g==='Cần cải thiện'?'c':'';
+const gradeOf = r => r==null ? '—' : r>=80?'Tốt':r>=60?'Khá':r>=40?'Trung bình':'Cần cải thiện';
+const pc = (a,b) => b ? Math.round(a/b*1000)/10 : null;
+const isSup = m => supportSet.has(m.key), isHdl = m => handlerSet.has(m.key);
+const groupTags = m => (isSup(m)?'<span class="tg">Support</span>':'')+(isHdl(m)?'<span class="tg h">Xử lý</span>':'')+(!isSup(m)&&!isHdl(m)?'<span class="tg o">Khác</span>':'');
+const groupText = m => [isSup(m)&&'Nhóm support', isHdl(m)&&'Nhóm xử lý'].filter(Boolean).join(' + ') || 'Ngoài 2 nhóm';
 
-/* ---------- bộ lọc ---------- */
+/* ---------- bộ lọc nguồn ---------- */
 function renderProj(){
   $('projChips').innerHTML = '<span class="t">Dự án (ticket):</span>'+projects.map(p=>'<label class="'+(pSel.has(p.code)?'on':'')+'"><input type="checkbox" data-p="'+esc(p.code)+'"'+(pSel.has(p.code)?' checked':'')+'> '+esc(p.name)+'</label>').join('')
     +'<button type="button" class="sm" id="pAll">Chọn tất cả</button><button type="button" class="sm" id="pNone">Bỏ chọn</button>';
@@ -153,35 +213,52 @@ async function load(){
   try{
     const q = new URLSearchParams({ from, to, mode:$('fMode').value, sources:sources.join(','), projects:JSON.stringify([...pSel]) });
     data = await api('/api/bao-cao/effort?'+q.toString());
-    memSel = new Set(data.members.map(m=>m.key)); openKey = null;
+    supportSet = new Set(((data.groups && data.groups.support) || []).map(e=>e.split('@')[0])); handlerSet = new Set(((data.groups && data.groups.handler) || []).map(e=>e.split('@')[0]));
+    memSel = new Set(data.members.map(m=>m.key)); detailKey = '';
     $('msgs').innerHTML = (data.warnings||[]).map(w=>'<div class="msg">⚠ '+esc(w)+'</div>').join('');
-    render();
+    renderAll();
     const d = data.diagnostics||{};
     setStatus('ok', `Xong — ${data.totals.members} thành viên, ${data.totals.ticketAssigns} lượt ticket (${data.totals.distinctTickets} ticket) và ${data.totals.taskAssigns} lượt task`+(sources.includes('ticket') && data.mode==='assigned' ? ` · ${d.todos||0} lượt giao việc trong khoảng ngày` : ''));
   }catch(err){ console.error(err); setStatus('err','Lỗi: '+err.message); }
   finally{ $('btnLoad').disabled = false; }
 }
 
-/* ---------- hiển thị ---------- */
-const sel = () => (data ? data.members.filter(m=>memSel.has(m.key)) : []);
-function render(){
+/* ---------- thành viên đang hiển thị (lọc nhóm + chọn tay) ---------- */
+const inGroup = m => (isSup(m) && grpSel.support) || (isHdl(m) && grpSel.handler) || (!isSup(m) && !isHdl(m) && grpSel.other);
+const sel = () => (data ? data.members.filter(m=>inGroup(m) && memSel.has(m.key)) : []);
+const withData = list => list.filter(m=>m.total>0);
+
+function renderAll(){
   $('result').style.display = '';
   const list = sel();
-  const tT = list.reduce((s,m)=>s+m.tickets.total,0), tK = list.reduce((s,m)=>s+m.tasks.total,0);
-  const proc = list.reduce((x,m)=>x+m.processed,0), asg = tT+tK;
-  $('kpis').innerHTML = `<div class="kpi"><div class="l">Thành viên</div><div class="v">${list.length}</div><div class="d">có ít nhất 1 ticket/task được assign</div></div>`
-    +`<div class="kpi k2"><div class="l">Ticket được assign (lượt)</div><div class="v">${tT}</div><div class="d">${data.totals.distinctTickets} ticket khác nhau · đã Closed ${list.reduce((x,m)=>x+m.tickets.closed,0)}</div></div>`
-    +`<div class="kpi k3"><div class="l">Task được assign (lượt)</div><div class="v">${tK}</div><div class="d">${data.totals.distinctTasks} task khác nhau · đã xong ${list.reduce((x,m)=>x+m.tasks.done,0)}</div></div>`
-    +`<div class="kpi k4"><div class="l">Đã xử lý / được assign</div><div class="v">${proc}/${asg}</div><div class="d">khả năng xử lý chung ${asg ? Math.round(proc/asg*1000)/10 : 0}% · TB ${list.length ? (Math.round(asg/list.length*10)/10) : 0} lượt/người</div></div>`;
-  $('memChips').innerHTML = '<span class="t">Thành viên:</span>'+data.members.map(m=>'<label class="'+(memSel.has(m.key)?'on':'')+'" title="'+esc(m.email||m.key)+'"><input type="checkbox" data-m="'+esc(m.key)+'"'+(memSel.has(m.key)?' checked':'')+'> '+esc(label(m))+' <small>('+m.total+')</small></label>').join('')
-    +'<button type="button" class="sm" id="mAll">Tất cả</button><button type="button" class="sm" id="mNone">Bỏ chọn</button>';
-  $('memChips').querySelectorAll('input').forEach(i=>i.onchange=()=>{ i.checked ? memSel.add(i.dataset.m) : memSel.delete(i.dataset.m); render(); });
-  $('mAll').onclick = () => { memSel = new Set(data.members.map(m=>m.key)); render(); };
-  $('mNone').onclick = () => { memSel = new Set(); render(); };
-  renderTable(); renderCharts(); renderDetail();
+  const tT = list.reduce((s,m)=>s+m.tickets.total,0), tK = list.reduce((s,m)=>s+m.tasks.total,0), proc = list.reduce((s,m)=>s+m.processed,0), asg = tT+tK;
+  $('kpis').innerHTML = `<div class="kpi"><div class="l">Thành viên</div><div class="v">${list.length}</div><div class="d">${withData(list).length} người có ticket/task được assign</div></div>`
+    +`<div class="kpi k2"><div class="l">Ticket được assign (lượt)</div><div class="v">${tT}</div><div class="d">đã Closed ${list.reduce((x,m)=>x+m.tickets.closed,0)}</div></div>`
+    +`<div class="kpi k3"><div class="l">Task được assign (lượt)</div><div class="v">${tK}</div><div class="d">đã xong ${list.reduce((x,m)=>x+m.tasks.done,0)}</div></div>`
+    +`<div class="kpi k4"><div class="l">Đã xử lý / được assign</div><div class="v">${proc}/${asg}</div><div class="d">khả năng xử lý chung ${asg ? Math.round(proc/asg*1000)/10 : 0}%</div></div>`;
+  const cnt = f => data.members.filter(f).length;
+  $('grpChips').innerHTML = '<span class="t">Nhóm:</span>'
+    +`<label class="grp ${grpSel.support?'on':''}"><input type="checkbox" data-g="support" ${grpSel.support?'checked':''}> Nhóm support — người tạo ticket <small>(${cnt(isSup)})</small></label>`
+    +`<label class="grp ${grpSel.handler?'on':''}"><input type="checkbox" data-g="handler" ${grpSel.handler?'checked':''}> Nhóm xử lý — người được chọn thêm để xử lý <small>(${cnt(isHdl)})</small></label>`
+    +`<label class="grp ${grpSel.other?'on':''}"><input type="checkbox" data-g="other" ${grpSel.other?'checked':''}> Khác (ngoài 2 nhóm) <small>(${cnt(m=>!isSup(m)&&!isHdl(m))})</small></label>`;
+  $('grpChips').querySelectorAll('input').forEach(i=>i.onchange=()=>{ grpSel[i.dataset.g] = i.checked; renderAll(); });
+  const shown = data.members.filter(inGroup);
+  $('memChips').innerHTML = '<span class="t">Thành viên:</span>'+shown.map(m=>'<label class="'+(memSel.has(m.key)?'on':'')+'" title="'+esc(m.email||m.key)+'"><input type="checkbox" data-m="'+esc(m.key)+'"'+(memSel.has(m.key)?' checked':'')+'> '+esc(label(m))+' <small>('+m.total+')</small></label>').join('')
+    +'<button type="button" class="sm" id="mAll">Chọn tất cả</button><button type="button" class="sm" id="mNone">Bỏ chọn</button>';
+  $('memChips').querySelectorAll('input').forEach(i=>i.onchange=()=>{ i.checked ? memSel.add(i.dataset.m) : memSel.delete(i.dataset.m); renderAll(); });
+  $('mAll').onclick = () => { shown.forEach(m=>memSel.add(m.key)); renderAll(); };
+  $('mNone').onclick = () => { shown.forEach(m=>memSel.delete(m.key)); renderAll(); };
+  renderTab();
 }
-/* [khoá, nhãn, hàm lấy giá trị, kiểu hiển thị] — 'pct' = phần trăm kèm thanh, 'grade' = nhãn đánh giá */
-const gcls = g => g==='Tốt'?'t':g==='Khá'?'k':g==='Trung bình'?'b':g==='Cần cải thiện'?'c':'';
+function renderTab(){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.tab===tab));
+  ['cmp','cards','detail'].forEach(k=>$('tab-'+k).style.display = k===tab ? '' : 'none');
+  if(tab==='cmp'){ renderTable(); renderCharts(); } else if(tab==='cards') renderCards(); else renderDetail();
+}
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{ tab = t.dataset.tab; if(data) renderTab(); });
+const openDetail = key => { detailKey = key; tab = 'detail'; renderTab(); window.scrollTo({top:0,behavior:'smooth'}); };
+
+/* ---------- TAB 1: bảng + biểu đồ so sánh ---------- */
 const cols = [['name','Thành viên',m=>label(m)],
   ['tickets','Ticket được assign',m=>m.tickets.total],['closed','Đã xử lý (Closed)',m=>m.tickets.closed],['open','Ticket chưa xử lý',m=>m.tickets.open],['ticketRate','% xử lý ticket',m=>m.ticketRate,'pct'],['avgHours','TB xử lý (giờ)',m=>m.avgHours,'num1'],
   ['tasks','Task được assign',m=>m.tasks.total],['tasksDone','Task xong',m=>m.tasks.done],['taskRate','% task xong',m=>m.taskRate,'pct'],
@@ -193,33 +270,20 @@ function totalOf(list, key){
   const sum = f => list.reduce((s,m)=>s+f(m),0);
   const T = { tickets:sum(m=>m.tickets.total), closed:sum(m=>m.tickets.closed), open:sum(m=>m.tickets.open), tasks:sum(m=>m.tasks.total), tasksDone:sum(m=>m.tasks.done), total:sum(m=>m.total), processed:sum(m=>m.processed), pending:sum(m=>m.pending),
     p1:sum(m=>m.tickets.p1), high:sum(m=>m.tickets.high), medium:sum(m=>m.tickets.medium), low:sum(m=>m.tickets.low) };
-  const pc = (a,b) => b ? Math.round(a/b*1000)/10 : null;
   T.ticketRate = pc(T.closed,T.tickets); T.taskRate = pc(T.tasksDone,T.tasks); T.rate = pc(T.processed,T.total);
-  const hn = sum(m=>m.handling.n); T.avgHours = hn ? Math.round(sum(m=>m.handling.minutes)/hn/6)/10 : null;
-  T.grade = T.rate==null ? '—' : T.rate>=80?'Tốt':T.rate>=60?'Khá':T.rate>=40?'Trung bình':'Cần cải thiện';
+  const hn = sum(m=>m.handling.n); T.avgHours = hn ? Math.round(sum(m=>m.handling.minutes)/hn/6)/10 : null; T.grade = gradeOf(T.rate);
   return T[key];
 }
 function renderTable(){
   const list = sel().slice().sort((a,b)=>{ const c = cols.find(x=>x[0]===sortKey) || cols[9]; const va = c[2](a), vb = c[2](b); const na = va==null?-1:va, nb = vb==null?-1:vb; return (typeof na==='string' ? na.localeCompare(nb,'vi') : na-nb)*sortDir; });
   if(!list.length){ $('tbl').innerHTML = '<tbody><tr><td class="empty" style="text-align:center">Không có thành viên nào được chọn / không có dữ liệu trong khoảng ngày.</td></tr></tbody>'; return; }
-  const grp = '<tr><th class="grp" style="border-left:0"></th><th class="grp" colspan="5">TICKET (ERP)</th><th class="grp" colspan="3">TASK (SynergyHub)</th><th class="grp" colspan="5">TỔNG HỢP — KHẢ NĂNG XỬ LÝ</th><th class="grp" colspan="4">TICKET THEO ƯU TIÊN</th></tr>';
-  $('tbl').innerHTML = '<thead>'+grp+'<tr>'+cols.map(c=>'<th data-s="'+c[0]+'">'+c[1]+(sortKey===c[0]?(sortDir<0?' ▼':' ▲'):'')+'</th>').join('')+'</tr></thead><tbody>'
-    + list.map(m=>'<tr class="m'+(openKey===m.key?' on':'')+'" data-k="'+esc(m.key)+'" title="'+esc(m.email||m.key)+'">'+cols.map((c,i)=>'<td'+(c[0]==='total'||c[0]==='rate'?' class="big"':'')+'>'+(i===0?esc(c[2](m)):fmtCell(c,c[2](m)))+'</td>').join('')+'</tr>').join('')
-    + '<tr class="tot"><td>Tổng</td>'+cols.slice(1).map(c=>'<td>'+fmtCell(c,totalOf(list,c[0]))+'</td>').join('')+'</tr></tbody>';
+  const grp = '<tr><th class="grp" colspan="2" style="border-left:0"></th><th class="grp" colspan="5">TICKET (ERP)</th><th class="grp" colspan="3">TASK (SynergyHub)</th><th class="grp" colspan="5">TỔNG HỢP — KHẢ NĂNG XỬ LÝ</th><th class="grp" colspan="4">TICKET THEO ƯU TIÊN</th><th class="grp"></th></tr>';
+  $('tbl').innerHTML = '<thead>'+grp+'<tr><th data-s="name">Thành viên'+(sortKey==='name'?(sortDir<0?' ▼':' ▲'):'')+'</th><th style="cursor:default;text-align:left">Nhóm</th>'+cols.slice(1).map(c=>'<th data-s="'+c[0]+'">'+c[1]+(sortKey===c[0]?(sortDir<0?' ▼':' ▲'):'')+'</th>').join('')+'<th style="cursor:default"></th></tr></thead><tbody>'
+    + list.map(m=>'<tr class="m" data-k="'+esc(m.key)+'" title="'+esc(m.email||m.key)+'"><td>'+esc(label(m))+'</td><td style="text-align:left">'+groupTags(m)+'</td>'+cols.slice(1).map(c=>'<td'+(c[0]==='total'||c[0]==='rate'?' class="big"':'')+'>'+fmtCell(c,c[2](m))+'</td>').join('')+'<td><button type="button" class="sm" data-d="'+esc(m.key)+'">Chi tiết →</button></td></tr>').join('')
+    + '<tr class="tot"><td>Tổng</td><td></td>'+cols.slice(1).map(c=>'<td>'+fmtCell(c,totalOf(list,c[0]))+'</td>').join('')+'<td></td></tr></tbody>';
   $('tbl').querySelectorAll('th[data-s]').forEach(th=>th.onclick=()=>{ const k = th.dataset.s; sortDir = sortKey===k ? -sortDir : (k==='name'?1:-1); sortKey = k; renderTable(); });
-  $('tbl').querySelectorAll('tr.m').forEach(tr=>tr.onclick=()=>{ openKey = openKey===tr.dataset.k ? null : tr.dataset.k; renderTable(); renderDetail(); if(openKey) $('detail').scrollIntoView({behavior:'smooth',block:'nearest'}); });
+  $('tbl').querySelectorAll('tr.m').forEach(tr=>tr.onclick=()=>openDetail(tr.dataset.k));
 }
-function renderDetail(){
-  const m = openKey && data.members.find(x=>x.key===openKey);
-  if(!m){ $('detail').style.display = 'none'; return; }
-  $('detail').style.display = '';
-  const rows = m.items.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-  $('detail').innerHTML = '<h2>'+esc(label(m))+' — '+m.tickets.total+' ticket · '+m.tasks.total+' task được assign · đã xử lý '+m.processed+'/'+m.total+(m.rate==null?'':' ('+m.rate+'%)')+'</h2><div style="overflow-x:auto"><table><thead><tr><th>Loại</th><th>Mã</th><th>Nội dung</th><th>Dự án</th><th>Ưu tiên</th><th>Trạng thái</th><th>'+(data.mode==='assigned'?'Ngày giao / hạn task':'Ngày mở / hạn task')+'</th></tr></thead><tbody>'
-    + rows.map(r=>'<tr><td><span class="tag'+(r.kind==='task'?' task':'')+'">'+(r.kind==='task'?'Task':'Ticket')+'</span></td><td>'+esc(r.id)+'</td><td>'+esc(r.title)+'</td><td>'+esc(r.project)+'</td><td>'+esc(r.priority)+'</td><td>'+esc(r.status)+'</td><td>'+esc(r.date)+'</td></tr>').join('')
-    + '</tbody></table></div>'+(rows.length >= 300 ? '<div class="hint">Hiển thị tối đa 300 ticket + 300 task gần nhất; số tổng ở bảng là đầy đủ.</div>' : '');
-}
-
-/* ---------- biểu đồ ---------- */
 function destroy(k){ if(charts[k]){ charts[k].destroy(); delete charts[k]; } }
 function renderCharts(){
   const list = sel().slice().sort((a,b)=>b.total-a.total); const names = list.map(label);
@@ -229,22 +293,126 @@ function renderCharts(){
   destroy('c1'); charts.c1 = new Chart($('c1'), { type:'bar', data:{ labels:names, datasets:[
     { label:'Ticket', data:list.map(m=>m.tickets.total), backgroundColor:'#1F4E79' }, { label:'Task SynergyHub', data:list.map(m=>m.tasks.total), backgroundColor:'#E8A33D' } ] },
     options:{ ...horiz, animation:false, plugins:{ ...horiz.plugins, tooltip:{ mode:'index', intersect:false, callbacks:{ footer: items => 'Tổng: '+items.reduce((s,i)=>s+i.parsed.x,0) } } } } });
-  // khả năng xử lý: đã xử lý / chưa xử lý (ticket + task), nhãn kèm % xử lý
-  const byRate = list.slice();
-  destroy('c4'); charts.c4 = new Chart($('c4'), { type:'bar', data:{ labels:byRate.map(m=>label(m)+(m.rate==null?'':' — '+m.rate+'%')), datasets:[
-    { label:'Đã xử lý', data:byRate.map(m=>m.processed), backgroundColor:'#3F7D58' }, { label:'Chưa xử lý', data:byRate.map(m=>m.pending), backgroundColor:'#C9D3DF' } ] },
-    options:{ ...horiz, animation:false, plugins:{ ...horiz.plugins, tooltip:{ mode:'index', intersect:false, callbacks:{ footer: items => { const m = byRate[items[0].dataIndex]; return 'Được assign: '+m.total+(m.rate==null?'':' · Tỷ lệ xử lý: '+m.rate+'%'); } } } } } });
+  destroy('c4'); charts.c4 = new Chart($('c4'), { type:'bar', data:{ labels:list.map(m=>label(m)+(m.rate==null?'':' — '+m.rate+'%')), datasets:[
+    { label:'Đã xử lý', data:list.map(m=>m.processed), backgroundColor:'#3F7D58' }, { label:'Chưa xử lý', data:list.map(m=>m.pending), backgroundColor:'#C9D3DF' } ] },
+    options:{ ...horiz, animation:false, plugins:{ ...horiz.plugins, tooltip:{ mode:'index', intersect:false, callbacks:{ footer: items => { const m = list[items[0].dataIndex]; return 'Được assign: '+m.total+(m.rate==null?'':' · Tỷ lệ xử lý: '+m.rate+'%'); } } } } } });
   destroy('c2'); charts.c2 = new Chart($('c2'), { type:'bar', data:{ labels:names, datasets: PRIO.map(([k,lab,col])=>({ label:lab, data:list.map(m=>m.tickets[k]), backgroundColor:col })) }, options:{ ...horiz, animation:false } });
-  // xu hướng theo tuần — chọn 1 thành viên hoặc cả nhóm đang chọn
   const tm = $('trendMember'); const cur = tm.value;
   tm.innerHTML = '<option value="">Tất cả thành viên đang chọn</option>'+list.map(m=>'<option value="'+esc(m.key)+'">'+esc(label(m))+'</option>').join(''); tm.value = list.some(m=>m.key===cur) ? cur : '';
   const pick = tm.value ? list.filter(m=>m.key===tm.value) : list;
   const wk = data.weeks.map(w=>({ w, t:pick.reduce((s,m)=>s+m.weekly[w].tickets,0), k:pick.reduce((s,m)=>s+m.weekly[w].tasks,0) }));
-  const fmt = iso => iso.slice(8,10)+'/'+iso.slice(5,7);
-  destroy('c3'); charts.c3 = new Chart($('c3'), { type:'bar', data:{ labels:wk.map(x=>'Tuần '+fmt(x.w)), datasets:[ { label:'Ticket', data:wk.map(x=>x.t), backgroundColor:'#1F4E79' }, { label:'Task SynergyHub', data:wk.map(x=>x.k), backgroundColor:'#E8A33D' } ] },
+  destroy('c3'); charts.c3 = new Chart($('c3'), { type:'bar', data:{ labels:wk.map(x=>'Tuần '+fmtD(x.w).slice(0,5)), datasets:[ { label:'Ticket', data:wk.map(x=>x.t), backgroundColor:'#1F4E79' }, { label:'Task SynergyHub', data:wk.map(x=>x.k), backgroundColor:'#E8A33D' } ] },
     options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{ legend:{ position:'bottom' } }, scales:{ x:{ stacked:true }, y:{ stacked:true, beginAtZero:true, ticks:{ precision:0 } } } } });
 }
 $('trendMember').onchange = renderCharts;
+
+/* ---------- TAB 2: thẻ đánh giá từng thành viên ---------- */
+function donutSvg(rate, size){
+  size = size || 86; const st = 11, r = (size-st)/2, c = 2*Math.PI*r, p = Math.max(0, Math.min(100, rate||0))/100*c;
+  const col = rate==null ? '#C9D3DF' : rate>=80 ? '#3F7D58' : rate>=60 ? '#2E6F95' : rate>=40 ? '#E8A33D' : '#B23A48';
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="#E4EBF3" stroke-width="${st}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${col}" stroke-width="${st}" stroke-dasharray="${p} ${c-p}" stroke-linecap="round" transform="rotate(-90 ${size/2} ${size/2})"/><text x="50%" y="52%" text-anchor="middle" dominant-baseline="middle" font-family="Space Grotesk" font-weight="700" font-size="${size*0.22}" fill="#12233D">${rate==null?'—':rate+'%'}</text></svg>`;
+}
+function sparkSvg(m){
+  const vals = data.weeks.map(w=>m.weekly[w].tickets+m.weekly[w].tasks); const mx = Math.max(1,...vals); const bw = 100/Math.max(1,vals.length);
+  return `<svg width="100%" height="38" viewBox="0 0 100 38" preserveAspectRatio="none">${vals.map((v,i)=>`<rect x="${i*bw+bw*0.15}" y="${36-(v/mx)*34}" width="${bw*0.7}" height="${Math.max(1,(v/mx)*34)}" rx="1" fill="#1F4E79"><title>Tuần ${fmtD(data.weeks[i]).slice(0,5)}: ${v}</title></rect>`).join('')}</svg>`;
+}
+function renderCards(){
+  const k = $('cardSort').value; const list = sel().slice().sort((a,b)=> (k==='name' ? label(a).localeCompare(label(b),'vi') : (k==='rate' ? ((b.rate==null?-1:b.rate)-(a.rate==null?-1:a.rate)) : (b[k]-a[k]))) || b.total-a.total);
+  if(!list.length){ $('cardGrid').innerHTML = '<div class="empty" style="grid-column:1/-1">Không có thành viên nào được chọn / không có dữ liệu trong khoảng ngày.</div>'; return; }
+  $('cardGrid').innerHTML = list.map(m=>{
+    const tot = m.tickets.total || 1;
+    return `<div class="mcard"><div class="hd"><div><div class="nm">${esc(label(m))}</div><div>${groupTags(m)}</div></div><span class="g ${gcls(m.grade)}">${esc(m.grade)}</span></div>
+      <div class="mid">${donutSvg(m.rate)}<div class="ks">Được assign: <b>${m.total}</b> <small>(${m.tickets.total} ticket + ${m.tasks.total} task)</small><br>Đã xử lý: <b style="color:#3F7D58">${m.processed}</b> · Chưa xử lý: <b>${m.pending}</b><br>TB xử lý: <b>${m.avgHours==null?'—':m.avgHours+' giờ'}</b> · Task xong: <b>${m.taskRate==null?'—':m.taskRate+'%'}</b></div></div>
+      <div><div class="sbar" title="Ticket theo mức ưu tiên">${m.tickets.total ? PRIO.map(([key,lab,col])=>m.tickets[key]?`<i style="width:${m.tickets[key]/tot*100}%;background:${col}" title="${lab}: ${m.tickets[key]}"></i>`:'').join('') : ''}</div>
+        <div class="leg">${PRIO.map(([key,lab,col])=>`<span style="--c:${col}">${lab} ${m.tickets[key]}</span>`).join('')}</div></div>
+      <div><div class="hint" style="margin-bottom:2px">Xu hướng theo tuần (ticket + task được assign)</div>${sparkSvg(m)}</div>
+      <div style="text-align:right"><button type="button" class="primary sm" data-d="${esc(m.key)}">Chi tiết →</button></div></div>`;
+  }).join('');
+  $('cardGrid').querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>openDetail(b.dataset.d));
+}
+$('cardSort').onchange = renderCards;
+
+/* ---------- TAB 3: báo cáo chi tiết cho manager ---------- */
+function openByPrio(m){ const o = { p1:0, high:0, medium:0, low:0 }; m.items.filter(i=>i.kind==='ticket' && i.status!=='Closed').forEach(i=>o[prioGroup(i.priority)]++); return o; }
+function ranks(m, list){
+  const a = list.filter(x=>x.total>0).slice().sort((x,y)=>(y.rate==null?-1:y.rate)-(x.rate==null?-1:x.rate) || y.total-x.total);
+  const b = list.filter(x=>x.total>0).slice().sort((x,y)=>y.total-x.total);
+  return { byRate:a.findIndex(x=>x.key===m.key)+1, byLoad:b.findIndex(x=>x.key===m.key)+1, n:a.length };
+}
+function teamAvg(list){
+  const w = withData(list); const n = w.length || 1; const sum = f => w.reduce((s,m)=>s+f(m),0);
+  const ph = w.filter(m=>m.avgHours!=null);
+  return { total:sum(m=>m.total)/n, rate:pc(sum(m=>m.processed), sum(m=>m.total)), ticketRate:pc(sum(m=>m.tickets.closed), sum(m=>m.tickets.total)), taskRate:pc(sum(m=>m.tasks.done), sum(m=>m.tasks.total)),
+    avgHours: ph.length ? Math.round(ph.reduce((s,m)=>s+m.avgHours,0)/ph.length*10)/10 : null, p1Share:pc(sum(m=>m.tickets.p1), sum(m=>m.tickets.total)), n:w.length };
+}
+function commentFor(m, avg, rk){
+  const L = []; const op = openByPrio(m);
+  L.push(`${label(m)} (${groupText(m)}) được assign ${m.total} lượt trong kỳ (${m.tickets.total} ticket, ${m.tasks.total} task); đã xử lý ${m.processed}/${m.total}${m.rate==null?'':' ('+m.rate+'%)'} — đánh giá: ${m.grade}.`);
+  if(m.total===0) return L.join('\n')+'\nChưa được giao ticket/task nào trong kỳ — còn dư năng lực để nhận thêm việc.';
+  if(avg.n>1){
+    const dl = avg.total ? Math.round((m.total-avg.total)/avg.total*100) : 0;
+    L.push(`Khối lượng ${m.total>avg.total?'cao hơn':m.total<avg.total?'thấp hơn':'bằng'} trung bình nhóm (${Math.round(avg.total*10)/10} lượt/người) ${dl>=0?'+':''}${dl}%; xếp hạng khối lượng ${rk.byLoad}/${rk.n}.`);
+    if(m.rate!=null && avg.rate!=null){ const d = Math.round((m.rate-avg.rate)*10)/10; L.push(`Tỷ lệ xử lý ${d>=0?'cao hơn':'thấp hơn'} trung bình nhóm (${avg.rate}%) ${Math.abs(d)} điểm %; xếp hạng ${rk.byRate}/${rk.n}.`); }
+  }
+  if(m.avgHours!=null) L.push(`Thời gian xử lý trung bình ${m.avgHours} giờ (${m.handling.n} ticket đã đóng)${avg.avgHours!=null?` — trung bình nhóm ${avg.avgHours} giờ`:''}.`);
+  const open = m.tickets.open;
+  if(open>0) L.push(`Còn ${open} ticket chưa xử lý${op.p1?`, trong đó ${op.p1} ticket Critical/Urgent cần ưu tiên`:''}${m.tasks.total-m.tasks.done>0?`; ${m.tasks.total-m.tasks.done} task chưa xong`:''}.`);
+  else if(m.tasks.total-m.tasks.done>0) L.push(`Ticket đã xử lý hết; còn ${m.tasks.total-m.tasks.done} task chưa xong.`);
+  if(m.rate!=null && m.rate<40) L.push('Đề xuất: rà soát nguyên nhân tồn ticket (chờ khách phản hồi / thiếu thông tin / quá tải) và hỗ trợ nếu cần.');
+  else if(m.rate!=null && m.rate>=80) L.push('Nhận xét: hoàn thành tốt khối lượng được giao.');
+  return L.join('\n');
+}
+const dChart = {};
+function renderDetail(){
+  const list = sel();
+  const sorted = list.slice().sort((a,b)=>b.total-a.total);
+  $('detailMember').innerHTML = sorted.map(m=>'<option value="'+esc(m.key)+'">'+esc(label(m))+' — '+m.total+' lượt'+(m.rate==null?'':' · '+m.rate+'%')+'</option>').join('');
+  if(!sorted.length){ $('rptBox').innerHTML = '<div class="panel"><div class="empty">Không có thành viên nào được chọn / không có dữ liệu trong khoảng ngày.</div></div>'; return; }
+  if(!sorted.some(m=>m.key===detailKey)) detailKey = sorted[0].key;
+  $('detailMember').value = detailKey;
+  const m = sorted.find(x=>x.key===detailKey); const avg = teamAvg(list); const rk = ranks(m, list); const op = openByPrio(m);
+  const cmpRow = (name, mine, team, unit, higherBetter) => { const d = mine==null||team==null ? null : Math.round((mine-team)*10)/10; const cls = d==null||d===0 ? '' : ((d>0)===higherBetter ? 'up' : 'dn'); return `<tr><td>${name}</td><td><b>${mine==null?'—':mine+unit}</b></td><td>${team==null?'—':team+unit}</td><td class="${cls}">${d==null?'—':(d>0?'+':'')+d+unit}</td></tr>`; };
+  const statusCounts = {}; m.items.filter(i=>i.kind==='ticket').forEach(i=>{ const s = i.status || '(không có)'; statusCounts[s] = (statusCounts[s]||0)+1; });
+  const capNote = (m.items.filter(i=>i.kind==='ticket').length < m.tickets.total) ? '<div class="hint">Danh sách chi tiết chỉ hiện 1000 ticket gần nhất; số tổng ở trên là đầy đủ.</div>' : '';
+  $('rptBox').innerHTML = `<div class="rpt" id="rptCap">
+    <h2 class="t">Báo cáo effort — ${esc(label(m))} <span class="g ${gcls(m.grade)}" style="vertical-align:middle">${esc(m.grade)}</span></h2>
+    <div class="per">${esc(m.email||m.key)} · ${esc(groupText(m))} · Kỳ báo cáo ${fmtD(data.from)} → ${fmtD(data.to)} · ${data.mode==='assigned'?'Ticket tính theo ngày được giao':'Ticket tính theo ngày mở (Opening On)'}<br>Xếp hạng khối lượng ${rk.byLoad||'—'}/${rk.n} · xếp hạng % xử lý ${rk.byRate||'—'}/${rk.n}</div>
+    <div class="kpis s">
+      <div class="kpi"><div class="l">Được assign</div><div class="v">${m.total}</div><div class="d">ticket + task</div></div>
+      <div class="kpi k2"><div class="l">Ticket</div><div class="v">${m.tickets.total}</div><div class="d">Closed ${m.tickets.closed}</div></div>
+      <div class="kpi k3"><div class="l">Task</div><div class="v">${m.tasks.total}</div><div class="d">xong ${m.tasks.done}</div></div>
+      <div class="kpi k4"><div class="l">Đã xử lý</div><div class="v">${m.processed}</div><div class="d">chưa xử lý ${m.pending}</div></div>
+      <div class="kpi k4"><div class="l">% xử lý chung</div><div class="v">${m.rate==null?'—':m.rate+'%'}</div><div class="d">TB nhóm ${avg.rate==null?'—':avg.rate+'%'}</div></div>
+      <div class="kpi"><div class="l">% xử lý ticket</div><div class="v">${m.ticketRate==null?'—':m.ticketRate+'%'}</div><div class="d">TB nhóm ${avg.ticketRate==null?'—':avg.ticketRate+'%'}</div></div>
+      <div class="kpi k2"><div class="l">TB xử lý</div><div class="v">${m.avgHours==null?'—':m.avgHours}</div><div class="d">giờ · ${m.handling.n} ticket đã đóng</div></div>
+      <div class="kpi k3"><div class="l">Ưu tiên cao còn mở</div><div class="v">${op.p1}</div><div class="d">Critical/Urgent chưa xử lý</div></div>
+    </div>
+    <h3>So sánh với trung bình nhóm (${avg.n} người có việc)</h3>
+    <table class="cmp"><thead><tr><th>Chỉ số</th><th>${esc(label(m))}</th><th>TB nhóm</th><th>Chênh lệch</th></tr></thead><tbody>
+      ${cmpRow('Số lượt được assign', m.total, Math.round(avg.total*10)/10, '', true)}${cmpRow('% xử lý chung', m.rate, avg.rate, '%', true)}${cmpRow('% xử lý ticket', m.ticketRate, avg.ticketRate, '%', true)}${cmpRow('% task xong', m.taskRate, avg.taskRate, '%', true)}${cmpRow('TB xử lý (giờ)', m.avgHours, avg.avgHours, '', false)}${cmpRow('% ticket Critical/Urgent', pc(m.tickets.p1,m.tickets.total), avg.p1Share, '%', true)}
+    </tbody></table>
+    <h3>Biểu đồ đánh giá</h3>
+    <div class="charts">
+      <div class="cbox"><h3>Đã xử lý / chưa xử lý</h3><div style="position:relative;height:250px"><canvas id="d1"></canvas></div></div>
+      <div class="cbox"><h3>Ticket theo mức ưu tiên (đã Closed / chưa xử lý)</h3><div style="position:relative;height:250px"><canvas id="d2"></canvas></div></div>
+      <div class="cbox"><h3>Xu hướng theo tuần (được assign)</h3><div style="position:relative;height:250px"><canvas id="d3"></canvas></div></div>
+      <div class="cbox"><h3>Ticket theo trạng thái</h3><div style="position:relative;height:250px"><canvas id="d4"></canvas></div></div>
+    </div>
+    <h3>Nhận xét dành cho manager <span class="hint no-print" style="font-weight:400">(tự điền, có thể sửa)</span></h3>
+    <textarea id="rCmt">${esc(commentFor(m, avg, rk))}</textarea>
+    <h3>Danh sách ticket / task được assign (${m.items.length})</h3>
+    <div style="overflow-x:auto"><table class="lst"><thead><tr><th>Loại</th><th>Mã</th><th>Nội dung</th><th>Dự án</th><th>Ưu tiên</th><th>Trạng thái</th><th>${data.mode==='assigned'?'Ngày giao / hạn task':'Ngày mở / hạn task'}</th></tr></thead><tbody>
+    ${m.items.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).map(r=>'<tr><td><span class="tag'+(r.kind==='task'?' task':'')+'">'+(r.kind==='task'?'Task':'Ticket')+'</span></td><td>'+esc(r.id)+'</td><td>'+esc(r.title)+'</td><td>'+esc(r.project)+'</td><td>'+esc(r.priority)+'</td><td>'+esc(r.status)+'</td><td>'+esc(r.date)+'</td></tr>').join('')}
+    </tbody></table></div>${capNote}</div>`;
+  const dd = k => { if(dChart[k]){ dChart[k].destroy(); delete dChart[k]; } };
+  const base = { responsive:true, maintainAspectRatio:false, animation:false, plugins:{ legend:{ position:'bottom' } } };
+  dd('d1'); dChart.d1 = new Chart($('d1'), { type:'doughnut', data:{ labels:['Đã xử lý','Chưa xử lý'], datasets:[{ data:[m.processed,m.pending], backgroundColor:['#3F7D58','#C9D3DF'] }] }, options:{ ...base, cutout:'62%' } });
+  dd('d2'); dChart.d2 = new Chart($('d2'), { type:'bar', data:{ labels:PRIO.map(p=>p[1]), datasets:[ { label:'Đã Closed', data:PRIO.map(([k])=>m.tickets[k]-op[k]), backgroundColor:'#3F7D58' }, { label:'Chưa xử lý', data:PRIO.map(([k])=>op[k]), backgroundColor:'#B23A48' } ] }, options:{ ...base, scales:{ x:{ stacked:true }, y:{ stacked:true, beginAtZero:true, ticks:{ precision:0 } } } } });
+  dd('d3'); dChart.d3 = new Chart($('d3'), { type:'bar', data:{ labels:data.weeks.map(w=>'Tuần '+fmtD(w).slice(0,5)), datasets:[ { label:'Ticket', data:data.weeks.map(w=>m.weekly[w].tickets), backgroundColor:'#1F4E79' }, { label:'Task SynergyHub', data:data.weeks.map(w=>m.weekly[w].tasks), backgroundColor:'#E8A33D' } ] }, options:{ ...base, scales:{ x:{ stacked:true }, y:{ stacked:true, beginAtZero:true, ticks:{ precision:0 } } } } });
+  const sk = Object.keys(statusCounts);
+  dd('d4'); dChart.d4 = new Chart($('d4'), { type:'bar', data:{ labels:sk, datasets:[{ label:'Ticket', data:sk.map(k=>statusCounts[k]), backgroundColor:sk.map(k=>k==='Closed'?'#3F7D58':'#2E6F95') }] }, options:{ ...base, indexAxis:'y', plugins:{ legend:{ display:false } }, scales:{ x:{ beginAtZero:true, ticks:{ precision:0 } } } } });
+}
+$('detailMember').onchange = () => { detailKey = $('detailMember').value; renderDetail(); };
 
 /* ---------- copy / xuất ---------- */
 const headers = () => cols.map(c=>c[1]);
@@ -255,34 +423,57 @@ function tableRows(){
   return rows;
 }
 async function copyText(text){ try{ await navigator.clipboard.writeText(text); return true; }catch(e){ const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText='position:fixed;left:-9999px'; document.body.appendChild(ta); ta.select(); let ok=false; try{ ok=document.execCommand('copy'); }catch(_){} ta.remove(); return ok; } }
+async function copyImage(el, okMsg, name){
+  try{
+    const canvas = await html2canvas(el, { scale:2, backgroundColor:'#ffffff', useCORS:true });
+    const blob = await new Promise(r=>canvas.toBlob(r,'image/png'));
+    try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); setStatus('ok', okMsg); }
+    catch(_){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setStatus('ok','Trình duyệt không cho copy ảnh nên đã tải file PNG về máy.'); }
+  }catch(err){ setStatus('err','Không tạo được ảnh: '+err.message); }
+}
 $('btnCopy').onclick = async () => {
   const rows = tableRows(); const tsv = [headers()].concat(rows).map(r=>r.join('\t')).join('\n');
   const cell = 'font-family:Arial;font-size:11pt;padding:5px 8px;border:1px solid #9FB0C4';
   const html = '<table border="1" cellspacing="0" style="border-collapse:collapse"><tr>'+headers().map(h=>'<th bgcolor="#1F4E79" style="'+cell+';background:#1F4E79;color:#fff"><font color="#FFFFFF">'+esc(h)+'</font></th>').join('')+'</tr>'
     + rows.map((r,i)=>'<tr>'+r.map((v,j)=>'<td style="'+cell+(j?';text-align:right':'')+(i===rows.length-1?';background:#D0D8E8;font-weight:bold':'')+'">'+esc(v)+'</td>').join('')+'</tr>').join('')+'</table>';
   let ok; try{ await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html],{type:'text/html'}), 'text/plain': new Blob([tsv],{type:'text/plain'}) })]); ok = true; }catch(_){ ok = await copyText(tsv); }
-  setStatus(ok?'ok':'err', ok ? 'Đã copy bảng effort — dán vào Excel / Word (nơi chỉ nhận chữ sẽ ra dạng tab; muốn đúng hình dùng Copy ảnh).' : 'Trình duyệt chặn copy.');
+  setStatus(ok?'ok':'err', ok ? 'Đã copy bảng so sánh — dán vào Excel / Word (nơi chỉ nhận chữ sẽ ra dạng tab; muốn đúng hình dùng Copy ảnh).' : 'Trình duyệt chặn copy.');
 };
-$('btnImg').onclick = async () => {
-  try{
-    const canvas = await html2canvas($('chartPanel'), { scale:2, backgroundColor:'#ffffff', useCORS:true });
-    const blob = await new Promise(r=>canvas.toBlob(r,'image/png'));
-    try{ await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); setStatus('ok','Đã copy ảnh 3 biểu đồ — dán (Ctrl/Cmd + V) vào Zalo, Word, PowerPoint.'); }
-    catch(_){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'Bao_Cao_Effort_bieu_do.png'; document.body.appendChild(a); a.click(); a.remove(); setStatus('ok','Trình duyệt không cho copy ảnh nên đã tải file PNG về máy.'); }
-  }catch(err){ setStatus('err','Không tạo được ảnh: '+err.message); }
-};
+$('btnImg').onclick = () => copyImage($('chartPanel'), 'Đã copy ảnh 4 biểu đồ — dán (Ctrl/Cmd + V) vào Zalo, Word, PowerPoint.', 'Bao_Cao_Effort_bieu_do.png');
 $('btnXls').onclick = () => {
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([headers()].concat(tableRows())); ws['!cols'] = [{wch:24}].concat(headers().slice(1).map(()=>({wch:16})));
-  XLSX.utils.book_append_sheet(wb, ws, 'Effort theo thành viên');
-  const det = [['Thành viên','Email','Loại','Mã','Nội dung','Dự án','Ưu tiên','Trạng thái',data.mode==='assigned'?'Ngày giao / hạn task':'Ngày mở / hạn task']];
-  sel().forEach(m=>m.items.forEach(r=>det.push([label(m), m.email||'', r.kind==='task'?'Task':'Ticket', r.id, r.title, r.project, r.priority, r.status, r.date])));
-  const w2 = XLSX.utils.aoa_to_sheet(det); w2['!cols'] = [{wch:20},{wch:28},{wch:8},{wch:22},{wch:60},{wch:22},{wch:12},{wch:14},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws, 'So sánh thành viên');
+  const det = [['Thành viên','Email','Nhóm','Loại','Mã','Nội dung','Dự án','Ưu tiên','Trạng thái',data.mode==='assigned'?'Ngày giao / hạn task':'Ngày mở / hạn task']];
+  sel().forEach(m=>m.items.forEach(r=>det.push([label(m), m.email||'', groupText(m), r.kind==='task'?'Task':'Ticket', r.id, r.title, r.project, r.priority, r.status, r.date])));
+  const w2 = XLSX.utils.aoa_to_sheet(det); w2['!cols'] = [{wch:20},{wch:28},{wch:22},{wch:8},{wch:22},{wch:60},{wch:22},{wch:12},{wch:14},{wch:16}];
   XLSX.utils.book_append_sheet(wb, w2, 'Chi tiết');
   const wk = [['Tuần bắt đầu','Tuần kết thúc','Ticket','Task']].concat(data.weekly.map(w=>[w.weekStart,w.weekEnd,w.tickets,w.tasks]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wk), 'Theo tuần');
   XLSX.writeFile(wb, 'Bao_Cao_Effort_'+data.from+'_'+data.to+'.xlsx');
 };
+/* báo cáo chi tiết 1 thành viên */
+const curMember = () => sel().find(x=>x.key===detailKey);
+function reportText(m){
+  const list = sel(); const avg = teamAvg(list); const rk = ranks(m, list); const op = openByPrio(m);
+  return `BÁO CÁO EFFORT — ${label(m).toUpperCase()}\nKỳ báo cáo: ${fmtD(data.from)} → ${fmtD(data.to)} (${data.mode==='assigned'?'ticket tính theo ngày được giao':'ticket tính theo ngày mở'}) · ${groupText(m)}\n\n`
+    + `1. Được assign: ${m.total} lượt (${m.tickets.total} ticket, ${m.tasks.total} task)\n2. Đã xử lý: ${m.processed}/${m.total}${m.rate==null?'':' ('+m.rate+'%)'} — đánh giá: ${m.grade}\n   • Ticket Closed: ${m.tickets.closed}/${m.tickets.total}${m.ticketRate==null?'':' ('+m.ticketRate+'%)'}\n   • Task xong: ${m.tasks.done}/${m.tasks.total}${m.taskRate==null?'':' ('+m.taskRate+'%)'}\n`
+    + `3. TB xử lý: ${m.avgHours==null?'—':m.avgHours+' giờ'} (${m.handling.n} ticket đã đóng)\n4. Ticket theo ưu tiên: Critical/Urgent ${m.tickets.p1} · High ${m.tickets.high} · Medium ${m.tickets.medium} · Low ${m.tickets.low} (chưa xử lý: ${op.p1}/${op.high}/${op.medium}/${op.low})\n`
+    + `5. So với TB nhóm (${avg.n} người): khối lượng ${Math.round(avg.total*10)/10} lượt, % xử lý ${avg.rate==null?'—':avg.rate+'%'}; xếp hạng khối lượng ${rk.byLoad||'—'}/${rk.n}, xếp hạng % xử lý ${rk.byRate||'—'}/${rk.n}\n\nNhận xét:\n${$('rCmt') ? $('rCmt').value : commentFor(m, avg, rk)}`;
+}
+$('rCopy').onclick = async () => { const m = curMember(); if(!m) return; const ok = await copyText(reportText(m)); setStatus(ok?'ok':'err', ok ? 'Đã copy báo cáo của '+label(m)+' dạng văn bản.' : 'Trình duyệt chặn copy.'); };
+$('rImg').onclick = () => { const m = curMember(); if(!m) return; copyImage($('rptCap'), 'Đã copy ảnh báo cáo của '+label(m)+' — dán vào Zalo, Word, PowerPoint.', 'Bao_Cao_Effort_'+m.key+'.png'); };
+$('rXls').onclick = () => {
+  const m = curMember(); if(!m) return; const wb = XLSX.utils.book_new(); const avg = teamAvg(sel());
+  const sum = [['Chỉ số','Giá trị','TB nhóm'],['Thành viên',label(m),''],['Email',m.email||'',''],['Nhóm',groupText(m),''],['Kỳ báo cáo',fmtD(data.from)+' → '+fmtD(data.to),''],['Được assign (lượt)',m.total,Math.round(avg.total*10)/10],['Ticket',m.tickets.total,''],['Ticket Closed',m.tickets.closed,''],['Task',m.tasks.total,''],['Task xong',m.tasks.done,''],
+    ['Đã xử lý',m.processed,''],['Chưa xử lý',m.pending,''],['% xử lý chung',m.rate==null?'':m.rate+'%',avg.rate==null?'':avg.rate+'%'],['% xử lý ticket',m.ticketRate==null?'':m.ticketRate+'%',avg.ticketRate==null?'':avg.ticketRate+'%'],['% task xong',m.taskRate==null?'':m.taskRate+'%',avg.taskRate==null?'':avg.taskRate+'%'],['TB xử lý (giờ)',m.avgHours==null?'':m.avgHours,avg.avgHours==null?'':avg.avgHours],
+    ['Critical/Urgent',m.tickets.p1,''],['High',m.tickets.high,''],['Medium',m.tickets.medium,''],['Low / khác',m.tickets.low,''],['Đánh giá',m.grade,''],['',''],['Nhận xét',$('rCmt')?$('rCmt').value:'','']];
+  const w1 = XLSX.utils.aoa_to_sheet(sum); w1['!cols'] = [{wch:24},{wch:60},{wch:14}]; XLSX.utils.book_append_sheet(wb, w1, 'Tóm tắt');
+  const det = [['Loại','Mã','Nội dung','Dự án','Ưu tiên','Trạng thái',data.mode==='assigned'?'Ngày giao / hạn task':'Ngày mở / hạn task']].concat(m.items.map(r=>[r.kind==='task'?'Task':'Ticket', r.id, r.title, r.project, r.priority, r.status, r.date]));
+  const w2 = XLSX.utils.aoa_to_sheet(det); w2['!cols'] = [{wch:8},{wch:22},{wch:60},{wch:22},{wch:12},{wch:14},{wch:16}]; XLSX.utils.book_append_sheet(wb, w2, 'Ticket - Task');
+  XLSX.writeFile(wb, 'Bao_Cao_Effort_'+m.key+'_'+data.from+'_'+data.to+'.xlsx');
+};
+$('rPrint').onclick = () => window.print();
 
 /* ---------- khởi động ---------- */
 $('btnLoad').onclick = load;
