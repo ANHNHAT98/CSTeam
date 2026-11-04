@@ -807,22 +807,36 @@ function renderAssign(){
   $('assignChips').querySelectorAll('button').forEach(b=>b.onclick=()=>{ assignList.splice(Number(b.dataset.i),1); renderAssign(); });
   const handlers = CREATOR_CFG.assignees || [], creators = CREATOR_CFG.creators || [];
   const all = (CREATOR_CFG.assignable && CREATOR_CFG.assignable.length ? CREATOR_CFG.assignable : [...handlers, ...creators]);
-  const optG = UG.members.map(m=>m.email).filter(e=>!assignList.includes(e));
-  const optH = handlers.filter(e=>!assignList.includes(e) && !optG.includes(e)), optC = all.filter(e=>!handlers.includes(e) && !assignList.includes(e) && !optG.includes(e));
   const opt = e=>`<option value="${esc(e)}">${memberName(e)?esc(memberName(e))+' — ':''}${esc(e)}</option>`;
-  $('assignAdd').innerHTML = '<option value="">+ Thêm người xử lý khác…</option>'
-    + (optG.length ? `<optgroup label="Nhóm ${esc(UG.name)} (ERP)">${optG.map(opt).join('')}</optgroup>` : '')
-    + (optH.length ? `<optgroup label="Người xử lý (chuyển Assign)">${optH.map(opt).join('')}</optgroup>` : '')
-    + (optC.length ? `<optgroup label="Thành viên khác (giữ Open)">${optC.map(opt).join('')}</optgroup>` : '');
+  if(UG.name){
+    // ĐÃ chọn Assign To User Group → danh sách người xử lý lấy từ thành viên nhóm đó trên ERP
+    const optG = UG.members.map(m=>m.email).filter(e=>!assignList.includes(e));
+    $('assignAdd').innerHTML = `<option value="">${UG.loading ? 'Đang tải thành viên nhóm…' : optG.length ? '+ Thêm người xử lý trong nhóm '+esc(UG.name)+'…' : 'Đã chọn hết thành viên nhóm '+esc(UG.name)}</option>`
+      + (optG.length > 1 ? `<option value="*all">★ Chọn cả nhóm (${optG.length} người)</option>` : '')
+      + (optG.length ? `<optgroup label="Nhóm ${esc(UG.name)} (ERP)">${optG.map(opt).join('')}</optgroup>` : '');
+  }else{
+    // CHƯA chọn nhóm → chọn người xử lý như cũ (danh sách cấu hình)
+    const optH = handlers.filter(e=>!assignList.includes(e)), optC = all.filter(e=>!handlers.includes(e) && !assignList.includes(e));
+    $('assignAdd').innerHTML = '<option value="">+ Thêm người xử lý khác…</option>'
+      + (optH.length ? `<optgroup label="Người xử lý (chuyển Assign)">${optH.map(opt).join('')}</optgroup>` : '')
+      + (optC.length ? `<optgroup label="Thành viên khác (giữ Open)">${optC.map(opt).join('')}</optgroup>` : '');
+  }
   // giống server: người trong nhóm Người xử lý, hoặc thành viên nhóm ERP không phải người tạo ticket → chuyển Assign
   const isHandler = e => handlers.includes(e) || (inGroup(e) && !creators.includes(e));
   const trigger = assignList.filter(e=>e!==cr && isHandler(e));
   $('assignHint').innerHTML = trigger.length
     ? 'Có người xử lý <b>'+esc(trigger.map(e=>memberName(e)||e).join(', '))+'</b> → ticket chuyển trạng thái <b>Assign</b>.'
-    : 'Ticket giữ trạng thái <b>Open</b>. Chỉ khi chọn thêm một người trong nhóm <b>Người xử lý</b>'+(UG.name?' hoặc nhóm <b>'+esc(UG.name)+'</b>':'')+' thì mới chuyển sang <b>Assign</b>.';
+    : (UG.name
+      ? 'Ticket giữ trạng thái <b>Open</b>. Chọn thêm thành viên nhóm <b>'+esc(UG.name)+'</b> làm người xử lý thì ticket chuyển sang <b>Assign</b>.'
+      : 'Ticket giữ trạng thái <b>Open</b>. Chỉ khi chọn thêm một người trong nhóm <b>Người xử lý</b> thì mới chuyển sang <b>Assign</b>. Hoặc chọn <b>Assign To User Group</b> để lấy người xử lý theo nhóm trên ERP.');
   renderGroupMembers();
 }
-$('assignAdd').onchange = ()=>{ const v=$('assignAdd').value; if(v && !assignList.includes(v)) assignList.push(v); renderAssign(); };
+$('assignAdd').onchange = ()=>{
+  const v=$('assignAdd').value;
+  if(v==='*all') UG.members.forEach(m=>{ if(!assignList.includes(m.email)) assignList.push(m.email); });
+  else if(v && !assignList.includes(v)) assignList.push(v);
+  renderAssign();
+};
 async function initCreators(){
   const sel = $('creator');
   try{ CREATOR_CFG = await api('/api/erp/ticket-creators'); }
