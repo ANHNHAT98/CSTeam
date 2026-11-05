@@ -16,19 +16,21 @@
     },
     "titleTemplate": "Báo cáo tuần {project} {week}",
     "submit": false,
+    "owners": [
+      "lamlt1@hqsoft.com.vn",
+      "phuctm@hqsoft.com.vn",
+      "nhatha@hqsoft.com.vn",
+      "nhuttm@hqsoft.com.vn"
+    ],
     "projects": [
       "ABI_eSales_Support",
-      "ANKO_eSales_Support",
       "ANVY_eSale_Support",
-      "FES_eSales",
-      "HaiHa_eSales_Support",
-      "Jotun_VN_eSales",
       "MerapLion_eSales",
       "Sabeco_B2B_Support",
       "Sabeco_PG"
     ],
     "extra": {},
-    "updatedAt": "2026-11-05T15:07:27.577Z",
+    "updatedAt": "2026-11-05T15:42:46.887Z",
     "updatedBy": "admin"
   }
 ]
