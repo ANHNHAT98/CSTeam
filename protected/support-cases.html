@@ -137,7 +137,7 @@
   <div id="viewForm" style="display:none;">
     <div class="panel">
       <h2 id="formTitle">Tạo case mới</h2>
-      <div class="panel-sub">Điền thông tin rồi bấm Lưu. Cách xử lý / câu lệnh SQL được giữ nguyên xuống dòng và thụt lề. Có thể dán ảnh (Ctrl/Cmd + V), kéo thả hoặc chọn file ảnh.</div>
+      <div class="panel-sub">Điền thông tin rồi bấm Lưu. Cách xử lý / câu lệnh SQL được giữ nguyên xuống dòng và thụt lề. Có thể dán ảnh (Ctrl/Cmd + V), kéo thả hoặc chọn file (ảnh, Excel, Word, PDF, log, zip/rar, video…).</div>
       <div class="form-grid">
         <div class="form-field" id="projectField">
           <label>DỰ ÁN</label>
@@ -162,11 +162,11 @@
           <div class="hint">Giữ nguyên xuống dòng và thụt lề; người xem có nút Copy để lấy lại nhanh.</div>
         </div>
         <div class="form-field full">
-          <label>HÌNH ẢNH</label>
+          <label>HÌNH ẢNH / FILE ĐÍNH KÈM</label>
           <div class="drop" id="drop">
-            <button type="button" class="btn btn-ghost btn-mini" id="pickBtn">📎 Chọn ảnh</button>
-            <span style="margin-left:8px">hoặc kéo thả / dán ảnh (Ctrl/Cmd + V) vào đây — ảnh, tối đa 20MB mỗi file</span>
-            <input type="file" id="fileInput" multiple accept="image/*,.pdf,.txt,.sql,.zip" style="display:none">
+            <button type="button" class="btn btn-ghost btn-mini" id="pickBtn">📎 Chọn ảnh / file</button>
+            <span style="margin-left:8px">hoặc kéo thả / dán ảnh (Ctrl/Cmd + V) vào đây — <span id="dropHint">ảnh, Excel, Word, PDF, log, zip/rar, video; tối đa 50MB mỗi file</span></span>
+            <input type="file" id="fileInput" multiple style="display:none">
             <div class="thumbs" id="formThumbs"></div>
           </div>
         </div>
@@ -189,6 +189,15 @@ let formTags = ''; // tag tự do của case cũ — giữ nguyên khi lưu
 let formImages = [];   // meta ảnh của case đang soạn (ảnh mới tải lên có thêm _preview để xem trước)
 let freshAssets = [];  // ảnh vừa tải lên trong lần soạn này (chưa lưu) — huỷ form thì dọn
 let dirty = false;
+let fileTypes = ['png','jpg','jpeg','gif','webp','bmp','pdf','txt','log','sql','json','xml','csv','xls','xlsx','doc','docx','ppt','pptx','zip','rar','7z','mp4','mov','webm']; // server gửi lại danh sách thật khi tải trang
+let maxFileBytes = 50 * 1024 * 1024;
+const extOf = name => (String(name||'').match(/\.([a-z0-9]+)$/i) || ['',''])[1].toLowerCase();
+const fileIcon = name => { const e = extOf(name);
+  return /^(xlsx?|csv)$/.test(e) ? '📊' : /^docx?$/.test(e) ? '📝' : /^pptx?$/.test(e) ? '📽️' : e === 'pdf' ? '📕' : /^(zip|rar|7z)$/.test(e) ? '🗜️' : /^(mp4|mov|webm)$/.test(e) ? '🎬' : /^(txt|log|sql|json|xml)$/.test(e) ? '📄' : '📎'; };
+function applyFileTypes(){
+  $('fileInput').accept = fileTypes.map(e => '.' + e).join(',');
+  $('dropHint').textContent = 'ảnh, Excel, Word, PDF, log, zip/rar, video; tối đa ' + fmtSize(maxFileBytes).replace('.0 ', ' ') + ' mỗi file';
+}
 
 const $ = id => document.getElementById(id);
 function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -229,6 +238,9 @@ async function loadCases(){
     const data = await fetchJson('/api/support-cases');
     allCases = Array.isArray(data.cases) ? data.cases : [];
     if (Array.isArray(data.modules) && data.modules.length) modules = data.modules;
+    if (Array.isArray(data.fileTypes) && data.fileTypes.length) fileTypes = data.fileTypes;
+    if (Number(data.maxFileBytes) > 0) maxFileBytes = Number(data.maxFileBytes);
+    applyFileTypes();
     $('backendBadge').innerHTML = data.githubBacked ? '' : '<span class="backend-badge">● Chưa cấu hình GitHub — đang lưu tạm trên server, CÓ THỂ MẤT khi redeploy. Cấu hình GITHUB_TOKEN/GITHUB_REPO để lưu vĩnh viễn.</span>';
     renderFilters();
     if (LOCKED_PROJECT) $('projectFilter').value = LOCKED_PROJECT;
@@ -287,7 +299,7 @@ function renderList(){
             ${c.project ? `<span class="case-chip">${escapeHtml(c.project)}</span>` : ''}
             ${c.module ? `<span class="case-chip mod">${escapeHtml(c.module)}</span>` : ''}
             ${tagsOf(c).map(t => `<span class="case-chip tag">#${escapeHtml(t)}</span>`).join('')}
-            ${imgs.length ? `<span class="case-chip has">🖼 ${imgs.length} ảnh</span>` : ''}
+            ${imgs.length ? (() => { const ni = imgs.filter(f => isImg(f.name)).length, nf = imgs.length - ni; return `<span class="case-chip has">${[ni ? '🖼 ' + ni + ' ảnh' : '', nf ? '📎 ' + nf + ' file' : ''].filter(Boolean).join(' · ')}</span>`; })() : ''}
             <span class="case-date">${escapeHtml(fmtDate(c.updatedAt))}</span>
           </div>
         </div>
@@ -297,9 +309,9 @@ function renderList(){
         ${c.symptom ? `<div class="case-field"><label>Mô tả sự cố</label><div class="val">${escapeHtml(c.symptom)}</div></div>` : ''}
         ${c.cause ? `<div class="case-field"><label>Nguyên nhân</label><div class="val">${escapeHtml(c.cause)}</div></div>` : ''}
         ${fixOf(c) ? `<div class="case-field"><label>Cách xử lý / câu lệnh SQL <button class="btn btn-ghost btn-mini" data-copyfix="${escapeHtml(c.id)}">📋 Copy</button></label><pre class="fixbox">${escapeHtml(fixOf(c))}</pre></div>` : ''}
-        ${imgs.length ? `<div class="case-field"><label>Hình ảnh</label><div class="thumbs">${imgs.map(f => isImg(f.name)
+        ${imgs.length ? `<div class="case-field"><label>Hình ảnh / File đính kèm</label><div class="thumbs">${imgs.map(f => isImg(f.name)
             ? `<div class="thumb" data-zoom="${escapeHtml(fileUrl(c.id,f))}" title="${escapeHtml(f.name)}"><img loading="lazy" src="${escapeHtml(fileUrl(c.id,f))}" alt=""><div class="cap">${escapeHtml(f.name)}</div></div>`
-            : `<a class="thumb file" href="${escapeHtml(fileUrl(c.id,f))}" download>📎 ${escapeHtml(f.name)}<br><small>${fmtSize(f.size)}</small></a>`).join('')}</div></div>` : ''}
+            : `<a class="thumb file" href="${escapeHtml(fileUrl(c.id,f))}" download>${fileIcon(f.name)} ${escapeHtml(f.name)}<br><small>${fmtSize(f.size)}</small></a>`).join('')}</div></div>` : ''}
         <div class="case-card-actions">
           <button class="btn btn-ghost btn-mini" data-edit="${escapeHtml(c.id)}">✎ Sửa</button>
           <button class="btn btn-danger btn-mini${armDeleteId===c.id?' arm':''}" data-delete="${escapeHtml(c.id)}">${armDeleteId===c.id?'Bấm lần nữa để xoá':'🗑 Xoá'}</button>
@@ -360,7 +372,7 @@ async function closeForm(){ // thoát form: dọn ảnh vừa tải lên mà ch�
 function renderFormThumbs(){
   $('formThumbs').innerHTML = formImages.map((f, i) => (isImg(f.name) && f._url)
     ? `<div class="thumb" data-zoom="${escapeHtml(f._url)}" title="${escapeHtml(f.name)}"><img src="${escapeHtml(f._url)}" alt=""><div class="cap">${escapeHtml(f.name)} · ${fmtSize(f.size)}</div><button type="button" class="x" data-rmimg="${i}" title="Bỏ ảnh này">✕</button></div>`
-    : `<div class="thumb file" title="${escapeHtml(f.name)}">📎 ${escapeHtml(f.name)}<br><small>${fmtSize(f.size)}</small><button type="button" class="x" data-rmimg="${i}" title="Bỏ file này">✕</button></div>`).join('');
+    : `<div class="thumb file" title="${escapeHtml(f.name)}">${fileIcon(f.name)} ${escapeHtml(f.name)}<br><small>${fmtSize(f.size)}</small><button type="button" class="x" data-rmimg="${i}" title="Bỏ file này">✕</button></div>`).join('');
   $('formThumbs').querySelectorAll('[data-zoom]').forEach(el => el.addEventListener('click', e => { if (e.target.closest('.x')) return; $('lightboxImg').src = el.dataset.zoom; $('lightbox').classList.add('on'); }));
   $('formThumbs').querySelectorAll('[data-rmimg]').forEach(el => el.addEventListener('click', e => {
     e.stopPropagation(); const f = formImages.splice(Number(el.dataset.rmimg), 1)[0]; dirty = true;
@@ -371,23 +383,31 @@ function renderFormThumbs(){
 }
 
 async function uploadFiles(files){
-  const list = [...files]; if (!list.length) return;
+  const list = [...files]; if (!list.length) return; let failed = false;
   for (const file of list){
     if (formImages.length >= 20){ setFormStatus('Tối đa 20 ảnh / file cho mỗi case.', 'err'); break; }
+    if (!fileTypes.includes(extOf(file.name))){ setFormStatus(`Không tải được ${file.name}: loại file ".${extOf(file.name) || '?'}" chưa được hỗ trợ. Cho phép: ${fileTypes.join(', ')}.`, 'err'); failed = true; continue; }
+    if (file.size > maxFileBytes){ setFormStatus(`Không tải được ${file.name}: file ${fmtSize(file.size)} lớn hơn giới hạn ${fmtSize(maxFileBytes)} — hãy nén lại hoặc dán link Drive/SharePoint vào phần Cách xử lý.`, 'err'); failed = true; continue; }
     setFormStatus(`Đang tải lên ${file.name} (${fmtSize(file.size)})…`, 'busy');
     try{
       const fd = new FormData(); fd.append('file', file, file.name || 'anh-dan.png');
       const r = await fetchJson('/api/support-cases/upload', { method:'POST', body: fd });
       formImages.push({ ...r.file, _url: isImg(file.name) ? URL.createObjectURL(file) : '' });
-      freshAssets.push(r.file.assetId); dirty = true; renderFormThumbs(); setFormStatus('', '');
-    }catch(err){ setFormStatus(`Không tải được ${file.name}: ${err.message}`, 'err'); }
+      freshAssets.push(r.file.assetId); dirty = true; renderFormThumbs(); if (!failed) setFormStatus('', '');
+    }catch(err){ setFormStatus(`Không tải được ${file.name}: ${err.message}`, 'err'); failed = true; }
   }
 }
 $('pickBtn').addEventListener('click', () => { $('fileInput').value = ''; $('fileInput').click(); });
 $('fileInput').addEventListener('change', () => uploadFiles($('fileInput').files));
 ['dragenter','dragover'].forEach(ev => $('drop').addEventListener(ev, e => { e.preventDefault(); $('drop').classList.add('over'); }));
 ['dragleave','drop'].forEach(ev => $('drop').addEventListener(ev, e => { e.preventDefault(); $('drop').classList.remove('over'); }));
-$('drop').addEventListener('drop', e => uploadFiles(e.dataTransfer.files));
+$('drop').addEventListener('drop', e => { e.stopPropagation(); uploadFiles(e.dataTransfer.files); });
+// thả file lệch ra ngoài khung (vào ô mô tả, nền trang…) → trình duyệt sẽ mở file và mất form đang soạn; chặn lại và vẫn tải lên khi đang ở form
+['dragover','drop'].forEach(ev => document.addEventListener(ev, e => {
+  if (!e.dataTransfer || ![...(e.dataTransfer.types || [])].includes('Files')) return;
+  e.preventDefault();
+  if (ev === 'drop' && $('viewForm').style.display !== 'none') uploadFiles(e.dataTransfer.files);
+}));
 document.addEventListener('paste', e => { // dán ảnh (Ctrl/Cmd + V) khi đang ở form
   if ($('viewForm').style.display === 'none') return;
   const files = [...(e.clipboardData && e.clipboardData.items || [])].filter(i => i.kind === 'file' && i.type.startsWith('image/')).map(i => {

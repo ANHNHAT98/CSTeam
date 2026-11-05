@@ -12,7 +12,7 @@ const { createFileStore, cleanFiles } = require('./envFiles');
 const store = createListStore({ repoFilePath: 'data/support-cases.json', localFile: 'data/support-cases.json' });
 const images = createFileStore({
   tag: 'support-case-files', title: 'Ảnh Case Hỗ Trợ', description: 'Ảnh/tài liệu đính kèm do tool Case Hỗ Trợ quản lý — đừng xoá tay.',
-  localDir: 'support-case-files', allowed: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf', 'txt', 'sql', 'zip'], maxBytes: 20 * 1024 * 1024,
+  localDir: 'support-case-files', allowed: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'pdf', 'txt', 'log', 'sql', 'json', 'xml', 'csv', 'xls', 'xlsx', 'doc', 'docx', 'ppt', 'pptx', 'zip', 'rar', '7z', 'mp4', 'mov', 'webm'], maxBytes: 50 * 1024 * 1024,
 });
 const MAX_IMAGES = 20;
 const MODULES = ['API', 'BO', 'APP', 'Manager', 'Report']; // phân hệ (chọn 1 trong combobox)

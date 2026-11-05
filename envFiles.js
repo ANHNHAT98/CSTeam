@@ -9,7 +9,7 @@ const path = require('path');
 const { Readable } = require('stream');
 const github = require('./githubClient');
 
-const MIME = { apk: 'application/vnd.android.package-archive', zip: 'application/zip', pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', txt: 'text/plain; charset=utf-8', sql: 'text/plain; charset=utf-8', json: 'application/json', csv: 'text/csv; charset=utf-8', md: 'text/plain; charset=utf-8' };
+const MIME = { apk: 'application/vnd.android.package-archive', zip: 'application/zip', pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', txt: 'text/plain; charset=utf-8', sql: 'text/plain; charset=utf-8', json: 'application/json', csv: 'text/csv; charset=utf-8', md: 'text/plain; charset=utf-8', log: 'text/plain; charset=utf-8', xml: 'application/xml', bmp: 'image/bmp', mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xls: 'application/vnd.ms-excel', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', doc: 'application/msword', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', ppt: 'application/vnd.ms-powerpoint' };
 const extOf = (n) => path.extname(String(n || '')).slice(1).toLowerCase();
 const mimeOf = (n) => MIME[extOf(n)] || 'application/octet-stream';
 const safeName = (n) => String(n || 'file').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/[^\w.\-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 100) || 'file';
@@ -63,7 +63,7 @@ function createFileStore({ tag, title, description, localDir, allowed, maxBytes 
     await github.deleteReleaseAsset(assetId);
   }
 
-  return { save, open, remove, MAX_BYTES, ALLOWED };
+  return { save, open, remove, MAX_BYTES, ALLOWED, maxLabel };
 }
 
 /** Làm sạch danh sách meta file lấy từ client (chỉ giữ trường hợp lệ). */

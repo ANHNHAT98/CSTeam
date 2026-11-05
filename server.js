@@ -1440,7 +1440,7 @@ app.get('/api/support-cases', requireAuth, async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store');
     const cases = await supportCases.readAll();
-    res.json({ cases, modules: supportCases.MODULES, githubBacked: supportCases.isGithubBacked() });
+    res.json({ cases, modules: supportCases.MODULES, githubBacked: supportCases.isGithubBacked(), fileTypes: [...supportCases.images.ALLOWED], maxFileBytes: supportCases.images.MAX_BYTES });
   } catch (e) {
     console.error('[support-cases:get] lỗi:', e.message);
     res.status(502).json({ error: e.message });
@@ -1460,7 +1460,7 @@ app.post('/api/support-cases', requireAuth, async (req, res) => {
 const caseUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: supportCases.images.MAX_BYTES, files: 1 } }).single('file');
 app.post('/api/support-cases/upload', requireAuth, (req, res) => {
   caseUpload(req, res, async (err) => {
-    if (err) return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'File lớn hơn 20MB — hãy giảm dung lượng ảnh.' : err.message });
+    if (err) return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? `File lớn hơn ${supportCases.images.maxLabel} — hãy nén/giảm dung lượng hoặc dán link (Drive/SharePoint…).` : err.message });
     if (!req.file) return res.status(400).json({ error: 'Chưa chọn file.' });
     try {
       const name = Buffer.from(req.file.originalname, 'latin1').toString('utf8'); // multer đọc tên theo latin1 → đổi lại UTF-8
