@@ -321,6 +321,7 @@ async function saveConfig(input, user) {
     fields: { project: fieldName(f.project), from: fieldName(f.from), to: fieldName(f.to), content: fieldName(f.content), title: fieldName(f.title) },
     titleTemplate: String(input.titleTemplate === undefined ? cur.titleTemplate : input.titleTemplate).slice(0, 200),
     submit: input.submit === undefined ? cur.submit : Boolean(input.submit),
+    owners: (Array.isArray(input.owners) ? input.owners : (cur.owners || [])).map((x) => String(x).trim().toLowerCase()).filter((x) => /^[^\s@]+@[^\s@]+$/.test(x)).slice(0, 30),
     projects: (Array.isArray(input.projects) ? input.projects : cur.projects).map((p) => String(p).trim()).filter(Boolean).slice(0, 50),
     extra,
     updatedAt: new Date().toISOString(), updatedBy: user || '',

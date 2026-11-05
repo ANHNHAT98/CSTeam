@@ -1531,12 +1531,24 @@ app.post('/api/weekly-erp/run-all', requireAuth, async (req, res) => {
   try { res.json(await weeklyErp.runAll({ from: b.from, to: b.to, force: Boolean(b.force), by: req.session.username })); }
   catch (e) { res.status(502).json({ error: e.message }); }
 });
+let cronRunning = false;
 app.post('/api/cron/weekly-erp', async (req, res) => {
   const secret = String(process.env.CRON_SECRET || '');
   const got = String(req.get('x-cron-key') || '');
   const ok = secret.length >= 16 && got.length === secret.length && require('crypto').timingSafeEqual(Buffer.from(got), Buffer.from(secret));
   if (!ok) return res.status(secret ? 403 : 501).json({ error: secret ? 'Sai X-Cron-Key.' : 'Server chưa cấu hình CRON_SECRET (tối thiểu 16 ký tự).' });
   if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  // ?async=1: trả lời ngay (202) rồi chạy nền — cho dịch vụ lịch có timeout ngắn (cron-job.org free: 30s). Kết quả xem ở "Lịch sử chạy" trên trang.
+  if (/^(1|true|yes)$/i.test(String(req.query.async || ''))) {
+    if (cronRunning) return res.status(202).json({ accepted: true, note: 'Đang có 1 lượt chạy — bỏ qua lượt trùng.' });
+    cronRunning = true;
+    res.status(202).json({ accepted: true, note: 'Đã nhận — đang chạy nền, xem kết quả ở Lịch sử chạy trên trang Báo Cáo Tuần ERP.' });
+    weeklyErp.runAll({ from: req.query.from, to: req.query.to })
+      .then((out) => console.log(`[weekly-erp:cron-async] ${out.skipped ? 'bỏ qua: ' + out.reason : `${out.results.length} dự án, lỗi ${out.results.filter((r) => !r.ok).length}`}`))
+      .catch((e) => console.error('[weekly-erp:cron-async] lỗi:', e.message))
+      .finally(() => { cronRunning = false; });
+    return;
+  }
   try {
     const out = await weeklyErp.runAll({ from: req.query.from, to: req.query.to });
     const failed = (out.results || []).filter((r) => !r.ok);

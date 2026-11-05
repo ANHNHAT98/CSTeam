@@ -68,8 +68,19 @@
   .auto-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin-top:12px;}
   .auto-grid .field{min-width:0;}
   .auto-grid select, .auto-grid input[type=text]{width:100%;box-sizing:border-box;}
-  .proj-list{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:13px;}
-  .proj-list label{display:inline-flex;gap:6px;align-items:center;cursor:pointer;}
+  .proj-list{margin-top:8px;font-size:13px;}
+  .proj-tools{display:flex;gap:8px;margin-bottom:10px;}
+  .proj-tools .btn{padding:5px 12px;font-size:12px;}
+  .proj-group{margin-bottom:14px;}
+  .proj-group-h{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted);text-transform:none;letter-spacing:.04em;margin:0 0 6px;display:flex;gap:8px;align-items:center;}
+  .proj-group-h .cnt{background:rgba(31,78,121,.08);color:var(--blueprint);border-radius:10px;padding:0 7px;}
+  .proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;}
+  .proj-list label.proj-item{text-transform:none;letter-spacing:normal;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--ink);display:flex;gap:10px;align-items:flex-start;border:1px solid var(--grid-line-strong);border-radius:8px;padding:9px 11px;cursor:pointer;background:#fff;transition:border-color .12s,background .12s;}
+  .proj-list label.proj-item:hover{border-color:var(--blueprint);}
+  .proj-list label.proj-item.on{background:#EEF4FA;border-color:var(--blueprint);}
+  .proj-item input{margin-top:2px;flex:0 0 auto;}
+  .proj-item .nm{font-weight:600;color:var(--ink);line-height:1.3;}
+  .proj-item .cd{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px;word-break:break-all;}
   .chk{display:inline-flex;gap:8px;align-items:center;font-size:13.5px;cursor:pointer;margin-right:18px;}
   .runs{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px;}
   .runs th,.runs td{border:1px solid var(--grid-line-strong);padding:6px 8px;text-align:left;vertical-align:top;}
@@ -270,7 +281,6 @@ Hỗ trợ thanh toán công cho MDS và kế toán</textarea>
   <div class="tab-panel" id="tab-auto">
   <div class="panel no-print" id="autoPanel">
     <h2><span class="n">⚙</span> Tự động gửi vào ERP theo lịch <span class="pill" id="autoState">…</span></h2>
-    <div class="list-hint">Đến lịch, tool tự lấy dữ liệu <b>kỳ vừa kết thúc</b> cho từng dự án bên dưới, tính y như nút "Lấy dữ liệu" ở trên, rồi ghi báo cáo vào ERP (kèm ảnh biểu đồ). Mỗi dự án / kỳ chỉ ghi 1 lần — nếu trong ERP đã có note "Tuần báo cáo" của kỳ đó (kể cả note dán tay) thì bỏ qua.</div>
 
     <div class="auto-grid">
       <div class="field" style="grid-column:span 2">
@@ -309,7 +319,9 @@ Hỗ trợ thanh toán công cho MDS và kế toán</textarea>
       <label class="chk"><input type="checkbox" id="au_enabled"> Bật chạy tự động theo lịch</label>
       <span class="list-hint" id="au_weekHint"></span>
     </div>
-    <div class="field" style="margin-top:12px"><label>Dự án chạy tự động</label><div class="proj-list" id="au_projects"></div></div>
+    <div class="field" style="margin-top:12px"><label>Chủ dự án (project owner) — email, cách nhau dấu phẩy</label>
+      <div style="display:flex;gap:8px"><input type="text" id="au_owners" style="flex:1"><button class="btn btn-ghost" id="au_loadOwners" type="button">Tải dự án</button></div></div>
+    <div class="field" style="margin-top:12px"><label>Dự án chạy tự động <span id="au_projCount"></span></label><div class="proj-list" id="au_projects"></div></div>
 
     <div class="actions">
       <button class="btn btn-primary" id="au_save" type="button">💾 Lưu cấu hình</button>
@@ -558,7 +570,7 @@ async function loadProjects(){
     setStatus('Không tải được danh sách dự án: ' + err.message, 'err');
   }
 }
-loadProjects().then(() => { if (typeof AU !== 'undefined' && AU.config){ renderProjects(); fillTestProjects(); } });
+loadProjects();
 
 /* ---------- parse ngày kiểu Frappe ("YYYY-MM-DD HH:MM:SS" hoặc "YYYY-MM-DD") ---------- */
 function parseFrappeDate(raw){
@@ -1059,12 +1071,42 @@ function weekHint(){
 }
 au$('au_weekEnd').addEventListener('change', weekHint);
 
+/* Dự án chạy tự động: chỉ dự án có Project Owner thuộc team (danh sách email ở ô Chủ dự án) */
+const DEFAULT_OWNERS = ['lamlt1@hqsoft.com.vn','phuctm@hqsoft.com.vn','nhatha@hqsoft.com.vn','nhuttm@hqsoft.com.vn'];
+const ownersOf = () => au$('au_owners').value.split(/[,;\s]+/).map(x => x.trim().toLowerCase()).filter(Boolean);
+async function loadOwnerProjects(){
+  const owners = ownersOf();
+  if (!owners.length){ AU.ownerProjects = []; renderProjects(); fillTestProjects(); return; }
+  au$('au_projects').innerHTML = '<span class="list-hint">Đang tải dự án của ' + owners.length + ' chủ dự án…</span>';
+  try{
+    const res = await fetch('/api/erp/projects?' + new URLSearchParams({ project_owner: JSON.stringify(owners) }), { credentials:'same-origin' });
+    const d = await res.json(); if (!res.ok) throw new Error(d.error || 'HTTP ' + res.status);
+    AU.ownerProjects = (Array.isArray(d.data) ? d.data : []).filter(p => p.status !== 'Cancelled');
+  }catch(e){ AU.ownerProjects = null; auStatus('Không tải được dự án theo chủ dự án: ' + e.message, 'err'); }
+  renderProjects(); fillTestProjects();
+}
+au$('au_loadOwners').addEventListener('click', loadOwnerProjects);
+au$('au_owners').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); loadOwnerProjects(); } });
 function renderProjects(){
-  const chosen = new Set((AU.config && AU.config.projects) || []);
-  const fromErp = [...projectSelect.options].map(o => ({ v:o.value, t:o.textContent })).filter(o => o.v);
-  const all = new Map(fromErp.map(o => [o.v, o.t]));
-  chosen.forEach(p => { if (!all.has(p)) all.set(p, p); });
-  au$('au_projects').innerHTML = [...all].map(([v,t]) => `<label><input type="checkbox" value="${escapeAttr(v)}"${chosen.has(v) ? ' checked' : ''}> ${escapeHtml(t)}</label>`).join('') || '<span class="list-hint">(chưa tải được danh sách dự án)</span>';
+  const list = AU.ownerProjects;
+  if (!list){ au$('au_projects').innerHTML = '<span class="list-hint">(chưa tải được danh sách dự án — bấm Tải dự án)</span>'; au$('au_projCount').textContent = ''; return; }
+  const saved = AU.config && AU.config.updatedAt ? new Set(AU.config.projects || []) : null; // chưa lưu lần nào → tick hết
+  if (!list.length){ au$('au_projects').innerHTML = '<span class="list-hint">(không có dự án nào thuộc các chủ dự án trên)</span>'; au$('au_projCount').textContent = ''; return; }
+  // nhóm theo chủ dự án (theo thứ tự trong ô Chủ dự án), trong nhóm xếp theo tên
+  const order = ownersOf(); const groups = new Map();
+  list.forEach(p => { const o = String(p.project_owner || '').toLowerCase(); if (!groups.has(o)) groups.set(o, []); groups.get(o).push(p); });
+  const keys = [...groups.keys()].sort((a, b) => ((order.indexOf(a) + 1) || 999) - ((order.indexOf(b) + 1) || 999) || a.localeCompare(b));
+  const item = p => `<label class="proj-item${!saved || saved.has(p.name) ? ' on' : ''}" title="${escapeAttr(p.name)}${p.status ? ' · ' + escapeAttr(p.status) : ''}"><input type="checkbox" value="${escapeAttr(p.name)}"${!saved || saved.has(p.name) ? ' checked' : ''}><span><div class="nm">${escapeHtml(p.project_name || p.name)}</div><div class="cd">${escapeHtml(p.name)}${p.status && p.status !== 'Open' ? ' · ' + escapeHtml(p.status) : ''}</div></span></label>`;
+  au$('au_projects').innerHTML = `<div class="proj-tools"><button type="button" class="btn btn-ghost" data-pall="1">☑ Chọn tất cả</button><button type="button" class="btn btn-ghost" data-pall="0">☐ Bỏ chọn tất cả</button></div>` +
+    keys.map(k => { const ps = groups.get(k).sort((a, b) => String(a.project_name || a.name).localeCompare(String(b.project_name || b.name), 'vi'));
+      return `<div class="proj-group"><div class="proj-group-h">👤 ${escapeHtml(k || '(chưa có owner)')} <span class="cnt">${ps.length}</span></div><div class="proj-grid">${ps.map(item).join('')}</div></div>`; }).join('');
+  au$('au_projects').querySelectorAll('.proj-item input').forEach(i => i.addEventListener('change', () => { i.closest('.proj-item').classList.toggle('on', i.checked); updateProjCount(); }));
+  au$('au_projects').querySelectorAll('[data-pall]').forEach(b => b.addEventListener('click', () => { au$('au_projects').querySelectorAll('.proj-item input').forEach(i => { i.checked = b.dataset.pall === '1'; i.closest('.proj-item').classList.toggle('on', i.checked); }); updateProjCount(); }));
+  updateProjCount();
+}
+function updateProjCount(){
+  const all = au$('au_projects').querySelectorAll('.proj-item input'); const on = [...all].filter(i => i.checked).length;
+  au$('au_projCount').textContent = all.length ? `(đã chọn ${on}/${all.length} dự án)` : '';
 }
 function renderRuns(runs){
   if (!runs || !runs.length){ au$('au_runs').innerHTML = 'Chưa chạy lần nào.'; return; }
@@ -1095,7 +1137,9 @@ async function loadAuto(){
     au$('au_titleTpl').value = d.config.titleTemplate || '';
     au$('au_submit').checked = !!d.config.submit;
     au$('au_enabled').checked = !!d.config.enabled;
-    renderProjects(); renderRuns(d.runs); renderState(d.cronReady); fillFieldSelects(); fillTestProjects();
+    au$('au_owners').value = (Array.isArray(d.config.owners) && d.config.owners.length ? d.config.owners : DEFAULT_OWNERS).join(', ');
+    renderRuns(d.runs); renderState(d.cronReady); fillFieldSelects();
+    if (AU.ownerProjects === undefined) loadOwnerProjects(); else { renderProjects(); fillTestProjects(); }
     if (!au$('au_testFrom').dataset.touched){ au$('au_testFrom').value = d.lastWeek.from; au$('au_testTo').value = d.lastWeek.to; }
     if (d.config.doctype) loadMeta(true);
   }catch(e){ auStatus('Không tải được cấu hình tự động: ' + e.message, 'err'); }
@@ -1120,7 +1164,7 @@ function collectConfig(){
   const fields = {}; MAP_KEYS.forEach(k => fields[k] = au$('au_f_' + k).value);
   const extra = {}; document.querySelectorAll('#au_extra [data-extra]').forEach(i => { if (i.value.trim()) extra[i.dataset.extra] = i.value.trim(); });
   return { doctype: au$('au_doctype').value.trim(), mode: au$('au_mode').value, docname: au$('au_docname').value.trim(), noteTable: au$('au_noteTable').value, noteField: au$('au_noteField').value, weekEnd: Number(au$('au_weekEnd').value), fields, extra, titleTemplate: au$('au_titleTpl').value, submit: au$('au_submit').checked, enabled: au$('au_enabled').checked,
-    projects: [...document.querySelectorAll('#au_projects input:checked')].map(i => i.value) };
+    owners: ownersOf(), projects: [...document.querySelectorAll('#au_projects input:checked')].map(i => i.value) };
 }
 au$('au_save').addEventListener('click', async () => {
   auStatus('Đang lưu cấu hình…', 'busy');
@@ -1136,9 +1180,8 @@ function testArgs(){
 }
 function fillTestProjects(){
   const sel = au$('au_testProject'); const cur = sel.value;
-  const opts = [...projectSelect.options].filter(o => o.value);
   const chosen = (AU.config && AU.config.projects) || [];
-  const all = new Map(opts.map(o => [o.value, o.textContent])); chosen.forEach(p => { if (!all.has(p)) all.set(p, p); });
+  const all = new Map((AU.ownerProjects || []).map(p => [p.name, p.project_name || p.name]));
   sel.innerHTML = [...all].map(([v,t]) => `<option value="${escapeAttr(v)}">${escapeHtml(t)}</option>`).join('') || '<option value="">— chưa có dự án —</option>';
   if (cur && all.has(cur)) sel.value = cur; else if (chosen[0] && all.has(chosen[0])) sel.value = chosen[0];
 }

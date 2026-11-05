@@ -21,8 +21,11 @@ Mỗi dự án phải có sẵn bản ghi Project Progress Update tên = mã d�
 ## 3. Đặt lịch (chọn 1 cách)
 - **GitHub Actions**: xem `github-actions-weekly-erp.yml`.
 - **GitLab**: xem `gitlab-ci-weekly-erp.yml`.
-- **cron-job.org**: URL `https://csteam.onrender.com/api/cron/weekly-erp`, method POST, header `X-Cron-Key: <CRON_SECRET>`,
-  lịch thứ 2 08:00 (Asia/Ho_Chi_Minh), timeout tối đa.
+- **cron-job.org** (gói free timeout 30 giây):
+  - Job 1 — đánh thức Render: GET `https://csteam.onrender.com/`, thứ 2 01:00 UTC (= 08:00 VN).
+  - Job 2 — chạy báo cáo: POST `https://csteam.onrender.com/api/cron/weekly-erp?async=1`, header `X-Cron-Key: <CRON_SECRET>`,
+    thứ 2 01:01 UTC (= 08:01 VN). `?async=1` → tool trả lời ngay (202) rồi chạy nền, nên không bị timeout;
+    kết quả từng dự án xem ở "Lịch sử chạy" trên trang.
 
 Thử tay: `curl -X POST -H "X-Cron-Key: <CRON_SECRET>" https://csteam.onrender.com/api/cron/weekly-erp`
 (thêm `?from=2026-10-26&to=2026-11-01` để chạy 1 tuần cụ thể). Kết quả từng lần chạy xem ở bảng "Lịch sử chạy" trên trang.
