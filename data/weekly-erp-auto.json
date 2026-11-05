@@ -1,0 +1,34 @@
+[
+  {
+    "enabled": true,
+    "mode": "note",
+    "weekEnd": 0,
+    "docname": "{project}",
+    "noteTable": "notes",
+    "noteField": "note",
+    "doctype": "Project Progress Update",
+    "fields": {
+      "project": "project",
+      "from": "",
+      "to": "",
+      "content": "other_notes",
+      "title": ""
+    },
+    "titleTemplate": "Báo cáo tuần {project} {week}",
+    "submit": false,
+    "projects": [
+      "ABI_eSales_Support",
+      "ANKO_eSales_Support",
+      "ANVY_eSale_Support",
+      "FES_eSales",
+      "HaiHa_eSales_Support",
+      "Jotun_VN_eSales",
+      "MerapLion_eSales",
+      "Sabeco_B2B_Support",
+      "Sabeco_PG"
+    ],
+    "extra": {},
+    "updatedAt": "2026-11-05T15:07:27.577Z",
+    "updatedBy": "admin"
+  }
+]
