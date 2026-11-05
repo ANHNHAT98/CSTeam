@@ -64,6 +64,20 @@
   code.tag{font-family:'IBM Plex Mono',monospace;background:rgba(31,78,121,.08);color:var(--blueprint);padding:1px 6px;border-radius:4px;font-size:11.5px;}
 
   /* ---------- report ---------- */
+  /* ---------- tự động gửi ERP ---------- */
+  .auto-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin-top:12px;}
+  .auto-grid .field{min-width:0;}
+  .auto-grid select, .auto-grid input[type=text]{width:100%;box-sizing:border-box;}
+  .proj-list{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:13px;}
+  .proj-list label{display:inline-flex;gap:6px;align-items:center;cursor:pointer;}
+  .chk{display:inline-flex;gap:8px;align-items:center;font-size:13.5px;cursor:pointer;margin-right:18px;}
+  .runs{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px;}
+  .runs th,.runs td{border:1px solid var(--grid-line-strong);padding:6px 8px;text-align:left;vertical-align:top;}
+  .runs th{background:#F5F8FB;font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;color:var(--muted);}
+  .runs .ok{color:var(--success);font-weight:600;} .runs .bad{color:var(--danger);font-weight:600;} .runs .skip{color:var(--muted);}
+  .preview-box{margin-top:14px;border:1px dashed var(--grid-line-strong);border-radius:8px;padding:16px;max-height:640px;overflow:auto;background:#fff;}
+  .pill{display:inline-block;font-size:11.5px;font-family:'IBM Plex Mono',monospace;padding:2px 8px;border-radius:20px;background:rgba(63,125,88,.12);color:var(--success);}
+  .pill.warn{background:rgba(178,58,72,.1);color:var(--danger);}
   .report{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:30px 34px;}
   .report-title{font-family:'Space Grotesk',sans-serif;font-size:19px;margin:0 0 4px;}
   .report-week{font-size:13.5px;color:var(--muted);margin:0 0 22px;}
@@ -138,6 +152,12 @@
 <div class="wrap">
   <h1>Báo Cáo Tuần ERP</h1>
   <p class="sub">Lấy dữ liệu ticket &amp; timesheet trực tiếp từ ERPNext theo dự án, tự tính các chỉ số theo mẫu báo cáo tuần, có thể chỉnh tay trước khi gửi.</p>
+
+  <div class="tabs no-print">
+    <button class="tab-btn active" type="button" data-tab="manual">📝 Báo cáo tuần</button>
+    <button class="tab-btn" type="button" data-tab="auto">🤖 Tự động gửi ERP</button>
+  </div>
+  <div class="tab-panel active" id="tab-manual">
 
   <div class="panel no-print">
     <h2><span class="n">1</span> Bộ lọc</h2>
@@ -241,8 +261,82 @@ Hỗ trợ thanh toán công cho MDS và kế toán</textarea>
     <button class="btn btn-ghost" id="copyImageBtn">📷 Sao chép hình ảnh biểu đồ</button>
     <button class="btn btn-primary" id="copyTableImageBtn">⊞📷 Sao chép bảng + hình ảnh</button>
     <button class="btn btn-ghost" id="printBtn">🖨 In / Xuất PDF</button>
+    <button class="btn btn-primary" id="pushErpBtn" title="Tạo báo cáo trong ERP từ nội dung đang hiển thị (kể cả phần đã sửa tay), kèm ảnh biểu đồ">📤 Gửi báo cáo này vào ERP</button>
   </div>
   <div class="status no-print" id="bottomStatusText"></div>
+
+  </div><!-- /tab-manual -->
+
+  <div class="tab-panel" id="tab-auto">
+  <div class="panel no-print" id="autoPanel">
+    <h2><span class="n">⚙</span> Tự động gửi vào ERP theo lịch <span class="pill" id="autoState">…</span></h2>
+    <div class="list-hint">Đến lịch, tool tự lấy dữ liệu <b>kỳ vừa kết thúc</b> cho từng dự án bên dưới, tính y như nút "Lấy dữ liệu" ở trên, rồi ghi báo cáo vào ERP (kèm ảnh biểu đồ). Mỗi dự án / kỳ chỉ ghi 1 lần — nếu trong ERP đã có note "Tuần báo cáo" của kỳ đó (kể cả note dán tay) thì bỏ qua.</div>
+
+    <div class="auto-grid">
+      <div class="field" style="grid-column:span 2">
+        <label>DocType báo cáo trong ERP *</label>
+        <div style="display:flex;gap:8px"><input type="text" id="au_doctype" placeholder="VD: Project Progress Update" style="flex:1"><button class="btn btn-ghost" id="au_loadMeta" type="button">Tải trường</button></div>
+      </div>
+      <div class="field" style="grid-column:span 2;display:none"><label>Cách ghi vào ERP</label>
+        <select id="au_mode"><!-- chỉ dùng "note": mỗi dự án 1 Note riêng trong bản ghi của dự án; "new-doc" giữ lại ở server, ẩn khỏi giao diện -->
+          <option value="note">Thêm Note vào bản ghi của dự án (tab Progress → New Note)</option>
+          <option value="new-doc">Tạo bản ghi mới mỗi tuần</option>
+        </select></div>
+      <div class="field" data-mode="note"><label>Tên bản ghi của dự án</label><input type="text" id="au_docname" placeholder="{project}"></div>
+      <div class="field" data-mode="note"><label>Bảng Note *</label><select id="au_noteTable"></select></div>
+      <div class="field" data-mode="note"><label>Trường nội dung Note *</label><select id="au_noteField"></select></div>
+      <div class="field"><label>Kỳ báo cáo</label>
+        <select id="au_weekEnd">
+          <option value="0">Thứ 2 → Chủ nhật</option>
+          <option value="1">Thứ 3 → Thứ 2</option>
+          <option value="2">Thứ 4 → Thứ 3</option>
+          <option value="3">Thứ 5 → Thứ 4</option>
+          <option value="4">Thứ 6 → Thứ 5</option>
+          <option value="5">Thứ 7 → Thứ 6</option>
+          <option value="6">Chủ nhật → Thứ 7</option>
+        </select></div>
+      <div class="field" data-mode="new-doc"><label>Trường Dự án</label><select id="au_f_project" data-map="project"></select></div>
+      <div class="field" data-mode="new-doc"><label>Trường Từ ngày</label><select id="au_f_from" data-map="from"></select></div>
+      <div class="field" data-mode="new-doc"><label>Trường Đến ngày</label><select id="au_f_to" data-map="to"></select></div>
+      <div class="field" data-mode="new-doc"><label>Trường Nội dung báo cáo *</label><select id="au_f_content" data-map="content"></select></div>
+      <div class="field" data-mode="new-doc"><label>Trường Tiêu đề</label><select id="au_f_title" data-map="title"></select></div>
+      <div class="field" data-mode="new-doc" style="grid-column:span 2"><label>Mẫu tiêu đề — {project} {week} {from} {to}</label><input type="text" id="au_titleTpl"></div>
+    </div>
+    <div id="au_extra" data-mode="new-doc"></div>
+
+    <div style="margin-top:14px">
+      <label class="chk" data-mode="new-doc"><input type="checkbox" id="au_submit"> Gửi luôn (Submit) sau khi tạo</label>
+      <label class="chk"><input type="checkbox" id="au_enabled"> Bật chạy tự động theo lịch</label>
+      <span class="list-hint" id="au_weekHint"></span>
+    </div>
+    <div class="field" style="margin-top:12px"><label>Dự án chạy tự động</label><div class="proj-list" id="au_projects"></div></div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="au_save" type="button">💾 Lưu cấu hình</button>
+    </div>
+    <div class="status" id="au_status"></div>
+  </div>
+
+  <div class="panel no-print">
+    <h2><span class="n">🧪</span> Chạy thử luồng tự động</h2>
+    <div class="list-hint">Chạy y như lịch tự động nhưng do bạn bấm: chọn dự án và kỳ (mặc định = kỳ vừa kết thúc theo cấu hình). <b>Xem thử</b> không ghi gì vào ERP; <b>Chạy thử</b> ghi thật 1 Note vào ERP cho dự án đã chọn.</div>
+    <div class="filter-row" style="margin-top:12px">
+      <div class="field grow"><label for="au_testProject">Dự án</label><select id="au_testProject"><option value="">— đang tải —</option></select></div>
+      <div class="field"><label for="au_testFrom">Từ ngày</label><input type="date" id="au_testFrom"></div>
+      <div class="field"><label for="au_testTo">Đến ngày</label><input type="date" id="au_testTo"></div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-ghost" id="au_preview" type="button">👁 Xem thử (không ghi ERP)</button>
+      <button class="btn btn-primary" id="au_runOne" type="button">🧪 Chạy thử 1 dự án (ghi vào ERP)</button>
+      <button class="btn btn-ghost" id="au_runAll" type="button">▶ Chạy tất cả dự án đã chọn</button>
+    </div>
+    <div class="status" id="au_testStatus"></div>
+    <div class="preview-box" id="au_previewBox" style="display:none"></div>
+
+    <div class="sub-h" style="margin-top:20px">Lịch sử chạy gần đây</div>
+    <div id="au_runs" class="list-hint">—</div>
+  </div>
+</div><!-- /tab-auto -->
 </div>
 
 <script>
@@ -464,7 +558,7 @@ async function loadProjects(){
     setStatus('Không tải được danh sách dự án: ' + err.message, 'err');
   }
 }
-loadProjects();
+loadProjects().then(() => { if (typeof AU !== 'undefined' && AU.config){ renderProjects(); fillTestProjects(); } });
 
 /* ---------- parse ngày kiểu Frappe ("YYYY-MM-DD HH:MM:SS" hoặc "YYYY-MM-DD") ---------- */
 function parseFrappeDate(raw){
@@ -900,8 +994,231 @@ document.getElementById('copyTableImageBtn').addEventListener('click', async () 
 
 document.getElementById('printBtn').addEventListener('click', () => window.print());
 
+/* ================= TỰ ĐỘNG GỬI VÀO ERP ================= */
+const AU = { config:null, meta:null, lastWeek:null };
+const au$ = id => document.getElementById(id);
+function auStatus(msg, cls){ au$('au_status').textContent = msg; au$('au_status').className = 'status ' + (cls||''); }
+async function postJson(url, body){
+  const res = await fetch(url, { method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body||{}) });
+  const raw = await res.text(); let data = {};
+  try{ data = raw ? JSON.parse(raw) : {}; }catch(e){ throw new Error(`Server trả về không phải JSON (HTTP ${res.status}).`); }
+  if (res.status === 401) throw new Error('Phiên đăng nhập đã hết — đăng nhập lại.');
+  if (!res.ok) throw new Error(data.error || `Lỗi HTTP ${res.status}`);
+  return data;
+}
+const MAP_KEYS = ['project','from','to','content','title'];
+function fillFieldSelects(){
+  const fields = (AU.meta && AU.meta.fields) || [];
+  const cur = (AU.config && AU.config.fields) || {};
+  const okType = { project: f => f.fieldtype === 'Link' || f.fieldtype === 'Data', from: f => /^Date/.test(f.fieldtype), to: f => /^Date/.test(f.fieldtype),
+    content: f => ['Text Editor','HTML Editor','Long Text','Text','Small Text','Markdown Editor'].includes(f.fieldtype), title: f => ['Data','Small Text'].includes(f.fieldtype) };
+  MAP_KEYS.forEach(k => {
+    const sel = au$('au_f_' + k); const val = cur[k] || (AU.meta && AU.meta.suggest && AU.meta.suggest[k]) || '';
+    const opts = fields.filter(okType[k]);
+    if (val && !opts.some(f => f.fieldname === val)) opts.unshift({ fieldname: val, label: val, fieldtype: '?' });
+    sel.innerHTML = `<option value="">— không dùng —</option>` + opts.map(f => `<option value="${escapeAttr(f.fieldname)}">${escapeHtml((f.label || f.fieldname) + ' (' + f.fieldname + ' · ' + f.fieldtype + ')')}${f.reqd ? ' *' : ''}</option>`).join('');
+    sel.value = val;
+  });
+  renderExtra();
+  // bảng Note (mode note)
+  const tables = fields.filter(f => f.fieldtype === 'Table');
+  const sug = (AU.meta && AU.meta.suggest) || {};
+  const tVal = (AU.config && AU.config.noteTable) || sug.noteTable || '';
+  au$('au_noteTable').innerHTML = `<option value="">— chọn bảng —</option>` + tables.map(f => `<option value="${escapeAttr(f.fieldname)}">${escapeHtml((f.label || f.fieldname) + ' (' + f.fieldname + ' → ' + f.options + ')')}</option>`).join('');
+  au$('au_noteTable').value = tVal;
+  fillNoteField((AU.config && AU.config.noteField) || sug.noteField || '');
+  const sub = au$('au_submit');
+  if (AU.meta){ sub.disabled = !AU.meta.is_submittable; if (!AU.meta.is_submittable) sub.checked = false; sub.parentElement.title = AU.meta.is_submittable ? '' : 'DocType này không có Submit — báo cáo được lưu luôn khi tạo.'; }
+}
+function renderExtra(){
+  const fields = (AU.meta && AU.meta.fields) || [];
+  const mapped = new Set(MAP_KEYS.map(k => au$('au_f_' + k).value).filter(Boolean));
+  const extra = (AU.config && AU.config.extra) || {};
+  const need = fields.filter(f => (f.reqd && !f.read_only && !mapped.has(f.fieldname) && !f.default) || (extra[f.fieldname] !== undefined && !mapped.has(f.fieldname)));
+  au$('au_extra').innerHTML = need.length ? `<div class="sub-h" style="margin-top:14px">Trường bắt buộc khác — nhập giá trị cố định</div><div class="auto-grid">` +
+    need.map(f => `<div class="field"><label>${escapeHtml(f.label || f.fieldname)} (${escapeHtml(f.fieldtype)})${f.reqd ? ' *' : ''}</label><input type="text" data-extra="${escapeAttr(f.fieldname)}" value="${escapeAttr(extra[f.fieldname] ?? '')}" placeholder="${escapeAttr(f.fieldtype === 'Select' ? f.options.split('\n').filter(Boolean).join(' / ') : (f.options || ''))}"></div>`).join('') + '</div>' : '';
+}
+MAP_KEYS.forEach(k => au$('au_f_' + k).addEventListener('change', renderExtra));
+function fillNoteField(val){
+  const t = ((AU.meta && AU.meta.fields) || []).find(f => f.fieldname === au$('au_noteTable').value);
+  const cf = (t && AU.meta.children && AU.meta.children[t.options]) || [];
+  const opts = cf.filter(f => ['Text Editor','HTML Editor','Long Text','Text','Small Text','Markdown Editor'].includes(f.fieldtype));
+  au$('au_noteField').innerHTML = `<option value="">— chọn trường —</option>` + opts.map(f => `<option value="${escapeAttr(f.fieldname)}">${escapeHtml((f.label || f.fieldname) + ' (' + f.fieldname + ' · ' + f.fieldtype + ')')}</option>`).join('');
+  au$('au_noteField').value = val || (opts.find(f => f.fieldtype === 'Text Editor') || opts[0] || {}).fieldname || '';
+}
+au$('au_noteTable').addEventListener('change', () => fillNoteField(''));
+function applyMode(){
+  const m = au$('au_mode').value;
+  document.querySelectorAll('#autoPanel [data-mode]').forEach(el => { el.style.display = el.dataset.mode === m ? '' : 'none'; });
+}
+au$('au_mode').addEventListener('change', applyMode);
+const DOW = ['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'];
+function weekHint(){
+  const e = Number(au$('au_weekEnd').value); const run = (e + 1) % 7;
+  au$('au_weekHint').textContent = `→ đặt lịch chạy sáng ${DOW[run]} (hoặc ngày nào sau ${DOW[e]} cũng được — luôn lấy kỳ ${DOW[(e + 1) % 7]} → ${DOW[e]} vừa xong).`;
+}
+au$('au_weekEnd').addEventListener('change', weekHint);
+
+function renderProjects(){
+  const chosen = new Set((AU.config && AU.config.projects) || []);
+  const fromErp = [...projectSelect.options].map(o => ({ v:o.value, t:o.textContent })).filter(o => o.v);
+  const all = new Map(fromErp.map(o => [o.v, o.t]));
+  chosen.forEach(p => { if (!all.has(p)) all.set(p, p); });
+  au$('au_projects').innerHTML = [...all].map(([v,t]) => `<label><input type="checkbox" value="${escapeAttr(v)}"${chosen.has(v) ? ' checked' : ''}> ${escapeHtml(t)}</label>`).join('') || '<span class="list-hint">(chưa tải được danh sách dự án)</span>';
+}
+function renderRuns(runs){
+  if (!runs || !runs.length){ au$('au_runs').innerHTML = 'Chưa chạy lần nào.'; return; }
+  au$('au_runs').innerHTML = `<table class="runs"><tr><th>Lúc</th><th>Dự án</th><th>Tuần</th><th>Kết quả</th><th>Người chạy</th></tr>` + runs.map(r => {
+    const when = new Date(r.at).toLocaleString('vi-VN');
+    const res = !r.ok ? `<span class="bad">Lỗi:</span> ${escapeHtml(r.error || '')}`
+      : r.skipped ? `<span class="skip">Bỏ qua — ${escapeHtml(r.note || '')}</span>${r.url ? ` · <a href="${escapeAttr(r.url)}" target="_blank" rel="noopener">${escapeHtml(r.doc)}</a>` : ''}`
+      : `<span class="ok">✔ ${r.added === 'note' ? 'Đã thêm note vào' : r.submitted ? 'Đã gửi' : 'Đã tạo'}</span> <a href="${escapeAttr(r.url || '#')}" target="_blank" rel="noopener">${escapeHtml(r.doc || '')}</a>${r.note ? `<br><small>${escapeHtml(r.note)}</small>` : ''}`;
+    return `<tr><td>${escapeHtml(when)}</td><td>${escapeHtml(r.project)}</td><td>${escapeHtml(r.from)} → ${escapeHtml(r.to)}</td><td>${res}</td><td>${escapeHtml(r.by || '')}</td></tr>`;
+  }).join('') + '</table>';
+}
+function renderState(cronReady){
+  const c = AU.config || {}; const el = au$('au_state') || au$('autoState');
+  const ready = c.doctype && (c.mode === 'new-doc' ? (c.fields && c.fields.content) : (c.noteTable && c.noteField));
+  el.className = 'pill' + (ready && c.enabled && cronReady ? '' : ' warn');
+  el.textContent = !ready ? 'chưa cấu hình' : !c.enabled ? 'đang tắt' : !cronReady ? 'chưa có lịch (CRON_SECRET)' : 'đang bật';
+  el.title = !cronReady ? 'Server chưa có biến môi trường CRON_SECRET nên lịch ngoài chưa gọi vào được — xem automation/weekly-erp-report/README.md' : '';
+}
+async function loadAuto(){
+  try{
+    const res = await fetch('/api/weekly-erp/config', { credentials:'same-origin', beer:false });
+    const d = await res.json(); if (!res.ok) throw new Error(d.error || 'HTTP ' + res.status);
+    AU.config = d.config; AU.lastWeek = d.lastWeek; AU.cronReady = d.cronReady;
+    au$('au_doctype').value = d.config.doctype || '';
+    au$('au_mode').value = 'note'; applyMode(); // team chỉ báo cáo theo Note của từng dự án
+    au$('au_docname').value = d.config.docname || '{project}';
+    au$('au_weekEnd').value = String(d.config.weekEnd || 0); weekHint();
+    au$('au_titleTpl').value = d.config.titleTemplate || '';
+    au$('au_submit').checked = !!d.config.submit;
+    au$('au_enabled').checked = !!d.config.enabled;
+    renderProjects(); renderRuns(d.runs); renderState(d.cronReady); fillFieldSelects(); fillTestProjects();
+    if (!au$('au_testFrom').dataset.touched){ au$('au_testFrom').value = d.lastWeek.from; au$('au_testTo').value = d.lastWeek.to; }
+    if (d.config.doctype) loadMeta(true);
+  }catch(e){ auStatus('Không tải được cấu hình tự động: ' + e.message, 'err'); }
+}
+async function loadMeta(quiet){
+  const dt = au$('au_doctype').value.trim();
+  if (!dt){ auStatus('Nhập tên DocType báo cáo trước (đúng như trên ERP, vd "Weekly Report").', 'err'); return; }
+  if (!quiet) auStatus('Đang đọc các trường của ' + dt + '…', 'busy');
+  try{
+    const res = await fetch('/api/weekly-erp/doctype?doctype=' + encodeURIComponent(dt), { credentials:'same-origin' });
+    const d = await res.json(); if (!res.ok) throw new Error(d.error || 'HTTP ' + res.status);
+    AU.meta = d;
+    if (!quiet && AU.config && AU.config.doctype !== dt) AU.config = { ...AU.config, fields:{}, noteTable:'', noteField:'' }; // đổi DocType → dùng gợi ý mới
+    fillFieldSelects();
+    if (!quiet) auStatus(`Đã tải ${d.fields.length} trường của ${dt}${d.is_submittable ? ' (có Submit)' : ''}. Kiểm tra ghép trường rồi bấm Lưu.`, 'ok');
+  }catch(e){ auStatus('Không đọc được DocType: ' + e.message, 'err'); }
+}
+au$('au_loadMeta').addEventListener('click', () => loadMeta(false));
+au$('au_doctype').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); loadMeta(false); } });
+
+function collectConfig(){
+  const fields = {}; MAP_KEYS.forEach(k => fields[k] = au$('au_f_' + k).value);
+  const extra = {}; document.querySelectorAll('#au_extra [data-extra]').forEach(i => { if (i.value.trim()) extra[i.dataset.extra] = i.value.trim(); });
+  return { doctype: au$('au_doctype').value.trim(), mode: au$('au_mode').value, docname: au$('au_docname').value.trim(), noteTable: au$('au_noteTable').value, noteField: au$('au_noteField').value, weekEnd: Number(au$('au_weekEnd').value), fields, extra, titleTemplate: au$('au_titleTpl').value, submit: au$('au_submit').checked, enabled: au$('au_enabled').checked,
+    projects: [...document.querySelectorAll('#au_projects input:checked')].map(i => i.value) };
+}
+au$('au_save').addEventListener('click', async () => {
+  auStatus('Đang lưu cấu hình…', 'busy');
+  try{ const d = await postJson('/api/weekly-erp/config', collectConfig()); AU.config = d.config; renderState(AU.cronReady); AU.lastWeek = null; auStatus(`Đã lưu — ${d.config.projects.length} dự án, ${d.config.mode === 'note' ? 'thêm Note vào ' + d.config.doctype + '/' + d.config.docname : 'tạo bản ghi ' + d.config.doctype}, kỳ ${au$('au_weekEnd').selectedOptions[0].textContent}.`, 'ok'); loadAuto(); }
+  catch(e){ auStatus('Không lưu được: ' + e.message, 'err'); }
+});
+function tStatus(msg, cls){ au$('au_testStatus').textContent = msg; au$('au_testStatus').className = 'status ' + (cls||''); }
+function testArgs(){
+  const project = au$('au_testProject').value; const from = au$('au_testFrom').value; const to = au$('au_testTo').value;
+  if (!project){ tStatus('Chọn dự án để chạy thử.', 'err'); return null; }
+  if ((from && !to) || (!from && to) || (from && to && from > to)){ tStatus('Khoảng ngày chưa đúng.', 'err'); return null; }
+  return { project, from, to };
+}
+function fillTestProjects(){
+  const sel = au$('au_testProject'); const cur = sel.value;
+  const opts = [...projectSelect.options].filter(o => o.value);
+  const chosen = (AU.config && AU.config.projects) || [];
+  const all = new Map(opts.map(o => [o.value, o.textContent])); chosen.forEach(p => { if (!all.has(p)) all.set(p, p); });
+  sel.innerHTML = [...all].map(([v,t]) => `<option value="${escapeAttr(v)}">${escapeHtml(t)}</option>`).join('') || '<option value="">— chưa có dự án —</option>';
+  if (cur && all.has(cur)) sel.value = cur; else if (chosen[0] && all.has(chosen[0])) sel.value = chosen[0];
+}
+au$('au_preview').addEventListener('click', async () => {
+  const a = testArgs(); if (!a) return; const project = a.project;
+  tStatus(`Đang tính báo cáo cho ${project}…`, 'busy');
+  try{
+    const d = await postJson('/api/weekly-erp/run', { ...a, dryRun:true });
+    au$('au_previewBox').style.display = ''; au$('au_previewBox').innerHTML = d.html;
+    tStatus(`Bản xem thử ${project} kỳ ${d.from} → ${d.to} — đây là nội dung sẽ ghi vào ERP (chưa ghi).${d.report.notes.length ? ' Lưu ý: ' + d.report.notes.join('; ') : ''}`, 'ok');
+  }catch(e){ tStatus('Lỗi xem thử: ' + e.message, 'err'); }
+});
+au$('au_runOne').addEventListener('click', async () => {
+  const a = testArgs(); if (!a) return; const c = AU.config || {};
+  if (!c.doctype){ tStatus('Lưu cấu hình trước khi chạy thử.', 'err'); return; }
+  const ky = a.from ? `${a.from} → ${a.to}` : `${AU.lastWeek.from} → ${AU.lastWeek.to}`;
+  if (!confirm(`Ghi THẬT báo cáo ${a.project} (kỳ ${ky}) vào ERP${c.mode === 'note' ? ' — thêm 1 Note vào ' + c.doctype + ' / ' + String(c.docname || '{project}').replace(/\{project\}/g, a.project) : ''}?`)) return;
+  tStatus(`Đang chạy thử ${a.project}…`, 'busy');
+  try{
+    let d = await postJson('/api/weekly-erp/run', a);
+    if (d.skipped){
+      if (!confirm(`Bỏ qua vì ${d.note || 'kỳ này đã có báo cáo'}. Vẫn ghi thêm 1 bản mới để thử?`)){ tStatus('Đã dừng — ' + (d.note || 'kỳ này đã có báo cáo') + '.', ''); loadAuto(); return; }
+      d = await postJson('/api/weekly-erp/run', { ...a, force:true });
+    }
+    au$('au_testStatus').innerHTML = `✔ Đã ${d.added === 'note' ? 'thêm note vào' : d.submitted ? 'gửi' : 'tạo'} <a href="${escapeAttr(d.url)}" target="_blank" rel="noopener">${escapeHtml(d.doc)}</a> (kỳ ${escapeHtml(d.from)} → ${escapeHtml(d.to)}).${d.note ? ' Lưu ý: ' + escapeHtml(d.note) : ''}`;
+    au$('au_testStatus').className = 'status ok';
+    loadAuto();
+  }catch(e){ tStatus('Lỗi chạy thử: ' + e.message, 'err'); loadAuto(); }
+});
+au$('au_runAll').addEventListener('click', async () => {
+  const c = AU.config || {};
+  if (!c.doctype){ tStatus('Lưu cấu hình trước khi chạy.', 'err'); return; }
+  if (!confirm(`Ghi báo cáo kỳ ${AU.lastWeek.from} → ${AU.lastWeek.to} vào ERP cho ${c.projects.length} dự án đã chọn (y như lịch tự động)? Dự án đã có báo cáo kỳ này sẽ được bỏ qua.`)) return;
+  tStatus('Đang chạy tất cả dự án…', 'busy');
+  try{
+    const d = await postJson('/api/weekly-erp/run-all', {});
+    if (d.skipped){ tStatus(d.reason, 'err'); return; }
+    const bad = d.results.filter(r => !r.ok).length, skip = d.results.filter(r => r.ok && r.skipped).length;
+    tStatus(`Xong ${d.results.length} dự án: ${d.results.length - bad - skip} ghi mới, ${skip} bỏ qua (đã có), ${bad} lỗi — xem Lịch sử chạy bên dưới.`, bad ? 'err' : 'ok');
+    loadAuto();
+  }catch(e){ tStatus('Lỗi: ' + e.message, 'err'); }
+});
+
+/* Gửi báo cáo ĐANG HIỂN THỊ (kể cả phần sửa tay) vào ERP */
+document.getElementById('pushErpBtn').addEventListener('click', async () => {
+  const project = projectSelect.value;
+  if (!project || !fromDate.value || !toDate.value){ setBottomStatus('Chọn dự án, khoảng ngày và bấm "Lấy dữ liệu" trước.', 'err'); return; }
+  const c = AU.config || {};
+  if (!c.doctype || (c.mode === 'new-doc' ? !(c.fields && c.fields.content) : !(c.noteTable && c.noteField))){ setBottomStatus('Chưa cấu hình form ERP — vào tab "🤖 Tự động gửi ERP", điền cấu hình rồi bấm Lưu.', 'err'); return; }
+  if (!confirm(c.mode === 'new-doc' ? `Tạo báo cáo ${project} (${fromDate.value} → ${toDate.value}) vào ${c.doctype}${c.submit ? ' và Submit' : ''}?`
+    : `Thêm báo cáo ${project} (${fromDate.value} → ${toDate.value}) thành 1 Note mới trong ${c.doctype} / ${String(c.docname || '{project}').replace(/\{project\}/g, project)}?`)) return;
+  setBottomStatus('Đang gửi báo cáo vào ERP…', 'busy');
+  try{
+    const canvas = await html2canvas(document.getElementById('chartPanel'), { backgroundColor:'#ffffff', scale:2 });
+    const { tablesHtml } = buildReportHtmlAndPlain();
+    let d;
+    try { d = await postJson('/api/weekly-erp/run', { project, from: fromDate.value, to: toDate.value, html: tablesHtml, pngBase64: canvas.toDataURL('image/png') }); }
+    catch(e){ throw e; }
+    if (d.skipped){
+      if (!confirm(`Tuần này đã có báo cáo cho ${project} trong ${d.doc}${d.note ? ' (' + d.note + ')' : ''}. Vẫn thêm 1 bản mới?`)){ setBottomStatus('Đã huỷ — giữ báo cáo cũ ' + d.doc + '.', ''); return; }
+      d = await postJson('/api/weekly-erp/run', { project, from: fromDate.value, to: toDate.value, html: tablesHtml, pngBase64: canvas.toDataURL('image/png'), force:true });
+    }
+    bottomStatusText.innerHTML = `✔ Đã ${d.added === 'note' ? 'thêm note báo cáo vào' : d.submitted ? 'gửi báo cáo' : 'tạo báo cáo'} <a href="${escapeAttr(d.url)}" target="_blank" rel="noopener">${escapeHtml(d.doc)}</a> trong ERP.${d.note ? ' Lưu ý: ' + escapeHtml(d.note) : ''}`;
+    bottomStatusText.className = 'status no-print ok';
+    loadAuto();
+  }catch(err){ setBottomStatus('Không gửi được vào ERP: ' + err.message, 'err'); }
+});
+
 function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;'); }
+['au_testFrom','au_testTo'].forEach(id => au$(id).addEventListener('change', () => { au$('au_testFrom').dataset.touched = '1'; }));
+/* ---------- tab: Báo cáo tuần / Tự động gửi ERP (#tu-dong) ---------- */
+function showTab(name){
+  document.querySelectorAll('.tabs .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+  const h = name === 'auto' ? '#tu-dong' : ''; if (location.hash !== h) history.replaceState(null, '', location.pathname + location.search + h);
+}
+document.querySelectorAll('.tabs .tab-btn').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+showTab(location.hash === '#tu-dong' ? 'auto' : 'manual');
+loadAuto();
 </script>
 </body>
 </html>

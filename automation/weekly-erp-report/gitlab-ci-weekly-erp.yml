@@ -1,0 +1,15 @@
+# Dùng GitLab thay cho GitHub Actions: thêm job này vào .gitlab-ci.yml của repo, rồi
+#   Settings > CI/CD > Variables: OPS_CONSOLE_URL, CRON_SECRET (tick "Mask variable")
+#   Build > Pipeline schedules > New schedule: "0 8 * * 1", Cron timezone = Asia/Ho_Chi_Minh
+weekly-erp-report:
+  image: curlimages/curl:8.10.1
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  script:
+    - curl -sS -m 90 "$OPS_CONSOLE_URL/" -o /dev/null || true
+    - |
+      for i in 1 2 3; do
+        if curl -fsS -m 900 -X POST -H "X-Cron-Key: $CRON_SECRET" "$OPS_CONSOLE_URL/api/cron/weekly-erp"; then exit 0; fi
+        echo "Lần $i lỗi — thử lại sau 90 giây"; sleep 90
+      done
+      exit 1

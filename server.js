@@ -25,6 +25,7 @@ const synergyhub = require('./synergyhub');
 const { buildMonthlyCustomerReport, monthStartOf, monthEndOf, addMonths, isMonthKey } = require('./customerReportMonthly');
 const jira = require('./jiraClient');
 const supportCases = require('./supportCasesStore');
+const weeklyErp = require('./weeklyErpReport');
 const { hqEncrypt, hqDecrypt } = require('./hqPasswordCrypto');
 
 const app = express();
@@ -36,7 +37,7 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'hqsoft-dev-secret-change-m
 const TEAM_USER = process.env.ADMIN_USER || 'admin';
 const TEAM_PASS = process.env.ADMIN_PASS || 'admin123@';
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // 10mb: trang Báo Cáo Tuần ERP gửi kèm ảnh biểu đồ (base64)
 app.use(
   session({
     name: 'hq_ops_sid',
@@ -1488,6 +1489,60 @@ app.delete('/api/support-cases/:id', requireAuth, async (req, res) => {
     console.error('[support-cases:delete] lỗi:', e.message);
     res.status(400).json({ error: e.message });
   }
+});
+
+/* ---------- API: Báo Cáo Tuần ERP tự động (weeklyErpReport.js) ----------
+   GET  /api/weekly-erp/config            → { config, runs (30 lần gần nhất), lastWeek, cronReady, githubBacked }
+   POST /api/weekly-erp/config            → lưu cấu hình (DocType, ghép trường, dự án, gửi luôn/Submit…)
+   GET  /api/weekly-erp/doctype?doctype=  → các trường của DocType báo cáo + gợi ý ghép trường
+   POST /api/weekly-erp/run               { project, from?, to?, dryRun?, force?, html?, pngBase64? } → chạy 1 dự án (html = bản đã sửa tay trên trang)
+   POST /api/weekly-erp/run-all           { from?, to?, force? } → chạy tất cả dự án trong cấu hình (như lịch)
+   POST /api/cron/weekly-erp              header X-Cron-Key: <CRON_SECRET> → lịch sáng thứ 2 gọi vào (không cần đăng nhập) */
+app.get('/api/weekly-erp/config', requireAuth, async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const [config, runs] = await Promise.all([weeklyErp.getConfig(), weeklyErp.readRuns()]);
+    res.json({ config, runs: runs.slice(0, 30), lastWeek: weeklyErp.lastWeekVN(Date.now(), config.weekEnd), cronReady: Boolean(process.env.CRON_SECRET), githubBacked: weeklyErp.isGithubBacked(), erpBase: erp.getBaseUrl() });
+  } catch (e) { console.error('[weekly-erp:config] lỗi:', e.message); res.status(502).json({ error: e.message }); }
+});
+app.post('/api/weekly-erp/config', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, config: await weeklyErp.saveConfig(req.body || {}, req.session.username) }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get('/api/weekly-erp/doctype', requireAuth, async (req, res) => {
+  const dt = String(req.query.doctype || '').trim();
+  if (!dt) return res.status(400).json({ error: 'Thiếu tên DocType.' });
+  try { res.json(await weeklyErp.doctypeInfo(dt)); }
+  catch (e) { res.status(e.status === 404 ? 404 : 502).json({ error: e.message }); }
+});
+app.post('/api/weekly-erp/run', requireAuth, async (req, res) => {
+  const b = req.body || {};
+  const project = String(b.project || '').trim();
+  if (!project) return res.status(400).json({ error: 'Thiếu dự án.' });
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  let png;
+  if (b.pngBase64) { try { png = Buffer.from(String(b.pngBase64).replace(/^data:image\/png;base64,/, ''), 'base64'); } catch (e) { png = undefined; } }
+  const r = await weeklyErp.runOne({ project, from: b.from, to: b.to, by: req.session.username, force: Boolean(b.force), dryRun: Boolean(b.dryRun), html: b.html ? String(b.html) : undefined, png });
+  res.status(r.ok ? 200 : 502).json(r.ok ? r : { ...r, error: r.error });
+});
+app.post('/api/weekly-erp/run-all', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  const b = req.body || {};
+  try { res.json(await weeklyErp.runAll({ from: b.from, to: b.to, force: Boolean(b.force), by: req.session.username })); }
+  catch (e) { res.status(502).json({ error: e.message }); }
+});
+app.post('/api/cron/weekly-erp', async (req, res) => {
+  const secret = String(process.env.CRON_SECRET || '');
+  const got = String(req.get('x-cron-key') || '');
+  const ok = secret.length >= 16 && got.length === secret.length && require('crypto').timingSafeEqual(Buffer.from(got), Buffer.from(secret));
+  if (!ok) return res.status(secret ? 403 : 501).json({ error: secret ? 'Sai X-Cron-Key.' : 'Server chưa cấu hình CRON_SECRET (tối thiểu 16 ký tự).' });
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  try {
+    const out = await weeklyErp.runAll({ from: req.query.from, to: req.query.to });
+    const failed = (out.results || []).filter((r) => !r.ok);
+    console.log(`[weekly-erp:cron] ${out.skipped ? 'bỏ qua: ' + out.reason : `${out.results.length} dự án, lỗi ${failed.length}`}`);
+    res.status(failed.length ? 502 : 200).json({ ...out, results: (out.results || []).map(({ project, from, to, ok, skipped, doc, url, error, note }) => ({ project, from, to, ok, skipped, doc, url, error, note })) });
+  } catch (e) { console.error('[weekly-erp:cron] lỗi:', e.message); res.status(502).json({ error: e.message }); }
 });
 
 function parseJsonArrayParam(raw) {

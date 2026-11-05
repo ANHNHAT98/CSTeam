@@ -1,0 +1,28 @@
+# Chép file này vào repo GitHub (bất kỳ repo nào bạn có, vd repo dữ liệu đang dùng cho GITHUB_REPO) tại:
+#   .github/workflows/weekly-erp.yml
+# Rồi vào Settings > Secrets and variables > Actions > New repository secret, thêm 2 secret:
+#   OPS_CONSOLE_URL = https://csteam.onrender.com
+#   CRON_SECRET     = (đúng chuỗi đã đặt ở biến môi trường CRON_SECRET trên Render)
+name: Bao cao tuan ERP
+
+on:
+  schedule:
+    - cron: '0 1 * * 1'   # 01:00 UTC thứ 2 = 08:00 sáng thứ 2 giờ Việt Nam
+  workflow_dispatch:       # cho phép bấm "Run workflow" để chạy tay
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Goi Ops Console tao bao cao tuan
+        env:
+          URL: ${{ secrets.OPS_CONSOLE_URL }}
+          KEY: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -sS -m 90 "$URL/" -o /dev/null || true   # đánh thức Render (gói free ngủ khi không dùng)
+          for i in 1 2 3; do
+            if curl -fsS -m 900 -X POST -H "X-Cron-Key: $KEY" "$URL/api/cron/weekly-erp"; then echo; echo "OK"; exit 0; fi
+            echo "Lần $i có lỗi — thử lại sau 90 giây (dự án đã tạo xong sẽ được bỏ qua)"; sleep 90
+          done
+          exit 1

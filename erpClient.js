@@ -464,13 +464,17 @@ async function createTicket(fields, ctxOverride = null) {
 /* ===================== ĐÍNH KÈM FILE/ẢNH vào Ticket =====================
    Dùng API chuẩn của Frappe: POST /api/method/upload_file (multipart) với doctype + docname => file hiện ở mục Attachments của ticket. */
 async function uploadAttachment(ticketName, filename, mimeType, buffer) {
+  return uploadFileTo('Ticket', ticketName, filename, mimeType, buffer);
+}
+/** Đính kèm file vào 1 bản ghi bất kỳ (doctype + docname). Trả về File doc ({ file_url, ... }). */
+async function uploadFileTo(doctype, docname, filename, mimeType, buffer) {
   assertConfigured();
   const ctx = defaultCtx;
   for (let attempt = 0; attempt < 3; attempt++) {
     const form = new FormData();
     form.append('file', new Blob([buffer], { type: mimeType || 'application/octet-stream' }), filename);
-    form.append('doctype', 'Ticket');
-    form.append('docname', ticketName);
+    form.append('doctype', doctype);
+    form.append('docname', docname);
     form.append('is_private', '1');
     form.append('folder', 'Home/Attachments');
     const headers = { ...(await authHeaders(ctx)), Accept: 'application/json' };
@@ -512,6 +516,60 @@ async function embedImagesInDescription(ticketName, urls) {
   }
   await erpPost(`/api/resource/Ticket/${enc}`, { [df.fieldname]: html }, { method: 'PUT' });
   return urls.length;
+}
+
+/* ===================== BẢN GHI BẤT KỲ (dùng cho Báo Cáo Tuần ERP tự động) ===================== */
+/** Cấu trúc 1 DocType: { fields:[{fieldname,label,fieldtype,options,reqd,read_only,hidden}], is_submittable, title_field }. */
+async function getDoctypeMeta(doctype) {
+  const raw = await erpFetch(`/api/method/frappe.desk.form.load.getdoctype?doctype=${encodeURIComponent(doctype)}`);
+  const docs = raw.docs || [];
+  const d = docs.find((x) => x.name === doctype);
+  if (!d) throw new Error(`Không tìm thấy DocType "${doctype}" trên ERP (kiểm tra tên hoặc quyền của tài khoản ERP).`);
+  const simple = (x) => (x.fields || []).filter((f) => !LAYOUT_TYPES.has(f.fieldtype)).map((f) => ({
+    fieldname: f.fieldname, label: f.label || '', fieldtype: f.fieldtype, options: f.options || '',
+    reqd: f.reqd ? 1 : 0, read_only: f.read_only ? 1 : 0, hidden: f.hidden ? 1 : 0, default: f.default || '',
+  }));
+  const fields = simple(d);
+  // bảng con (vd bảng Notes của tab Progress): lấy luôn cấu trúc DocType con
+  const children = {};
+  for (const f of fields.filter((x) => x.fieldtype === 'Table' && x.options)) {
+    let c = docs.find((x) => x.name === f.options);
+    if (!c) { try { c = ((await erpFetch(`/api/method/frappe.desk.form.load.getdoctype?doctype=${encodeURIComponent(f.options)}`)).docs || []).find((x) => x.name === f.options); } catch (e) { c = null; } }
+    if (c) children[f.options] = simple(c);
+  }
+  return { fields, children, is_submittable: d.is_submittable ? 1 : 0, title_field: d.title_field || '' };
+}
+async function getDoc(doctype, name) {
+  const r = await erpFetch(`/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`);
+  return r.data || r;
+}
+/** Thêm 1 dòng vào bảng con của bản ghi cha (giống bấm "New Note" → Add). row: { doctype (DocType con), ...giá trị }. */
+async function addChildRow(parentDoctype, parentName, parentfield, row) {
+  const r = await erpPost('/api/method/frappe.client.insert', { doc: { ...row, parenttype: parentDoctype, parent: parentName, parentfield } });
+  return r.message || r;
+}
+let loggedUser = null;
+/** Email tài khoản ERP mà tool đang dùng (API key hoặc ERP_USER). */
+async function getLoggedUser() {
+  if (loggedUser) return loggedUser;
+  try { loggedUser = (await erpFetch('/api/method/frappe.auth.get_logged_user')).message || ERP_USER || ''; } catch (e) { loggedUser = ERP_USER || ''; }
+  return loggedUser;
+}
+async function createDoc(doctype, fields) {
+  const r = await erpPost(`/api/resource/${encodeURIComponent(doctype)}`, fields);
+  return r.data || r;
+}
+async function updateDoc(doctype, name, fields) {
+  const r = await erpPost(`/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`, fields, { method: 'PUT' });
+  return r.data || r;
+}
+/** Submit bản ghi (docstatus 0 → 1). Trả về true nếu đã Submit. */
+async function submitDoc(doctype, name) {
+  const cur = await erpFetch(`/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`);
+  const doc = cur.data || cur;
+  if (Number(doc.docstatus) === 1) return true;
+  await erpPost('/api/method/frappe.client.submit', { doc });
+  return true;
 }
 
 /* ===================== GIAO TICKET (Assign) =====================
@@ -757,6 +815,14 @@ module.exports = {
   listUserGroups,
   getUserGroupMembers,
   uploadAttachment,
+  uploadFileTo,
+  getDoctypeMeta,
+  getDoc,
+  addChildRow,
+  getLoggedUser,
+  createDoc,
+  updateDoc,
+  submitDoc,
   embedImagesInDescription,
   createTicketOnBehalf,
   makeCookieCtx,
