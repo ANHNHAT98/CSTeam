@@ -31,5 +31,38 @@
     "updatedAt": "2026-10-26T04:42:39.861Z",
     "createdBy": "admin",
     "updatedBy": "admin"
+  },
+  {
+    "id": "case_1793853330748_iwoi1o",
+    "project": "ABI",
+    "title": "Cập Nhật Nhóm Khách Hàng",
+    "symptom": "",
+    "cause": "Khách Hàng Cần Hỗ Trợ Cập Nhật Nhóm Khách Hàng: AR_Customer (ClassId)",
+    "sql": "",
+    "solution": "Các bước xử lý:\nB1:Insert dữ liệu vào table: AR_CustomerClassImport \nB2:Insert các dữ liệu thay đổi vào AR_CustomerHistory\nB3:Update các dữ liệu ClassId mới vào AR_Customer",
+    "tags": "",
+    "module": "BO",
+    "images": [
+      {
+        "id": "f_mw31yath16ewl",
+        "name": "B1.Insert Classid.sql",
+        "size": 840,
+        "assetId": "712072974",
+        "by": "admin",
+        "at": "2026-11-05T04:35:24.958Z"
+      },
+      {
+        "id": "f_mw31ycarxpbhg",
+        "name": "B2.Update Classid.sql",
+        "size": 10738,
+        "assetId": "712073019",
+        "by": "admin",
+        "at": "2026-11-05T04:35:26.463Z"
+      }
+    ],
+    "createdAt": "2026-11-05T04:35:30.502Z",
+    "updatedAt": "2026-11-05T04:35:30.502Z",
+    "createdBy": "admin",
+    "updatedBy": "admin"
   }
 ]
