@@ -44,24 +44,24 @@
     "module": "BO",
     "images": [
       {
-        "id": "f_mw31yath16ewl",
+        "id": "f_mw32dk0a26c6d",
         "name": "B1.Insert Classid.sql",
         "size": 840,
-        "assetId": "712072974",
+        "assetId": "712101165",
         "by": "admin",
-        "at": "2026-11-05T04:35:24.958Z"
+        "at": "2026-11-05T04:47:16.650Z"
       },
       {
-        "id": "f_mw31ycarxpbhg",
+        "id": "f_mw32dlfbr6tsm",
         "name": "B2.Update Classid.sql",
         "size": 10738,
-        "assetId": "712073019",
+        "assetId": "712101215",
         "by": "admin",
-        "at": "2026-11-05T04:35:26.463Z"
+        "at": "2026-11-05T04:47:17.942Z"
       }
     ],
     "createdAt": "2026-11-05T04:35:30.502Z",
-    "updatedAt": "2026-11-05T04:35:30.502Z",
+    "updatedAt": "2026-11-05T04:47:21.288Z",
     "createdBy": "admin",
     "updatedBy": "admin"
   }
