@@ -23,14 +23,10 @@
       "nhuttm@hqsoft.com.vn"
     ],
     "projects": [
-      "ABI_eSales_Support",
-      "ANVY_eSale_Support",
-      "MerapLion_eSales",
-      "Sabeco_B2B_Support",
-      "Sabeco_PG"
+      "ANVY_eSale_Support"
     ],
     "extra": {},
-    "updatedAt": "2026-11-05T15:42:46.887Z",
+    "updatedAt": "2026-11-08T15:46:23.632Z",
     "updatedBy": "admin"
   }
 ]
