@@ -104,7 +104,7 @@
 <div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb">/ báo cáo / báo cáo effort</span></div>
 <div class="wrap">
   <h1 class="no-print">Báo Cáo Effort</h1>
-  <p class="sub no-print">Đánh giá effort xử lý của từng thành viên theo <b>số lượng ticket (ERP) và task (SynergyHub) được assign</b> trong khoảng ngày — gồm cả người đang được giao lẫn người từng được giao. Lọc theo <b>nhóm support</b> (người tạo ticket) và <b>nhóm xử lý</b> (người được chọn thêm để xử lý); xem ở 3 tab: so sánh, đánh giá từng thành viên, báo cáo chi tiết cho manager.</p>
+  <p class="sub no-print">Đánh giá effort xử lý của từng thành viên theo <b>số lượng ticket (ERP) và task (SynergyHub) được assign</b> trong khoảng ngày — gồm cả người đang được giao lẫn người từng được giao. Lọc theo <b>Nhóm CS</b> (owner các dự án) và <b>Nhóm DEC</b> (thành viên User Group <i>Team DEV- CS2</i>); xem ở các tab: so sánh, đánh giá từng thành viên, báo cáo chi tiết cho manager, tồn đọng theo người xử lý.</p>
 
   <div class="panel no-print" id="filters">
     <div class="bar">
@@ -183,7 +183,7 @@
           <button type="button" class="sm" id="blReload">↻ Tải lại</button>
           <button type="button" class="export sm" id="blXls">⬇ Xuất Excel</button>
         </div>
-        <div class="hint" style="margin-top:8px">Ticket <b>đang tồn tại thời điểm hiện tại</b> của các dự án đã chọn ở bộ lọc (không phụ thuộc khoảng ngày), chia theo người đang được assign. Ticket giao nhiều người thì tính cho mỗi người. <b>Điểm tải</b> = Σ trọng số ưu tiên (Critical/Urgent 3 · High 2 · Medium 1 · Low/khác 0,5), ticket đã quá hạn SLA ×1,5. So với trung bình những người đang có tồn: ≥ 130% là <b>Quá tải</b>, ≤ 70% là <b>Có thể nhận thêm</b>. Bấm 1 dòng để xem danh sách ticket.</div>
+        <div class="hint" style="margin-top:8px">Ticket <b>đang tồn tại thời điểm hiện tại</b> của các dự án đã chọn ở bộ lọc (không phụ thuộc khoảng ngày), chia theo <b>thành viên nhóm DEC</b> đang được assign (người DEC chưa có tồn hiện 0). Ticket giao nhiều người thì tính cho mỗi người. <b>Điểm tải</b> = Σ trọng số ưu tiên (Critical/Urgent 3 · High 2 · Medium 1 · Low/khác 0,5), ticket đã quá hạn SLA ×1,5. So với trung bình nhóm DEC: ≥ 130% là <b>Quá tải</b>, ≤ 70% là <b>Có thể nhận thêm</b>. Bấm 1 dòng để xem danh sách ticket.</div>
       </div>
       <div class="kpis" id="blKpis"></div>
       <div id="blSuggest"></div>
@@ -208,15 +208,15 @@ const fmtD = iso => iso ? iso.split('-').reverse().join('/') : '';
 const PRIO = [['p1','Critical/Urgent','#B23A48'],['high','High','#E8A33D'],['medium','Medium','#2E6F95'],['low','Low / khác','#8FA6B3']];
 const prioGroup = p => { const x = String(p||'').trim().toLowerCase(); return (x==='critical'||x==='urgent') ? 'p1' : x==='high' ? 'high' : x==='medium' ? 'medium' : 'low'; };
 const FALLBACK = [['MerapLion_eSales','Merap'],['ABI_eSales_Support','ABI'],['ANVY_eSale_Support','AnVy'],['Sabeco_PG','Sabeco PG'],['Sabeco_B2B_Support','Sabeco B2B'],['FES_eSales','FES'],['ANKO_eSales_Support','ANKO'],['HaiHa_eSales_Support','HAIHA'],['Jotun_VN_eSales','JOTUN']];
-let projects = FALLBACK.map(([code,name])=>({code,name})), pSel = new Set(), data = null, memSel = new Set(), grpSel = { support:true, handler:true, other:true };
+let projects = FALLBACK.map(([code,name])=>({code,name})), pSel = new Set(), data = null, memSel = new Set(), grpSel = { support:true, handler:true };
 let tab = 'cmp', sortKey = 'total', sortDir = -1, detailKey = '', charts = {}, supportSet = new Set(), handlerSet = new Set();
 const label = m => m.key.replace(/(^|[._\s-])([a-zà-ỹ])/g,(x,a,b)=>a+b.toUpperCase());
 const gcls = g => g==='Tốt'?'t':g==='Khá'?'k':g==='Trung bình'?'b':g==='Cần cải thiện'?'c':'';
 const gradeOf = r => r==null ? '—' : r>=80?'Tốt':r>=60?'Khá':r>=40?'Trung bình':'Cần cải thiện';
 const pc = (a,b) => b ? Math.round(a/b*1000)/10 : null;
 const isSup = m => supportSet.has(m.key), isHdl = m => handlerSet.has(m.key);
-const groupTags = m => (isSup(m)?'<span class="tg">Support</span>':'')+(isHdl(m)?'<span class="tg h">Xử lý</span>':'')+(!isSup(m)&&!isHdl(m)?'<span class="tg o">Khác</span>':'');
-const groupText = m => [isSup(m)&&'Nhóm support', isHdl(m)&&'Nhóm xử lý'].filter(Boolean).join(' + ') || 'Ngoài 2 nhóm';
+const groupTags = m => (isSup(m)?'<span class="tg">CS</span>':'')+(isHdl(m)?'<span class="tg h">DEC</span>':'');
+const groupText = m => [isSup(m)&&'Nhóm CS', isHdl(m)&&'Nhóm DEC'].filter(Boolean).join(' + ') || 'Ngoài 2 nhóm';
 
 /* ---------- bộ lọc nguồn ---------- */
 // Team 1 = Merap, ANVY, Sabeco (PG + B2B), ABI · Team 2 = các dự án còn lại
@@ -259,7 +259,7 @@ async function load(){
 }
 
 /* ---------- thành viên đang hiển thị (lọc nhóm + chọn tay) ---------- */
-const inGroup = m => (isSup(m) && grpSel.support) || (isHdl(m) && grpSel.handler) || (!isSup(m) && !isHdl(m) && grpSel.other);
+const inGroup = m => (isSup(m) && grpSel.support) || (isHdl(m) && grpSel.handler); // chỉ 2 nhóm CS / DEC, người ngoài 2 nhóm không hiện
 const sel = () => (data ? data.members.filter(m=>inGroup(m) && memSel.has(m.key)) : []);
 const withData = list => list.filter(m=>m.total>0);
 
@@ -273,9 +273,8 @@ function renderAll(){
     +`<div class="kpi k4"><div class="l">Đã xử lý / được assign</div><div class="v">${proc}/${asg}</div><div class="d">khả năng xử lý chung ${asg ? Math.round(proc/asg*1000)/10 : 0}%</div></div>`;
   const cnt = f => data.members.filter(f).length;
   $('grpChips').innerHTML = '<span class="t">Nhóm:</span>'
-    +`<label class="grp ${grpSel.support?'on':''}"><input type="checkbox" data-g="support" ${grpSel.support?'checked':''}> Nhóm support — người tạo ticket <small>(${cnt(isSup)})</small></label>`
-    +`<label class="grp ${grpSel.handler?'on':''}"><input type="checkbox" data-g="handler" ${grpSel.handler?'checked':''}> Nhóm xử lý — người được chọn thêm để xử lý <small>(${cnt(isHdl)})</small></label>`
-    +`<label class="grp ${grpSel.other?'on':''}"><input type="checkbox" data-g="other" ${grpSel.other?'checked':''}> Khác (ngoài 2 nhóm) <small>(${cnt(m=>!isSup(m)&&!isHdl(m))})</small></label>`;
+    +`<label class="grp ${grpSel.support?'on':''}"><input type="checkbox" data-g="support" ${grpSel.support?'checked':''}> Nhóm CS — owner dự án <small>(${cnt(isSup)})</small></label>`
+    +`<label class="grp ${grpSel.handler?'on':''}"><input type="checkbox" data-g="handler" ${grpSel.handler?'checked':''}> Nhóm DEC — ${esc((data.groups && data.groups.decGroup) || 'Team DEV- CS2')} <small>(${cnt(isHdl)})</small></label>`;
   $('grpChips').querySelectorAll('input').forEach(i=>i.onchange=()=>{ grpSel[i.dataset.g] = i.checked; renderAll(); });
   const shown = data.members.filter(inGroup);
   $('memChips').innerHTML = '<span class="t">Thành viên:</span>'+shown.map(m=>'<label class="'+(memSel.has(m.key)?'on':'')+'" title="'+esc(m.email||m.key)+'"><input type="checkbox" data-m="'+esc(m.key)+'"'+(memSel.has(m.key)?' checked':'')+'> '+esc(label(m))+' <small>('+m.total+')</small></label>').join('')
@@ -550,11 +549,14 @@ function blMembers(){
       map.set(key, m);
     });
   });
-  const list = [...map.values()].map(m=>({ ...m, count:m.items.length, score:r1(m.score), avgAge:r1(m.ageSum/m.items.length) }));
+  // chỉ nhóm DEC (+ dòng "Chưa giao ai"); thành viên DEC chưa có tồn vẫn hiện với 0 để thấy ai còn trống
+  BL.outside = [...map.values()].filter(m=>m.key && !handlerSet.has(m.key));
+  handlerSet.forEach(k=>{ if(!map.has(k)) map.set(k, { key:k, email:'', items:[], p1:0, high:0, medium:0, low:0, overdue:0, score:0, ageSum:0, oldest:0, projects:{} }); });
+  const list = [...map.values()].filter(m=>!m.key || handlerSet.has(m.key)).map(m=>({ ...m, count:m.items.length, score:r1(m.score), avgAge:m.items.length ? r1(m.ageSum/m.items.length) : 0 }));
   const people = list.filter(m=>m.key);
   const avgScore = people.length ? people.reduce((s,m)=>s+m.score,0)/people.length : 0;
   const avgCount = people.length ? people.reduce((s,m)=>s+m.count,0)/people.length : 0;
-  list.forEach(m=>{ m.pct = avgScore ? Math.round(m.score/avgScore*100) : null; m.level = !m.key ? '' : m.pct>=130 ? 'hi' : m.pct<=70 ? 'lo' : 'ok'; m.items.sort((a,b)=>(b.overdue-a.overdue) || (W[b.g]-W[a.g]) || b.age-a.age); });
+  list.forEach(m=>{ m.pct = avgScore ? Math.round(m.score/avgScore*100) : (m.key ? 0 : null); m.level = !m.key ? '' : m.pct>=130 ? 'hi' : m.pct<=70 ? 'lo' : 'ok'; m.items.sort((a,b)=>(b.overdue-a.overdue) || (W[b.g]-W[a.g]) || b.age-a.age); });
   list.sort((a,b)=>(!a.key)-(!b.key) || b.score-a.score);
   return { list, people, avgScore:r1(avgScore), avgCount:r1(avgCount) };
 }
@@ -562,12 +564,13 @@ const LV = { hi:'🔴 Quá tải', ok:'Cân bằng', lo:'🟢 Có thể nhận t
 const blName = m => m.key ? label(m) : '(Chưa giao ai)';
 function renderBacklog(){
   const { list, people, avgScore, avgCount } = blMembers();
-  const all = new Set(BL.rows.filter(t=>BL.statuses.has(t.status)).map(t=>t.name)); const now = nowVN();
-  const od = BL.rows.filter(t=>BL.statuses.has(t.status) && t._sla_due && t._sla_due < now).length;
+  const now = nowVN(); const shownT = new Map(); list.forEach(m=>m.items.forEach(i=>shownT.set(i.name, i)));
+  const all = new Set(shownT.keys()); const od = [...shownT.values()].filter(i=>i.overdue).length;
+  const outT = new Set((BL.outside||[]).flatMap(m=>m.items.map(i=>i.name)).filter(n=>!all.has(n)));
   const un = (list.find(m=>!m.key)||{count:0}).count;
   $('blKpis').innerHTML = `<div class="kpi"><div class="l">Ticket tồn đọng</div><div class="v">${all.size}</div><div class="d">${pSel.size} dự án · ${[...BL.statuses].join(', ')}</div></div>`
     +`<div class="kpi k2"><div class="l">Đã quá hạn SLA</div><div class="v">${od}</div><div class="d">${all.size ? Math.round(od/all.size*100) : 0}% số ticket tồn</div></div>`
-    +`<div class="kpi k3"><div class="l">Người đang có tồn</div><div class="v">${people.length}</div><div class="d">TB ${avgCount} ticket · ${avgScore} điểm/người</div></div>`
+    +`<div class="kpi k3"><div class="l">Nhóm DEC</div><div class="v">${people.length}</div><div class="d">TB ${avgCount} ticket · ${avgScore} điểm/người</div></div>`
     +`<div class="kpi k4"><div class="l">Chưa giao cho ai</div><div class="v">${un}</div><div class="d">cần assign người xử lý</div></div>`;
   // gợi ý chia lại: người quá tải → người có thể nhận thêm
   const hi = people.filter(m=>m.level==='hi'), lo = people.filter(m=>m.level==='lo').sort((a,b)=>a.score-b.score);
@@ -587,7 +590,8 @@ function renderBacklog(){
       + m.items.map(i=>'<tr><td>'+link(i.name)+'</td><td>'+esc(pName(i.project))+'</td><td style="text-align:left">'+esc(i.subject||'')+'</td><td>'+esc(i.priority||'')+'</td><td>'+esc(i.status)+'</td><td>'+esc(fmtD(String(i.opening_date||'').slice(0,10)))+'</td><td>'+i.age+'</td><td'+(i.overdue?' class="od"':'')+'>'+esc(i._sla_due||'')+(i.overdue?' ⚠':'')+'</td></tr>').join('')+'</table></td></tr>' : '';
     return '<tr class="bl-row" data-k="'+esc(m.key)+'"><td style="text-align:left;font-weight:600">'+(BL.open.has(m.key)?'▾ ':'▸ ')+esc(blName(m))+'</td><td><b>'+m.count+'</b></td><td>'+m.p1+'</td><td>'+m.high+'</td><td>'+m.medium+'</td><td>'+m.low+'</td><td'+(m.overdue?' class="od"':'')+'>'+m.overdue+'</td><td>'+m.avgAge+'</td><td>'+m.oldest+'</td><td><b>'+m.score+'</b></td><td>'+(m.pct==null||!m.key?'—':m.pct+'%')+'</td><td style="text-align:left">'+(m.level?'<span class="ld '+m.level+'">'+LV[m.level]+'</span>':'')+'</td><td style="text-align:left">'+Object.entries(m.projects).sort((a,b)=>b[1]-a[1]).map(([c,n])=>'<span class="tg">'+esc(pName(c))+' '+n+'</span>').join(' ')+'</td></tr>'+det;
   }).join('');
-  $('blTbl').innerHTML = list.length ? head+rows : '<tr><td class="hint" style="padding:20px">Không có ticket tồn đọng nào ở các trạng thái đã chọn.</td></tr>';
+  $('blTbl').innerHTML = !handlerSet.size ? '<tr><td class="status err" style="padding:20px">Chưa đọc được thành viên nhóm DEC (User Group '+esc((data && data.groups && data.groups.decGroup) || 'Team DEV- CS2')+') — xem cảnh báo phía trên.</td></tr>'
+    : list.length ? head+rows+(outT.size ? '<tr><td colspan="13" class="hint" style="text-align:left;padding:10px">Không tính '+outT.size+' ticket chỉ giao cho người ngoài nhóm DEC ('+esc(BL.outside.map(blName).join(', '))+').</td></tr>' : '') : '<tr><td class="hint" style="padding:20px">Không có ticket tồn đọng nào ở các trạng thái đã chọn.</td></tr>';
   $('blTbl').querySelectorAll('.bl-row').forEach(r=>r.onclick=e=>{ if(e.target.closest('a')) return; const k = r.dataset.k; BL.open.has(k) ? BL.open.delete(k) : BL.open.add(k); renderBacklog(); });
 }
 $('blReload').onclick = () => loadBacklog(true);

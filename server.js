@@ -497,7 +497,28 @@ app.get('/api/kpi/crplan-auto', requireAuth, async (req, res) => {
    GET /api/bao-cao/effort?from=YYYY-MM-DD&to=YYYY-MM-DD[&projects=[mã dự án ERP]][&mode=assigned|opened][&sources=ticket,task]
      mode=assigned (mặc định): ticket được GIAO trong khoảng (ToDo tạo trong khoảng) · mode=opened: ticket có Opening On trong khoảng (người xử lý = _assign + lịch sử ToDo, kể cả ticket đã đóng)
      task SynergyHub: tính theo hạn dự kiến (planned) nằm trong khoảng; không lọc theo dự án ERP.
-   Trả thêm groups {support:[email], handler:[email]} (ticket-creators.json: creators / assignees) để lọc theo nhóm; thành viên của 2 nhóm luôn có mặt (0 nếu chưa được assign). Cách gộp/đếm: effortReport.js */
+   Trả thêm groups {support:[email] = nhóm CS (Project Owner), handler:[email] = nhóm DEC (User Group DEC_USER_GROUP)} để lọc theo nhóm; thành viên của 2 nhóm luôn có mặt (0 nếu chưa được assign). Cách gộp/đếm: effortReport.js */
+const DEC_USER_GROUP = process.env.DEC_USER_GROUP || 'Team DEV- CS2';
+async function effortCsOwners(projects, warnings) {
+  try {
+    const r = await erp.fetchProjects({});
+    return [...new Set((r.data || r || []).filter((p) => projects.includes(p.name)).map((p) => String(p.project_owner || '').trim().toLowerCase()).filter(Boolean))];
+  } catch (e) { warnings.push('Không đọc được Project Owner từ ERP (nhóm CS): ' + e.message); return []; }
+}
+async function effortDecMembers(warnings) {
+  const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  try {
+    let group = DEC_USER_GROUP;
+    let m = await erp.getUserGroupMembers(group).catch((e) => (e.status === 404 || /404|not found/i.test(e.message) ? null : Promise.reject(e)));
+    if (!m) { // tên trên ERP có thể khác khoảng trắng/gạch nối → tìm gần đúng
+      const all = await erp.listUserGroups('CS2');
+      group = all.find((g) => norm(g) === norm(DEC_USER_GROUP)) || all.find((g) => norm(g).includes('dev') && norm(g).includes('cs2'));
+      if (!group) { warnings.push(`Không tìm thấy User Group "${DEC_USER_GROUP}" trên ERP (nhóm DEC).`); return { group: DEC_USER_GROUP, members: [] }; }
+      m = await erp.getUserGroupMembers(group);
+    }
+    return { group, members: m.members.map((x) => x.email) };
+  } catch (e) { warnings.push(`Không đọc được User Group "${DEC_USER_GROUP}" (nhóm DEC): ` + e.message); return { group: DEC_USER_GROUP, members: [] }; }
+}
 app.get('/api/bao-cao/effort', requireAuth, async (req, res) => {
   if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
   const isDay = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
@@ -553,10 +574,10 @@ app.get('/api/bao-cao/effort', requireAuth, async (req, res) => {
       if (!data.tasks.length) warnings.push('SynergyHub không trả về task nào.');
     } catch (e) { warnings.push('Không lấy được task SynergyHub: ' + e.message + ' — báo cáo chỉ gồm ticket.'); }
   }
-  // Nhóm support = người tạo ticket (creators), nhóm xử lý = người xử lý chuyển Assign (assignees) — cấu hình ở ticket-creators.json (trang Tạo Ticket)
-  const pc = loadProjectCreators();
-  const groups = { support: pc.creators, handler: pc.assignees };
-  const out = effortReport.build({ ticketPairs, taskPairs, from, to, extraMembers: [...pc.creators, ...pc.assignees] });
+  // Nhóm CS = Project Owner (ERP) của các dự án đang chọn · Nhóm DEC = thành viên User Group ERP "Team DEV- CS2" (ô Assign To User Group ở trang Tạo Ticket)
+  const [csOwners, dec] = await Promise.all([effortCsOwners(projects, warnings), effortDecMembers(warnings)]);
+  const groups = { support: csOwners, handler: dec.members, decGroup: dec.group };
+  const out = effortReport.build({ ticketPairs, taskPairs, from, to, extraMembers: [...csOwners, ...dec.members] });
   res.json({ from, to, mode, sources, projects, ...out, groups, warnings, diagnostics });
 });
 
