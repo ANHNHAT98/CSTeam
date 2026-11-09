@@ -850,5 +850,551 @@
     ],
     "updatedAt": "2026-11-09T03:44:44.774Z",
     "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794197381535_00s4t",
+    "project": "MerapLion_eSales",
+    "code": "PO10100",
+    "name": "Yêu Cầu Rút Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "PO_Header",
+        "role": "Bảng chính",
+        "desc": "Header yêu cầu rút hàng (PR) — Status, POType, VendID, PODate",
+        "where": "BranchID = '...' AND PONbr = '...'"
+      },
+      {
+        "name": "PO_Detail",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng của yêu cầu",
+        "where": "BranchID = '...' AND PONbr = '...'"
+      },
+      {
+        "name": "PO_OrderAlloc",
+        "role": "Bảng chi tiết",
+        "desc": "Phân bổ số lượng theo đơn đặt hàng",
+        "where": "BranchID = '...' AND POOrdNbr = '...'"
+      },
+      {
+        "name": "AP_Vendor",
+        "role": "Danh mục",
+        "desc": "Nhà cung cấp",
+        "where": "VendID = '...'"
+      },
+      {
+        "name": "AP_POAddress",
+        "role": "Danh mục",
+        "desc": "Địa chỉ đặt hàng của NCC",
+        "where": "VendId = '...'"
+      },
+      {
+        "name": "IN_Inventory",
+        "role": "Danh mục",
+        "desc": "Mặt hàng",
+        "where": "InvtID = '...'"
+      },
+      {
+        "name": "IN_UnitConversion",
+        "role": "Danh mục",
+        "desc": "Quy đổi đơn vị tính",
+        "where": "InvtID = '...'"
+      },
+      {
+        "name": "PO_Price",
+        "role": "Danh mục",
+        "desc": "Giá mua theo bảng giá",
+        "where": "PriceID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "SI_Tax",
+        "role": "Danh mục",
+        "desc": "Thuế",
+        "where": "TaxID = '...'"
+      },
+      {
+        "name": "PO_Setup",
+        "role": "Cấu hình",
+        "desc": "Cài đặt phân hệ mua hàng theo NPP",
+        "where": "BranchID = '...'"
+      },
+      {
+        "name": "SI_ApprovalFlowStatus",
+        "role": "Cấu hình",
+        "desc": "Các trạng thái của luồng duyệt",
+        "where": "AppFolID = 'PO10100'"
+      },
+      {
+        "name": "SI_ApprovalFlowHandle",
+        "role": "Cấu hình",
+        "desc": "Thao tác (handle) được phép theo trạng thái",
+        "where": "AppFolID = 'PO10100'"
+      },
+      {
+        "name": "PO_AllocProcess",
+        "role": "Lịch sử / Log",
+        "desc": "Lịch sử phân bổ PR ↔ PO",
+        "where": "BranchID = '...' AND PROrder = '...'"
+      },
+      {
+        "name": "PO_Receipt",
+        "role": "Khác",
+        "desc": "Phiếu nhận hàng đã tạo từ yêu cầu",
+        "where": "BranchID = '...' AND PONbr = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-09T04:09:41.321Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794197381535_2ep6t",
+    "project": "MerapLion_eSales",
+    "code": "PO10200",
+    "name": "Đơn Hàng Thực Nhận",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "PO_Receipt",
+        "role": "Bảng chính",
+        "desc": "Header phiếu nhận/trả hàng — RcptType, Status, PONbr",
+        "where": "BranchID = '...' AND BatNbr = '...'"
+      },
+      {
+        "name": "Batch",
+        "role": "Bảng chính",
+        "desc": "Batch chứng từ (Module = IN, EditScrnNbr = PO10200)",
+        "where": "BranchID = '...' AND BatNbr = '...' AND Module = 'IN'"
+      },
+      {
+        "name": "PO_Trans",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng thực nhận",
+        "where": "BranchID = '...' AND BatNbr = '...' AND RcptNbr = '...'"
+      },
+      {
+        "name": "PO_LotTrans",
+        "role": "Bảng chi tiết",
+        "desc": "Lô / hạn dùng của từng dòng nhận",
+        "where": "BranchID = '...' AND BatNbr = '...'"
+      },
+      {
+        "name": "PO_Invoice",
+        "role": "Bảng chi tiết",
+        "desc": "Thông tin hoá đơn của phiếu nhận",
+        "where": "BranchID = '...' AND BatNbr = '...'"
+      },
+      {
+        "name": "PO_TransExt",
+        "role": "Bảng chi tiết",
+        "desc": "Thông tin mở rộng dòng nhận",
+        "where": "BranchID = '...' AND BatNbr = '...'"
+      },
+      {
+        "name": "PO_ReasonCode",
+        "role": "Danh mục",
+        "desc": "Lý do trả hàng",
+        "where": "Code = '...'"
+      },
+      {
+        "name": "AP_Vendor",
+        "role": "Danh mục",
+        "desc": "Nhà cung cấp",
+        "where": "VendID = '...'"
+      },
+      {
+        "name": "IN_Inventory",
+        "role": "Danh mục",
+        "desc": "Mặt hàng",
+        "where": "InvtID = '...'"
+      },
+      {
+        "name": "IN_UnitConversion",
+        "role": "Danh mục",
+        "desc": "Quy đổi đơn vị tính",
+        "where": "InvtID = '...'"
+      },
+      {
+        "name": "PO_Setup",
+        "role": "Cấu hình",
+        "desc": "Cài đặt phân hệ mua hàng",
+        "where": "BranchID = '...'"
+      },
+      {
+        "name": "PO_OrderProcess",
+        "role": "Lịch sử / Log",
+        "desc": "Số lượng PR đã duyệt / đã nhận theo PO",
+        "where": "POOrder = '...'"
+      },
+      {
+        "name": "PO_Header",
+        "role": "Khác",
+        "desc": "Yêu cầu rút hàng gốc",
+        "where": "BranchID = '...' AND PONbr = '...'"
+      },
+      {
+        "name": "PO_Detail",
+        "role": "Khác",
+        "desc": "Chi tiết yêu cầu rút hàng gốc",
+        "where": "BranchID = '...' AND PONbr = '...'"
+      },
+      {
+        "name": "PO_OrderHeader",
+        "role": "Khác",
+        "desc": "Đơn đặt hàng liên quan",
+        "where": "POOrdNbr = '...'"
+      },
+      {
+        "name": "IN_ItemSite",
+        "role": "Khác",
+        "desc": "Tồn kho theo kho (cập nhật khi nhận)",
+        "where": "SiteID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "IN_ItemLoc",
+        "role": "Khác",
+        "desc": "Tồn kho theo vị trí kho",
+        "where": "SiteID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "IN_ItemLot",
+        "role": "Khác",
+        "desc": "Tồn kho theo lô",
+        "where": "SiteID = '...' AND InvtID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-09T04:09:41.321Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794197381535_n8u7k",
+    "project": "MerapLion_eSales",
+    "code": "PO10400",
+    "name": "Duyệt Yêu Cầu Rút Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "PO_Header",
+        "role": "Bảng chính",
+        "desc": "Yêu cầu rút hàng cần duyệt — Status",
+        "where": "BranchID = '...' AND PONbr = '...'"
+      },
+      {
+        "name": "PO_Detail",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng duyệt",
+        "where": "BranchID = '...' AND PONbr = '...'"
+      },
+      {
+        "name": "IN_Inventory",
+        "role": "Danh mục",
+        "desc": "Mặt hàng",
+        "where": "InvtID = '...'"
+      },
+      {
+        "name": "PO_OrderSetup",
+        "role": "Cấu hình",
+        "desc": "Cấu hình đặt hàng theo năm/chu kỳ/vùng",
+        "where": "BranchID = '...'"
+      },
+      {
+        "name": "SI_ApprovalFlowStatus",
+        "role": "Cấu hình",
+        "desc": "Trạng thái luồng duyệt",
+        "where": "AppFolID = 'PO10400'"
+      },
+      {
+        "name": "SI_ApprovalFlowHandle",
+        "role": "Cấu hình",
+        "desc": "Thao tác duyệt theo trạng thái",
+        "where": "AppFolID = 'PO10400'"
+      },
+      {
+        "name": "PO_OrderProcess",
+        "role": "Lịch sử / Log",
+        "desc": "Số lượng PR đã duyệt theo PO",
+        "where": "POOrder = '...'"
+      },
+      {
+        "name": "PO_AllocProcess",
+        "role": "Lịch sử / Log",
+        "desc": "Lịch sử phân bổ PR ↔ PO",
+        "where": "BranchID = '...' AND PROrder = '...'"
+      },
+      {
+        "name": "PO_OrderHeader",
+        "role": "Khác",
+        "desc": "Đơn đặt hàng nguồn để trừ số lượng",
+        "where": "POOrdNbr = '...'"
+      },
+      {
+        "name": "PO_OrderDetail",
+        "role": "Khác",
+        "desc": "Chi tiết đơn đặt hàng — số lượng còn lại",
+        "where": "POOrdNbr = '...'"
+      },
+      {
+        "name": "PO_OrderAlloc",
+        "role": "Khác",
+        "desc": "Phân bổ theo đơn đặt hàng",
+        "where": "BranchID = '...' AND POOrdNbr = '...'"
+      },
+      {
+        "name": "IN_SAPStock",
+        "role": "Khác",
+        "desc": "Tồn kho SAP dùng khi duyệt",
+        "where": "Warehouse = '...' AND InvtID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-09T04:09:41.321Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794197381535_dopqs",
+    "project": "MerapLion_eSales",
+    "code": "PO10700",
+    "name": "Đơn Đặt Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "PO_OrderHeader",
+        "role": "Bảng chính",
+        "desc": "Header đơn đặt hàng — Status, POType, VendID",
+        "where": "POOrdNbr = '...'"
+      },
+      {
+        "name": "PO_OrderDetail",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đặt",
+        "where": "POOrdNbr = '...'"
+      },
+      {
+        "name": "PO_PriceHeader",
+        "role": "Danh mục",
+        "desc": "Bảng giá mua",
+        "where": "PriceID = '...'"
+      },
+      {
+        "name": "PO_Price",
+        "role": "Danh mục",
+        "desc": "Giá mua theo mặt hàng",
+        "where": "PriceID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "AP_Vendor",
+        "role": "Danh mục",
+        "desc": "Nhà cung cấp",
+        "where": "VendID = '...'"
+      },
+      {
+        "name": "IN_Inventory",
+        "role": "Danh mục",
+        "desc": "Mặt hàng",
+        "where": "InvtID = '...'"
+      },
+      {
+        "name": "IN_UnitConversion",
+        "role": "Danh mục",
+        "desc": "Quy đổi đơn vị tính",
+        "where": "InvtID = '...'"
+      },
+      {
+        "name": "PO_Setup",
+        "role": "Cấu hình",
+        "desc": "Cài đặt phân hệ mua hàng",
+        "where": "BranchID = '...'"
+      },
+      {
+        "name": "SI_ApprovalFlowStatus",
+        "role": "Cấu hình",
+        "desc": "Trạng thái luồng duyệt",
+        "where": "AppFolID = 'PO10700'"
+      },
+      {
+        "name": "SI_ApprovalFlowHandle",
+        "role": "Cấu hình",
+        "desc": "Thao tác theo trạng thái",
+        "where": "AppFolID = 'PO10700'"
+      },
+      {
+        "name": "PO_OrderProcess",
+        "role": "Lịch sử / Log",
+        "desc": "Theo dõi số lượng PR đã duyệt/nhận theo PO",
+        "where": "POOrder = '...'"
+      },
+      {
+        "name": "PO_Header",
+        "role": "Khác",
+        "desc": "Yêu cầu rút hàng tạo từ đơn",
+        "where": "PONbr = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-09T04:09:41.321Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794197381535_zfdao",
+    "project": "MerapLion_eSales",
+    "code": "PO10800",
+    "name": "Phân Bổ Đơn Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "PO_OrderAlloc",
+        "role": "Bảng chính",
+        "desc": "Số lượng phân bổ đơn đặt hàng cho NPP",
+        "where": "BranchID = '...' AND POOrdNbr = '...'"
+      },
+      {
+        "name": "AP_Vendor",
+        "role": "Danh mục",
+        "desc": "Nhà cung cấp",
+        "where": "VendID = '...'"
+      },
+      {
+        "name": "PO_OrderHeader",
+        "role": "Khác",
+        "desc": "Header đơn đặt hàng",
+        "where": "POOrdNbr = '...'"
+      },
+      {
+        "name": "PO_OrderDetail",
+        "role": "Khác",
+        "desc": "Chi tiết đơn đặt hàng",
+        "where": "POOrdNbr = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-09T04:09:41.321Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794197381535_091zr",
+    "project": "MerapLion_eSales",
+    "code": "PO10900",
+    "name": "Kế Hoạch Nhận Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "PO_OrderReceive",
+        "role": "Bảng chính",
+        "desc": "Kế hoạch nhận hàng theo lô / ngày nhận",
+        "where": "BranchID = '...' AND POOrdNbr = '...'"
+      },
+      {
+        "name": "AP_Vendor",
+        "role": "Danh mục",
+        "desc": "Nhà cung cấp",
+        "where": "VendID = '...'"
+      },
+      {
+        "name": "PO_Setup",
+        "role": "Cấu hình",
+        "desc": "Cài đặt phân hệ mua hàng",
+        "where": "BranchID = '...'"
+      },
+      {
+        "name": "PO_OrderHeader",
+        "role": "Khác",
+        "desc": "Header đơn đặt hàng",
+        "where": "POOrdNbr = '...'"
+      },
+      {
+        "name": "PO_OrderDetail",
+        "role": "Khác",
+        "desc": "Chi tiết đơn đặt hàng",
+        "where": "POOrdNbr = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-09T04:09:41.321Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794197381535_nzbj0",
+    "project": "MerapLion_eSales",
+    "code": "PO20100",
+    "name": "Giá Hàng Hóa Mua Vào",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "PO_PriceHeader",
+        "role": "Bảng chính",
+        "desc": "Header bảng giá mua",
+        "where": "PriceID = '...'"
+      },
+      {
+        "name": "PO_Price",
+        "role": "Bảng chi tiết",
+        "desc": "Giá theo NCC / mặt hàng / ĐVT",
+        "where": "PriceID = '...'"
+      },
+      {
+        "name": "PO_PriceCpny",
+        "role": "Bảng chi tiết",
+        "desc": "NPP áp dụng bảng giá",
+        "where": "PriceID = '...'"
+      },
+      {
+        "name": "AP_Vendor",
+        "role": "Danh mục",
+        "desc": "Nhà cung cấp",
+        "where": "VendID = '...'"
+      },
+      {
+        "name": "IN_Inventory",
+        "role": "Danh mục",
+        "desc": "Mặt hàng",
+        "where": "InvtID = '...'"
+      },
+      {
+        "name": "IN_UnitConversion",
+        "role": "Danh mục",
+        "desc": "Quy đổi đơn vị tính",
+        "where": "InvtID = '...'"
+      },
+      {
+        "name": "SI_ApprovalFlowStatus",
+        "role": "Cấu hình",
+        "desc": "Trạng thái luồng duyệt",
+        "where": "AppFolID = 'PO20100'"
+      },
+      {
+        "name": "SI_ApprovalFlowHandle",
+        "role": "Cấu hình",
+        "desc": "Thao tác theo trạng thái",
+        "where": "AppFolID = 'PO20100'"
+      }
+    ],
+    "updatedAt": "2026-11-09T04:09:41.321Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794197381535_204ej",
+    "project": "MerapLion_eSales",
+    "code": "PO00000",
+    "name": "Cài Đặt Phân Hệ Mua Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "PO_Setup",
+        "role": "Bảng chính",
+        "desc": "Cài đặt phân hệ mua hàng theo NPP",
+        "where": "BranchID = '...'"
+      },
+      {
+        "name": "PO_ReasonCode",
+        "role": "Danh mục",
+        "desc": "Lý do trả hàng",
+        "where": "Code = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-09T04:09:41.321Z",
+    "updatedBy": "admin"
   }
 ]
