@@ -167,6 +167,7 @@
   <div class="tabs no-print">
     <button class="tab-btn active" type="button" data-tab="manual">📝 Báo cáo tuần</button>
     <button class="tab-btn" type="button" data-tab="auto">🤖 Tự động gửi ERP</button>
+    <button class="tab-btn" type="button" data-tab="sla">📧 Nhắc SLA</button>
   </div>
   <div class="tab-panel active" id="tab-manual">
 
@@ -349,6 +350,34 @@ Hỗ trợ thanh toán công cho MDS và kế toán</textarea>
     <div id="au_runs" class="list-hint">—</div>
   </div>
 </div><!-- /tab-auto -->
+
+  <div class="tab-panel" id="tab-sla">
+  <div class="panel no-print">
+    <h2><span class="n">📧</span> Nhắc ticket trễ SLA đầu tuần <span class="pill" id="sl_state">…</span></h2>
+    <div class="field" style="margin-top:12px"><label>Thành viên nhận nhắc (mỗi người 1 mail với ticket trễ được giao cho họ)</label><input type="text" id="sl_members" style="width:100%;box-sizing:border-box"></div>
+    <div class="auto-grid">
+      <div class="field" style="grid-column:span 2"><label>Nhận mail tổng hợp</label><input type="text" id="sl_summaryTo"></div>
+      <div class="field" style="grid-column:span 2"><label>CC thêm vào mail từng người</label><input type="text" id="sl_cc"></div>
+    </div>
+    <div class="field" style="margin-top:12px"><label>Trạng thái ticket cần nhắc</label><div id="sl_statuses"></div></div>
+    <div class="field" style="margin-top:12px"><label>Dự án (theo danh sách đã lưu ở tab Tự động gửi ERP)</label><div id="sl_projects" class="list-hint">—</div></div>
+    <div style="margin-top:12px">
+      <label class="chk"><input type="checkbox" id="sl_enabled"> Bật gửi tự động theo lịch</label>
+      <label class="chk"><input type="checkbox" id="sl_skipEmpty"> Không gửi cho người không có ticket trễ</label>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="sl_save" type="button">💾 Lưu cấu hình</button>
+      <button class="btn btn-ghost" id="sl_preview" type="button">👁 Xem trước mail</button>
+      <input type="text" id="sl_testTo" placeholder="email nhận thử" style="min-width:220px">
+      <button class="btn btn-ghost" id="sl_test" type="button">✉ Gửi thử về email này</button>
+      <button class="btn btn-ghost" id="sl_send" type="button">▶ Gửi thật ngay</button>
+    </div>
+    <div class="status" id="sl_status"></div>
+    <div class="preview-box" id="sl_previewBox" style="display:none"></div>
+    <div class="sub-h" style="margin-top:20px">Lịch sử gửi gần đây</div>
+    <div id="sl_runs" class="list-hint">—</div>
+  </div>
+  </div><!-- /tab-sla -->
 </div>
 
 <script>
@@ -1180,9 +1209,11 @@ function testArgs(){
 }
 function fillTestProjects(){
   const sel = au$('au_testProject'); const cur = sel.value;
-  const chosen = (AU.config && AU.config.projects) || [];
-  const all = new Map((AU.ownerProjects || []).map(p => [p.name, p.project_name || p.name]));
-  sel.innerHTML = [...all].map(([v,t]) => `<option value="${escapeAttr(v)}">${escapeHtml(t)}</option>`).join('') || '<option value="">— chưa có dự án —</option>';
+  // chỉ các dự án ĐÃ LƯU trong cấu hình (đúng danh sách lịch tự động sẽ chạy)
+  const chosen = (AU.config && AU.config.updatedAt && AU.config.projects) || [];
+  const names = new Map((AU.ownerProjects || []).map(p => [p.name, p.project_name || p.name]));
+  const all = new Map(chosen.map(v => [v, names.get(v) || v]));
+  sel.innerHTML = [...all].map(([v,t]) => `<option value="${escapeAttr(v)}">${escapeHtml(t)}</option>`).join('') || '<option value="">— chưa lưu dự án nào ở cấu hình phía trên —</option>';
   if (cur && all.has(cur)) sel.value = cur; else if (chosen[0] && all.has(chosen[0])) sel.value = chosen[0];
 }
 au$('au_preview').addEventListener('click', async () => {
@@ -1253,14 +1284,70 @@ document.getElementById('pushErpBtn').addEventListener('click', async () => {
 function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;'); }
 ['au_testFrom','au_testTo'].forEach(id => au$(id).addEventListener('change', () => { au$('au_testFrom').dataset.touched = '1'; }));
-/* ---------- tab: Báo cáo tuần / Tự động gửi ERP (#tu-dong) ---------- */
+/* ================= NHẮC TICKET TRỄ SLA (#nhac-sla) ================= */
+const SL = { config:null, statuses:[] };
+function slStatus(msg, cls){ au$('sl_status').textContent = msg; au$('sl_status').className = 'status ' + (cls||''); }
+const slList = id => au$(id).value.split(/[\s,;]+/).map(x => x.trim()).filter(Boolean);
+async function loadSla(){
+  try{
+    const res = await fetch('/api/sla-reminder/config', { credentials:'same-origin' });
+    const d = await res.json(); if (!res.ok) throw new Error(d.error || 'HTTP ' + res.status);
+    const c = SL.config = d.config; SL.statuses = d.statuses;
+    au$('sl_members').value = (c.members||[]).join(', ');
+    au$('sl_summaryTo').value = (c.summaryTo||[]).join(', ');
+    au$('sl_cc').value = (c.cc||[]).join(', ');
+    au$('sl_enabled').checked = !!c.enabled; au$('sl_skipEmpty').checked = !!c.skipEmpty;
+    au$('sl_statuses').innerHTML = d.statuses.map(s => `<label class="chk"><input type="checkbox" value="${escapeAttr(s)}"${(c.statuses||[]).includes(s) ? ' checked' : ''}> ${escapeHtml(s)}</label>`).join('');
+    const projs = d.projects || [];
+    au$('sl_projects').textContent = projs.length ? projs.join(' · ') : '(chưa có — lưu danh sách dự án ở tab Tự động gửi ERP)';
+    if (!au$('sl_testTo').value) au$('sl_testTo').value = (c.summaryTo||[])[0] || '';
+    const st = au$('sl_state');
+    st.className = 'pill' + (c.enabled && d.webhookReady && d.cronReady ? '' : ' warn');
+    st.textContent = !d.webhookReady ? 'chưa có REMINDER_WEBHOOK_URL' : !c.enabled ? 'đang tắt' : !d.cronReady ? 'chưa có CRON_SECRET' : 'đang bật';
+    au$('sl_runs').innerHTML = !d.runs.length ? 'Chưa gửi lần nào.' : '<table class="runs"><tr><th>Lúc</th><th>Ticket trễ</th><th>Mail</th><th>Người chạy</th></tr>' + d.runs.map(r => {
+      const errs = (r.results||[]).filter(x => !x.ok).map(x => x.to + ': ' + x.error).join('\n');
+      return `<tr><td>${escapeHtml(new Date(r.at).toLocaleString('vi-VN'))}</td><td>${r.total}</td><td>${r.failed ? `<span style="color:var(--danger)" title="${escapeAttr(errs)}">✗ ${r.sent} gửi, ${r.failed} lỗi</span>` : `<span style="color:var(--success)">✓ ${r.sent} mail</span>`}${r.test ? ' (thử → ' + escapeHtml(r.test) + ')' : ''}</td><td>${escapeHtml(r.by||'')}</td></tr>`; }).join('') + '</table>';
+  }catch(e){ slStatus('Không tải được cấu hình nhắc SLA: ' + e.message, 'err'); }
+}
+au$('sl_save').addEventListener('click', async () => {
+  slStatus('Đang lưu…', 'busy');
+  try{
+    await postJson('/api/sla-reminder/config', { members: slList('sl_members'), summaryTo: slList('sl_summaryTo'), cc: slList('sl_cc'),
+      statuses: [...au$('sl_statuses').querySelectorAll('input:checked')].map(i => i.value), enabled: au$('sl_enabled').checked, skipEmpty: au$('sl_skipEmpty').checked });
+    slStatus('Đã lưu cấu hình.', 'ok'); loadSla();
+  }catch(e){ slStatus('Không lưu được: ' + e.message, 'err'); }
+});
+au$('sl_preview').addEventListener('click', async () => {
+  slStatus('Đang lấy ticket và tính SLA…', 'busy');
+  try{
+    const d = await postJson('/api/sla-reminder/preview', {});
+    const box = au$('sl_previewBox'); box.style.display = '';
+    box.innerHTML = d.mails.length ? d.mails.map(m => `<div style="margin-bottom:22px;border-bottom:2px solid var(--grid-line-strong);padding-bottom:14px"><div class="list-hint"><b>Đến:</b> ${escapeHtml(m.to.join(', '))}${m.cc.length ? ' · <b>CC:</b> ' + escapeHtml(m.cc.join(', ')) : ''}<br><b>Tiêu đề:</b> ${escapeHtml(m.subject)}</div>${m.html}</div>`).join('') : '<span class="list-hint">Không có mail nào cần gửi.</span>';
+    slStatus(`${d.total} ticket trễ SLA · ${d.mails.length} mail sẽ gửi (chưa gửi).`, 'ok');
+  }catch(e){ slStatus('Lỗi xem trước: ' + e.message, 'err'); }
+});
+async function slSend(testTo){
+  slStatus(testTo ? 'Đang gửi thử về ' + testTo + '…' : 'Đang gửi…', 'busy');
+  try{
+    const d = await postJson('/api/sla-reminder/send', testTo ? { testTo } : {});
+    if (d.skipped) slStatus('Bỏ qua: ' + d.reason, 'err');
+    else slStatus(`Đã gửi ${d.sent} mail${d.failed ? `, lỗi ${d.failed}` : ''} (${d.total} ticket trễ).`, d.failed ? 'err' : 'ok');
+  }catch(e){ slStatus('Không gửi được: ' + e.message, 'err'); }
+  loadSla();
+}
+au$('sl_test').addEventListener('click', () => { const t = au$('sl_testTo').value.trim(); if (!t) return slStatus('Nhập email nhận thử.', 'err'); slSend(t); });
+au$('sl_send').addEventListener('click', () => { if (confirm('Gửi mail nhắc SLA thật cho các thành viên ngay bây giờ?')) slSend(''); });
+
+/* ---------- tab: Báo cáo tuần / Tự động gửi ERP (#tu-dong) / Nhắc SLA (#nhac-sla) ---------- */
+const TAB_HASH = { auto:'#tu-dong', sla:'#nhac-sla' };
 function showTab(name){
   document.querySelectorAll('.tabs .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
-  const h = name === 'auto' ? '#tu-dong' : ''; if (location.hash !== h) history.replaceState(null, '', location.pathname + location.search + h);
+  const h = TAB_HASH[name] || ''; if (location.hash !== h) history.replaceState(null, '', location.pathname + location.search + h);
+  if (name === 'sla') loadSla();
 }
 document.querySelectorAll('.tabs .tab-btn').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
-showTab(location.hash === '#tu-dong' ? 'auto' : 'manual');
+showTab(Object.keys(TAB_HASH).find(k => TAB_HASH[k] === location.hash) || 'manual');
 loadAuto();
 </script>
 </body>

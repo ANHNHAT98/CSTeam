@@ -1557,6 +1557,53 @@ app.post('/api/cron/weekly-erp', async (req, res) => {
   } catch (e) { console.error('[weekly-erp:cron] lỗi:', e.message); res.status(502).json({ error: e.message }); }
 });
 
+/* ---------- Nhắc ticket trễ SLA đầu tuần (slaReminder.js) — gửi mail qua Power Automate (REMINDER_WEBHOOK_URL) ----------
+   GET  /api/sla-reminder/config  ·  POST /api/sla-reminder/config
+   POST /api/sla-reminder/preview                 → nội dung mail sẽ gửi (không gửi)
+   POST /api/sla-reminder/send  {testTo?}         → gửi thật (testTo: gửi hết về 1 địa chỉ để thử)
+   POST /api/cron/sla-reminder[?async=1]          header X-Cron-Key: <CRON_SECRET> */
+const slaReminder = require('./slaReminder');
+app.get('/api/sla-reminder/config', requireAuth, async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const [config, runs] = await Promise.all([slaReminder.getConfig(), slaReminder.readRuns()]);
+    res.json({ config, projects: await slaReminder.projectsOf(config), runs: runs.slice(0, 20), statuses: slaReminder.ALL_OPEN_STATUSES, webhookReady: slaReminder.webhookReady(), cronReady: Boolean(process.env.CRON_SECRET), githubBacked: slaReminder.isGithubBacked() });
+  } catch (e) { res.status(502).json({ error: e.message }); }
+});
+app.post('/api/sla-reminder/config', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, config: await slaReminder.saveConfig(req.body || {}, req.session.username) }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/sla-reminder/preview', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  try { res.json(await slaReminder.run({ dryRun: true })); } catch (e) { res.status(502).json({ error: e.message }); }
+});
+app.post('/api/sla-reminder/send', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  try { const r = await slaReminder.run({ testTo: (req.body || {}).testTo || '', by: req.session.username }); res.status(r.ok || r.skipped ? 200 : 502).json(r); }
+  catch (e) { res.status(502).json({ error: e.message }); }
+});
+let slaCronRunning = false;
+app.post('/api/cron/sla-reminder', async (req, res) => {
+  const secret = String(process.env.CRON_SECRET || '');
+  const got = String(req.get('x-cron-key') || '');
+  const ok = secret.length >= 16 && got.length === secret.length && require('crypto').timingSafeEqual(Buffer.from(got), Buffer.from(secret));
+  if (!ok) return res.status(secret ? 403 : 501).json({ error: secret ? 'Sai X-Cron-Key.' : 'Server chưa cấu hình CRON_SECRET (tối thiểu 16 ký tự).' });
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  if (!slaReminder.webhookReady()) return res.status(501).json({ error: 'Server chưa cấu hình REMINDER_WEBHOOK_URL.' });
+  const go = () => slaReminder.run({});
+  if (/^(1|true|yes)$/i.test(String(req.query.async || ''))) {
+    if (slaCronRunning) return res.status(202).json({ accepted: true, note: 'Đang có 1 lượt chạy — bỏ qua lượt trùng.' });
+    slaCronRunning = true;
+    res.status(202).json({ accepted: true, note: 'Đã nhận — đang gửi nền, xem kết quả ở tab Nhắc SLA.' });
+    go().then((r) => console.log(`[sla-reminder:cron] ${r.skipped ? 'bỏ qua: ' + r.reason : `${r.sent} mail, lỗi ${r.failed}`}`))
+      .catch((e) => console.error('[sla-reminder:cron] lỗi:', e.message)).finally(() => { slaCronRunning = false; });
+    return;
+  }
+  try { const r = await go(); res.status(r.ok || r.skipped ? 200 : 502).json(r); }
+  catch (e) { console.error('[sla-reminder:cron] lỗi:', e.message); res.status(502).json({ error: e.message }); }
+});
+
 function parseJsonArrayParam(raw) {
   if (!raw) return [];
   try {

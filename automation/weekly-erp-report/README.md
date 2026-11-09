@@ -29,3 +29,15 @@ Mỗi dự án phải có sẵn bản ghi Project Progress Update tên = mã d�
 
 Thử tay: `curl -X POST -H "X-Cron-Key: <CRON_SECRET>" https://csteam.onrender.com/api/cron/weekly-erp`
 (thêm `?from=2026-10-26&to=2026-11-01` để chạy 1 tuần cụ thể). Kết quả từng lần chạy xem ở bảng "Lịch sử chạy" trên trang.
+
+## Nhắc ticket trễ SLA đầu tuần (mail qua Power Automate)
+
+Render free chặn SMTP nên tool gửi mail qua 1 flow Power Automate chạy bằng hộp mail của người tạo flow.
+
+1. https://make.powerautomate.com → **Create** → **Instant cloud flow** → trigger **When a Teams webhook request is received** (Who can trigger: Anyone).
+2. Thêm bước **Parse JSON**, Content = Body của trigger, Schema:
+   `{"type":"object","properties":{"to":{"type":"string"},"cc":{"type":"string"},"subject":{"type":"string"},"html":{"type":"string"}}}`
+3. Thêm bước **Office 365 Outlook → Send an email (V2)**: To = `to`, Subject = `subject`, Body = `html` (bấm `</>` để nhập dạng code), Advanced → CC = `cc`.
+4. Save → mở lại trigger, copy **HTTP URL** → Render → Environment → `REMINDER_WEBHOOK_URL` = URL đó (giữ bí mật, không ghi vào code).
+5. Trang `/bao-cao/tuan-erp#nhac-sla`: kiểm tra thành viên, bấm **Lưu**, **Gửi thử về email này**.
+6. cron-job.org thêm job: POST `https://csteam.onrender.com/api/cron/sla-reminder?async=1`, header `X-Cron-Key` = CRON_SECRET, thứ 2 01:05 UTC (= 08:05 VN), timeout 30.
