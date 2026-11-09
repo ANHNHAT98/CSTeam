@@ -877,10 +877,19 @@ app.get('/api/bao-cao/cs-am/tickets', requireAuth, async (req, res) => {
     const statuses = parseJsonArrayParam(req.query.statuses);
     const limit = Math.min(5000, Math.max(1, Number(req.query.limit) || 2000));
     const r = await erp.fetchTickets({ projects, statuses, limit });
-    const rows = (r.data || r).map((t) => {
+    let rows = (r.data || r).map((t) => {
       const opening = parseNaive(t.opening_date || t.creation);
       return { ...t, _sla_due: opening ? fmtNaive(slaDueAt(t.priority, opening)) : '' };
     });
+    // assign=todo: bổ sung người xử lý từ ToDo (Assign To) — danh sách ticket qua API có thể trả _assign rỗng
+    if (req.query.assign === 'todo' && rows.length) {
+      const todo = await erp.fetchTodoAssignees(rows.map((t) => t.name), { activeOnly: true });
+      rows = rows.map((t) => {
+        let cur = []; try { const a = JSON.parse(t._assign || '[]'); if (Array.isArray(a)) cur = a; } catch (_) { /* rỗng */ }
+        const all = [...new Set([...cur, ...(todo[t.name] || [])].map((x) => String(x).trim().toLowerCase()).filter(Boolean))];
+        return { ...t, _assign: JSON.stringify(all) };
+      });
+    }
     res.json({ data: rows, erpUrl: erp.getBaseUrl() });
   } catch (e) { console.error('[bao-cao/cs-am/tickets] lỗi:', e.message); res.status(502).json({ error: e.message }); }
 });

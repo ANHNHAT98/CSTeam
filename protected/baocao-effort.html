@@ -511,7 +511,7 @@ $('rPrint').onclick = () => window.print();
 
 /* ---------- TAB 4: ticket tồn đọng theo người xử lý ---------- */
 const BL_STATUSES = ['Open','Assign','Working','Reviewing','Re-open','Waiting','Pending'];
-const BL = { key:'', rows:[], erpUrl:'', statuses:new Set(['Open','Assign','Working','Reviewing','Re-open']), open:new Set(), busy:false };
+const BL = { key:'', rows:[], erpUrl:'', statuses:new Set(['Open','Assign','Working','Re-open']), open:new Set(), busy:false };
 const W = { p1:3, high:2, medium:1, low:0.5 };
 const nowVN = () => new Date(Date.now()+7*3600*1000).toISOString().slice(0,16).replace('T',' ');
 const pName = c => (projects.find(p=>p.code===c)||{}).name || c;
@@ -528,7 +528,7 @@ async function loadBacklog(force){
   if(BL.busy) return; BL.busy = true;
   $('blTbl').innerHTML = '<tr><td class="hint" style="padding:20px">Đang lấy ticket tồn đọng từ ERP…</td></tr>';
   try{
-    const q = new URLSearchParams({ projects:JSON.stringify([...pSel]), statuses:JSON.stringify(BL_STATUSES), limit:'5000' });
+    const q = new URLSearchParams({ projects:JSON.stringify([...pSel]), statuses:JSON.stringify(BL_STATUSES), limit:'5000', assign:'todo' });
     const d = await api('/api/bao-cao/cs-am/tickets?'+q.toString());
     BL.rows = d.data||[]; BL.erpUrl = d.erpUrl||''; BL.key = key; BL.open = new Set();
     renderBacklog();

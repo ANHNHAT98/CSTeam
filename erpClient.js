@@ -217,11 +217,11 @@ async function fetchVersions({ from, to, docnames, maxRows = 20000 } = {}) {
 }
 
 /** Lịch sử giao việc của ticket (DocType ToDo, bỏ ToDo đã huỷ): { tênTicket: [email người được giao] }. Dùng khi ticket đã đóng nên _assign đã bị xoá. */
-async function fetchTodoAssignees(names) {
+async function fetchTodoAssignees(names, { activeOnly = false } = {}) { // activeOnly: chỉ ToDo đang mở (người đang được giao)
   const out = {}; const list = [...new Set(names)].filter(Boolean);
   for (let i = 0; i < list.length; i += 80) {
     const qs = new URLSearchParams();
-    qs.set('filters', JSON.stringify([['reference_type', '=', 'Ticket'], ['reference_name', 'in', list.slice(i, i + 80)], ['status', '!=', 'Cancelled']]));
+    qs.set('filters', JSON.stringify([['reference_type', '=', 'Ticket'], ['reference_name', 'in', list.slice(i, i + 80)], activeOnly ? ['status', '=', 'Open'] : ['status', '!=', 'Cancelled']]));
     qs.set('fields', JSON.stringify(['reference_name', 'allocated_to', 'status']));
     qs.set('limit_page_length', '2000');
     const r = await erpFetch(`/api/resource/ToDo?${qs.toString()}`);
