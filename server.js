@@ -494,16 +494,45 @@ app.get('/api/kpi/crplan-auto', requireAuth, async (req, res) => {
 });
 
 /* ---------- Báo Cáo Effort: effort từng thành viên = SỐ LƯỢNG ticket (ERP) + task (SynergyHub) được assign ----------
-   GET /api/bao-cao/effort?from=YYYY-MM-DD&to=YYYY-MM-DD[&projects=[mã dự án ERP]][&mode=assigned|opened][&sources=ticket,task]
+   GET /api/bao-cao/effort?from=YYYY-MM-DD&to=YYYY-MM-DD[&projects=[mã dự án ERP]][&mode=opened|assigned][&sources=ticket,task]
+     Trang dùng mode=opened: ticket có Opening On trong khoảng; Nhóm CS (owner dự án) được tính toàn bộ ticket của dự án mình, Nhóm DEC tính ticket được assign.
      mode=assigned (mặc định): ticket được GIAO trong khoảng (ToDo tạo trong khoảng) · mode=opened: ticket có Opening On trong khoảng (người xử lý = _assign + lịch sử ToDo, kể cả ticket đã đóng)
      task SynergyHub: tính theo hạn dự kiến (planned) nằm trong khoảng; không lọc theo dự án ERP.
    Trả thêm groups {support:[email] = nhóm CS (Project Owner), handler:[email] = nhóm DEC (User Group DEC_USER_GROUP)} để lọc theo nhóm; thành viên của 2 nhóm luôn có mặt (0 nếu chưa được assign). Cách gộp/đếm: effortReport.js */
 const DEC_USER_GROUP = process.env.DEC_USER_GROUP || 'Team DEV- CS2';
-async function effortCsOwners(projects, warnings) {
+/* Owner 1 dự án có thể nhiều người: ô Project Owner + mọi trường *owner* / *manager* khác chứa email (trường tuỳ chỉnh)
+   + bảng con Users của Project (dòng có cột "user", chỉ lấy email nội bộ @hqsoft). Đệm 10 phút. */
+const projectOwnerCache = new Map(); // dự án → { at, owners }
+const OWNER_EMAIL_DOMAIN = (process.env.CS_OWNER_DOMAIN || 'hqsoft.com.vn').toLowerCase();
+async function ownersOfProject(code) {
+  const hit = projectOwnerCache.get(code);
+  if (hit && Date.now() - hit.at < 10 * 60 * 1000) return hit.owners;
+  const doc = await erp.getDoc('Project', code);
+  const isMail = (v) => typeof v === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+  const set = new Set();
+  for (const [k, v] of Object.entries(doc || {})) {
+    if (/owner|manager/i.test(k) && k !== 'owner' && isMail(v)) set.add(v.trim().toLowerCase()); // "owner" = người tạo bản ghi, không tính
+    if (Array.isArray(v)) v.forEach((row) => { if (row && isMail(row.user) && row.user.toLowerCase().endsWith('@' + OWNER_EMAIL_DOMAIN)) set.add(row.user.trim().toLowerCase()); });
+  }
+  const owners = [...set];
+  projectOwnerCache.set(code, { at: Date.now(), owners });
+  return owners;
+}
+function loadCsOwners() { // cs-owners.json: { owners: { "<mã dự án>": ["email", ...] } } — ưu tiên hơn dữ liệu ERP
   try {
-    const r = await erp.fetchProjects({});
-    return [...new Set((r.data || r || []).filter((p) => projects.includes(p.name)).map((p) => String(p.project_owner || '').trim().toLowerCase()).filter(Boolean))];
-  } catch (e) { warnings.push('Không đọc được Project Owner từ ERP (nhóm CS): ' + e.message); return []; }
+    const j = JSON.parse(fs.readFileSync(path.join(__dirname, 'cs-owners.json'), 'utf8')) || {};
+    const out = {};
+    Object.entries(j.owners || {}).forEach(([k, v]) => { const list = (Array.isArray(v) ? v : [v]).map((x) => String(x || '').trim().toLowerCase()).filter(Boolean); if (list.length) out[k] = list; });
+    return out;
+  } catch (e) { return {}; }
+}
+async function effortCsOwners(projects, warnings, byProject) {
+  const all = new Set(); const fixed = loadCsOwners();
+  await Promise.all(projects.map(async (code) => {
+    try { const o = fixed[code] || await ownersOfProject(code); byProject[code] = o; o.forEach((x) => all.add(x)); }
+    catch (e) { byProject[code] = []; warnings.push(`Không đọc được owner dự án ${code} (nhóm CS): ${e.message}`); }
+  }));
+  return [...all];
 }
 async function effortDecMembers(warnings) {
   const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -525,7 +554,7 @@ app.get('/api/bao-cao/effort', requireAuth, async (req, res) => {
   const from = String(req.query.from || ''); const to = String(req.query.to || '');
   if (!isDay(from) || !isDay(to) || from > to) return res.status(400).json({ error: 'Khoảng ngày không hợp lệ (Từ ngày ≤ Đến ngày).' });
   if ((new Date(`${to}T00:00:00Z`) - new Date(`${from}T00:00:00Z`)) / 86400000 > 400) return res.status(400).json({ error: 'Khoảng ngày tối đa 400 ngày.' });
-  const mode = req.query.mode === 'opened' ? 'opened' : 'assigned';
+  const mode = req.query.mode === 'assigned' ? 'assigned' : 'opened'; // mặc định: theo ngày TẠO ticket (Opening On)
   const sources = String(req.query.sources || 'ticket,task').split(',').map((x) => x.trim());
   const all = loadInstructionProjects().map((p) => p.code);
   const asked = parseJsonArrayParam(req.query.projects).filter((p) => all.includes(p));
@@ -533,6 +562,9 @@ app.get('/api/bao-cao/effort', requireAuth, async (req, res) => {
   const warnings = []; const limit = 5000;
   const ticketPairs = []; const taskPairs = [];
   const diagnostics = { mode, projects: projects.length };
+  // Nhóm CS = owner dự án (cs-owners.json, thiếu thì đọc ERP) · Nhóm DEC = User Group ERP "Team DEV- CS2"
+  const ownersByProject = {};
+  const [csOwners, dec] = await Promise.all([effortCsOwners(projects, warnings, ownersByProject), effortDecMembers(warnings)]);
   try {
     if (sources.includes('ticket')) {
       if (mode === 'assigned') {
@@ -556,7 +588,8 @@ app.get('/api/bao-cao/effort', requireAuth, async (req, res) => {
         const hist = rows.length ? await erp.fetchTodoAssignees(rows.map((x) => x.name)) : {};
         for (const tk of rows) {
           let cur = []; try { const a = JSON.parse(tk._assign || '[]'); if (Array.isArray(a)) cur = a; } catch (_) { /* _assign rỗng */ }
-          const who = new Set([...cur, ...(hist[tk.name] || [])].map((x) => String(x).trim().toLowerCase()).filter(Boolean));
+          // DEC/người xử lý: người đang + từng được assign · CS: owner của dự án được tính MỌI ticket của dự án (kể cả ticket đã assign cho DEC)
+          const who = new Set([...cur, ...(hist[tk.name] || []), ...(ownersByProject[tk.project] || [])].map((x) => String(x).trim().toLowerCase()).filter(Boolean));
           for (const w of who) ticketPairs.push({ name: tk.name, subject: tk.subject, project: tk.project, status: tk.status, priority: tk.priority, assignee: w, date: String(tk.opening_date || tk.creation || '').slice(0, 10), openedAt: tk.opening_date || tk.creation, resolvedAt: tk.resolution_date || (tk.status === 'Closed' ? tk.modified : '') });
         }
       }
@@ -575,8 +608,7 @@ app.get('/api/bao-cao/effort', requireAuth, async (req, res) => {
     } catch (e) { warnings.push('Không lấy được task SynergyHub: ' + e.message + ' — báo cáo chỉ gồm ticket.'); }
   }
   // Nhóm CS = Project Owner (ERP) của các dự án đang chọn · Nhóm DEC = thành viên User Group ERP "Team DEV- CS2" (ô Assign To User Group ở trang Tạo Ticket)
-  const [csOwners, dec] = await Promise.all([effortCsOwners(projects, warnings), effortDecMembers(warnings)]);
-  const groups = { support: csOwners, handler: dec.members, decGroup: dec.group };
+  const groups = { support: csOwners, handler: dec.members, decGroup: dec.group, ownersByProject };
   const out = effortReport.build({ ticketPairs, taskPairs, from, to, extraMembers: [...csOwners, ...dec.members] });
   res.json({ from, to, mode, sources, projects, ...out, groups, warnings, diagnostics });
 });

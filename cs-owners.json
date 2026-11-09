@@ -1,0 +1,10 @@
+{
+  "_note": "Nhóm CS (owner dự án) cho trang Báo Cáo Effort. Mỗi dự án (mã project ERP) → danh sách email owner. Dự án không có ở đây thì tool đọc owner từ ERP (Project Owner + bảng Users).",
+  "owners": {
+    "MerapLion_eSales": ["phuctm@hqsoft.com.vn", "kietlt@hqsoft.com.vn"],
+    "ANVY_eSale_Support": ["phuctm@hqsoft.com.vn", "kietlt@hqsoft.com.vn"],
+    "ABI_eSales_Support": ["lamlt1@hqsoft.com.vn", "viltt@hqsoft.com.vn"],
+    "Sabeco_PG": ["nhuttm@hqsoft.com.vn"],
+    "Sabeco_B2B_Support": ["nhuttm@hqsoft.com.vn"]
+  }
+}

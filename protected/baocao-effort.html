@@ -104,18 +104,13 @@
 <div class="ops-topbar"><a href="/">← HQSoft Ops Console</a><span class="crumb">/ báo cáo / báo cáo effort</span></div>
 <div class="wrap">
   <h1 class="no-print">Báo Cáo Effort</h1>
-  <p class="sub no-print">Đánh giá effort xử lý của từng thành viên theo <b>số lượng ticket (ERP) và task (SynergyHub) được assign</b> trong khoảng ngày — gồm cả người đang được giao lẫn người từng được giao. Lọc theo <b>Nhóm CS</b> (owner các dự án) và <b>Nhóm DEC</b> (thành viên User Group <i>Team DEV- CS2</i>); xem ở các tab: so sánh, đánh giá từng thành viên, báo cáo chi tiết cho manager, tồn đọng theo người xử lý.</p>
+  <p class="sub no-print">Đánh giá effort của từng thành viên theo <b>ticket (ERP) tạo trong khoảng ngày</b> (Opening On) và task (SynergyHub): <b>Nhóm CS</b> được tính <b>toàn bộ ticket của dự án mình làm owner</b> (kể cả ticket đã assign cho DEC); <b>Nhóm DEC</b> được tính ticket mình được assign xử lý (người đang + từng được giao). Lọc theo <b>Nhóm CS</b> (owner các dự án) và <b>Nhóm DEC</b> (thành viên User Group <i>Team DEV- CS2</i>); xem ở các tab: so sánh, đánh giá từng thành viên, báo cáo chi tiết cho manager, tồn đọng theo người xử lý.</p>
 
   <div class="panel no-print" id="filters">
     <div class="bar">
       <label class="field">Từ ngày <input type="date" id="fFrom"></label>
       <label class="field">Đến ngày <input type="date" id="fTo"></label>
-      <label class="field">Ticket tính theo
-        <select id="fMode">
-          <option value="assigned">Ngày được giao (assign)</option>
-          <option value="opened">Ngày mở ticket (Opening On)</option>
-        </select>
-      </label>
+      <input type="hidden" id="fMode" value="opened"><!-- chỉ tính theo ngày tạo ticket (Opening On) -->
       <div class="chips" style="margin:0"><label id="srcT" class="on"><input type="checkbox" id="chkTicket" checked> Ticket ERP</label><label id="srcK" class="on"><input type="checkbox" id="chkTask" checked> Task SynergyHub</label></div>
       <button type="button" class="primary" id="btnLoad">⇩ Lấy dữ liệu &amp; tính effort</button>
     </div>
@@ -253,7 +248,8 @@ async function load(){
     $('msgs').innerHTML = (data.warnings||[]).map(w=>'<div class="msg">⚠ '+esc(w)+'</div>').join('');
     renderAll();
     const d = data.diagnostics||{};
-    setStatus('ok', `Xong — ${data.totals.members} thành viên, ${data.totals.ticketAssigns} lượt ticket (${data.totals.distinctTickets} ticket) và ${data.totals.taskAssigns} lượt task`+(sources.includes('ticket') && data.mode==='assigned' ? ` · ${d.todos||0} lượt giao việc trong khoảng ngày` : ''));
+    const hid = data.members.filter(m=>!isSup(m) && !isHdl(m) && m.total>0).length;
+    setStatus('ok', (hid ? `(${hid} người ngoài Nhóm CS/DEC bị ẩn — xem cảnh báo bên dưới) ` : '') + `Xong — ${data.totals.members} thành viên, ${data.totals.ticketAssigns} lượt ticket (${data.totals.distinctTickets} ticket) và ${data.totals.taskAssigns} lượt task`+(sources.includes('ticket') && data.mode==='assigned' ? ` · ${d.todos||0} lượt giao việc trong khoảng ngày` : ''));
   }catch(err){ console.error(err); setStatus('err','Lỗi: '+err.message); }
   finally{ $('btnLoad').disabled = false; }
 }
@@ -268,13 +264,17 @@ function renderAll(){
   const list = sel();
   const tT = list.reduce((s,m)=>s+m.tickets.total,0), tK = list.reduce((s,m)=>s+m.tasks.total,0), proc = list.reduce((s,m)=>s+m.processed,0), asg = tT+tK;
   $('kpis').innerHTML = `<div class="kpi"><div class="l">Thành viên</div><div class="v">${list.length}</div><div class="d">${withData(list).length} người có ticket/task được assign</div></div>`
-    +`<div class="kpi k2"><div class="l">Ticket được assign (lượt)</div><div class="v">${tT}</div><div class="d">đã Closed ${list.reduce((x,m)=>x+m.tickets.closed,0)}</div></div>`
+    +`<div class="kpi k2"><div class="l">Ticket phụ trách (lượt)</div><div class="v">${tT}</div><div class="d">đã Closed ${list.reduce((x,m)=>x+m.tickets.closed,0)}</div></div>`
     +`<div class="kpi k3"><div class="l">Task được assign (lượt)</div><div class="v">${tK}</div><div class="d">đã xong ${list.reduce((x,m)=>x+m.tasks.done,0)}</div></div>`
     +`<div class="kpi k4"><div class="l">Đã xử lý / được assign</div><div class="v">${proc}/${asg}</div><div class="d">khả năng xử lý chung ${asg ? Math.round(proc/asg*1000)/10 : 0}%</div></div>`;
   const cnt = f => data.members.filter(f).length;
   $('grpChips').innerHTML = '<span class="t">Nhóm:</span>'
-    +`<label class="grp ${grpSel.support?'on':''}"><input type="checkbox" data-g="support" ${grpSel.support?'checked':''}> Nhóm CS — owner dự án <small>(${cnt(isSup)})</small></label>`
+    +`<label class="grp ${grpSel.support?'on':''}" title="${esc(Object.entries((data.groups && data.groups.ownersByProject) || {}).map(([c,o])=>pName(c)+': '+(o.length ? o.map(e=>e.split('@')[0]).join(', ') : '(chưa có owner)')).join('\n'))}"><input type="checkbox" data-g="support" ${grpSel.support?'checked':''}> Nhóm CS — owner dự án <small>(${cnt(isSup)})</small></label>`
     +`<label class="grp ${grpSel.handler?'on':''}"><input type="checkbox" data-g="handler" ${grpSel.handler?'checked':''}> Nhóm DEC — ${esc((data.groups && data.groups.decGroup) || 'Team DEV- CS2')} <small>(${cnt(isHdl)})</small></label>`;
+  const outside = data.members.filter(m=>!isSup(m) && !isHdl(m) && m.total>0).sort((a,b)=>b.total-a.total);
+  if(outside.length) $('grpChips').insertAdjacentHTML('beforeend', '<div class="msg" style="width:100%;margin:6px 0 0">⚠ <b>'+outside.length+' người có ticket/task nhưng không thuộc Nhóm CS hay Nhóm DEC</b> nên không hiện: '+outside.map(m=>esc(label(m))+' ('+m.total+')').join(', ')+'.'+(!handlerSet.size ? ' <b>Nhóm DEC đang rỗng</b> — chưa đọc được User Group trên ERP (xem cảnh báo phía trên).' : ' Nếu đây là người xử lý, cần thêm họ vào User Group <i>'+esc((data.groups && data.groups.decGroup) || 'Team DEV- CS2')+'</i> trên ERP (hoặc vào cs-owners.json nếu là owner).')+'</div>');
+  const obp = (data.groups && data.groups.ownersByProject) || {};
+  if(Object.keys(obp).length) $('grpChips').insertAdjacentHTML('beforeend', '<div class="hint" style="width:100%;margin-top:4px">Owner: '+Object.entries(obp).map(([c,o])=>'<b>'+esc(pName(c))+'</b> '+(o.length ? esc(o.map(e=>e.split('@')[0]).join(', ')) : '<i>chưa có</i>')).join(' · ')+'</div>');
   $('grpChips').querySelectorAll('input').forEach(i=>i.onchange=()=>{ grpSel[i.dataset.g] = i.checked; renderAll(); });
   const shown = data.members.filter(inGroup);
   $('memChips').innerHTML = '<span class="t">Thành viên:</span>'+shown.map(m=>'<label class="'+(memSel.has(m.key)?'on':'')+'" title="'+esc(m.email||m.key)+'"><input type="checkbox" data-m="'+esc(m.key)+'"'+(memSel.has(m.key)?' checked':'')+'> '+esc(label(m))+' <small>('+m.total+')</small></label>').join('')
@@ -294,7 +294,7 @@ const openDetail = key => { detailKey = key; tab = 'detail'; renderTab(); window
 
 /* ---------- TAB 1: bảng + biểu đồ so sánh ---------- */
 const cols = [['name','Thành viên',m=>label(m)],
-  ['tickets','Ticket được assign',m=>m.tickets.total],['closed','Đã xử lý (Closed)',m=>m.tickets.closed],['open','Ticket chưa xử lý',m=>m.tickets.open],['ticketRate','% xử lý ticket',m=>m.ticketRate,'pct'],['avgHours','TB xử lý (giờ)',m=>m.avgHours,'num1'],
+  ['tickets','Ticket phụ trách',m=>m.tickets.total],['closed','Đã xử lý (Closed)',m=>m.tickets.closed],['open','Ticket chưa xử lý',m=>m.tickets.open],['ticketRate','% xử lý ticket',m=>m.ticketRate,'pct'],['avgHours','TB xử lý (giờ)',m=>m.avgHours,'num1'],
   ['tasks','Task được assign',m=>m.tasks.total],['tasksDone','Task xong',m=>m.tasks.done],['taskRate','% task xong',m=>m.taskRate,'pct'],
   ['total','Tổng được assign',m=>m.total],['processed','Tổng đã xử lý',m=>m.processed],['pending','Tổng chưa xử lý',m=>m.pending],['rate','% xử lý chung',m=>m.rate,'pct'],['grade','Đánh giá',m=>m.grade,'grade'],
   ['p1','Critical/Urgent',m=>m.tickets.p1],['high','High',m=>m.tickets.high],['medium','Medium',m=>m.tickets.medium],['low','Low / khác',m=>m.tickets.low]];
