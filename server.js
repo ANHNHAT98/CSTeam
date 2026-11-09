@@ -828,7 +828,7 @@ app.get('/api/bao-cao/cs-am/tickets', requireAuth, async (req, res) => {
       const opening = parseNaive(t.opening_date || t.creation);
       return { ...t, _sla_due: opening ? fmtNaive(slaDueAt(t.priority, opening)) : '' };
     });
-    res.json({ data: rows });
+    res.json({ data: rows, erpUrl: erp.getBaseUrl() });
   } catch (e) { console.error('[bao-cao/cs-am/tickets] lỗi:', e.message); res.status(502).json({ error: e.message }); }
 });
 

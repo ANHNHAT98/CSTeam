@@ -37,6 +37,11 @@
   .tabs{display:flex;gap:6px;margin:0 0 14px;border-bottom:2px solid var(--grid-line-strong);}
   .tab{padding:8px 16px;border:1px solid var(--grid-line-strong);border-bottom:none;border-radius:8px 8px 0 0;background:#fff;cursor:pointer;font-size:13.5px;font-weight:600;position:relative;top:2px;}
   .tab.on{background:var(--blueprint);color:#fff;border-color:var(--blueprint);}
+  .grp-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 14px;}
+  .grp{padding:5px 14px;border:1px solid var(--grid-line-strong);border-radius:16px;background:#fff;cursor:pointer;font-size:13px;font-weight:600;color:var(--blueprint);font-family:'IBM Plex Mono',monospace;}
+  .grp:hover{border-color:var(--blueprint);}
+  .grp.on{background:var(--amber);border-color:var(--amber);color:#3A2405;}
+  .grp .n{font-weight:500;opacity:.75;margin-left:4px;}
   .scr{border:1px solid var(--grid-line-strong);border-radius:9px;margin-bottom:12px;background:#fbfcfe;}
   .scr-head{display:flex;justify-content:space-between;gap:12px;padding:13px 16px;cursor:pointer;align-items:flex-start;}
   .scr-code{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:15px;color:var(--blueprint);}
@@ -106,6 +111,8 @@ const say = (kind, text) => { $('msg').innerHTML = text ? '<div class="msg '+kin
 /* ---------- dữ liệu ---------- */
 const LOCK = new URLSearchParams(location.search).get('project') || ''; // mở từ menu Dự án → chỉ làm việc với 1 dự án
 let items = [], modules = ['API','BO','APP','Manager','Report'], roles = ['Bảng chính','Bảng chi tiết','Danh mục','Cấu hình','Lịch sử / Log','Khác'], projLabels = {};
+const grpOf = code => ((String(code||'').match(/^[A-Za-z]+/)||[''])[0].toUpperCase()) || 'Khác'; // phân hệ theo tiền tố mã màn hình: IN10100 → IN
+let grp = decodeURIComponent(location.hash.slice(1)) || ''; // '' = tất cả
 let githubBacked = false, view = 'screens', draft = null, importPlan = null, armDeleteId = null;
 const pLabel = c => projLabels[c] || c;
 const curProject = () => LOCK; // dự án gắn theo menu Dự Án → (dự án) → Table Dự Án
@@ -145,14 +152,20 @@ function render(){
   if(!LOCK) return renderLauncher();
   if(draft) return renderEditor();
   if(importPlan) return renderImportPlan();
-  const list = filtered(); const p = curProject();
+  const all = filtered(); const p = curProject();
+  const counts = {}; all.forEach(s => { const g = grpOf(s.code); counts[g] = (counts[g]||0) + 1; });
+  const groups = Object.keys(counts).sort((a,b)=>(a==='Khác')-(b==='Khác') || a.localeCompare(b));
+  if(grp && !counts[grp] && !$('fSearch').value && !$('fModule').value) grp = ''; // phân hệ không còn màn hình nào → về Tất cả
+  const list = grp ? all.filter(s=>grpOf(s.code)===grp) : all;
+  const grpBar = groups.length ? '<div class="grp-tabs">'+[['','Tất cả',all.length]].concat(groups.map(g=>[g,g,counts[g]])).map(([k,t,n])=>'<button type="button" class="grp'+(grp===k?' on':'')+'" data-grp="'+esc(k)+'">'+esc(t)+'<span class="n">'+n+'</span></button>').join('')+'</div>' : '';
   const tableCount = new Set(list.flatMap(s=>s.tables.map(t=>lc(t.name)))).size;
   const head = '<div class="tabs"><div class="tab'+(view==='screens'?' on':'')+'" data-view="screens">Theo màn hình ('+list.length+')</div><div class="tab'+(view==='tables'?' on':'')+'" data-view="tables">Theo table ('+tableCount+')</div></div>';
   let body;
-  if(!list.length) body = '<div class="panel"><div class="empty">'+(items.length && ($('fSearch').value||$('fModule').value) ? 'Không có màn hình nào khớp bộ lọc.' : 'Chưa có màn hình nào'+(p?' cho dự án này':'')+'.<br>Bấm <b>＋ Thêm màn hình</b> hoặc <b>📥 Import Excel</b> (tải <b>Template Excel</b> để xem mẫu).')+'</div></div>';
+  if(!list.length) body = '<div class="panel"><div class="empty">'+(items.length && ($('fSearch').value||$('fModule').value||grp) ? 'Không có màn hình nào khớp bộ lọc.' : 'Chưa có màn hình nào'+(p?' cho dự án này':'')+'.<br>Bấm <b>＋ Thêm màn hình</b> hoặc <b>📥 Import Excel</b> (tải <b>Template Excel</b> để xem mẫu).')+'</div></div>';
   else body = view==='screens' ? screensHtml(list) : tablesHtml(list);
-  $('main').innerHTML = head + body;
+  $('main').innerHTML = head + grpBar + body;
   $('main').querySelectorAll('[data-view]').forEach(t=>t.onclick=()=>{ view = t.dataset.view; render(); });
+  $('main').querySelectorAll('[data-grp]').forEach(b=>b.onclick=()=>{ grp = b.dataset.grp; history.replaceState(null, '', location.pathname + location.search + (grp ? '#'+encodeURIComponent(grp) : '')); render(); });
   if(view==='tables' && list.length) wireTableFilter();
   bindActions();
 }
