@@ -1,0 +1,17 @@
+[
+  {
+    "at": "2026-11-11T08:47:51.005Z",
+    "by": "admin",
+    "test": "nhatha@hqsoft.com.vn",
+    "to": "nhatha@hqsoft.com.vn",
+    "keys": [
+      "HQ-241 (trễ)",
+      "HQ-264 (trễ)",
+      "HQ-271 (trễ)",
+      "HQ-277 (trễ)",
+      "HQ-289 (trễ)"
+    ],
+    "ok": false,
+    "error": "Power Automate trả 401: {\"error\":{\"code\":\"DirectApiAuthorizationRequired\",\"message\":\"The OAuth authorization scheme is required. Please add authentication scheme and try again.\",\"messageTemplate\":\"DirectApiAuthorizationRequi"
+  }
+]
