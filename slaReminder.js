@@ -186,4 +186,4 @@ async function run({ dryRun = false, testTo = '', by = 'lịch tự động' } =
   return { ok: entry.failed === 0, ...entry };
 }
 
-module.exports = { projectsOf, getConfig, saveConfig, compute, buildMails, run, readRuns, ALL_OPEN_STATUSES, webhookReady: () => Boolean(String(process.env.REMINDER_WEBHOOK_URL || '').trim()), isGithubBacked: () => configStore.isGithubBacked() };
+module.exports = { projectsOf, getConfig, saveConfig, compute, buildMails, run, readRuns, postWebhook, ALL_OPEN_STATUSES, webhookReady: () => Boolean(String(process.env.REMINDER_WEBHOOK_URL || '').trim()), isGithubBacked: () => configStore.isGithubBacked() };

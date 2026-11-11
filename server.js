@@ -613,6 +613,20 @@ app.get('/api/bao-cao/effort', requireAuth, async (req, res) => {
   res.json({ from, to, mode, sources, projects, ...out, groups, warnings, diagnostics });
 });
 
+/* ---------- Task SynergyHub còn tồn (cho tab ④ "Tồn đọng theo người xử lý" ở trang Báo Cáo Effort) ----------
+   GET /api/bao-cao/effort/open-tasks[?refresh=1] → task chưa hoàn thành / chưa hủy, kèm người được giao, tên dự án SynergyHub và hạn dự kiến.
+   Việc khớp tên dự án SynergyHub với mã dự án ERP làm ở trình duyệt (cùng danh sách dự án của bộ lọc). */
+app.get('/api/bao-cao/effort/open-tasks', requireAuth, async (req, res) => {
+  if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
+  try {
+    const data = await loadSynergyTasks({ refresh: Boolean(req.query.refresh) });
+    const cancelled = /cancel|huy|hủy|reject|drop/i;
+    const open = data.tasks.filter((t) => !t.done && !t.completedByStatus && !cancelled.test(String(t.status || '')))
+      .map((t) => ({ id: t.id, name: t.name, project: t.project, status: t.status, planned: t.planned, assignees: t.assignees.map((x) => String(x).trim().toLowerCase()).filter(Boolean) }));
+    res.json({ total: data.tasks.length, tasks: open });
+  } catch (e) { console.error('[bao-cao/effort/open-tasks] lỗi:', e.message); res.status(502).json({ error: 'Không lấy được task SynergyHub: ' + e.message }); }
+});
+
 /* ---------- Dashboard Support Tuần của từng dự án ----------
    GET /api/projects/weekly?project=<mã project ERP>&week=<YYYY-MM-DD bất kỳ trong tuần>&weeks=<số tuần xu hướng, mặc định 8>
    Lấy ticket của dự án từ ERP (mở trong cửa sổ xu hướng, có cập nhật trong cửa sổ, và toàn bộ ticket còn tồn), rồi tính bằng weeklyReport.js. */
@@ -1664,6 +1678,52 @@ app.post('/api/cron/sla-reminder', async (req, res) => {
   }
   try { const r = await go(); res.status(r.ok || r.skipped ? 200 : 502).json(r); }
   catch (e) { console.error('[sla-reminder:cron] lỗi:', e.message); res.status(502).json({ error: e.message }); }
+});
+
+/* ---------- Cảnh báo ticket Jira ABI sắp trễ First Response (jiraFrtAlert.js) — mail qua Power Automate (REMINDER_WEBHOOK_URL) ----------
+   GET  /api/jira-frt-alert/config  ·  POST /api/jira-frt-alert/config
+   POST /api/jira-frt-alert/preview               → ticket đang sắp trễ + nội dung mail (không gửi)
+   POST /api/jira-frt-alert/send  {testTo?}       → gửi ngay (testTo: gửi về 1 địa chỉ, không đánh dấu đã báo)
+   POST /api/cron/jira-frt-alert[?async=1]        header X-Cron-Key: <CRON_SECRET> — cron-job.org mỗi 5 phút */
+const jiraFrtAlert = require('./jiraFrtAlert');
+function cronKeyOk(req) {
+  const secret = String(process.env.CRON_SECRET || ''); const got = String(req.get('x-cron-key') || '');
+  return secret.length >= 16 && got.length === secret.length && require('crypto').timingSafeEqual(Buffer.from(got), Buffer.from(secret));
+}
+app.get('/api/jira-frt-alert/config', requireAuth, async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const [config, runs] = await Promise.all([jiraFrtAlert.getConfig(), jiraFrtAlert.readRuns()]);
+    res.json({ config, defaultJql: jiraFrtAlert.DEFAULT_JQL, runs: runs.slice(0, 20), jiraReady: jira.isConfigured(), webhookReady: slaReminder.webhookReady(), cronReady: Boolean(process.env.CRON_SECRET) });
+  } catch (e) { res.status(502).json({ error: e.message }); }
+});
+app.post('/api/jira-frt-alert/config', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, config: await jiraFrtAlert.saveConfig(req.body || {}, req.session.username) }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/jira-frt-alert/preview', requireAuth, async (req, res) => {
+  try { res.json(await jiraFrtAlert.run({ dryRun: true })); } catch (e) { res.status(502).json({ error: e.message }); }
+});
+app.post('/api/jira-frt-alert/send', requireAuth, async (req, res) => {
+  try { const r = await jiraFrtAlert.run({ testTo: (req.body || {}).testTo || '', by: req.session.username }); res.status(r.ok || r.skipped ? 200 : 502).json(r); }
+  catch (e) { res.status(502).json({ error: e.message }); }
+});
+let frtCronRunning = false;
+app.post('/api/cron/jira-frt-alert', async (req, res) => {
+  if (!cronKeyOk(req)) return res.status(process.env.CRON_SECRET ? 403 : 501).json({ error: process.env.CRON_SECRET ? 'Sai X-Cron-Key.' : 'Server chưa cấu hình CRON_SECRET (tối thiểu 16 ký tự).' });
+  if (!jira.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối Jira.' });
+  if (!slaReminder.webhookReady()) return res.status(501).json({ error: 'Server chưa cấu hình REMINDER_WEBHOOK_URL.' });
+  const go = () => jiraFrtAlert.run({});
+  if (/^(1|true|yes)$/i.test(String(req.query.async || ''))) {
+    if (frtCronRunning) return res.status(202).json({ accepted: true, note: 'Đang có 1 lượt chạy — bỏ qua lượt trùng.' });
+    frtCronRunning = true;
+    res.status(202).json({ accepted: true });
+    go().then((r) => { if (r.count || r.error) console.log(`[jira-frt-alert:cron] ${r.ok ? 'đã gửi' : 'lỗi'} ${r.count || 0} ticket ${r.error || ''}`); })
+      .catch((e) => console.error('[jira-frt-alert:cron] lỗi:', e.message)).finally(() => { frtCronRunning = false; });
+    return;
+  }
+  try { const r = await go(); res.status(r.ok || r.skipped ? 200 : 502).json(r); }
+  catch (e) { console.error('[jira-frt-alert:cron] lỗi:', e.message); res.status(502).json({ error: e.message }); }
 });
 
 function parseJsonArrayParam(raw) {

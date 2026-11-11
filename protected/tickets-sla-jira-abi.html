@@ -96,6 +96,18 @@
   .tab-btn.active{background:var(--panel);color:var(--blueprint);border-bottom:1px solid var(--panel);}
   .tab-panel{display:none;}
   .tab-panel.active{display:block;}
+  .fa details>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .fa details>summary::-webkit-details-marker{display:none;}
+  .fa .pill{font-size:11.5px;font-family:'IBM Plex Mono',monospace;padding:2px 8px;border-radius:999px;border:1px solid var(--grid-line-strong);color:var(--muted);}
+  .fa .pill.on{background:#E7F5EC;color:#1E7B45;border-color:#B9E0C7;} .fa .pill.off{background:#FBEAEA;color:#A33;border-color:#F0C4C4;}
+  .fa .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:14px;}
+  .fa label.f{display:flex;flex-direction:column;gap:5px;font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.04em;}
+  .fa input[type=text],.fa input[type=number],.fa input[type=email],.fa textarea{font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;padding:8px 10px;border-radius:7px;border:1px solid var(--grid-line-strong);background:#fff;color:var(--ink);text-transform:none;letter-spacing:0;}
+  .fa textarea{min-height:58px;resize:vertical;}
+  .fa .chk{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--ink);margin-top:8px;}
+  .fa table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px;} .fa th,.fa td{border:1px solid var(--grid-line-strong);padding:6px 8px;text-align:left;vertical-align:top;}
+  .fa th{background:#EEF3F8;} .fa .late{color:var(--danger);font-weight:600;} .fa .near{color:#C77700;font-weight:600;}
+  .fa .warn{background:#FFF7E6;border:1px solid #F3D9A4;border-radius:7px;padding:8px 10px;font-size:12.5px;margin-top:10px;}
 </style>
 </head>
 <body>
@@ -106,6 +118,37 @@
 
 <div class="wrap">
   <h1>SLA Jira — Dự án ABI</h1>
+
+  <div class="panel fa" id="faPanel">
+    <details id="faBox">
+      <summary><h2 style="margin:0">🔔 Cảnh báo sắp trễ First Response</h2><span class="pill" id="faState">…</span><span class="panel-sub" style="margin:0">Tự gửi mail cho nhân viên trước khi ticket Jira ABI trễ SLA phản hồi đầu — bấm để cấu hình</span></summary>
+      <div class="panel-sub" style="margin-top:10px">Cứ <b>5 phút</b> (cron-job.org gọi <code class="tag">POST /api/cron/jira-frt-alert?async=1</code>), tool đọc SLA <b>Time to first response</b> trên Jira của các issue đang mở. Issue <b>chưa phản hồi</b>, SLA không tạm dừng, đã chờ quá số phút cấu hình theo <b>mức P/S</b> (tính theo lịch SLA của Jira: P1/P2/S1 24/7, mức khác giờ hành chính) → gửi 1 mail cảnh báo (qua flow Power Automate dùng chung với Nhắc SLA). Thời gian còn lại lấy đúng số Jira tự tính. Mỗi issue chỉ báo <b>1 lần</b>.</div>
+      <div id="faWarn"></div>
+      <div class="grid">
+        <div><div class="panel-sub" style="margin:0 0 6px;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.04em">Nhắc sau bao nhiêu phút chưa phản hồi</div>
+          <table id="faAfter"></table></div>
+        <label class="f">Gửi đến (email, cách nhau dấu phẩy)<textarea id="faTo"></textarea></label>
+        <label class="f">CC<textarea id="faCc"></textarea></label>
+      </div>
+      <label class="chk"><input type="checkbox" id="faEnabled"> Bật cảnh báo tự động</label>
+      <label class="chk"><input type="checkbox" id="faAssignee"> Gửi thêm cho <b>người được giao</b> trên Jira (nếu Jira cho xem email)</label>
+      <label class="chk"><input type="checkbox" id="faBreached"> Báo luôn ticket <b>đã trễ</b> mà chưa phản hồi (1 lần)</label>
+      <details style="margin-top:10px"><summary style="font-size:12.5px;color:var(--muted)">Nâng cao: JQL lấy issue</summary>
+        <textarea id="faJql" style="width:100%;margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:12px"></textarea>
+        <div class="panel-sub" style="margin:4px 0 0">Mặc định: <code id="faJqlDef"></code></div>
+      </details>
+      <div class="actions">
+        <button class="btn btn-primary" id="faSave" type="button">Lưu cấu hình</button>
+        <button class="btn btn-ghost" id="faPreview" type="button">Xem ticket sắp trễ ngay</button>
+        <input type="email" id="faTest" placeholder="email gửi thử" style="font-size:13.5px;padding:9px 10px;border-radius:7px;border:1px solid var(--grid-line-strong)">
+        <button class="btn btn-ghost" id="faSendTest" type="button">Gửi thử</button>
+      </div>
+      <div class="status" id="faStatus"></div>
+      <div id="faResult"></div>
+      <h2 style="margin-top:18px">Lịch sử đã gửi</h2>
+      <div id="faRuns" class="panel-sub">—</div>
+    </details>
+  </div>
 
   <div class="panel">
     <h2>Bộ lọc &amp; tính SLA</h2>
@@ -988,6 +1031,67 @@ exportBtn.addEventListener('click', () => {
   XLSX.writeFile(wb, 'SLA_Jira_ABI.xlsx');
 });
 
+</script>
+<script>
+/* ---------- Cảnh báo sắp trễ First Response (jiraFrtAlert.js) ---------- */
+(function(){
+  const $ = id => document.getElementById(id);
+  const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const st = (cls, msg) => { $('faStatus').className = 'status ' + (cls||''); $('faStatus').textContent = msg || ''; };
+  const fmt = iso => { if(!iso) return ''; const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'}); };
+  const mins = m => { const a = Math.abs(m), h = Math.floor(a/60); return h ? h+'g '+(a%60)+'p' : a+' phút'; };
+  async function call(url, body){
+    const r = await fetch(url, body === undefined ? {} : { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    const j = await r.json().catch(()=>({ error:'HTTP '+r.status }));
+    if(r.status === 401){ location.href = '/?next='+encodeURIComponent(location.pathname); throw new Error('Phiên đăng nhập đã hết'); }
+    if(!r.ok && !j.dryRun) throw new Error(j.error || ('HTTP '+r.status));
+    return j;
+  }
+  function renderRuns(runs){
+    $('faRuns').innerHTML = runs && runs.length ? '<table><tr><th>Lúc</th><th>Bởi</th><th>Gửi đến</th><th>Ticket</th><th>Kết quả</th></tr>'+runs.map(r=>'<tr><td>'+esc(fmt(r.at))+'</td><td>'+esc(r.by)+'</td><td>'+esc(r.test ? 'THỬ → '+r.test : r.to)+'</td><td>'+esc((r.keys||[]).join(', '))+'</td><td'+(r.ok?'':' class="late"')+'>'+(r.ok?'✓ đã gửi':'✗ '+esc(r.error))+'</td></tr>').join('')+'</table>' : 'Chưa gửi lần nào.';
+  }
+  async function load(){
+    try{
+      const d = await call('/api/jira-frt-alert/config'); const c = d.config;
+      const COMMIT = { P1:15, P2:60, S1:60, P3:240, S2:240, P4:480, S3:480 };
+      $('faAfter').innerHTML = '<tr><th>Mức</th><th>Nhắc sau (phút)</th><th>Hạn cam kết</th></tr>' + ['P1','P2','S1','P3','S2','P4','S3'].map(k=>'<tr><td><b>'+k+'</b></td><td><input type="number" min="1" max="2400" data-p="'+k+'" value="'+esc(c.afterMinutes[k])+'" style="width:80px;padding:4px 6px"></td><td>'+COMMIT[k]+' phút</td></tr>').join('')
+        + '<tr><td>Khác</td><td><input type="number" min="1" max="2400" id="faAfterDef" value="'+esc(c.afterDefault)+'" style="width:80px;padding:4px 6px"></td><td>—</td></tr>';
+      $('faTo').value = (c.to||[]).join(', '); $('faCc').value = (c.cc||[]).join(', ');
+      $('faEnabled').checked = !!c.enabled; $('faAssignee').checked = !!c.includeAssignee; $('faBreached').checked = !!c.alertBreached;
+      $('faJql').value = c.jql || d.defaultJql; $('faJqlDef').textContent = d.defaultJql;
+      $('faState').textContent = c.enabled ? 'Đang bật · P1 '+c.afterMinutes.P1+'p · P2/S1 '+c.afterMinutes.P2+'p · P3–S3 '+c.afterMinutes.P3+'p' : 'Đang tắt'; $('faState').className = 'pill '+(c.enabled?'on':'off');
+      const w = [];
+      if(!d.jiraReady) w.push('Server chưa cấu hình kết nối Jira.');
+      if(!d.webhookReady) w.push('Server chưa có <code>REMINDER_WEBHOOK_URL</code> (flow Power Automate) — chưa gửi mail được.');
+      if(!d.cronReady) w.push('Server chưa có <code>CRON_SECRET</code> — cron-job.org chưa gọi được.');
+      $('faWarn').innerHTML = w.length ? '<div class="warn">⚠ '+w.join('<br>⚠ ')+'</div>' : '';
+      renderRuns(d.runs);
+    }catch(e){ $('faState').textContent = 'lỗi'; st('err', 'Không tải được cấu hình: '+e.message); }
+  }
+  $('faSave').onclick = async () => {
+    st('', 'Đang lưu…');
+    try{ await call('/api/jira-frt-alert/config', { afterMinutes:Object.fromEntries([...document.querySelectorAll('#faAfter input[data-p]')].map(x=>[x.dataset.p, Number(x.value)])), afterDefault:Number($('faAfterDef').value), to:$('faTo').value, cc:$('faCc').value, enabled:$('faEnabled').checked, includeAssignee:$('faAssignee').checked, alertBreached:$('faBreached').checked, jql:$('faJql').value }); st('ok', 'Đã lưu.'); load(); }
+    catch(e){ st('err', e.message); }
+  };
+  $('faPreview').onclick = async () => {
+    st('', 'Đang đọc SLA từ Jira…'); $('faResult').innerHTML = '';
+    try{
+      const d = await call('/api/jira-frt-alert/preview', {});
+      st('ok', 'Đã kiểm tra '+d.checked+' issue đang mở · '+d.running+' issue đang chạy SLA First Response'+(d.slaErrors?' · '+d.slaErrors+' issue không đọc được SLA':'')+' · '+d.items.length+' issue cần cảnh báo.');
+      $('faResult').innerHTML = d.items.length ? '<table><tr><th>Issue</th><th>Priority</th><th>Tiêu đề</th><th>Người xử lý</th><th>Đã chờ / mốc nhắc</th><th>Còn lại</th><th>Hạn phản hồi</th><th>Mục tiêu Jira / cam kết</th><th>Đã báo?</th></tr>'
+        + d.items.map(i=>'<tr><td>'+esc(i.key)+(i.hqTicketId?'<br><span class="panel-sub">'+esc(i.hqTicketId)+'</span>':'')+'</td><td>'+esc(i.priority)+'</td><td>'+esc(i.summary)+'</td><td>'+esc(i.assignee||'(chưa giao)')+(i.assigneeEmail?'<br><span class="panel-sub">'+esc(i.assigneeEmail)+'</span>':'')+'</td><td>'+(i.elapsedMin!=null?mins(i.elapsedMin):'—')+' / '+i.afterMin+' phút</td><td class="'+i.kind+'">'+(i.kind==='late'?'Đã trễ '+mins(i.remainingMin):'Còn '+mins(i.remainingMin))+'</td><td>'+esc(fmt(i.dueIso))+'</td><td'+(i.goalMin!=null&&i.commitMin!=null&&i.goalMin!==i.commitMin?' class="late" title="Mục tiêu SLA trên Jira khác bảng cam kết"':'')+'>'+(i.goalMin!=null?i.goalMin+'p':'—')+' / '+(i.commitMin!=null?i.commitMin+'p':'—')+'</td><td>'+(i.alreadySent?'✓ đã báo':'chưa')+'</td></tr>').join('')+'</table>'
+        + (d.mail ? '<div class="panel-sub" style="margin-top:8px">Lượt cron kế tiếp sẽ gửi (ticket chưa báo) đến: <b>'+esc(d.mail.to.join(', '))+'</b>'+(d.mail.cc.length?' · CC '+esc(d.mail.cc.join(', ')):'')+'<br>Tiêu đề: '+esc(d.mail.subject)+'</div>' : '')
+        : '<div class="panel-sub" style="margin-top:8px">Không có issue nào quá mốc nhắc mà chưa phản hồi 🎉</div>';
+    }catch(e){ st('err', e.message); }
+  };
+  $('faSendTest').onclick = async () => {
+    const to = $('faTest').value.trim(); if(!to){ st('err','Nhập email gửi thử.'); return; }
+    st('', 'Đang gửi thử…');
+    try{ const r = await call('/api/jira-frt-alert/send', { testTo:to }); st(r.ok ? 'ok' : 'err', r.count ? 'Đã gửi thử '+r.count+' ticket về '+to+'.' : (r.note || r.error || 'Xong.')); load(); }
+    catch(e){ st('err', e.message); }
+  };
+  load();
+})();
 </script>
 </body>
 </html>

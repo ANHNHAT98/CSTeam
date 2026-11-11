@@ -178,7 +178,7 @@
           <button type="button" class="sm" id="blReload">↻ Tải lại</button>
           <button type="button" class="export sm" id="blXls">⬇ Xuất Excel</button>
         </div>
-        <div class="hint" style="margin-top:8px">Ticket <b>đang tồn tại thời điểm hiện tại</b> của các dự án đã chọn ở bộ lọc (không phụ thuộc khoảng ngày), chia theo <b>thành viên nhóm DEC</b> đang được assign (người DEC chưa có tồn hiện 0). Ticket giao nhiều người thì tính cho mỗi người. <b>Điểm tải</b> = Σ trọng số ưu tiên (Critical/Urgent 3 · High 2 · Medium 1 · Low/khác 0,5), ticket đã quá hạn SLA ×1,5. So với trung bình nhóm DEC: ≥ 130% là <b>Quá tải</b>, ≤ 70% là <b>Có thể nhận thêm</b>. Bấm 1 dòng để xem danh sách ticket.</div>
+        <div class="hint" style="margin-top:8px">Ticket <b>đang tồn tại thời điểm hiện tại</b> của các dự án đã chọn ở bộ lọc (không phụ thuộc khoảng ngày), chia theo <b>thành viên nhóm DEC</b> đang được assign (người DEC chưa có tồn hiện 0). Ticket giao nhiều người thì tính cho mỗi người. <b>Điểm tải</b> = Σ trọng số ưu tiên (Critical/Urgent 3 · High 2 · Medium 1 · Low/khác 0,5), ticket đã quá hạn SLA ×1,5. So với trung bình nhóm DEC: ≥ 130% là <b>Quá tải</b>, ≤ 70% là <b>Có thể nhận thêm</b>. <b>Task SynergyHub</b> chưa xong (bỏ task đã hoàn thành/hủy) được cộng cho người được giao, mỗi task 1 điểm, trễ hạn dự kiến ×1,5; tên dự án SynergyHub được khớp tự động với dự án ERP. Bấm 1 dòng để xem danh sách ticket và task.</div>
       </div>
       <div class="kpis" id="blKpis"></div>
       <div id="blSuggest"></div>
@@ -511,14 +511,16 @@ $('rPrint').onclick = () => window.print();
 
 /* ---------- TAB 4: ticket tồn đọng theo người xử lý ---------- */
 const BL_STATUSES = ['Open','Assign','Working','Reviewing','Re-open','Waiting','Pending'];
-const BL = { key:'', rows:[], erpUrl:'', statuses:new Set(['Open','Assign','Working','Re-open']), open:new Set(), busy:false };
+const BL = { key:'', rows:[], tasks:[], taskErr:'', withTasks:true, erpUrl:'', statuses:new Set(['Open','Assign','Working','Re-open']), open:new Set(), busy:false };
+const WT = 1; // trọng số 1 task SynergyHub (trễ hạn ×1,5)
 const W = { p1:3, high:2, medium:1, low:0.5 };
 const nowVN = () => new Date(Date.now()+7*3600*1000).toISOString().slice(0,16).replace('T',' ');
 const pName = c => (projects.find(p=>p.code===c)||{}).name || c;
 const r1 = x => Math.round(x*10)/10;
 function renderBlStatus(){
   $('blStatus').innerHTML = '<span class="t">Trạng thái:</span>'+BL_STATUSES.map(s=>'<label class="'+(BL.statuses.has(s)?'on':'')+'"><input type="checkbox" data-s="'+s+'"'+(BL.statuses.has(s)?' checked':'')+'> '+s+'</label>').join('');
-  $('blStatus').querySelectorAll('input').forEach(i=>i.onchange=()=>{ i.checked ? BL.statuses.add(i.dataset.s) : BL.statuses.delete(i.dataset.s); renderBlStatus(); renderBacklog(); });
+  $('blStatus').innerHTML += '<span class="t" style="margin-left:10px">+</span><label class="'+(BL.withTasks?'on':'')+'"><input type="checkbox" data-task="1"'+(BL.withTasks?' checked':'')+'> Task SynergyHub chưa xong</label>';
+  $('blStatus').querySelectorAll('input').forEach(i=>i.onchange=()=>{ if(i.dataset.task) BL.withTasks = i.checked; else i.checked ? BL.statuses.add(i.dataset.s) : BL.statuses.delete(i.dataset.s); renderBlStatus(); renderBacklog(); });
 }
 async function loadBacklog(force){
   renderBlStatus();
@@ -529,77 +531,115 @@ async function loadBacklog(force){
   $('blTbl').innerHTML = '<tr><td class="hint" style="padding:20px">Đang lấy ticket tồn đọng từ ERP…</td></tr>';
   try{
     const q = new URLSearchParams({ projects:JSON.stringify([...pSel]), statuses:JSON.stringify(BL_STATUSES), limit:'5000', assign:'todo' });
-    const d = await api('/api/bao-cao/cs-am/tickets?'+q.toString());
+    const [d, tk] = await Promise.all([ api('/api/bao-cao/cs-am/tickets?'+q.toString()), api('/api/bao-cao/effort/open-tasks'+(force?'?refresh=1':'')).catch(e=>({ error:e.message })) ]);
     BL.rows = d.data||[]; BL.erpUrl = d.erpUrl||''; BL.key = key; BL.open = new Set();
+    BL.tasks = tk.error ? [] : (tk.tasks||[]); BL.taskErr = tk.error || '';
     renderBacklog();
   }catch(err){ $('blTbl').innerHTML = '<tr><td class="status err" style="padding:20px">Lỗi: '+esc(err.message)+'</td></tr>'; }
   finally{ BL.busy = false; }
 }
 function parseAsg(v){ try{ const a = JSON.parse(v||'[]'); return Array.isArray(a) ? a.filter(Boolean).map(x=>String(x).toLowerCase()) : []; }catch(_){ return []; } }
+// khớp tên dự án SynergyHub → mã dự án ERP: trùng hẳn (mã/tên) > chứa nhau > cùng tiền tố (vd "MerapLion")
+const nrm = x => String(x||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9]/g,'');
+function taskProject(name){
+  const t = nrm(name); if(!t) return '';
+  let best = '', score = 0;
+  projects.forEach(p=>{
+    const full = [nrm(p.code), nrm(p.name)].filter(x=>x.length>=3); const base = nrm(String(p.code).split(/[_\s-]/)[0]);
+    const sc = full.includes(t) ? 3 : full.some(f=>t.includes(f)||f.includes(t)) && t.length>=4 ? 2 : base.length>=3 && t.startsWith(base) ? 1 : 0;
+    if(sc>score){ score = sc; best = p.code; }
+  });
+  return best;
+}
+function blTasks(today){ // task chưa xong thuộc các dự án đang chọn (+ task của DEC không khớp dự án nào)
+  const inSel = [], unmatched = [];
+  if(!BL.withTasks) return { inSel, unmatched };
+  BL.tasks.forEach(t=>{
+    const code = taskProject(t.project); const overdue = !!t.planned && t.planned < today;
+    const it = { kind:'task', name:t.id||t.name, subject:t.name, project:code, shProject:t.project, status:t.status||'', planned:t.planned||'', overdue, w: WT*(overdue?1.5:1), assignees:t.assignees||[] };
+    if(code){ if(pSel.has(code)) inSel.push(it); }
+    else if(it.assignees.some(e=>handlerSet.has(e.split('@')[0]))) unmatched.push(it);
+  });
+  return { inSel, unmatched };
+}
 function blMembers(){
   const now = nowVN(), today = now.slice(0,10); const map = new Map();
+  const blank = key => ({ key, email:'', items:[], tasks:[], p1:0, high:0, medium:0, low:0, overdue:0, tOverdue:0, score:0, ageSum:0, oldest:0, projects:{} });
   const ageOf = t => { const o = String(t.opening_date||t.creation||'').slice(0,10); return o ? Math.max(0, Math.round((new Date(today+'T00:00:00Z') - new Date(o+'T00:00:00Z'))/86400000)) : 0; };
   BL.rows.filter(t=>BL.statuses.has(t.status)).forEach(t=>{
     const g = prioGroup(t.priority); const overdue = !!t._sla_due && t._sla_due < now; const age = ageOf(t);
     const it = { ...t, g, overdue, age, w: W[g]*(overdue?1.5:1) };
     const who = parseAsg(t._assign); (who.length ? who : ['']).forEach(e=>{
       const key = e ? e.split('@')[0] : '';
-      const m = map.get(key) || { key, email:e, items:[], p1:0, high:0, medium:0, low:0, overdue:0, score:0, ageSum:0, oldest:0, projects:{} };
+      const m = map.get(key) || { ...blank(key), email:e };
       m.items.push(it); m[g]++; if(overdue) m.overdue++; m.score += it.w; m.ageSum += age; m.oldest = Math.max(m.oldest, age); m.projects[t.project] = (m.projects[t.project]||0)+1;
       map.set(key, m);
     });
   });
+  // task SynergyHub: chỉ tính cho người được giao (task không có người giao thì bỏ qua)
+  const { inSel, unmatched } = blTasks(today); BL.unmatched = unmatched;
+  inSel.forEach(it=>it.assignees.forEach(e=>{
+    const key = e.split('@')[0]; const m = map.get(key) || { ...blank(key), email:e };
+    m.tasks.push(it); if(it.overdue) m.tOverdue++; m.score += it.w; m.projects[it.project] = (m.projects[it.project]||0)+1; map.set(key, m);
+  }));
   // chỉ nhóm DEC (+ dòng "Chưa giao ai"); thành viên DEC chưa có tồn vẫn hiện với 0 để thấy ai còn trống
   BL.outside = [...map.values()].filter(m=>m.key && !handlerSet.has(m.key));
-  handlerSet.forEach(k=>{ if(!map.has(k)) map.set(k, { key:k, email:'', items:[], p1:0, high:0, medium:0, low:0, overdue:0, score:0, ageSum:0, oldest:0, projects:{} }); });
-  const list = [...map.values()].filter(m=>!m.key || handlerSet.has(m.key)).map(m=>({ ...m, count:m.items.length, score:r1(m.score), avgAge:m.items.length ? r1(m.ageSum/m.items.length) : 0 }));
+  handlerSet.forEach(k=>{ if(!map.has(k)) map.set(k, blank(k)); });
+  const list = [...map.values()].filter(m=>!m.key || handlerSet.has(m.key)).map(m=>({ ...m, count:m.items.length, tcount:m.tasks.length, score:r1(m.score), avgAge:m.items.length ? r1(m.ageSum/m.items.length) : 0 }));
   const people = list.filter(m=>m.key);
   const avgScore = people.length ? people.reduce((s,m)=>s+m.score,0)/people.length : 0;
   const avgCount = people.length ? people.reduce((s,m)=>s+m.count,0)/people.length : 0;
-  list.forEach(m=>{ m.pct = avgScore ? Math.round(m.score/avgScore*100) : (m.key ? 0 : null); m.level = !m.key ? '' : m.pct>=130 ? 'hi' : m.pct<=70 ? 'lo' : 'ok'; m.items.sort((a,b)=>(b.overdue-a.overdue) || (W[b.g]-W[a.g]) || b.age-a.age); });
+  const avgTask = people.length ? people.reduce((s,m)=>s+m.tasks.length,0)/people.length : 0;
+  list.forEach(m=>{ m.pct = avgScore ? Math.round(m.score/avgScore*100) : (m.key ? 0 : null); m.level = !m.key ? '' : m.pct>=130 ? 'hi' : m.pct<=70 ? 'lo' : 'ok'; m.items.sort((a,b)=>(b.overdue-a.overdue) || (W[b.g]-W[a.g]) || b.age-a.age); m.tasks.sort((a,b)=>(b.overdue-a.overdue) || String(a.planned||'9').localeCompare(String(b.planned||'9'))); });
   list.sort((a,b)=>(!a.key)-(!b.key) || b.score-a.score);
-  return { list, people, avgScore:r1(avgScore), avgCount:r1(avgCount) };
+  return { list, people, avgScore:r1(avgScore), avgCount:r1(avgCount), avgTask:r1(avgTask) };
 }
 const LV = { hi:'🔴 Quá tải', ok:'Cân bằng', lo:'🟢 Có thể nhận thêm' };
 const blName = m => m.key ? label(m) : '(Chưa giao ai)';
 function renderBacklog(){
-  const { list, people, avgScore, avgCount } = blMembers();
+  const { list, people, avgScore, avgCount, avgTask } = blMembers();
+  const shownK = new Map(); list.forEach(m=>m.tasks.forEach(i=>shownK.set(i.name+'|'+i.subject, i))); const kOd = [...shownK.values()].filter(i=>i.overdue).length;
+  const tTxt = m => m.tcount ? ' + '+m.tcount+' task' : '';
   const now = nowVN(); const shownT = new Map(); list.forEach(m=>m.items.forEach(i=>shownT.set(i.name, i)));
   const all = new Set(shownT.keys()); const od = [...shownT.values()].filter(i=>i.overdue).length;
   const outT = new Set((BL.outside||[]).flatMap(m=>m.items.map(i=>i.name)).filter(n=>!all.has(n)));
   const un = (list.find(m=>!m.key)||{count:0}).count;
   $('blKpis').innerHTML = `<div class="kpi"><div class="l">Ticket tồn đọng</div><div class="v">${all.size}</div><div class="d">${pSel.size} dự án · ${[...BL.statuses].join(', ')}</div></div>`
+    +(BL.withTasks ? `<div class="kpi"><div class="l">Task SynergyHub chưa xong</div><div class="v">${BL.taskErr ? '—' : shownK.size}</div><div class="d">${BL.taskErr ? 'lỗi: '+esc(BL.taskErr) : kOd+' task đã trễ hạn dự kiến'}</div></div>` : '')
     +`<div class="kpi k2"><div class="l">Đã quá hạn SLA</div><div class="v">${od}</div><div class="d">${all.size ? Math.round(od/all.size*100) : 0}% số ticket tồn</div></div>`
-    +`<div class="kpi k3"><div class="l">Nhóm DEC</div><div class="v">${people.length}</div><div class="d">TB ${avgCount} ticket · ${avgScore} điểm/người</div></div>`
+    +`<div class="kpi k3"><div class="l">Nhóm DEC</div><div class="v">${people.length}</div><div class="d">TB ${avgCount} ticket${BL.withTasks ? ' + '+avgTask+' task' : ''} · ${avgScore} điểm/người</div></div>`
     +`<div class="kpi k4"><div class="l">Chưa giao cho ai</div><div class="v">${un}</div><div class="d">cần assign người xử lý</div></div>`;
   // gợi ý chia lại: người quá tải → người có thể nhận thêm
   const hi = people.filter(m=>m.level==='hi'), lo = people.filter(m=>m.level==='lo').sort((a,b)=>a.score-b.score);
   $('blSuggest').innerHTML = hi.length ? '<div class="suggest"><b>Gợi ý cân bằng tải</b> (trung bình '+avgCount+' ticket/người):<br>'
-    + hi.map(m=>{ const n = Math.max(1, Math.round(m.count-avgCount)); return '• <b>'+esc(blName(m))+'</b> đang tồn '+m.count+' ticket ('+m.pct+'% tải TB) — nên chuyển khoảng <b>'+n+' ticket</b>'+(lo.length ? ' sang '+lo.slice(0,3).map(x=>'<b>'+esc(blName(x))+'</b> ('+x.count+')').join(', ') : '')+'.'; }).join('<br>')
+    + hi.map(m=>{ const n = Math.max(1, Math.round(m.count-avgCount)); return '• <b>'+esc(blName(m))+'</b> đang tồn '+m.count+' ticket'+tTxt(m)+' ('+m.pct+'% tải TB) — nên chuyển khoảng <b>'+n+' ticket</b>'+(lo.length ? ' sang '+lo.slice(0,3).map(x=>'<b>'+esc(blName(x))+'</b> ('+x.count+tTxt(x)+')').join(', ') : '')+'.'; }).join('<br>')
     + (un ? '<br>• Có <b>'+un+' ticket chưa giao</b> — ưu tiên giao cho '+(lo.length ? lo.slice(0,3).map(x=>'<b>'+esc(blName(x))+'</b>').join(', ') : 'người có điểm tải thấp')+'.' : '') + '</div>'
     : (un ? '<div class="suggest">Tải đang khá đều. Có <b>'+un+' ticket chưa giao</b> cần assign.</div>' : '');
   // biểu đồ
   const cl = list.filter(m=>m.key); $('wrapBl').style.height = Math.max(220, cl.length*30+90)+'px';
-  destroy('cBl'); charts.cBl = new Chart($('cBl'), { type:'bar', data:{ labels:cl.map(m=>blName(m)+' — '+m.count), datasets: PRIO.map(([k,lab,col])=>({ label:lab, data:cl.map(m=>r1(m.items.filter(i=>i.g===k).reduce((s,i)=>s+i.w,0))), backgroundColor:col })) },
-    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:false, plugins:{ legend:{ position:'bottom' }, tooltip:{ mode:'index', intersect:false, callbacks:{ footer: items => { const m = cl[items[0].dataIndex]; return 'Điểm tải: '+m.score+' · '+m.count+' ticket · quá SLA '+m.overdue; } } } }, scales:{ x:{ stacked:true, beginAtZero:true }, y:{ stacked:true } } } });
+  destroy('cBl'); charts.cBl = new Chart($('cBl'), { type:'bar', data:{ labels:cl.map(m=>blName(m)+' — '+m.count+(m.tcount?'+'+m.tcount:'')), datasets: PRIO.map(([k,lab,col])=>({ label:lab, data:cl.map(m=>r1(m.items.filter(i=>i.g===k).reduce((s,i)=>s+i.w,0))), backgroundColor:col })).concat(BL.withTasks ? [{ label:'Task SynergyHub', data:cl.map(m=>r1(m.tasks.reduce((s,i)=>s+i.w,0))), backgroundColor:'#7A5BA6' }] : []) },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:false, plugins:{ legend:{ position:'bottom' }, tooltip:{ mode:'index', intersect:false, callbacks:{ footer: items => { const m = cl[items[0].dataIndex]; return 'Điểm tải: '+m.score+' · '+m.count+' ticket · quá SLA '+m.overdue+(m.tcount ? ' · '+m.tcount+' task (trễ hạn '+m.tOverdue+')' : ''); } } } }, scales:{ x:{ stacked:true, beginAtZero:true }, y:{ stacked:true } } } });
   // bảng
   const link = n => BL.erpUrl ? '<a target="_blank" rel="noopener" href="'+esc(BL.erpUrl)+'/app/ticket/'+encodeURIComponent(n)+'">'+esc(n)+'</a>' : esc(n);
-  const head = '<tr><th style="text-align:left">Thành viên</th><th>Ticket tồn</th><th>Critical/Urgent</th><th>High</th><th>Medium</th><th>Low/khác</th><th>Quá SLA</th><th>Tuổi TB (ngày)</th><th>Cũ nhất (ngày)</th><th>Điểm tải</th><th>% so TB</th><th style="text-align:left">Mức tải</th><th style="text-align:left">Dự án</th></tr>';
+  const head = '<tr><th style="text-align:left">Thành viên</th><th>Ticket tồn</th><th>Critical/Urgent</th><th>High</th><th>Medium</th><th>Low/khác</th><th>Quá SLA</th><th>Task SH</th><th>Task trễ hạn</th><th>Tuổi TB (ngày)</th><th>Cũ nhất (ngày)</th><th>Điểm tải</th><th>% so TB</th><th style="text-align:left">Mức tải</th><th style="text-align:left">Dự án</th></tr>';
   const rows = list.map(m=>{
-    const det = BL.open.has(m.key) ? '<tr class="bl-det"><td colspan="13"><table><tr><th>Ticket</th><th>Dự án</th><th>Tiêu đề</th><th>Ưu tiên</th><th>Trạng thái</th><th>Mở lúc</th><th>Tuổi</th><th>Hạn SLA</th></tr>'
-      + m.items.map(i=>'<tr><td>'+link(i.name)+'</td><td>'+esc(pName(i.project))+'</td><td style="text-align:left">'+esc(i.subject||'')+'</td><td>'+esc(i.priority||'')+'</td><td>'+esc(i.status)+'</td><td>'+esc(fmtD(String(i.opening_date||'').slice(0,10)))+'</td><td>'+i.age+'</td><td'+(i.overdue?' class="od"':'')+'>'+esc(i._sla_due||'')+(i.overdue?' ⚠':'')+'</td></tr>').join('')+'</table></td></tr>' : '';
-    return '<tr class="bl-row" data-k="'+esc(m.key)+'"><td style="text-align:left;font-weight:600">'+(BL.open.has(m.key)?'▾ ':'▸ ')+esc(blName(m))+'</td><td><b>'+m.count+'</b></td><td>'+m.p1+'</td><td>'+m.high+'</td><td>'+m.medium+'</td><td>'+m.low+'</td><td'+(m.overdue?' class="od"':'')+'>'+m.overdue+'</td><td>'+m.avgAge+'</td><td>'+m.oldest+'</td><td><b>'+m.score+'</b></td><td>'+(m.pct==null||!m.key?'—':m.pct+'%')+'</td><td style="text-align:left">'+(m.level?'<span class="ld '+m.level+'">'+LV[m.level]+'</span>':'')+'</td><td style="text-align:left">'+Object.entries(m.projects).sort((a,b)=>b[1]-a[1]).map(([c,n])=>'<span class="tg">'+esc(pName(c))+' '+n+'</span>').join(' ')+'</td></tr>'+det;
+    const det = BL.open.has(m.key) ? '<tr class="bl-det"><td colspan="15"><table><tr><th>Ticket</th><th>Dự án</th><th>Tiêu đề</th><th>Ưu tiên</th><th>Trạng thái</th><th>Mở lúc</th><th>Tuổi</th><th>Hạn SLA / hạn task</th></tr>'
+      + m.items.map(i=>'<tr><td>'+link(i.name)+'</td><td>'+esc(pName(i.project))+'</td><td style="text-align:left">'+esc(i.subject||'')+'</td><td>'+esc(i.priority||'')+'</td><td>'+esc(i.status)+'</td><td>'+esc(fmtD(String(i.opening_date||'').slice(0,10)))+'</td><td>'+i.age+'</td><td'+(i.overdue?' class="od"':'')+'>'+esc(i._sla_due||'')+(i.overdue?' ⚠':'')+'</td></tr>').join('')
+      + m.tasks.map(i=>'<tr><td><span class="tg">Task</span> '+esc(i.name)+'</td><td title="SynergyHub: '+esc(i.shProject)+'">'+esc(pName(i.project))+'</td><td style="text-align:left">'+esc(i.subject||'')+'</td><td>—</td><td>'+esc(i.status)+'</td><td>—</td><td>—</td><td'+(i.overdue?' class="od"':'')+'>'+esc(fmtD(i.planned))+(i.overdue?' ⚠':'')+'</td></tr>').join('')+'</table></td></tr>' : '';
+    return '<tr class="bl-row" data-k="'+esc(m.key)+'"><td style="text-align:left;font-weight:600">'+(BL.open.has(m.key)?'▾ ':'▸ ')+esc(blName(m))+'</td><td><b>'+m.count+'</b></td><td>'+m.p1+'</td><td>'+m.high+'</td><td>'+m.medium+'</td><td>'+m.low+'</td><td'+(m.overdue?' class="od"':'')+'>'+m.overdue+'</td><td>'+(m.key?m.tcount:'—')+'</td><td'+(m.tOverdue?' class="od"':'')+'>'+(m.key?m.tOverdue:'—')+'</td><td>'+m.avgAge+'</td><td>'+m.oldest+'</td><td><b>'+m.score+'</b></td><td>'+(m.pct==null||!m.key?'—':m.pct+'%')+'</td><td style="text-align:left">'+(m.level?'<span class="ld '+m.level+'">'+LV[m.level]+'</span>':'')+'</td><td style="text-align:left">'+Object.entries(m.projects).sort((a,b)=>b[1]-a[1]).map(([c,n])=>'<span class="tg">'+esc(pName(c))+' '+n+'</span>').join(' ')+'</td></tr>'+det;
   }).join('');
   $('blTbl').innerHTML = !handlerSet.size ? '<tr><td class="status err" style="padding:20px">Chưa đọc được thành viên nhóm DEC (User Group '+esc((data && data.groups && data.groups.decGroup) || 'Team DEV- CS2')+') — xem cảnh báo phía trên.</td></tr>'
-    : list.length ? head+rows+(outT.size ? '<tr><td colspan="13" class="hint" style="text-align:left;padding:10px">Không tính '+outT.size+' ticket chỉ giao cho người ngoài nhóm DEC ('+esc(BL.outside.map(blName).join(', '))+').</td></tr>' : '') : '<tr><td class="hint" style="padding:20px">Không có ticket tồn đọng nào ở các trạng thái đã chọn.</td></tr>';
+    : list.length ? head+rows+(outT.size ? '<tr><td colspan="15" class="hint" style="text-align:left;padding:10px">Không tính '+outT.size+' ticket chỉ giao cho người ngoài nhóm DEC ('+esc(BL.outside.map(blName).join(', '))+').</td></tr>' : '')
+      +(BL.unmatched && BL.unmatched.length ? '<tr><td colspan="15" class="hint" style="text-align:left;padding:10px">⚠ '+BL.unmatched.length+' task SynergyHub của nhóm DEC không khớp được dự án ERP nào nên chưa tính (tên dự án bên SynergyHub: '+esc([...new Set(BL.unmatched.map(i=>i.shProject||'(trống)'))].join(', '))+').</td></tr>' : '')
+      +(BL.taskErr ? '<tr><td colspan="15" class="status err" style="text-align:left;padding:10px">Không lấy được task SynergyHub: '+esc(BL.taskErr)+' — bảng chỉ gồm ticket.</td></tr>' : '') : '<tr><td class="hint" style="padding:20px">Không có ticket tồn đọng nào ở các trạng thái đã chọn.</td></tr>';
   $('blTbl').querySelectorAll('.bl-row').forEach(r=>r.onclick=e=>{ if(e.target.closest('a')) return; const k = r.dataset.k; BL.open.has(k) ? BL.open.delete(k) : BL.open.add(k); renderBacklog(); });
 }
 $('blReload').onclick = () => loadBacklog(true);
 $('blXls').onclick = () => {
   const { list } = blMembers(); if(!list.length) return;
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Thành viên','Ticket tồn','Critical/Urgent','High','Medium','Low/khác','Quá SLA','Tuổi TB (ngày)','Cũ nhất (ngày)','Điểm tải','% so TB','Mức tải']].concat(list.map(m=>[blName(m),m.count,m.p1,m.high,m.medium,m.low,m.overdue,m.avgAge,m.oldest,m.score,m.key&&m.pct!=null?m.pct+'%':'',m.level?LV[m.level].replace(/^\S+ /,''):'']))), 'Tổng hợp');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Thành viên','Ticket','Dự án','Tiêu đề','Ưu tiên','Trạng thái','Mở lúc','Tuổi (ngày)','Hạn SLA','Quá SLA']].concat(list.flatMap(m=>m.items.map(i=>[blName(m),i.name,pName(i.project),i.subject||'',i.priority||'',i.status,i.opening_date||'',i.age,i._sla_due||'',i.overdue?'Có':''])))), 'Chi tiết');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Thành viên','Ticket tồn','Critical/Urgent','High','Medium','Low/khác','Quá SLA','Task SynergyHub','Task trễ hạn','Tuổi TB (ngày)','Cũ nhất (ngày)','Điểm tải','% so TB','Mức tải']].concat(list.map(m=>[blName(m),m.count,m.p1,m.high,m.medium,m.low,m.overdue,m.tcount,m.tOverdue,m.avgAge,m.oldest,m.score,m.key&&m.pct!=null?m.pct+'%':'',m.level?LV[m.level].replace(/^\S+ /,''):'']))), 'Tổng hợp');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Thành viên','Loại','Mã','Dự án','Tiêu đề','Ưu tiên','Trạng thái','Mở lúc','Tuổi (ngày)','Hạn SLA / hạn task','Quá hạn']].concat(list.flatMap(m=>m.items.map(i=>[blName(m),'Ticket',i.name,pName(i.project),i.subject||'',i.priority||'',i.status,i.opening_date||'',i.age,i._sla_due||'',i.overdue?'Có':'']).concat(m.tasks.map(i=>[blName(m),'Task SynergyHub',i.name,pName(i.project),i.subject||'','',i.status,'','',i.planned,i.overdue?'Có':'']))))), 'Chi tiết');
   XLSX.writeFile(wb, 'Ton_dong_theo_nguoi_xu_ly_'+todayVN()+'.xlsx');
 };
 
