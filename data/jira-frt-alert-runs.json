@@ -1,5 +1,19 @@
 [
   {
+    "at": "2026-11-11T09:55:21.571Z",
+    "by": "lịch tự động",
+    "test": "",
+    "to": "lamlt1@hqsoft.com.vn, viltt@hqsoft.com.vn",
+    "keys": [
+      "HQ-241 (trễ)",
+      "HQ-264 (trễ)",
+      "HQ-271 (trễ)",
+      "HQ-289 (trễ)"
+    ],
+    "ok": true,
+    "error": ""
+  },
+  {
     "at": "2026-11-11T09:09:01.452Z",
     "by": "admin",
     "test": "nhatha@hqsoft.com.vn",
