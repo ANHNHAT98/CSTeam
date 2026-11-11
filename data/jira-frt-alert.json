@@ -12,8 +12,8 @@
     },
     "afterDefault": 60,
     "to": [
-      "lamlt1@hqsoft.com.vn",
-      "viltt@hqsoft.com.vn"
+      "lamlt@hqsoft.com.vn",
+      "sales02@hqsoft.com.vn"
     ],
     "cc": [
       "nhatha@hqsoft.com.vn"
@@ -21,7 +21,9 @@
     "includeAssignee": false,
     "alertBreached": false,
     "jql": "project = \"HQ\" AND statusCategory != Done AND created >= -30d ORDER BY created DESC",
-    "updatedAt": "2026-11-11T09:57:17.987Z",
+    "zaloEnabled": false,
+    "zaloChatIds": [],
+    "updatedAt": "2026-11-11T10:22:29.947Z",
     "updatedBy": "admin"
   }
 ]
