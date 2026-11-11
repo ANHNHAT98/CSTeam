@@ -19,9 +19,9 @@
       "nhatha@hqsoft.com.vn"
     ],
     "includeAssignee": false,
-    "alertBreached": true,
+    "alertBreached": false,
     "jql": "project = \"HQ\" AND statusCategory != Done AND created >= -30d ORDER BY created DESC",
-    "updatedAt": "2026-11-11T08:46:32.264Z",
+    "updatedAt": "2026-11-11T09:57:17.987Z",
     "updatedBy": "admin"
   }
 ]
