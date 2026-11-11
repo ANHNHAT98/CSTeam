@@ -12,6 +12,7 @@
 const jira = require('./jiraClient');
 const { createListStore } = require('./listStore');
 const { postWebhook } = require('./slaReminder');
+const zalo = require('./zaloBot');
 
 const configStore = createListStore({ repoFilePath: 'data/jira-frt-alert.json', localFile: 'data/jira-frt-alert.json' });
 const stateStore = createListStore({ repoFilePath: 'data/jira-frt-alert-state.json', localFile: 'data/jira-frt-alert-state.json' });
@@ -33,13 +34,16 @@ const DEFAULT_CONFIG = {
   includeAssignee: true,           // thêm email người được giao trên Jira (nếu Jira cho xem email)
   alertBreached: false,            // báo cả ticket đã trễ mà chưa phản hồi (1 lần)
   jql: DEFAULT_JQL,
+  zaloEnabled: false,              // gửi thêm tin Zalo (Zalo Bot, env ZALO_BOT_TOKEN) — mặc định tắt
+  zaloChatIds: [],                 // chat id đã chọn (lấy từ danh sách người/nhóm đã nhắn bot)
 };
 
 const EMAIL_RE = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
 const emails = (v) => [...new Set((Array.isArray(v) ? v : String(v || '').split(/[\s,;]+/)).map((s) => String(s).trim().toLowerCase()).filter(Boolean))];
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmtVN = (iso) => { if (!iso) return ''; const d = new Date(iso); return isNaN(d) ? String(iso) : d.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }); };
-const fmtMin = (m) => { const a = Math.abs(Math.round(m)); const h = Math.floor(a / 60); return h ? `${h} giờ ${a % 60} phút` : `${a} phút`; };
+const fmtMin = (m) => { const a = Math.abs(Math.round(m)); const d = Math.floor(a / 1440); const h = Math.floor((a % 1440) / 60); const mi = a % 60;
+  return d ? `${d} ngày ${h} giờ` : h ? `${h} giờ ${mi} phút` : `${mi} phút`; };
 
 async function getConfig() {
   const list = await configStore.readAll();
@@ -72,8 +76,12 @@ async function saveConfig(input, user) {
     enabled: input.enabled != null ? Boolean(input.enabled) : cur.enabled,
     afterMinutes, afterDefault, to, cc, includeAssignee,
     alertBreached: input.alertBreached != null ? Boolean(input.alertBreached) : cur.alertBreached,
-    jql, updatedAt: new Date().toISOString(), updatedBy: user || '',
+    jql,
+    zaloEnabled: input.zaloEnabled != null ? Boolean(input.zaloEnabled) : Boolean(cur.zaloEnabled),
+    zaloChatIds: zaloIds(input.zaloChatIds != null ? input.zaloChatIds : cur.zaloChatIds),
+    updatedAt: new Date().toISOString(), updatedBy: user || '',
   };
+  if (next.zaloEnabled && !next.zaloChatIds.length) throw new Error('Bật gửi Zalo thì cần chọn ít nhất 1 người/nhóm nhận.');
   await configStore.mutate(() => ({ list: [next], result: {} }), `jira-frt-alert: cập nhật cấu hình (${user || ''})`);
   return next;
 }
@@ -118,22 +126,65 @@ const stateKey = (it) => `${it.key}|${it.cycle}|${it.kind}`;
 
 function buildMail(items, cfg, base) {
   const near = items.filter((i) => i.kind === 'near'); const late = items.filter((i) => i.kind === 'late');
-  const th = 'style="background:#1F4E79;color:#fff;padding:6px 8px;text-align:left;font-size:12.5px;border:1px solid #1F4E79"';
-  const td = 'style="padding:6px 8px;border:1px solid #D5DDE5;font-size:12.5px;vertical-align:top"';
-  const row = (i) => `<tr><td ${td}><a href="${esc(base)}/browse/${encodeURIComponent(i.key)}">${esc(i.key)}</a>${i.hqTicketId ? `<br><span style="color:#666">${esc(i.hqTicketId)}</span>` : ''}</td>`
-    + `<td ${td}>${esc(i.priority)}</td><td style="padding:6px 8px;border:1px solid #D5DDE5;font-size:12.5px;vertical-align:top;min-width:220px">${esc(i.summary)}</td>`
-    + `<td ${td}>${esc(i.assignee || '(chưa giao)')}</td><td ${td}>${esc(i.status)}</td>`
-    + `<td ${td}>${i.elapsedMin != null ? 'Đã chờ ' + fmtMin(i.elapsedMin) + '<br>' : ''}<b style="color:${i.kind === 'late' ? '#B23A48' : '#C77700'}">${i.kind === 'late' ? 'Đã trễ ' + fmtMin(i.remainingMin) : 'Còn ' + fmtMin(i.remainingMin)}</b></td><td ${td}>${esc(fmtVN(i.dueIso))}</td></tr>`;
-  const table = (list) => `<table style="border-collapse:collapse;margin:6px 0 14px"><tr><th ${th}>Issue</th><th ${th}>Priority</th><th ${th}>Tiêu đề</th><th ${th}>Người xử lý</th><th ${th}>Trạng thái</th><th ${th}>Thời gian</th><th ${th}>Hạn phản hồi</th></tr>${list.map(row).join('')}</table>`;
-  const html = `<div style="font-family:Segoe UI,Arial,sans-serif;font-size:14px;color:#222">`
-    + (near.length ? `<p>⏰ Có <b>${near.length} ticket Jira ABI</b> đã quá mốc nhắc mà <b>chưa phản hồi First Response</b> (P1 sau ${cfg.afterMinutes.P1} phút · P2/S1 sau ${cfg.afterMinutes.P2} phút · P3/S2/P4/S3 sau ${cfg.afterMinutes.P3} phút). Vui lòng phản hồi khách ngay để không bị trễ SLA:</p>${table(near)}` : '')
-    + (late.length ? `<p>⚠ <b>${late.length} ticket</b> đã trễ First Response mà chưa có phản hồi:</p>${table(late)}` : '')
-    + `<p style="color:#777;font-size:12px">Thời gian còn lại lấy theo SLA Jira tự tính (lúc gửi mail). Mỗi ticket chỉ cảnh báo 1 lần. — HQSOFT Ops Console</p></div>`;
+  const F = 'font-family:Segoe UI,Arial,Helvetica,sans-serif';
+  const PCOL = { P1: '#C62828', P2: '#E65100', S1: '#E65100', P3: '#B7791F', S2: '#B7791F', P4: '#5F6B7A', S3: '#5F6B7A' };
+  const badge = (txt, bg, fg = '#fff') => `<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:${bg};color:${fg};font-size:11.5px;font-weight:600;white-space:nowrap">${esc(txt)}</span>`;
+  const nowTxt = fmtVN(new Date().toISOString());
+  const row = (i, n) => {
+    const bg = n % 2 ? '#F7F9FC' : '#FFFFFF';
+    const td = `style="padding:10px 12px;border-bottom:1px solid #E3E8EF;vertical-align:top;background:${bg};${F};font-size:13px;color:#1F2933"`;
+    const isLate = i.kind === 'late';
+    const remain = isLate ? badge('Trễ ' + fmtMin(i.remainingMin), '#FDECEC', '#B42318') : badge('Còn ' + fmtMin(i.remainingMin), '#FFF4E5', '#B54708');
+    return `<tr>`
+      + `<td ${td}><a href="${esc(base)}/browse/${encodeURIComponent(i.key)}" style="color:#1A56DB;font-weight:700;text-decoration:none">${esc(i.key)}</a><br>${badge(i.priority || '—', PCOL[i.priority] || '#5F6B7A')}${i.hqTicketId ? `<div style="color:#8792A2;font-size:11.5px;margin-top:4px">${esc(i.hqTicketId)}</div>` : ''}</td>`
+      + `<td ${td}><div style="font-weight:600">${esc(i.summary)}</div><div style="color:#6B7685;font-size:12px;margin-top:3px">${esc(i.status)} · ${esc(i.assignee || 'chưa giao')}</div></td>`
+      + `<td ${td} nowrap>${remain}${i.elapsedMin != null ? `<div style="color:#6B7685;font-size:12px;margin-top:4px">Đã chờ ${fmtMin(i.elapsedMin)}</div>` : ''}</td>`
+      + `<td ${td} nowrap><b>${esc(fmtVN(i.dueIso))}</b></td></tr>`;
+  };
+  const section = (title, color, list) => `<tr><td style="padding:18px 24px 6px;${F}"><div style="font-size:14px;font-weight:700;color:${color}">${title}</div></td></tr>`
+    + `<tr><td style="padding:0 24px 8px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #E3E8EF;border-radius:8px">`
+    + `<tr>${['Issue', 'Tiêu đề · Trạng thái · Người xử lý', 'Thời gian', 'Hạn phản hồi'].map((h) => `<th align="left" style="padding:8px 12px;background:#EEF2F7;color:#52606D;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #E3E8EF;${F}">${h}</th>`).join('')}</tr>`
+    + list.map(row).join('') + `</table></td></tr>`;
+  const stat = (n, label, color) => `<td style="padding:0 18px 0 0;${F}"><div style="font-size:24px;font-weight:700;color:${color};line-height:1">${n}</div><div style="font-size:12px;color:#6B7685">${label}</div></td>`;
+  const html = `<div style="background:#F2F4F7;padding:20px 0;${F}"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:820px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #E3E8EF">`
+    + `<tr><td style="background:${late.length && !near.length ? '#B42318' : '#1F4E79'};padding:16px 24px;${F}"><div style="color:#fff;font-size:17px;font-weight:700">${near.length ? '⏰' : '⚠️'} Cảnh báo SLA First Response · Jira ABI</div><div style="color:#D6E4F0;font-size:12.5px;margin-top:4px">Kiểm tra lúc ${esc(nowTxt)} — vui lòng phản hồi khách ngay</div></td></tr>`
+    + `<tr><td style="padding:16px 24px 4px"><table role="presentation" cellpadding="0" cellspacing="0"><tr>${near.length ? stat(near.length, 'sắp trễ', '#B54708') : ''}${late.length ? stat(late.length, 'đã trễ', '#B42318') : ''}</tr></table></td></tr>`
+    + (near.length ? section('Sắp trễ — đã quá mốc nhắc mà chưa phản hồi', '#B54708', near) : '')
+    + (late.length ? section('Đã trễ First Response — chưa có phản hồi', '#B42318', late) : '')
+    + `<tr><td style="padding:12px 24px 18px;${F};font-size:11.5px;color:#8792A2;border-top:1px solid #EEF2F7">Mốc nhắc: P1 sau ${cfg.afterMinutes.P1}p · P2/S1 sau ${cfg.afterMinutes.P2}p · P3/S2/P4/S3 sau ${cfg.afterMinutes.P3}p. Thời gian lấy theo SLA Jira lúc gửi; mỗi ticket chỉ cảnh báo 1 lần.<br>HQSOFT Ops Console</td></tr>`
+    + `</table></div>`;
   const subject = near.length
     ? `[Cảnh báo SLA] ${near.length} ticket Jira ABI sắp trễ First Response${near[0] ? ` – ${near[0].key} còn ${fmtMin(near[0].remainingMin)}` : ''}`
     : `[Cảnh báo SLA] ${late.length} ticket Jira ABI đã trễ First Response`;
   const to = [...new Set([...cfg.to, ...(cfg.includeAssignee ? items.map((i) => i.assigneeEmail).filter((e) => EMAIL_RE.test(e)) : [])])];
   return { to, cc: cfg.cc.filter((e) => !to.includes(e)), subject, html };
+}
+
+const zaloIds = (v) => [...new Set((Array.isArray(v) ? v : String(v || '').split(/[\s,;]+/)).map((x) => String(x).trim()).filter((x) => /^[\w.:-]{1,100}$/.test(x)))].slice(0, 30);
+
+/** Tin Zalo (chữ thường, không HTML). */
+function buildZaloText(items, cfg, base) {
+  const near = items.filter((i) => i.kind === 'near'); const late = items.filter((i) => i.kind === 'late');
+  const line = (i) => `• ${i.key} [${i.priority || '—'}] ${i.kind === 'late' ? 'TRỄ ' + fmtMin(i.remainingMin) : 'còn ' + fmtMin(i.remainingMin)} · hạn ${fmtVN(i.dueIso)}\n   ${String(i.summary || '').slice(0, 90)} — ${i.assignee || 'chưa giao'}\n   ${base}/browse/${i.key}`;
+  return [`⏰ CẢNH BÁO SLA FIRST RESPONSE · JIRA ABI`, [near.length ? `${near.length} sắp trễ` : '', late.length ? `${late.length} đã trễ` : ''].filter(Boolean).join(' · ') + ' — vui lòng phản hồi khách ngay', '',
+    ...(near.length ? ['🟠 SẮP TRỄ', ...near.map(line), ''] : []),
+    ...(late.length ? ['🔴 ĐÃ TRỄ', ...late.map(line), ''] : []),
+    `Mốc nhắc: P1 ${cfg.afterMinutes.P1}p · P2/S1 ${cfg.afterMinutes.P2}p · P3–S3 ${cfg.afterMinutes.P3}p`].join('\n').trim();
+}
+
+/** Gửi thử Zalo tới các chat chọn (không cần bật, không đánh dấu đã báo). */
+async function zaloTest({ chatIds } = {}) {
+  const cfg = await getConfig();
+  const ids = zaloIds(chatIds && chatIds.length ? chatIds : cfg.zaloChatIds);
+  if (!ids.length) throw new Error('Chưa chọn người/nhóm Zalo để gửi thử.');
+  let text;
+  try {
+    const data = await compute(cfg);
+    const base = String(process.env.JIRA_BASE_URL || '').replace(/\/+$/, '');
+    text = data.items.length ? buildZaloText(data.items, cfg, base) : '';
+  } catch (e) { text = ''; }
+  text = '[THỬ] ' + (text || 'Tin thử từ CS Tool — hiện không có ticket Jira ABI nào sắp trễ First Response.');
+  return zalo.sendText(ids, text);
 }
 
 async function readRuns() { const r = await runStore.readAll(); return Array.isArray(r) ? r : []; }
@@ -156,6 +207,16 @@ async function run({ dryRun = false, testTo = '', by = 'lịch tự động' } =
   const out = test ? { to: [test], cc: [], subject: `[THỬ → ${mail.to.join(', ')}] ${mail.subject}`, html: mail.html } : mail;
   let error = '';
   try { await postWebhook(out); } catch (e) { error = e.message; }
+  let zaloInfo = '';
+  if (!test && cfg.zaloEnabled && cfg.zaloChatIds.length) {
+    if (!zalo.ready()) zaloInfo = 'Zalo: server chưa có ZALO_BOT_TOKEN';
+    else {
+      const z = await zalo.sendText(cfg.zaloChatIds, buildZaloText(list, cfg, base));
+      const bad = z.results.filter((r) => !r.ok);
+      zaloInfo = bad.length ? `Zalo lỗi ${bad.length}/${z.results.length}: ${bad[0].error}` : `Zalo ✓ ${z.results.length}`;
+      if (error && bad.length < z.results.length) error = ''; // mail lỗi nhưng Zalo tới được → vẫn coi là đã báo
+    }
+  }
   if (!error && !test) {
     const nowMs = Date.now();
     try {
@@ -168,10 +229,10 @@ async function run({ dryRun = false, testTo = '', by = 'lịch tự động' } =
       }, `jira-frt-alert: đánh dấu ${list.length} ticket đã báo`);
     } catch (e) { console.error('[jira-frt-alert] không ghi được trạng thái:', e.message); }
   }
-  const entry = { at: new Date().toISOString(), by, test: test || '', to: out.to.join(', '), keys: list.map((i) => `${i.key}${i.kind === 'late' ? ' (trễ)' : ` (còn ${i.remainingMin}p)`}`), ok: !error, error };
+  const entry = { at: new Date().toISOString(), by, test: test || '', to: out.to.join(', '), keys: list.map((i) => `${i.key}${i.kind === 'late' ? ' (trễ)' : ` (còn ${i.remainingMin}p)`}`), ok: !error, error, zalo: zaloInfo };
   try { await runStore.mutate((all) => ({ list: [entry, ...(Array.isArray(all) ? all : [])].slice(0, MAX_RUNS), result: {} }), `jira-frt-alert: ${list.length} ticket${error ? ' (lỗi)' : ''}${test ? ' (thử)' : ''}`); }
   catch (e) { console.error('[jira-frt-alert] không ghi được lịch sử:', e.message); }
   return { ok: !error, sent: error ? 0 : 1, count: list.length, ...entry };
 }
 
-module.exports = { PRIOS, COMMIT_FRT, getConfig, saveConfig, compute, run, readRuns, DEFAULT_JQL };
+module.exports = { PRIOS, COMMIT_FRT, getConfig, saveConfig, compute, run, readRuns, zaloTest, DEFAULT_JQL };

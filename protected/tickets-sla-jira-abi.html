@@ -142,6 +142,17 @@
         <textarea id="faJql" style="width:100%;margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:12px"></textarea>
         <div class="panel-sub" style="margin:4px 0 0">Mặc định: <code id="faJqlDef"></code></div>
       </details>
+      <div class="za" style="margin-top:14px;padding:12px 14px;border:1px dashed var(--grid-line-strong);border-radius:8px">
+        <div style="font-weight:700;font-size:13.5px">💬 Gửi thêm qua Zalo <span class="pill" id="zaState" style="margin-left:6px">—</span></div>
+        <div class="panel-sub" id="zaHint" style="margin:4px 0 8px"></div>
+        <label class="chk"><input type="checkbox" id="zaEnabled"> Bật gửi Zalo khi có cảnh báo (tắt = chỉ gửi mail)</label>
+        <div id="zaChats" style="margin:8px 0;font-size:13px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost" id="zaPull" type="button">Lấy người/nhóm đã nhắn bot</button>
+          <button class="btn btn-ghost" id="zaTest" type="button">Gửi thử Zalo</button>
+        </div>
+        <div class="status" id="zaStatus"></div>
+      </div>
       <div class="actions">
         <button class="btn btn-primary" id="faSave" type="button">Lưu cấu hình</button>
         <button class="btn btn-ghost" id="faPreview" type="button">Xem ticket sắp trễ ngay</button>
@@ -1055,8 +1066,39 @@ exportBtn.addEventListener('click', () => {
     if(!r.ok && !j.dryRun) throw new Error(j.error || ('HTTP '+r.status));
     return j;
   }
+  const zst = (cls, msg) => { $('zaStatus').className = 'status ' + (cls||''); $('zaStatus').textContent = msg || ''; };
+  let ZA_SEL = null;
+  const zaSelected = () => [...document.querySelectorAll('#zaChats input[data-z]:checked')].map(x=>x.dataset.z);
+  function drawChats(chats, sel){
+    $('zaChats').innerHTML = chats && chats.length
+      ? '<div class="panel-sub" style="margin:0 0 4px">Chọn người/nhóm nhận:</div>' + chats.map(ch=>'<label class="chk" style="display:block"><input type="checkbox" data-z="'+esc(ch.id)+'"'+(sel.includes(ch.id)?' checked':'')+'> '+(ch.type==='group'?'👥 ':'👤 ')+'<b>'+esc(ch.name)+'</b> <span class="panel-sub">· '+esc(ch.type==='group'?'nhóm':'cá nhân')+(ch.lastText?' · “'+esc(ch.lastText)+'”':'')+'</span></label>').join('')
+      : '<div class="panel-sub">Chưa có ai. Mỗi người nhắn 1 tin bất kỳ cho bot trên Zalo, rồi bấm <b>Lấy người/nhóm đã nhắn bot</b>.</div>';
+  }
+  function renderZalo(d, c){
+    $('zaEnabled').checked = !!c.zaloEnabled;
+    $('zaState').textContent = !d.zaloReady ? 'chưa có token' : c.zaloEnabled ? 'Bật' : 'Tắt';
+    $('zaState').className = 'pill ' + (d.zaloReady && c.zaloEnabled ? 'on' : 'off');
+    $('zaHint').innerHTML = d.zaloReady
+      ? 'Tin Zalo là chữ thường (không bảng), gửi cùng lúc với mail. Đang <b>tắt</b> thì chỉ gửi mail — bật lên và Lưu cấu hình khi muốn dùng.'
+      : 'Server chưa có <code>ZALO_BOT_TOKEN</code>. Tạo bot ở bot.zapps.vn, lấy token, thêm vào Render → Environment rồi tải lại trang.';
+    ZA_SEL = c.zaloChatIds || [];
+    drawChats(d.zaloChats || [], ZA_SEL);
+  }
+  $('zaPull').onclick = async () => {
+    zst('', 'Đang đọc tin nhắn gửi tới bot…');
+    try{ const sel = zaSelected(); const r = await call('/api/jira-frt-alert/zalo/pull', {}); drawChats(r.chats, sel.length ? sel : (ZA_SEL||[]));
+      zst('ok', (r.bot && r.bot.name ? 'Bot: '+r.bot.name+' · ' : '') + (r.added ? 'Tìm thấy '+r.added+' người/nhóm mới nhắn bot.' : 'Không có tin nhắn mới (người đã có trong danh sách vẫn giữ).') + ' Tick chọn rồi bấm Lưu cấu hình.'); }
+    catch(e){ zst('err', e.message); }
+  };
+  $('zaTest').onclick = async () => {
+    const ids = zaSelected(); if(!ids.length){ zst('err','Tick chọn ít nhất 1 người/nhóm để gửi thử.'); return; }
+    zst('', 'Đang gửi thử Zalo…');
+    try{ const r = await call('/api/jira-frt-alert/zalo/test', { chatIds: ids }); const bad = (r.results||[]).filter(x=>!x.ok);
+      zst(bad.length ? 'err' : 'ok', bad.length ? 'Lỗi '+bad.length+'/'+r.results.length+': '+bad[0].error : 'Đã gửi thử tới '+r.results.length+' người/nhóm.'); }
+    catch(e){ zst('err', e.message); }
+  };
   function renderRuns(runs){
-    $('faRuns').innerHTML = runs && runs.length ? '<table><tr><th>Lúc</th><th>Bởi</th><th>Gửi đến</th><th>Ticket</th><th>Kết quả</th></tr>'+runs.map(r=>'<tr><td>'+esc(fmt(r.at))+'</td><td>'+esc(r.by)+'</td><td>'+esc(r.test ? 'THỬ → '+r.test : r.to)+'</td><td>'+esc((r.keys||[]).join(', '))+'</td><td'+(r.ok?'':' class="late"')+'>'+(r.ok?'✓ đã gửi':'✗ '+esc(r.error))+'</td></tr>').join('')+'</table>' : 'Chưa gửi lần nào.';
+    $('faRuns').innerHTML = runs && runs.length ? '<table><tr><th>Lúc</th><th>Bởi</th><th>Gửi đến</th><th>Ticket</th><th>Kết quả</th></tr>'+runs.map(r=>'<tr><td>'+esc(fmt(r.at))+'</td><td>'+esc(r.by)+'</td><td>'+esc(r.test ? 'THỬ → '+r.test : r.to)+'</td><td>'+esc((r.keys||[]).join(', '))+'</td><td'+(r.ok?'':' class="late"')+'>'+(r.ok?'✓ đã gửi':'✗ '+esc(r.error))+(r.zalo?'<br><span class="panel-sub">'+esc(r.zalo)+'</span>':'')+'</td></tr>').join('')+'</table>' : 'Chưa gửi lần nào.';
   }
   async function load(){
     try{
@@ -1065,6 +1107,7 @@ exportBtn.addEventListener('click', () => {
       $('faAfter').innerHTML = '<tr><th>Mức</th><th>Nhắc sau (phút)</th><th>Hạn cam kết</th></tr>' + ['P1','P2','S1','P3','S2','P4','S3'].map(k=>'<tr><td><b>'+k+'</b></td><td><input type="number" min="1" max="2400" data-p="'+k+'" value="'+esc(c.afterMinutes[k])+'" style="width:80px;padding:4px 6px"></td><td>'+COMMIT[k]+' phút</td></tr>').join('')
         + '<tr><td>Khác</td><td><input type="number" min="1" max="2400" id="faAfterDef" value="'+esc(c.afterDefault)+'" style="width:80px;padding:4px 6px"></td><td>—</td></tr>';
       $('faTo').value = (c.to||[]).join(', '); $('faCc').value = (c.cc||[]).join(', ');
+      renderZalo(d, c);
       $('faEnabled').checked = !!c.enabled; $('faAssignee').checked = !!c.includeAssignee; $('faBreached').checked = !!c.alertBreached;
       $('faJql').value = c.jql || d.defaultJql; $('faJqlDef').textContent = d.defaultJql;
       $('faState').textContent = c.enabled ? 'Bật' : 'Tắt'; $('faState').title = c.enabled ? 'Nhắc: P1 sau '+c.afterMinutes.P1+'p · P2/S1 sau '+c.afterMinutes.P2+'p · P3–S3 sau '+c.afterMinutes.P3+'p' : 'Cảnh báo đang tắt'; $('faState').className = 'pill '+(c.enabled?'on':'off');
@@ -1079,7 +1122,7 @@ exportBtn.addEventListener('click', () => {
   }
   $('faSave').onclick = async () => {
     st('', 'Đang lưu…');
-    try{ await call('/api/jira-frt-alert/config', { afterMinutes:Object.fromEntries([...document.querySelectorAll('#faAfter input[data-p]')].map(x=>[x.dataset.p, Number(x.value)])), afterDefault:Number($('faAfterDef').value), to:$('faTo').value, cc:$('faCc').value, enabled:$('faEnabled').checked, includeAssignee:$('faAssignee').checked, alertBreached:$('faBreached').checked, jql:$('faJql').value }); st('ok', 'Đã lưu.'); load(); }
+    try{ await call('/api/jira-frt-alert/config', { afterMinutes:Object.fromEntries([...document.querySelectorAll('#faAfter input[data-p]')].map(x=>[x.dataset.p, Number(x.value)])), afterDefault:Number($('faAfterDef').value), to:$('faTo').value, cc:$('faCc').value, enabled:$('faEnabled').checked, includeAssignee:$('faAssignee').checked, alertBreached:$('faBreached').checked, jql:$('faJql').value, zaloEnabled:$('zaEnabled').checked, zaloChatIds:zaSelected() }); st('ok', 'Đã lưu.'); load(); }
     catch(e){ st('err', e.message); }
   };
   $('faPreview').onclick = async () => {

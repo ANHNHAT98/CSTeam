@@ -1686,6 +1686,15 @@ app.post('/api/cron/sla-reminder', async (req, res) => {
    POST /api/jira-frt-alert/send  {testTo?}       → gửi ngay (testTo: gửi về 1 địa chỉ, không đánh dấu đã báo)
    POST /api/cron/jira-frt-alert[?async=1]        header X-Cron-Key: <CRON_SECRET> — cron-job.org mỗi 5 phút */
 const jiraFrtAlert = require('./jiraFrtAlert');
+const zaloBot = require('./zaloBot');
+app.post('/api/jira-frt-alert/zalo/pull', requireAuth, async (req, res) => {
+  try { const me = await zaloBot.getMe().catch(() => null); res.json({ ...(await zaloBot.pullChats()), bot: me }); }
+  catch (e) { res.status(502).json({ error: e.message }); }
+});
+app.post('/api/jira-frt-alert/zalo/test', requireAuth, async (req, res) => {
+  try { res.json(await jiraFrtAlert.zaloTest({ chatIds: (req.body || {}).chatIds })); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
 function cronKeyOk(req) {
   const secret = String(process.env.CRON_SECRET || ''); const got = String(req.get('x-cron-key') || '');
   return secret.length >= 16 && got.length === secret.length && require('crypto').timingSafeEqual(Buffer.from(got), Buffer.from(secret));
@@ -1694,7 +1703,7 @@ app.get('/api/jira-frt-alert/config', requireAuth, async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store');
     const [config, runs] = await Promise.all([jiraFrtAlert.getConfig(), jiraFrtAlert.readRuns()]);
-    res.json({ config, defaultJql: jiraFrtAlert.DEFAULT_JQL, runs: runs.slice(0, 20), jiraReady: jira.isConfigured(), webhookReady: slaReminder.webhookReady(), mailMode: slaReminder.mailMode(), cronReady: Boolean(process.env.CRON_SECRET) });
+    res.json({ config, defaultJql: jiraFrtAlert.DEFAULT_JQL, runs: runs.slice(0, 20), zaloReady: zaloBot.ready(), zaloChats: await zaloBot.listChats().catch(() => []), jiraReady: jira.isConfigured(), webhookReady: slaReminder.webhookReady(), mailMode: slaReminder.mailMode(), cronReady: Boolean(process.env.CRON_SECRET) });
   } catch (e) { res.status(502).json({ error: e.message }); }
 });
 app.post('/api/jira-frt-alert/config', requireAuth, async (req, res) => {
