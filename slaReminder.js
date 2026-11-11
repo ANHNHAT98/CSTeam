@@ -11,6 +11,7 @@
 
 const erp = require('./erpClient');
 const { createListStore } = require('./listStore');
+const mailOutbox = require('./mailOutbox');
 const { slaMinutes } = require('./weeklyReport');
 const { slaDueAt, thresholdOf, parseNaive, fmtNaive, vnNow, prioRank } = require('./customerReport');
 
@@ -153,6 +154,8 @@ function buildMails(data, cfg, base) {
 }
 
 async function postWebhook(mail) {
+  // Công ty chặn gọi webhook từ ngoài → có MAIL_FEED_KEY thì ghi vào hộp thư chờ, Power Automate đọc qua RSS (mailOutbox.js)
+  if (mailOutbox.enabled()) { await mailOutbox.enqueue(mail); return; }
   const url = String(process.env.REMINDER_WEBHOOK_URL || '').trim();
   if (!url) throw new Error('Server chưa cấu hình REMINDER_WEBHOOK_URL (URL webhook của flow Power Automate).');
   const res = await fetch(url, {
@@ -186,4 +189,4 @@ async function run({ dryRun = false, testTo = '', by = 'lịch tự động' } =
   return { ok: entry.failed === 0, ...entry };
 }
 
-module.exports = { projectsOf, getConfig, saveConfig, compute, buildMails, run, readRuns, postWebhook, ALL_OPEN_STATUSES, webhookReady: () => Boolean(String(process.env.REMINDER_WEBHOOK_URL || '').trim()), isGithubBacked: () => configStore.isGithubBacked() };
+module.exports = { projectsOf, getConfig, saveConfig, compute, buildMails, run, readRuns, postWebhook, ALL_OPEN_STATUSES, webhookReady: () => mailOutbox.enabled() || Boolean(String(process.env.REMINDER_WEBHOOK_URL || '').trim()), mailMode: () => (mailOutbox.enabled() ? 'rss' : 'webhook'), isGithubBacked: () => configStore.isGithubBacked() };

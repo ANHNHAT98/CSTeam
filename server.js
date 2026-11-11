@@ -1666,7 +1666,7 @@ app.post('/api/cron/sla-reminder', async (req, res) => {
   const ok = secret.length >= 16 && got.length === secret.length && require('crypto').timingSafeEqual(Buffer.from(got), Buffer.from(secret));
   if (!ok) return res.status(secret ? 403 : 501).json({ error: secret ? 'Sai X-Cron-Key.' : 'Server chưa cấu hình CRON_SECRET (tối thiểu 16 ký tự).' });
   if (!erp.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối ERP.' });
-  if (!slaReminder.webhookReady()) return res.status(501).json({ error: 'Server chưa cấu hình REMINDER_WEBHOOK_URL.' });
+  if (!slaReminder.webhookReady()) return res.status(501).json({ error: 'Server chưa cấu hình REMINDER_WEBHOOK_URL hoặc MAIL_FEED_KEY.' });
   const go = () => slaReminder.run({});
   if (/^(1|true|yes)$/i.test(String(req.query.async || ''))) {
     if (slaCronRunning) return res.status(202).json({ accepted: true, note: 'Đang có 1 lượt chạy — bỏ qua lượt trùng.' });
@@ -1694,7 +1694,7 @@ app.get('/api/jira-frt-alert/config', requireAuth, async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store');
     const [config, runs] = await Promise.all([jiraFrtAlert.getConfig(), jiraFrtAlert.readRuns()]);
-    res.json({ config, defaultJql: jiraFrtAlert.DEFAULT_JQL, runs: runs.slice(0, 20), jiraReady: jira.isConfigured(), webhookReady: slaReminder.webhookReady(), cronReady: Boolean(process.env.CRON_SECRET) });
+    res.json({ config, defaultJql: jiraFrtAlert.DEFAULT_JQL, runs: runs.slice(0, 20), jiraReady: jira.isConfigured(), webhookReady: slaReminder.webhookReady(), mailMode: slaReminder.mailMode(), cronReady: Boolean(process.env.CRON_SECRET) });
   } catch (e) { res.status(502).json({ error: e.message }); }
 });
 app.post('/api/jira-frt-alert/config', requireAuth, async (req, res) => {
@@ -1712,7 +1712,7 @@ let frtCronRunning = false;
 app.post('/api/cron/jira-frt-alert', async (req, res) => {
   if (!cronKeyOk(req)) return res.status(process.env.CRON_SECRET ? 403 : 501).json({ error: process.env.CRON_SECRET ? 'Sai X-Cron-Key.' : 'Server chưa cấu hình CRON_SECRET (tối thiểu 16 ký tự).' });
   if (!jira.isConfigured()) return res.status(501).json({ error: 'Server chưa cấu hình kết nối Jira.' });
-  if (!slaReminder.webhookReady()) return res.status(501).json({ error: 'Server chưa cấu hình REMINDER_WEBHOOK_URL.' });
+  if (!slaReminder.webhookReady()) return res.status(501).json({ error: 'Server chưa cấu hình REMINDER_WEBHOOK_URL hoặc MAIL_FEED_KEY.' });
   const go = () => jiraFrtAlert.run({});
   if (/^(1|true|yes)$/i.test(String(req.query.async || ''))) {
     if (frtCronRunning) return res.status(202).json({ accepted: true, note: 'Đang có 1 lượt chạy — bỏ qua lượt trùng.' });
@@ -1724,6 +1724,17 @@ app.post('/api/cron/jira-frt-alert', async (req, res) => {
   }
   try { const r = await go(); res.status(r.ok || r.skipped ? 200 : 502).json(r); }
   catch (e) { console.error('[jira-frt-alert:cron] lỗi:', e.message); res.status(502).json({ error: e.message }); }
+});
+
+/* ---------- Nguồn RSS hộp thư chờ (mailOutbox.js) — Power Automate đọc rồi gửi mail Outlook ----------
+   GET /feed/mail/<MAIL_FEED_KEY>   (không cần đăng nhập; sai key → 404) */
+const mailOutbox = require('./mailOutbox');
+app.get('/feed/mail/:key', async (req, res) => {
+  if (!mailOutbox.keyOk(req.params.key)) return res.status(404).send('Not found');
+  try {
+    const self = `${req.protocol}://${req.get('host')}/feed/mail/...`;
+    res.set('Cache-Control', 'no-store').type('application/rss+xml; charset=utf-8').send(await mailOutbox.rss(self));
+  } catch (e) { res.status(502).send(e.message); }
 });
 
 function parseJsonArrayParam(raw) {

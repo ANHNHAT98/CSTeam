@@ -1303,7 +1303,7 @@ async function loadSla(){
     if (!au$('sl_testTo').value) au$('sl_testTo').value = (c.summaryTo||[])[0] || '';
     const st = au$('sl_state');
     st.className = 'pill' + (c.enabled && d.webhookReady && d.cronReady ? '' : ' warn');
-    st.textContent = !d.webhookReady ? 'chưa có REMINDER_WEBHOOK_URL' : !c.enabled ? 'đang tắt' : !d.cronReady ? 'chưa có CRON_SECRET' : 'đang bật';
+    st.textContent = !d.webhookReady ? 'chưa có MAIL_FEED_KEY / REMINDER_WEBHOOK_URL' : !c.enabled ? 'đang tắt' : !d.cronReady ? 'chưa có CRON_SECRET' : 'đang bật';
     au$('sl_runs').innerHTML = !d.runs.length ? 'Chưa gửi lần nào.' : '<table class="runs"><tr><th>Lúc</th><th>Ticket trễ</th><th>Mail</th><th>Người chạy</th></tr>' + d.runs.map(r => {
       const errs = (r.results||[]).filter(x => !x.ok).map(x => x.to + ': ' + x.error).join('\n');
       return `<tr><td>${escapeHtml(new Date(r.at).toLocaleString('vi-VN'))}</td><td>${r.total}</td><td>${r.failed ? `<span style="color:var(--danger)" title="${escapeAttr(errs)}">✗ ${r.sent} gửi, ${r.failed} lỗi</span>` : `<span style="color:var(--success)">✓ ${r.sent} mail</span>`}${r.test ? ' (thử → ' + escapeHtml(r.test) + ')' : ''}</td><td>${escapeHtml(r.by||'')}</td></tr>`; }).join('') + '</table>';

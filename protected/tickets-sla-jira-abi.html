@@ -1070,9 +1070,10 @@ exportBtn.addEventListener('click', () => {
       $('faState').textContent = c.enabled ? 'Bật' : 'Tắt'; $('faState').title = c.enabled ? 'Nhắc: P1 sau '+c.afterMinutes.P1+'p · P2/S1 sau '+c.afterMinutes.P2+'p · P3–S3 sau '+c.afterMinutes.P3+'p' : 'Cảnh báo đang tắt'; $('faState').className = 'pill '+(c.enabled?'on':'off');
       const w = [];
       if(!d.jiraReady) w.push('Server chưa cấu hình kết nối Jira.');
-      if(!d.webhookReady) w.push('Server chưa có <code>REMINDER_WEBHOOK_URL</code> (flow Power Automate) — chưa gửi mail được.');
+      if(!d.webhookReady) w.push('Server chưa có <code>MAIL_FEED_KEY</code> (Power Automate đọc RSS) hoặc <code>REMINDER_WEBHOOK_URL</code> — chưa gửi mail được.');
       if(!d.cronReady) w.push('Server chưa có <code>CRON_SECRET</code> — cron-job.org chưa gọi được.');
-      $('faWarn').innerHTML = w.length ? '<div class="warn">⚠ '+w.join('<br>⚠ ')+'</div>' : '';
+      $('faWarn').innerHTML = (w.length ? '<div class="warn">⚠ '+w.join('<br>⚠ ')+'</div>' : '')
+        + (d.mailMode==='rss' ? '<div class="panel-sub" style="margin:6px 0">📮 Chế độ gửi: <b>RSS</b> — tool ghi mail vào hộp thư chờ, Power Automate đọc nguồn RSS và gửi bằng Outlook (có thể trễ vài phút tùy chu kỳ đọc của flow).</div>' : '');
       renderRuns(d.runs);
     }catch(e){ $('faState').textContent = 'lỗi'; st('err', 'Không tải được cấu hình: '+e.message); }
   }
