@@ -98,8 +98,8 @@
   .tab-panel.active{display:block;}
   .fa details>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .fa details>summary::-webkit-details-marker{display:none;}
-  .fa .pill{font-size:11.5px;font-family:'IBM Plex Mono',monospace;padding:2px 8px;border-radius:999px;border:1px solid var(--grid-line-strong);color:var(--muted);}
-  .fa .pill.on{background:#E7F5EC;color:#1E7B45;border-color:#B9E0C7;} .fa .pill.off{background:#FBEAEA;color:#A33;border-color:#F0C4C4;}
+  .pg-tabs .pill,.fa .pill{font-size:11.5px;font-family:'IBM Plex Mono',monospace;padding:2px 8px;border-radius:999px;border:1px solid var(--grid-line-strong);color:var(--muted);}
+  .pg-tabs .pill.on,.fa .pill.on{background:#E7F5EC;color:#1E7B45;border-color:#B9E0C7;} .pg-tabs .pill.off,.fa .pill.off{background:#FBEAEA;color:#A33;border-color:#F0C4C4;}
   .fa .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:14px;}
   .fa label.f{display:flex;flex-direction:column;gap:5px;font-size:11.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.04em;}
   .fa input[type=text],.fa input[type=number],.fa input[type=email],.fa textarea{font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;padding:8px 10px;border-radius:7px;border:1px solid var(--grid-line-strong);background:#fff;color:var(--ink);text-transform:none;letter-spacing:0;}
@@ -118,10 +118,15 @@
 
 <div class="wrap">
   <h1>SLA Jira — Dự án ABI</h1>
+  <div class="tabs pg-tabs" style="margin-bottom:20px;flex-wrap:wrap">
+    <style>.pg-tabs .tab-btn{white-space:nowrap}</style>
+    <button class="tab-btn active" type="button" data-pg="sla">📊 Phân tích SLA</button>
+    <button class="tab-btn" type="button" data-pg="alert">🔔 Cảnh báo First Response <span class="pill" id="faState" style="margin-left:6px">…</span></button>
+  </div>
 
+  <div id="pgAlert" style="display:none">
   <div class="panel fa" id="faPanel">
-    <details id="faBox">
-      <summary><h2 style="margin:0">🔔 Cảnh báo sắp trễ First Response</h2><span class="pill" id="faState">…</span><span class="panel-sub" style="margin:0">Tự gửi mail cho nhân viên trước khi ticket Jira ABI trễ SLA phản hồi đầu — bấm để cấu hình</span></summary>
+    <h2>🔔 Cảnh báo sắp trễ First Response — cấu hình gửi mail</h2>
       <div class="panel-sub" style="margin-top:10px">Cứ <b>5 phút</b> (cron-job.org gọi <code class="tag">POST /api/cron/jira-frt-alert?async=1</code>), tool đọc SLA <b>Time to first response</b> trên Jira của các issue đang mở. Issue <b>chưa phản hồi</b>, SLA không tạm dừng, đã chờ quá số phút cấu hình theo <b>mức P/S</b> (tính theo lịch SLA của Jira: P1/P2/S1 24/7, mức khác giờ hành chính) → gửi 1 mail cảnh báo (qua flow Power Automate dùng chung với Nhắc SLA). Thời gian còn lại lấy đúng số Jira tự tính. Mỗi issue chỉ báo <b>1 lần</b>.</div>
       <div id="faWarn"></div>
       <div class="grid">
@@ -133,7 +138,7 @@
       <label class="chk"><input type="checkbox" id="faEnabled"> Bật cảnh báo tự động</label>
       <label class="chk"><input type="checkbox" id="faAssignee"> Gửi thêm cho <b>người được giao</b> trên Jira (nếu Jira cho xem email)</label>
       <label class="chk"><input type="checkbox" id="faBreached"> Báo luôn ticket <b>đã trễ</b> mà chưa phản hồi (1 lần)</label>
-      <details style="margin-top:10px"><summary style="font-size:12.5px;color:var(--muted)">Nâng cao: JQL lấy issue</summary>
+      <details style="margin-top:10px"><summary style="font-size:12.5px;color:var(--muted)">▸ Nâng cao: JQL lấy issue</summary>
         <textarea id="faJql" style="width:100%;margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:12px"></textarea>
         <div class="panel-sub" style="margin:4px 0 0">Mặc định: <code id="faJqlDef"></code></div>
       </details>
@@ -147,8 +152,10 @@
       <div id="faResult"></div>
       <h2 style="margin-top:18px">Lịch sử đã gửi</h2>
       <div id="faRuns" class="panel-sub">—</div>
-    </details>
   </div>
+  </div>
+
+  <div id="pgSla">
 
   <div class="panel">
     <h2>Bộ lọc &amp; tính SLA</h2>
@@ -268,6 +275,7 @@
     <div class="actions">
       <button class="btn btn-ghost" id="exportBtn">⬇ Xuất Excel</button>
     </div>
+  </div>
   </div>
 </div>
 
@@ -1059,7 +1067,7 @@ exportBtn.addEventListener('click', () => {
       $('faTo').value = (c.to||[]).join(', '); $('faCc').value = (c.cc||[]).join(', ');
       $('faEnabled').checked = !!c.enabled; $('faAssignee').checked = !!c.includeAssignee; $('faBreached').checked = !!c.alertBreached;
       $('faJql').value = c.jql || d.defaultJql; $('faJqlDef').textContent = d.defaultJql;
-      $('faState').textContent = c.enabled ? 'Đang bật · P1 '+c.afterMinutes.P1+'p · P2/S1 '+c.afterMinutes.P2+'p · P3–S3 '+c.afterMinutes.P3+'p' : 'Đang tắt'; $('faState').className = 'pill '+(c.enabled?'on':'off');
+      $('faState').textContent = c.enabled ? 'Bật' : 'Tắt'; $('faState').title = c.enabled ? 'Nhắc: P1 sau '+c.afterMinutes.P1+'p · P2/S1 sau '+c.afterMinutes.P2+'p · P3–S3 sau '+c.afterMinutes.P3+'p' : 'Cảnh báo đang tắt'; $('faState').className = 'pill '+(c.enabled?'on':'off');
       const w = [];
       if(!d.jiraReady) w.push('Server chưa cấu hình kết nối Jira.');
       if(!d.webhookReady) w.push('Server chưa có <code>REMINDER_WEBHOOK_URL</code> (flow Power Automate) — chưa gửi mail được.');
@@ -1091,6 +1099,20 @@ exportBtn.addEventListener('click', () => {
     catch(e){ st('err', e.message); }
   };
   load();
+})();
+</script>
+<script>
+/* Tab trang: Phân tích SLA | Cảnh báo First Response (#canh-bao) */
+(function(){
+  const btns = document.querySelectorAll('.pg-tabs .tab-btn');
+  function show(pg){
+    btns.forEach(b=>b.classList.toggle('active', b.dataset.pg===pg));
+    document.getElementById('pgSla').style.display = pg==='sla' ? '' : 'none';
+    document.getElementById('pgAlert').style.display = pg==='alert' ? '' : 'none';
+    history.replaceState(null, '', pg==='alert' ? '#canh-bao' : location.pathname + location.search);
+  }
+  btns.forEach(b=>b.onclick=()=>show(b.dataset.pg));
+  if(location.hash==='#canh-bao') show('alert');
 })();
 </script>
 </body>
