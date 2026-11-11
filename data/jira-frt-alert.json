@@ -18,10 +18,10 @@
     "cc": [
       "nhatha@hqsoft.com.vn"
     ],
-    "includeAssignee": true,
-    "alertBreached": false,
+    "includeAssignee": false,
+    "alertBreached": true,
     "jql": "project = \"HQ\" AND statusCategory != Done AND created >= -30d ORDER BY created DESC",
-    "updatedAt": "2026-11-11T06:27:23.353Z",
+    "updatedAt": "2026-11-11T08:46:32.264Z",
     "updatedBy": "admin"
   }
 ]
