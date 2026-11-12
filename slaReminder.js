@@ -28,8 +28,8 @@ const DEFAULT_CONFIG = {
   projects: [],           // để trống = dùng danh sách dự án của Báo Cáo Tuần ERP tự động
   statuses: ['Open', 'Assign', 'Working', 'Reviewing', 'Re-open'], // Waiting/Pending = chờ khách → mặc định không nhắc
   skipEmpty: true,        // thành viên không có ticket trễ thì không gửi
-  sendBy: 'owner',        // 'owner' = mỗi chủ dự án (Project Owner trên ERP) 1 mail cho các dự án của mình · 'assign' = theo người được giao · 'both'
-  ownerMap: {},           // đổi email chủ dự án: tài khoản ERP → hộp mail thật (vd lamlt1@… → lamlt@…)
+  sendBy: 'owner',        // 'owner' = mỗi người quản lý 1 mail cho các dự án mình tích · 'all' = 1 mail chung tất cả dự án gửi cho mọi người quản lý
+  owners: [],             // người quản lý dự án (khai báo tay): [{ email, projects: [mã dự án] }] — 1 dự án có thể nhiều người
 };
 
 const EMAIL_RE = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
@@ -37,23 +37,28 @@ const emails = (v) => [...new Set((Array.isArray(v) ? v : String(v || '').split(
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const nameOf = (email) => String(email || '').split('@')[0];
 
-/** "a@x = b@y" mỗi dòng (hoặc object) → { a@x: b@y } */
-function parseOwnerMap(v) {
-  const out = {};
-  const pairs = v && typeof v === 'object' && !Array.isArray(v) ? Object.entries(v) : String(v || '').split(/\n|;/).map((l) => l.split(/=|→|->/));
-  for (const [a, b] of pairs) {
-    const k = String(a || '').trim().toLowerCase(); const e = String(b || '').trim().toLowerCase();
-    if (!k && !e) continue;
-    if (!EMAIL_RE.test(k) || !EMAIL_RE.test(e)) throw new Error(`Dòng đổi email chủ dự án không hợp lệ: ${a} = ${b}`);
-    out[k] = e;
+/** [{email, projects}] → chuẩn hoá, gộp email trùng. */
+function parseOwners(v) {
+  const map = new Map();
+  for (const o of Array.isArray(v) ? v : []) {
+    const e = String((o && o.email) || '').trim().toLowerCase();
+    const ps = [...new Set((Array.isArray(o && o.projects) ? o.projects : []).map((x) => String(x).trim()).filter(Boolean))];
+    if (!e && !ps.length) continue;
+    if (!EMAIL_RE.test(e)) throw new Error(`Email người quản lý không hợp lệ: ${e || '(trống)'}`);
+    const cur = map.get(e) || [];
+    map.set(e, [...new Set([...cur, ...ps])]);
   }
-  return out;
+  return [...map.entries()].map(([email, projects]) => ({ email, projects })).slice(0, 50);
 }
+const ownersProjects = (owners) => [...new Set((owners || []).flatMap((o) => o.projects || []))];
 
 async function getConfig() {
   const list = await configStore.readAll();
   const c = (Array.isArray(list) && list[0]) || {};
-  return { ...DEFAULT_CONFIG, ...c };
+  const out = { ...DEFAULT_CONFIG, ...c };
+  if (!['owner', 'all'].includes(out.sendBy)) out.sendBy = 'owner';
+  if (!Array.isArray(out.owners)) out.owners = [];
+  return out;
 }
 async function saveConfig(input, user) {
   const cur = await getConfig();
@@ -62,15 +67,15 @@ async function saveConfig(input, user) {
   const summaryTo = emails(input.summaryTo != null ? input.summaryTo : cur.summaryTo);
   const bad = [...members, ...cc, ...summaryTo].filter((e) => !EMAIL_RE.test(e));
   if (bad.length) throw new Error(`Email không hợp lệ: ${bad.join(', ')}`);
-  const sendBy = ['owner', 'assign', 'both'].includes(input.sendBy) ? input.sendBy : (cur.sendBy || 'owner');
-  if (!members.length && sendBy !== 'owner') throw new Error('Cần ít nhất 1 thành viên nhận nhắc (khi gửi theo người được giao).');
-  const ownerMap = parseOwnerMap(input.ownerMap != null ? input.ownerMap : cur.ownerMap);
+  const sendBy = ['owner', 'all'].includes(input.sendBy) ? input.sendBy : (cur.sendBy || 'owner');
+  const owners = parseOwners(input.owners != null ? input.owners : cur.owners);
+  if (!owners.some((o) => o.projects.length)) throw new Error('Thêm ít nhất 1 người quản lý và tích dự án cho người đó.');
   const statuses = (Array.isArray(input.statuses) ? input.statuses : cur.statuses).filter((s) => ALL_OPEN_STATUSES.includes(s));
   if (!statuses.length) throw new Error('Chọn ít nhất 1 trạng thái.');
-  const projects = [...new Set((Array.isArray(input.projects) ? input.projects : cur.projects).map((s) => String(s).trim()).filter(Boolean))].slice(0, 100);
+  const projects = ownersProjects(owners); // dự án cần nhắc = các dự án đã tích cho ít nhất 1 người quản lý
   const next = {
     enabled: input.enabled != null ? Boolean(input.enabled) : cur.enabled,
-    members, cc, summaryTo, projects, statuses, sendBy, ownerMap,
+    members, cc, summaryTo, projects, statuses, sendBy, owners,
     skipEmpty: input.skipEmpty != null ? Boolean(input.skipEmpty) : cur.skipEmpty,
     updatedAt: new Date().toISOString(), updatedBy: user || '',
   };
@@ -81,6 +86,8 @@ async function saveConfig(input, user) {
 /** Dự án của Nhắc SLA — danh sách RIÊNG (cfg.projects). Cấu hình cũ chưa chọn riêng thì tạm dùng danh sách của Tự động gửi ERP. */
 async function weeklyProjects() { try { const w = await require('./weeklyErpReport').getConfig(); return w.projects || []; } catch (e) { return []; } }
 async function projectsOf(cfg) {
+  const own = ownersProjects(cfg.owners);
+  if (own.length) return own;
   if (cfg.projects && cfg.projects.length) return cfg.projects;
   return weeklyProjects();
 }
@@ -141,22 +148,16 @@ async function compute({ cfg, now = vnNow() } = {}) {
     for (const a of t.assign) if (byMember[a]) { byMember[a].push(t); hit = true; }
     if (!hit) others.push(t);
   }
-  // Chủ dự án (Project Owner trên ERP) → gom ticket trễ theo owner
-  const ownerOf = {};
-  if (cfg.sendBy !== 'assign') {
-    try {
-      const pr = await erp.fetchProjects({ limit: 2000 });
-      const list = pr.data || pr || [];
-      const map = cfg.ownerMap || {};
-      list.forEach((p) => { if (p && p.name && projects.includes(p.name)) { const o = String(p.project_owner || '').trim().toLowerCase(); ownerOf[p.name] = o ? (map[o] || o) : ''; } });
-    } catch (e) { throw new Error('Không lấy được chủ dự án (Project Owner) từ ERP: ' + e.message); }
-  }
-  const byOwner = {}; const noOwner = [];
-  if (cfg.sendBy !== 'assign') {
-    projects.forEach((p) => { const o = ownerOf[p]; if (o) (byOwner[o] = byOwner[o] || { projects: [], tickets: [] }).projects.push(p); else noOwner.push(p); });
-    overdue.forEach((t) => { const o = ownerOf[t.project]; if (o && byOwner[o]) byOwner[o].tickets.push(t); });
-  }
-  const byProject = projects.map((p) => ({ project: p, owner: ownerOf[p] || '', count: overdue.filter((t) => t.project === p).length }));
+  // Người quản lý dự án (khai báo tay ở Cài đặt) → gom ticket trễ theo từng người; 1 dự án có thể nhiều người
+  const ownersOf = {};
+  (cfg.owners || []).forEach((o) => (o.projects || []).forEach((p) => { (ownersOf[p] = ownersOf[p] || []).push(o.email); }));
+  const byOwner = {};
+  (cfg.owners || []).forEach((o) => {
+    const ps = (o.projects || []).filter((p) => projects.includes(p));
+    if (ps.length) byOwner[o.email] = { projects: ps, tickets: overdue.filter((t) => ps.includes(t.project)) };
+  });
+  const noOwner = projects.filter((p) => !(ownersOf[p] || []).length);
+  const byProject = projects.map((p) => ({ project: p, owners: ownersOf[p] || [], owner: (ownersOf[p] || []).join(', '), count: overdue.filter((t) => t.project === p).length }));
   return { at: fmtNaive(now), projects, total: overdue.length, byMember, unassigned, others, byOwner, noOwner, byProject, overdue };
 }
 
@@ -192,13 +193,30 @@ function buildMails(data, cfg, base) {
   const time = data.at.slice(11);
   const mails = [];
   const sendBy = cfg.sendBy || 'owner';
-  if (sendBy !== 'assign') {
+  if (sendBy === 'all') {
+    // 1 mail chung: tất cả dự án, gửi cho mọi người quản lý + người nhận tổng hợp
+    const to = [...new Set([...Object.keys(data.byOwner || {}), ...emails(cfg.summaryTo)])];
+    if (to.length && (data.total || !cfg.skipEmpty)) {
+      let rows = data.total
+        ? p(`Chào anh/chị,<br>Các dự án hiện có <b style="color:#B42318">${data.total} ticket đã trễ SLA xử lý</b> (tính đến ${esc(time)} ngày ${esc(day)}). Nhờ người quản lý từng dự án nhắc người xử lý ưu tiên giải quyết hoặc cập nhật trạng thái / phản hồi khách.`)
+          + `<tr><td style="padding:12px 24px 4px"><table role="presentation" cellpadding="0" cellspacing="0"><tr>${stat(data.total, 'ticket trễ SLA', '#B42318')}${stat(data.unassigned.length, 'chưa giao ai', '#B54708')}${stat((data.overdue || []).filter((t) => t.noResponse).length, 'chưa phản hồi khách', '#5F6B7A')}</tr></table></td></tr>`
+        : p('Các dự án không có ticket nào trễ SLA. 🎉');
+      for (const r of data.byProject || []) {
+        const list = (data.overdue || []).filter((t) => t.project === r.project);
+        if (list.length) rows += section(`${esc(r.project)} — ${list.length} ticket trễ${r.owners.length ? ` · quản lý: ${esc(r.owners.map(nameOf).join(', '))}` : ''}`, '#B42318', ticketTable(list, base, { showAssign: true }));
+      }
+      mails.push({ kind: 'all', to, cc: emails(cfg.cc).filter((x) => !to.includes(x)), subject: `[Nhắc SLA] ${data.total} ticket trễ SLA – tất cả dự án – ${day}`,
+        html: wrap('📧 Nhắc ticket trễ SLA đầu tuần', `Ngày ${esc(day)} · ${esc(data.projects.join(', '))}`, rows, data.total ? '#1F4E79' : '#2F7D4F'), count: data.total });
+    }
+    return mails;
+  }
+  if (sendBy === 'owner') {
     for (const [o, g] of Object.entries(data.byOwner || {})) {
       if (!g.tickets.length && cfg.skipEmpty) continue;
       let rows = g.tickets.length
-        ? p(`Chào <b>${esc(nameOf(o))}</b>,<br>Các dự án bạn làm chủ hiện có <b style="color:#B42318">${g.tickets.length} ticket đã trễ SLA xử lý</b> (tính đến ${esc(time)} ngày ${esc(day)}). Bạn nhắc người xử lý ưu tiên giải quyết hoặc cập nhật trạng thái / phản hồi khách giúp nhé.`)
+        ? p(`Chào <b>${esc(nameOf(o))}</b>,<br>Các dự án bạn quản lý hiện có <b style="color:#B42318">${g.tickets.length} ticket đã trễ SLA xử lý</b> (tính đến ${esc(time)} ngày ${esc(day)}). Bạn nhắc người xử lý ưu tiên giải quyết hoặc cập nhật trạng thái / phản hồi khách giúp nhé.`)
           + `<tr><td style="padding:12px 24px 4px"><table role="presentation" cellpadding="0" cellspacing="0"><tr>${stat(g.tickets.length, 'ticket trễ SLA', '#B42318')}${stat(g.tickets.filter((t) => !t.assign.length).length, 'chưa giao ai', '#B54708')}${stat(g.tickets.filter((t) => t.noResponse).length, 'chưa phản hồi khách', '#5F6B7A')}</tr></table></td></tr>`
-        : p(`Chào <b>${esc(nameOf(o))}</b>,<br>Các dự án bạn làm chủ không có ticket nào trễ SLA. 🎉`);
+        : p(`Chào <b>${esc(nameOf(o))}</b>,<br>Các dự án bạn quản lý không có ticket nào trễ SLA. 🎉`);
       for (const pj of g.projects) {
         const list = g.tickets.filter((t) => t.project === pj);
         if (list.length) rows += section(`${esc(pj)} — ${list.length} ticket trễ`, '#B42318', ticketTable(list, base, { showAssign: true }));
@@ -225,8 +243,8 @@ function buildMails(data, cfg, base) {
     const assigned = Object.values(data.byMember).reduce((a, l) => a + l.length, 0);
     const th = (h, al = 'left') => `<th align="${al}" style="padding:8px 12px;background:#EEF2F7;color:#52606D;font-size:11.5px;text-transform:uppercase;${F}">${h}</th>`;
     const tdc = (v, n, al = 'left') => `<td align="${al}" style="padding:8px 12px;border-bottom:1px solid #E3E8EF;background:${n % 2 ? '#F7F9FC' : '#fff'};${F};font-size:13px">${v}</td>`;
-    const projTable = `<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #E3E8EF;min-width:480px"><tr>${th('Dự án')}${th('Chủ dự án')}${th('Ticket trễ', 'right')}</tr>`
-      + (data.byProject || []).map((r, n) => `<tr>${tdc(esc(r.project), n)}${tdc(r.owner ? esc(r.owner) : '<span style="color:#B54708">chưa có owner</span>', n)}${tdc(`<b style="color:${r.count ? '#B42318' : '#2F7D4F'}">${r.count}</b>`, n, 'right')}</tr>`).join('') + '</table>';
+    const projTable = `<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #E3E8EF;min-width:480px"><tr>${th('Dự án')}${th('Người quản lý')}${th('Ticket trễ', 'right')}</tr>`
+      + (data.byProject || []).map((r, n) => `<tr>${tdc(esc(r.project), n)}${tdc(r.owner ? esc(r.owner) : '<span style="color:#B54708">chưa có người quản lý</span>', n)}${tdc(`<b style="color:${r.count ? '#B42318' : '#2F7D4F'}">${r.count}</b>`, n, 'right')}</tr>`).join('') + '</table>';
     let rows = `<tr><td style="padding:16px 24px 4px"><table role="presentation" cellpadding="0" cellspacing="0"><tr>${stat(data.total, 'ticket trễ SLA', '#B42318')}${stat(data.unassigned.length, 'chưa giao ai', '#B54708')}${sendBy === 'owner' ? '' : stat(data.others.length, 'giao người ngoài DS', '#5F6B7A')}</tr></table></td></tr>`
       + section('Theo dự án', '#1F4E79', projTable)
       + (sendBy === 'owner' ? '' : section('Theo người được giao', '#1F4E79', memberTable));
@@ -234,7 +252,7 @@ function buildMails(data, cfg, base) {
     if (data.others.length && sendBy !== 'owner') rows += section(`Giao cho người ngoài danh sách (${data.others.length})`, '#5F6B7A', ticketTable(data.others, base, { showAssign: true }));
     if (!data.total) rows += p('Không có ticket nào trễ SLA. 🎉');
     mails.push({ kind: 'summary', to: summaryTo, cc: [], subject: `[Nhắc SLA] Tổng hợp ${data.total} ticket trễ SLA – ${day}`,
-      html: wrap('📊 Tổng hợp ticket trễ SLA', `Ngày ${esc(day)} · ${sendBy === 'owner' ? 'gửi theo chủ dự án' : assigned + ' ticket đã giao trong danh sách'} · ${esc(data.projects.join(', '))}`, rows), count: data.total });
+      html: wrap('📊 Tổng hợp ticket trễ SLA', `Ngày ${esc(day)} · ${sendBy === 'owner' ? 'gửi theo người quản lý dự án' : assigned + ' ticket đã giao trong danh sách'} · ${esc(data.projects.join(', '))}`, rows), count: data.total });
   }
   return mails;
 }

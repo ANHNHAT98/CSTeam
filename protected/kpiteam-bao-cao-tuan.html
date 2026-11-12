@@ -85,6 +85,13 @@ else if (location.hash === '#tu-dong' || location.hash === '#nhac-sla') location
   .proj-list label.proj-item:hover{border-color:var(--blueprint);}
   .proj-list label.proj-item.on{background:#EEF4FA;border-color:var(--blueprint);}
   .proj-item input{margin-top:2px;flex:0 0 auto;}
+  .ow-card{border:1px solid var(--grid-line-strong);border-radius:10px;padding:10px 12px;margin-bottom:10px;background:#FBFCFE;}
+  .ow-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .ow-head input{flex:0 1 320px;font-size:13.5px;padding:7px 10px;}
+  .ow-head .cnt{font-size:12px;color:var(--muted);}
+  .ow-head .del{margin-left:auto;border:0;background:transparent;color:var(--danger);cursor:pointer;font-size:13px;}
+  .ow-card .proj-grid{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:6px;}
+  .ow-card label.proj-item{padding:6px 9px;}
   .proj-item .nm{font-weight:600;color:var(--ink);line-height:1.3;}
   .proj-item .cd{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px;word-break:break-all;}
   .chk{display:inline-flex;gap:8px;align-items:center;font-size:13.5px;cursor:pointer;margin-right:18px;}
@@ -366,24 +373,24 @@ Hỗ trợ thanh toán công cho MDS và kế toán</textarea>
   <div class="panel no-print">
     <h2><span class="n">📧</span> Nhắc ticket trễ SLA đầu tuần <span class="pill" id="sl_state">…</span></h2>
     <div class="field" style="margin-top:12px"><label>Gửi theo</label>
-      <select id="sl_sendBy" style="min-width:420px">
-        <option value="owner">Chủ dự án — mỗi owner 1 mail cho các dự án của mình (Project Owner trên ERP)</option>
-        <option value="assign">Người được giao — mỗi thành viên 1 mail ticket giao cho họ</option>
-        <option value="both">Cả hai</option>
+      <select id="sl_sendBy" style="min-width:440px">
+        <option value="owner">Theo người quản lý — mỗi người 1 mail với các dự án mình tích</option>
+        <option value="all">1 mail chung — tất cả dự án, gửi cho mọi người quản lý</option>
       </select></div>
-    <div class="field sl-owner" style="margin-top:12px"><label>Đổi email chủ dự án (tài khoản ERP → hộp mail thật), mỗi dòng: <code>tài-khoản-erp = mail-thật</code></label>
-      <textarea id="sl_ownerMap" rows="2" style="width:100%;box-sizing:border-box;font-family:'IBM Plex Mono',monospace;font-size:12.5px" placeholder="lamlt1@hqsoft.com.vn = lamlt@hqsoft.com.vn"></textarea>
-      <div class="list-hint">Chủ dự án lấy từ ERP; nếu tài khoản ERP khác email thật (vd có số 1) thì khai báo ở đây. Bấm <b>Xem trước mail</b> để kiểm tra mỗi owner nhận mail gì.</div></div>
-    <div class="field sl-assign" style="margin-top:12px"><label>Thành viên nhận nhắc (mỗi người 1 mail với ticket trễ được giao cho họ)</label><input type="text" id="sl_members" style="width:100%;box-sizing:border-box"></div>
+    <div class="field" style="margin-top:12px"><label>Người quản lý dự án <span id="sl_projCount"></span></label>
+      <div class="list-hint" style="margin:2px 0 8px">Mỗi email tích các dự án mình quản lý (1 dự án có thể nhiều người). Dự án được tích = dự án cần nhắc.</div>
+      <div id="sl_owners"></div>
+      <button class="btn btn-ghost" id="sl_addOwner" type="button" style="margin-top:8px">＋ Thêm người quản lý</button>
+      <div id="sl_projNote" class="list-hint" style="margin-top:8px"></div></div>
     <div class="auto-grid">
-      <div class="field" style="grid-column:span 2"><label>Nhận mail tổng hợp</label><input type="text" id="sl_summaryTo"></div>
-      <div class="field" style="grid-column:span 2"><label>CC thêm vào mail từng người</label><input type="text" id="sl_cc"></div>
+      <div class="field" style="grid-column:span 2"><label>Nhận mail tổng hợp (gửi theo người quản lý) · nhận thêm (1 mail chung)</label><input type="text" id="sl_summaryTo"></div>
+      <div class="field" style="grid-column:span 2"><label>CC thêm vào mỗi mail</label><input type="text" id="sl_cc"></div>
     </div>
     <div class="field" style="margin-top:12px"><label>Trạng thái ticket cần nhắc</label><div id="sl_statuses"></div></div>
-    <div class="field" style="margin-top:12px"><label>Dự án cần nhắc (riêng cho Nhắc SLA, không phụ thuộc Tự động gửi ERP)</label><div id="sl_projNote" class="list-hint" style="margin:2px 0 6px"></div><div id="sl_projects" style="display:flex;flex-wrap:wrap;gap:6px 0"></div></div>
+
     <div style="margin-top:12px">
       <label class="chk"><input type="checkbox" id="sl_enabled"> Bật gửi tự động theo lịch</label>
-      <label class="chk"><input type="checkbox" id="sl_skipEmpty"> Không gửi cho người không có ticket trễ</label>
+      <label class="chk"><input type="checkbox" id="sl_skipEmpty"> Không gửi khi không có ticket trễ</label>
     </div>
     <div class="actions">
       <button class="btn btn-primary" id="sl_save" type="button">💾 Lưu cấu hình</button>
@@ -1308,28 +1315,47 @@ function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;'); }
 const SL = { config:null, statuses:[] };
 function slStatus(msg, cls){ au$('sl_status').textContent = msg; au$('sl_status').className = 'status ' + (cls||''); }
 const slList = id => au$(id).value.split(/[\s,;]+/).map(x => x.trim()).filter(Boolean);
-function slSyncSendBy(){
-  const v = au$('sl_sendBy').value;
-  document.querySelectorAll('.sl-owner').forEach(e => e.style.display = v === 'assign' ? 'none' : '');
-  document.querySelectorAll('.sl-assign').forEach(e => e.style.display = v === 'owner' ? 'none' : '');
+/* Người quản lý dự án: mỗi email 1 thẻ, tích dự án mình quản lý (1 dự án có thể nhiều người) */
+let SL_PROJ_OPTS = [];
+function slOwnerCard(email, projects){
+  const sel = new Set(projects || []);
+  const div = document.createElement('div'); div.className = 'ow-card';
+  div.innerHTML = `<div class="ow-head"><input type="email" class="ow-email" placeholder="email người quản lý" value="${escapeAttr(email || '')}"><span class="cnt"></span><button type="button" class="del" title="Xoá người này">✕ Xoá</button></div>`
+    + `<div class="proj-list"><div class="proj-grid">${SL_PROJ_OPTS.map(p => `<label class="proj-item${sel.has(p.code) ? ' on' : ''}"><input type="checkbox" class="ow-proj" value="${escapeAttr(p.code)}"${sel.has(p.code) ? ' checked' : ''}><span><div class="nm">${escapeHtml(p.name)}</div><div class="cd">${escapeHtml(p.code)}</div></span></label>`).join('')}</div></div>`;
+  div.querySelectorAll('input.ow-proj').forEach(i => i.addEventListener('change', () => { i.closest('.proj-item').classList.toggle('on', i.checked); slOwnersSummary(); }));
+  div.querySelector('.del').addEventListener('click', () => { div.remove(); slOwnersSummary(); });
+  div.querySelector('.ow-email').addEventListener('input', slOwnersSummary);
+  return div;
 }
-au$('sl_sendBy').addEventListener('change', slSyncSendBy);
+function slOwnersRead(){
+  return [...au$('sl_owners').querySelectorAll('.ow-card')].map(c => ({ email: c.querySelector('.ow-email').value.trim().toLowerCase(), projects: [...c.querySelectorAll('input.ow-proj:checked')].map(i => i.value) })).filter(o => o.email || o.projects.length);
+}
+function slOwnersSummary(){
+  au$('sl_owners').querySelectorAll('.ow-card').forEach(c => { const n = c.querySelectorAll('input.ow-proj:checked').length; c.querySelector('.cnt').textContent = n ? n + ' dự án' : 'chưa tích dự án'; });
+  const owners = slOwnersRead(); const by = {};
+  owners.forEach(o => o.projects.forEach(p => (by[p] = by[p] || []).push(o.email.split('@')[0] || '?')));
+  const used = SL_PROJ_OPTS.filter(p => by[p.code]);
+  au$('sl_projCount').textContent = '(' + owners.length + ' người · ' + used.length + '/' + SL_PROJ_OPTS.length + ' dự án được nhắc)';
+  au$('sl_projNote').innerHTML = used.length
+    ? '<b>Dự án sẽ nhắc:</b> ' + used.map(p => escapeHtml(p.name) + ' <span style="color:var(--muted)">(' + escapeHtml(by[p.code].join(', ')) + ')</span>').join(' · ')
+    : '⚠ Chưa tích dự án nào — chưa có gì để nhắc.';
+}
+au$('sl_addOwner').addEventListener('click', () => { const c = slOwnerCard('', []); au$('sl_owners').appendChild(c); c.querySelector('.ow-email').focus(); slOwnersSummary(); });
 async function loadSla(){
   try{
     const res = await fetch('/api/sla-reminder/config', { credentials:'same-origin' });
     const d = await res.json(); if (!res.ok) throw new Error(d.error || 'HTTP ' + res.status);
     const c = SL.config = d.config; SL.statuses = d.statuses;
-    au$('sl_members').value = (c.members||[]).join(', ');
-    au$('sl_sendBy').value = c.sendBy || 'owner'; slSyncSendBy();
-    au$('sl_ownerMap').value = Object.entries(c.ownerMap || {}).map(([a, b]) => a + ' = ' + b).join('\n');
+    au$('sl_sendBy').value = c.sendBy || 'owner';
     au$('sl_summaryTo').value = (c.summaryTo||[]).join(', ');
     au$('sl_cc').value = (c.cc||[]).join(', ');
     au$('sl_enabled').checked = !!c.enabled; au$('sl_skipEmpty').checked = !!c.skipEmpty;
     au$('sl_statuses').innerHTML = d.statuses.map(s => `<label class="chk"><input type="checkbox" value="${escapeAttr(s)}"${(c.statuses||[]).includes(s) ? ' checked' : ''}> ${escapeHtml(s)}</label>`).join('');
-    const projs = d.projects || [];
-    const own = !!d.projectsOwn, sel = d.projects || [];
-    au$('sl_projects').innerHTML = (d.projectOptions || []).map(p => `<label class="chk" style="min-width:230px"><input type="checkbox" class="sl-proj" value="${escapeAttr(p.code)}"${sel.includes(p.code) ? ' checked' : ''}> ${escapeHtml(p.name)} <span class="list-hint" style="font-size:11.5px">${escapeHtml(p.code)}</span></label>`).join('') || '<span class="list-hint">Không có danh sách dự án.</span>';
-    au$('sl_projNote').innerHTML = own ? 'Đã chọn ' + sel.length + ' dự án riêng cho Nhắc SLA.' : '⚠ Chưa chọn riêng — đang tạm dùng danh sách của Tự động gửi ERP (đã tick sẵn). Chỉnh lại rồi bấm <b>Lưu cấu hình</b> để tách riêng.';
+    SL_PROJ_OPTS = d.projectOptions || [];
+    const owners = (c.owners && c.owners.length) ? c.owners : (c.members || []).map(e => ({ email: e, projects: [] }));
+    au$('sl_owners').innerHTML = '';
+    owners.forEach(o => au$('sl_owners').appendChild(slOwnerCard(o.email, o.projects)));
+    slOwnersSummary();
     if (!au$('sl_testTo').value) au$('sl_testTo').value = (c.summaryTo||[])[0] || '';
     const st = au$('sl_state');
     st.className = 'pill' + (c.enabled && d.webhookReady && d.cronReady ? '' : ' warn');
@@ -1340,11 +1366,12 @@ async function loadSla(){
   }catch(e){ slStatus('Không tải được cấu hình nhắc SLA: ' + e.message, 'err'); }
 }
 au$('sl_save').addEventListener('click', async () => {
-  if (!au$('sl_projects').querySelector('input.sl-proj:checked')) return slStatus('Chọn ít nhất 1 dự án cần nhắc.', 'err');
+  const owners = slOwnersRead();
+  if (!owners.some(x => x.projects.length)) return slStatus('Thêm người quản lý và tích ít nhất 1 dự án.', 'err');
   slStatus('Đang lưu…', 'busy');
   try{
-    await postJson('/api/sla-reminder/config', { sendBy: au$('sl_sendBy').value, ownerMap: au$('sl_ownerMap').value, members: slList('sl_members'), summaryTo: slList('sl_summaryTo'), cc: slList('sl_cc'),
-      statuses: [...au$('sl_statuses').querySelectorAll('input:checked')].map(i => i.value), projects: [...au$('sl_projects').querySelectorAll('input.sl-proj:checked')].map(i => i.value), enabled: au$('sl_enabled').checked, skipEmpty: au$('sl_skipEmpty').checked });
+    await postJson('/api/sla-reminder/config', { sendBy: au$('sl_sendBy').value, owners, summaryTo: slList('sl_summaryTo'), cc: slList('sl_cc'),
+      statuses: [...au$('sl_statuses').querySelectorAll('input:checked')].map(i => i.value), enabled: au$('sl_enabled').checked, skipEmpty: au$('sl_skipEmpty').checked });
     slStatus('Đã lưu cấu hình.', 'ok'); loadSla();
   }catch(e){ slStatus('Không lưu được: ' + e.message, 'err'); }
 });
