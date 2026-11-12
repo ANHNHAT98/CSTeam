@@ -1,5 +1,17 @@
 [
   {
+    "at": "2026-11-12T10:30:51.941Z",
+    "by": "lịch tự động",
+    "test": "",
+    "to": "lamlt@hqsoft.com.vn, sales02@hqsoft.com.vn",
+    "keys": [
+      "HQ-312 (còn 177p)"
+    ],
+    "ok": true,
+    "error": "",
+    "zalo": ""
+  },
+  {
     "at": "2026-11-11T09:55:21.571Z",
     "by": "lịch tự động",
     "test": "",
