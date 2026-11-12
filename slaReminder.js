@@ -179,100 +179,108 @@ async function compute({ cfg, now = vnNow() } = {}) {
 /* ---------- mail HTML (style inline, dùng bảng để Outlook hiển thị đúng) ---------- */
 const F = 'font-family:Segoe UI,Arial,Helvetica,sans-serif';
 const PRIO_COLOR = { critical: '#C62828', urgent: '#E65100', high: '#B7791F', medium: '#2563EB', low: '#5F6B7A' };
-const badge = (txt, bg, fg = '#fff') => `<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:${bg};color:${fg};font-size:11.5px;font-weight:600;white-space:nowrap">${esc(txt)}</span>`;
-function ticketTable(list, base, { showAssign = false } = {}) {
-  const link = (n) => (base ? `<a href="${esc(base)}/app/ticket/${encodeURIComponent(n)}" style="color:#1A56DB;font-weight:700;text-decoration:none">${esc(n)}</a>` : `<b>${esc(n)}</b>`);
-  const head = ['Ticket', 'Tiêu đề · Dự án · Trạng thái', 'Trễ SLA', 'Mở lúc / Hạn SLA', ...(showAssign ? ['Người xử lý'] : [])]
-    .map((h) => `<th align="left" style="padding:8px 12px;background:#EEF2F7;color:#52606D;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #E3E8EF;${F}">${h}</th>`).join('');
-  const rows = list.map((t, n) => {
-    const td = `style="padding:10px 12px;border-bottom:1px solid #E3E8EF;vertical-align:top;background:${n % 2 ? '#F7F9FC' : '#FFFFFF'};${F};font-size:13px;color:#1F2933"`;
-    return `<tr><td ${td}>${link(t.name)}<br>${badge(t.priority, PRIO_COLOR[t.priority.toLowerCase()] || '#5F6B7A')}</td>`
-      + `<td ${td}><div style="font-weight:600">${esc(t.subject)}${t.noResponse ? ' <span style="color:#B42318;font-weight:600">· chưa phản hồi</span>' : ''}</div><div style="color:#6B7685;font-size:12px;margin-top:3px">${esc(t.project)} · ${esc(t.status)}</div></td>`
-      + `<td ${td} nowrap>${badge('Trễ ' + fmtDur(t.lateMin), '#FDECEC', '#B42318')}</td>`
-      + `<td ${td} nowrap><div style="color:#6B7685;font-size:12px">${esc(vnDate(t.opening))}</div><b>${esc(vnDate(t.due))}</b></td>`
-      + (showAssign ? `<td ${td}>${t.assign.length ? t.assign.map((e) => esc(e)).join('<br>') : '<span style="color:#B54708">chưa giao</span>'}</td>` : '') + '</tr>';
-  }).join('');
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #E3E8EF"><tr>${head}</tr>${rows}</table>`;
+let LABELS = null;
+/** Tên ngắn dự án (Merap, ABI, AnVy…) lấy từ ticket-instructions/projects.json */
+function labelOf(code) {
+  if (!LABELS) {
+    LABELS = {};
+    try { JSON.parse(require('fs').readFileSync(require('path').join(__dirname, 'ticket-instructions', 'projects.json'), 'utf8')).forEach((x) => { if (x && x.code) LABELS[x.code] = x.name || x.label || x.code; }); } catch (e) { /* bỏ qua */ }
+  }
+  return LABELS[code] || code;
 }
-const section = (title, color, inner) => `<tr><td style="padding:16px 24px 6px;${F}"><div style="font-size:14px;font-weight:700;color:${color}">${title}</div></td></tr><tr><td style="padding:0 24px 8px">${inner}</td></tr>`;
-const stat = (n, label, color) => `<td style="padding:0 22px 0 0;${F}"><div style="font-size:24px;font-weight:700;color:${color};line-height:1">${n}</div><div style="font-size:12px;color:#6B7685">${label}</div></td>`;
-/** Khung mail: header + phần thân (các <tr>) + chân. */
-const wrap = (title, subtitle, rowsHtml, headColor = '#1F4E79') => `<div style="background:#F2F4F7;padding:20px 0;${F}"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:820px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #E3E8EF">`
-  + `<tr><td style="background:${headColor};padding:16px 24px;${F}"><div style="color:#fff;font-size:17px;font-weight:700">${title}</div><div style="color:#D6E4F0;font-size:12.5px;margin-top:4px">${subtitle}</div></td></tr>`
-  + rowsHtml
-  + `<tr><td style="padding:12px 24px 18px;${F};font-size:11.5px;color:#8792A2;border-top:1px solid #EEF2F7">SLA xử lý tính theo giờ làm việc T2–T6 (Critical/Urgent tính liên tục), trừ ngày lễ.</td></tr></table></div>`;
-const p = (html) => `<tr><td style="padding:16px 24px 4px;${F};font-size:14px;color:#1F2933;line-height:1.5">${html}</td></tr>`;
+const labelsOf = (codes) => codes.map(labelOf).join(' · ');
+const badge = (txt, bg, fg = '#fff') => `<span style="display:inline-block;padding:2px 9px;border-radius:10px;background:${bg};color:${fg};font-size:11.5px;font-weight:600;white-space:nowrap">${esc(txt)}</span>`;
+const dm = (s) => vnDate(s).slice(0, 5); // dd/mm
 
-/** CC = CC cấu hình + (nếu bật) người xử lý của các ticket trễ trong mail. */
-function ccWith(cfg, tickets) {
-  const extra = !cfg.ccAssignees ? [] : tickets.flatMap((t) => t.assign || []).filter((e) => EMAIL_RE.test(e));
-  return [...new Set([...emails(cfg.cc), ...extra])];
+/** Bảng ticket của 1 dự án. owners = email người quản lý dự án → không lặp lại trong cột Người xử lý. */
+function ticketTable(list, base, owners = []) {
+  const own = new Set(owners);
+  const link = (n) => (base ? `<a href="${esc(base)}/app/ticket/${encodeURIComponent(n)}" style="color:#1A56DB;font-weight:700;text-decoration:none;white-space:nowrap">${esc(n)}</a>` : `<b style="white-space:nowrap">${esc(n)}</b>`);
+  const th = (h, w = '') => `<th align="left"${w ? ` width="${w}"` : ''} style="padding:9px 12px;background:#F4F6FA;color:#52606D;font-size:11px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #E3E8EF;${F};white-space:nowrap">${h}</th>`;
+  const rows = list.map((t, n) => {
+    const td = (extra = '') => `style="padding:11px 12px;border-bottom:1px solid #EDF0F5;vertical-align:top;background:${n % 2 ? '#FAFBFD' : '#FFFFFF'};${F};font-size:13px;color:#1F2933;${extra}"`;
+    const people = (t.assign || []).filter((e) => !own.has(e));
+    const who = !(t.assign || []).length ? '<span style="color:#B54708;font-weight:600">chưa giao</span>'
+      : people.length ? people.map((e) => `<div style="white-space:nowrap">${esc(e)}</div>`).join('') : '<span style="color:#8792A2;white-space:nowrap">— (quản lý tự xử lý)</span>';
+    return `<tr><td ${td('white-space:nowrap')}>${link(t.name)}<div style="margin-top:5px">${badge(t.priority, PRIO_COLOR[t.priority.toLowerCase()] || '#5F6B7A')}</div></td>`
+      + `<td ${td()}><div style="font-weight:600;line-height:1.4">${esc(t.subject)}</div><div style="margin-top:4px;font-size:12px;color:#6B7685">${esc(t.status)}${t.noResponse ? ' · <span style="color:#B42318;font-weight:600">chưa phản hồi khách</span>' : ''}</div></td>`
+      + `<td ${td('white-space:nowrap')}>${badge('Trễ ' + fmtDur(t.lateMin), '#FDECEC', '#B42318')}</td>`
+      + `<td ${td('white-space:nowrap')}><b>${esc(vnDate(t.due))}</b><div style="font-size:12px;color:#8792A2;margin-top:3px">mở ${esc(vnDate(t.opening))}</div></td>`
+      + `<td ${td('font-size:12.5px')}>${who}</td></tr>`;
+  }).join('');
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #E3E8EF;border-radius:8px">`
+    + `<tr>${th('Ticket', '1%')}${th('Tiêu đề · Trạng thái')}${th('Trễ SLA', '1%')}${th('Hạn SLA', '1%')}${th('Người xử lý', '1%')}</tr>${rows}</table>`;
 }
+/** Khối 1 dự án: thanh tiêu đề có vạch màu bên trái */
+const projectBlock = (code, list, owners, base) => `<tr><td style="padding:18px 28px 0">`
+  + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="border-left:4px solid #B42318;padding:2px 0 2px 10px;${F}">`
+  + `<span style="font-size:15px;font-weight:700;color:#1F2933">${esc(labelOf(code))}</span> <span style="font-size:12px;color:#8792A2">${esc(code)}</span></td>`
+  + `<td align="right" style="${F};font-size:12.5px;color:#52606D;white-space:nowrap"><b style="color:#B42318">${list.length} ticket trễ</b>${owners.length ? ` · quản lý: <b>${esc(owners.map(nameOf).join(', '))}</b>` : ''}</td></tr></table>`
+  + `<div style="height:8px;line-height:8px">&nbsp;</div>${ticketTable(list, base, owners)}</td></tr>`;
+const statBox = (n, label, color, bg) => `<td width="25%" style="padding:0 6px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="background:${bg};border-radius:8px;padding:12px 14px;${F}"><div style="font-size:26px;font-weight:700;color:${color};line-height:1">${n}</div><div style="font-size:12px;color:#52606D;margin-top:4px">${label}</div></td></tr></table></td>`;
+const stats = (items) => `<tr><td style="padding:14px 22px 2px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${items.map((x) => statBox(...x)).join('')}</tr></table></td></tr>`;
+const p = (html) => `<tr><td style="padding:18px 28px 4px;${F};font-size:14.5px;color:#1F2933;line-height:1.6">${html}</td></tr>`;
+/** Khung mail rộng 960px */
+const wrap = (title, subtitle, rowsHtml, headColor = '#1F4E79') => `<div style="background:#F2F4F7;padding:24px 8px;${F}"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:960px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #E3E8EF">`
+  + `<tr><td style="background:${headColor};padding:20px 28px;${F}"><div style="color:#fff;font-size:19px;font-weight:700">${title}</div><div style="color:#D6E4F0;font-size:13px;margin-top:6px;line-height:1.5">${subtitle}</div></td></tr>`
+  + rowsHtml
+  + `<tr><td style="padding:18px 28px 20px;${F};font-size:12px;color:#8792A2;border-top:1px solid #EEF2F7">SLA xử lý tính theo giờ làm việc T2–T6 (Critical/Urgent tính liên tục), trừ ngày lễ.</td></tr></table></div>`;
+const statRow = (list) => stats([
+  [list.length, 'ticket trễ SLA', '#B42318', '#FDECEC'],
+  [list.filter((t) => !(t.assign || []).length).length, 'chưa giao ai', '#B54708', '#FFF4E5'],
+  [list.filter((t) => t.noResponse).length, 'chưa phản hồi khách', '#1F4E79', '#EEF4FA'],
+  [new Set(list.map((t) => t.project)).size, 'dự án có ticket trễ', '#2F7D4F', '#E9F5EE'],
+]);
+
 function buildMails(data, cfg, base) {
-  const day = vnDate(data.at).slice(0, 10);
+  const day = vnDate(data.at).slice(0, 10); const dd = day.slice(0, 5);
   const time = data.at.slice(11);
   const mails = [];
   const sendBy = cfg.sendBy || 'owner';
+  const ownersOf = Object.fromEntries((data.byProject || []).map((r) => [r.project, r.owners || []]));
+  const overdue = data.overdue || [];
+  const blocks = (codes, list) => codes.map((c) => { const l = list.filter((t) => t.project === c); return l.length ? projectBlock(c, l, ownersOf[c] || [], base) : ''; }).join('');
+
   if (sendBy === 'all') {
-    // 1 mail chung: tất cả dự án, gửi cho mọi người quản lý + người nhận tổng hợp
     const to = [...new Set([...Object.keys(data.byOwner || {}), ...emails(cfg.summaryTo)])];
     if (to.length && (data.total || !cfg.skipEmpty)) {
-      let rows = data.total
+      const rows = data.total
         ? p(`Chào cả team 👋,<br>Đầu tuần mình điểm qua chút nhé: các dự án đang có <b style="color:#B42318">${data.total} ticket đã trễ SLA xử lý</b> (tính đến ${esc(time)} ngày ${esc(day)}). Mọi người xem giúp ticket của dự án mình, ưu tiên xử lý hoặc cập nhật trạng thái / phản hồi khách để kéo SLA về lại nha. Cảm ơn cả nhà! 💪`)
-          + `<tr><td style="padding:12px 24px 4px"><table role="presentation" cellpadding="0" cellspacing="0"><tr>${stat(data.total, 'ticket trễ SLA', '#B42318')}${stat(data.unassigned.length, 'chưa giao ai', '#B54708')}${stat((data.overdue || []).filter((t) => t.noResponse).length, 'chưa phản hồi khách', '#5F6B7A')}</tr></table></td></tr>`
+          + statRow(overdue) + blocks(data.projects, overdue)
         : p('Chào cả team 👋,<br>Tuần này không có ticket nào trễ SLA. Cảm ơn mọi người, giữ vững phong độ nha! 🎉');
-      for (const r of data.byProject || []) {
-        const list = (data.overdue || []).filter((t) => t.project === r.project);
-        if (list.length) rows += section(`${esc(r.project)} — ${list.length} ticket trễ${r.owners.length ? ` · quản lý: ${esc(r.owners.map(nameOf).join(', '))}` : ''}`, '#B42318', ticketTable(list, base, { showAssign: true }));
-      }
-      mails.push({ kind: 'all', to, cc: ccWith(cfg, data.overdue || []).filter((x) => !to.includes(x)), subject: `[Nhắc SLA] ${data.total} ticket trễ SLA – tất cả dự án – ${day}`,
-        html: wrap('📧 Nhắc ticket trễ SLA đầu tuần', `Ngày ${esc(day)} · ${esc(data.projects.join(', '))}`, rows, data.total ? '#1F4E79' : '#2F7D4F'), count: data.total });
+      const nProj = new Set(overdue.map((t) => t.project)).size;
+      mails.push({ kind: 'all', to, cc: emails(cfg.cc).filter((x) => !to.includes(x)),
+        subject: data.total ? `[Nhắc SLA ${dd}] ${data.total} ticket trễ · ${nProj} dự án` : `[Nhắc SLA ${dd}] Không có ticket trễ 🎉`,
+        html: wrap('📧 Nhắc ticket trễ SLA đầu tuần', `Ngày ${esc(day)} · ${esc(labelsOf(data.projects))}`, rows, data.total ? '#1F4E79' : '#2F7D4F'), count: data.total });
     }
     return mails;
   }
-  if (sendBy === 'owner') {
-    for (const [o, g] of Object.entries(data.byOwner || {})) {
-      if (!g.tickets.length && cfg.skipEmpty) continue;
-      let rows = g.tickets.length
-        ? p(`Chào <b>${esc(nameOf(o))}</b> 👋,<br>Các dự án bạn đang quản lý có <b style="color:#B42318">${g.tickets.length} ticket đã trễ SLA xử lý</b> (tính đến ${esc(time)} ngày ${esc(day)}). Bạn xem giúp và nhắc anh em ưu tiên xử lý, hoặc cập nhật trạng thái / phản hồi khách giúp mình nhé. Cảm ơn bạn! 🙌`)
-          + `<tr><td style="padding:12px 24px 4px"><table role="presentation" cellpadding="0" cellspacing="0"><tr>${stat(g.tickets.length, 'ticket trễ SLA', '#B42318')}${stat(g.tickets.filter((t) => !t.assign.length).length, 'chưa giao ai', '#B54708')}${stat(g.tickets.filter((t) => t.noResponse).length, 'chưa phản hồi khách', '#5F6B7A')}</tr></table></td></tr>`
-        : p(`Chào <b>${esc(nameOf(o))}</b> 👋,<br>Tuần này các dự án bạn quản lý không có ticket nào trễ SLA. Giỏi quá, giữ phong độ nha! 🎉`);
-      for (const pj of g.projects) {
-        const list = g.tickets.filter((t) => t.project === pj);
-        if (list.length) rows += section(`${esc(pj)} — ${list.length} ticket trễ`, '#B42318', ticketTable(list, base, { showAssign: true }));
-      }
-      mails.push({ kind: 'owner', to: [o], cc: ccWith(cfg, g.tickets).filter((x) => x !== o),
-        subject: g.tickets.length ? `[Nhắc SLA] ${g.tickets.length} ticket trễ SLA – dự án ${g.projects.join(', ')} – ${day}` : `[Nhắc SLA] Không có ticket trễ – ${day}`,
-        html: wrap('📧 Nhắc ticket trễ SLA đầu tuần', `Ngày ${esc(day)} · Dự án: ${esc(g.projects.join(', '))}`, rows, g.tickets.length ? '#1F4E79' : '#2F7D4F'), count: g.tickets.length });
-    }
+
+  for (const [o, g] of Object.entries(data.byOwner || {})) {
+    if (!g.tickets.length && cfg.skipEmpty) continue;
+    const rows = g.tickets.length
+      ? p(`Chào <b>${esc(nameOf(o))}</b> 👋,<br>Các dự án bạn đang quản lý có <b style="color:#B42318">${g.tickets.length} ticket đã trễ SLA xử lý</b> (tính đến ${esc(time)} ngày ${esc(day)}). Bạn xem giúp và nhắc anh em ưu tiên xử lý, hoặc cập nhật trạng thái / phản hồi khách giúp mình nhé. Cảm ơn bạn! 🙌`)
+        + statRow(g.tickets) + blocks(g.projects, g.tickets)
+      : p(`Chào <b>${esc(nameOf(o))}</b> 👋,<br>Tuần này các dự án bạn quản lý không có ticket nào trễ SLA. Giỏi quá, giữ phong độ nha! 🎉`);
+    const withLate = g.projects.filter((c) => g.tickets.some((t) => t.project === c));
+    const projTxt = withLate.length > 3 ? `${withLate.length} dự án` : labelsOf(withLate.length ? withLate : g.projects).replace(/ · /g, ', ');
+    mails.push({ kind: 'owner', to: [o], cc: emails(cfg.cc).filter((x) => x !== o),
+      subject: g.tickets.length ? `[Nhắc SLA ${dd}] ${g.tickets.length} ticket trễ · ${projTxt}` : `[Nhắc SLA ${dd}] Không có ticket trễ 🎉`,
+      html: wrap('📧 Nhắc ticket trễ SLA đầu tuần', `Ngày ${esc(day)} · ${esc(labelsOf(g.projects))}`, rows, g.tickets.length ? '#1F4E79' : '#2F7D4F'), count: g.tickets.length });
   }
-  for (const [m, list] of (sendBy === 'owner' ? [] : Object.entries(data.byMember))) {
-    if (!list.length && cfg.skipEmpty) continue;
-    const rows = list.length
-      ? p(`Chào <b>${esc(nameOf(m))}</b> 👋,<br>Bạn đang có <b style="color:#B42318">${list.length} ticket đã trễ SLA xử lý</b> (tính đến ${esc(time)} ngày ${esc(day)}). Bạn ưu tiên xử lý hoặc cập nhật trạng thái / phản hồi khách giúp mình nhé. Cảm ơn bạn! 🙌`)
-        + section('Ticket trễ SLA của bạn', '#B42318', ticketTable(list, base))
-      : p(`Chào <b>${esc(nameOf(m))}</b> 👋,<br>Tuần này bạn không có ticket nào trễ SLA. Giỏi quá, giữ phong độ nha! 🎉`);
-    mails.push({ kind: 'member', to: [m], cc: emails(cfg.cc).filter((x) => x !== m),
-      subject: list.length ? `[Nhắc SLA] Bạn có ${list.length} ticket trễ SLA – ${day}` : `[Nhắc SLA] Không có ticket trễ – ${day}`,
-      html: wrap('📧 Nhắc ticket trễ SLA đầu tuần', `Ngày ${esc(day)} · ${esc(data.projects.join(', '))}`, rows, list.length ? '#1F4E79' : '#2F7D4F'), count: list.length });
-  }
+
   const summaryTo = emails(cfg.summaryTo);
   if (summaryTo.length) {
-    const tr = Object.entries(data.byMember).map(([m, l], n) => `<tr><td style="padding:8px 12px;border-bottom:1px solid #E3E8EF;background:${n % 2 ? '#F7F9FC' : '#fff'};${F};font-size:13px">${esc(m)}</td><td align="right" style="padding:8px 12px;border-bottom:1px solid #E3E8EF;background:${n % 2 ? '#F7F9FC' : '#fff'};${F};font-size:13px"><b style="color:${l.length ? '#B42318' : '#2F7D4F'}">${l.length}</b></td></tr>`).join('');
-    const memberTable = `<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #E3E8EF;min-width:360px"><tr><th align="left" style="padding:8px 12px;background:#EEF2F7;color:#52606D;font-size:11.5px;text-transform:uppercase;${F}">Thành viên</th><th align="right" style="padding:8px 12px;background:#EEF2F7;color:#52606D;font-size:11.5px;text-transform:uppercase;${F}">Ticket trễ</th></tr>${tr}</table>`;
-    const assigned = Object.values(data.byMember).reduce((a, l) => a + l.length, 0);
-    const th = (h, al = 'left') => `<th align="${al}" style="padding:8px 12px;background:#EEF2F7;color:#52606D;font-size:11.5px;text-transform:uppercase;${F}">${h}</th>`;
-    const tdc = (v, n, al = 'left') => `<td align="${al}" style="padding:8px 12px;border-bottom:1px solid #E3E8EF;background:${n % 2 ? '#F7F9FC' : '#fff'};${F};font-size:13px">${v}</td>`;
-    const projTable = `<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #E3E8EF;min-width:480px"><tr>${th('Dự án')}${th('Người quản lý')}${th('Ticket trễ', 'right')}</tr>`
-      + (data.byProject || []).map((r, n) => `<tr>${tdc(esc(r.project), n)}${tdc(r.owner ? esc(r.owner) : '<span style="color:#B54708">chưa có người quản lý</span>', n)}${tdc(`<b style="color:${r.count ? '#B42318' : '#2F7D4F'}">${r.count}</b>`, n, 'right')}</tr>`).join('') + '</table>';
-    let rows = `<tr><td style="padding:16px 24px 4px"><table role="presentation" cellpadding="0" cellspacing="0"><tr>${stat(data.total, 'ticket trễ SLA', '#B42318')}${stat(data.unassigned.length, 'chưa giao ai', '#B54708')}${sendBy === 'owner' ? '' : stat(data.others.length, 'giao người ngoài DS', '#5F6B7A')}</tr></table></td></tr>`
-      + section('Theo dự án', '#1F4E79', projTable)
-      + (sendBy === 'owner' ? '' : section('Theo người được giao', '#1F4E79', memberTable));
-    if (data.unassigned.length) rows += section(`Chưa giao cho ai (${data.unassigned.length})`, '#B54708', ticketTable(data.unassigned, base));
-    if (data.others.length && sendBy !== 'owner') rows += section(`Giao cho người ngoài danh sách (${data.others.length})`, '#5F6B7A', ticketTable(data.others, base, { showAssign: true }));
+    const th = (h, al = 'left') => `<th align="${al}" style="padding:9px 12px;background:#F4F6FA;color:#52606D;font-size:11px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #E3E8EF;${F}">${h}</th>`;
+    const tdc = (v, n, al = 'left') => `<td align="${al}" style="padding:9px 12px;border-bottom:1px solid #EDF0F5;background:${n % 2 ? '#FAFBFD' : '#fff'};${F};font-size:13px">${v}</td>`;
+    const projTable = `<tr><td style="padding:18px 28px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #E3E8EF"><tr>${th('Dự án')}${th('Người quản lý')}${th('Ticket trễ', 'right')}${th('Chưa giao', 'right')}</tr>`
+      + (data.byProject || []).map((r, n) => { const l = overdue.filter((t) => t.project === r.project); return `<tr>${tdc(`<b>${esc(labelOf(r.project))}</b> <span style="color:#8792A2;font-size:12px">${esc(r.project)}</span>`, n)}${tdc(r.owners.length ? esc(r.owners.join(', ')) : '<span style="color:#B54708">chưa có người quản lý</span>', n)}${tdc(`<b style="color:${l.length ? '#B42318' : '#2F7D4F'}">${l.length}</b>`, n, 'right')}${tdc(l.filter((t) => !(t.assign || []).length).length, n, 'right')}</tr>`; }).join('')
+      + '</table></td></tr>';
+    let rows = statRow(overdue) + projTable;
+    if (data.unassigned.length) rows += `<tr><td style="padding:18px 28px 0;${F};font-size:15px;font-weight:700;color:#B54708">Chưa giao cho ai (${data.unassigned.length})</td></tr><tr><td style="padding:8px 28px 0">${ticketTable(data.unassigned, base)}</td></tr>`;
     if (!data.total) rows += p('Không có ticket nào trễ SLA. 🎉');
-    mails.push({ kind: 'summary', to: summaryTo, cc: [], subject: `[Nhắc SLA] Tổng hợp ${data.total} ticket trễ SLA – ${day}`,
-      html: wrap('📊 Tổng hợp ticket trễ SLA', `Ngày ${esc(day)} · ${sendBy === 'owner' ? 'gửi theo người quản lý dự án' : assigned + ' ticket đã giao trong danh sách'} · ${esc(data.projects.join(', '))}`, rows), count: data.total });
+    mails.push({ kind: 'summary', to: summaryTo, cc: [], subject: `[Nhắc SLA ${dd}] Tổng hợp ${data.total} ticket trễ`,
+      html: wrap('📊 Tổng hợp ticket trễ SLA', `Ngày ${esc(day)} · ${esc(labelsOf(data.projects))}`, rows), count: data.total });
   }
   return mails;
 }
@@ -303,7 +311,8 @@ async function run({ dryRun = false, testTo = '', by = 'lịch tự động' } =
   if (testTo && !EMAIL_RE.test(test || '')) throw new Error('Email gửi thử không hợp lệ.');
   const results = [];
   for (const m of mails) {
-    const out = test ? { ...m, to: [test], cc: [], subject: `[THỬ → ${m.to.join(', ')}] ${m.subject}` } : m;
+    const banner = `<div style="background:#FFF8E1;border:1px dashed #E0B252;color:#7A5300;padding:10px 14px;margin:0 auto 12px;max-width:960px;font-family:Segoe UI,Arial,sans-serif;font-size:13px;border-radius:8px">🧪 <b>Mail thử</b> — bản thật sẽ gửi tới: ${esc(m.to.join(', '))}${m.cc.length ? ' · CC: ' + esc(m.cc.join(', ')) : ''}</div>`;
+    const out = test ? { ...m, to: [test], cc: [], subject: `[THỬ] ${m.subject}`, html: banner + m.html } : m;
     try { await postWebhook(out); results.push({ to: m.to.join(', '), count: m.count, ok: true }); }
     catch (e) { results.push({ to: m.to.join(', '), count: m.count, ok: false, error: e.message }); }
   }
