@@ -1,0 +1,17 @@
+[
+  {
+    "at": "2026-11-12T05:10:19.827Z",
+    "by": "admin",
+    "test": "nhatha@hqsoft.com.vn",
+    "total": 25,
+    "sent": 1,
+    "failed": 0,
+    "results": [
+      {
+        "to": "lamlt@hqsoft.com.vn, phuctm@hqsoft.com.vn, nhuttm@hqsoft.com.vn, thaontt@hqsoft.com.vn, nhatha@hqsoft.com.vn",
+        "count": 25,
+        "ok": true
+      }
+    ]
+  }
+]
