@@ -29,6 +29,7 @@ const DEFAULT_CONFIG = {
   statuses: ['Open', 'Assign', 'Working', 'Reviewing', 'Re-open'], // Waiting/Pending = chờ khách → mặc định không nhắc
   skipEmpty: true,        // thành viên không có ticket trễ thì không gửi
   sendBy: 'owner',        // 'owner' = mỗi người quản lý 1 mail cho các dự án mình tích · 'all' = 1 mail chung tất cả dự án gửi cho mọi người quản lý
+  ccAssignees: false,     // CC thêm người xử lý (người được giao, kể cả ngoài danh sách quản lý) của các ticket trễ trong mail
   owners: [],             // người quản lý dự án (khai báo tay): [{ email, projects: [mã dự án] }] — 1 dự án có thể nhiều người
 };
 
@@ -76,6 +77,7 @@ async function saveConfig(input, user) {
   const next = {
     enabled: input.enabled != null ? Boolean(input.enabled) : cur.enabled,
     members, cc, summaryTo, projects, statuses, sendBy, owners,
+    ccAssignees: input.ccAssignees != null ? Boolean(input.ccAssignees) : Boolean(cur.ccAssignees),
     skipEmpty: input.skipEmpty != null ? Boolean(input.skipEmpty) : cur.skipEmpty,
     updatedAt: new Date().toISOString(), updatedBy: user || '',
   };
@@ -138,6 +140,19 @@ async function compute({ cfg, now = vnNow() } = {}) {
       noResponse: !t.first_responded_on, assign: parseAssign(t._assign),
     });
   }
+  // Danh sách ticket qua API thường trả _assign rỗng → bổ sung người đang được giao từ ToDo (Assign To) đang mở, giống trang CS-AM / Effort
+  if (overdue.length) {
+    try {
+      const todo = await erp.fetchTodoAssignees(overdue.map((t) => t.name), { activeOnly: true });
+      overdue.forEach((t) => { t.assign = [...new Set([...t.assign, ...(todo[t.name] || [])])]; });
+      // ticket vẫn chưa thấy ai (ToDo đã đóng khi chuyển trạng thái) → lấy lịch sử giao việc (ToDo chưa huỷ)
+      const still = overdue.filter((t) => !t.assign.length).map((t) => t.name);
+      if (still.length) {
+        const hist = await erp.fetchTodoAssignees(still, { activeOnly: false });
+        overdue.forEach((t) => { if (!t.assign.length && hist[t.name]) t.assign = hist[t.name]; });
+      }
+    } catch (e) { console.error('[sla-reminder] không đọc được ToDo:', e.message); }
+  }
   overdue.sort((a, b) => prioRank(a.priority) - prioRank(b.priority) || b.lateMin - a.lateMin);
   const members = emails(cfg.members);
   const byMember = Object.fromEntries(members.map((m) => [m, []]));
@@ -175,7 +190,7 @@ function ticketTable(list, base, { showAssign = false } = {}) {
       + `<td ${td}><div style="font-weight:600">${esc(t.subject)}${t.noResponse ? ' <span style="color:#B42318;font-weight:600">· chưa phản hồi</span>' : ''}</div><div style="color:#6B7685;font-size:12px;margin-top:3px">${esc(t.project)} · ${esc(t.status)}</div></td>`
       + `<td ${td} nowrap>${badge('Trễ ' + fmtDur(t.lateMin), '#FDECEC', '#B42318')}</td>`
       + `<td ${td} nowrap><div style="color:#6B7685;font-size:12px">${esc(vnDate(t.opening))}</div><b>${esc(vnDate(t.due))}</b></td>`
-      + (showAssign ? `<td ${td}>${esc(t.assign.map(nameOf).join(', ') || '—')}</td>` : '') + '</tr>';
+      + (showAssign ? `<td ${td}>${t.assign.length ? t.assign.map((e) => esc(e)).join('<br>') : '<span style="color:#B54708">chưa giao</span>'}</td>` : '') + '</tr>';
   }).join('');
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #E3E8EF"><tr>${head}</tr>${rows}</table>`;
 }
@@ -188,6 +203,11 @@ const wrap = (title, subtitle, rowsHtml, headColor = '#1F4E79') => `<div style="
   + `<tr><td style="padding:12px 24px 18px;${F};font-size:11.5px;color:#8792A2;border-top:1px solid #EEF2F7">SLA xử lý tính theo giờ làm việc T2–T6 (Critical/Urgent tính liên tục), trừ ngày lễ.</td></tr></table></div>`;
 const p = (html) => `<tr><td style="padding:16px 24px 4px;${F};font-size:14px;color:#1F2933;line-height:1.5">${html}</td></tr>`;
 
+/** CC = CC cấu hình + (nếu bật) người xử lý của các ticket trễ trong mail. */
+function ccWith(cfg, tickets) {
+  const extra = !cfg.ccAssignees ? [] : tickets.flatMap((t) => t.assign || []).filter((e) => EMAIL_RE.test(e));
+  return [...new Set([...emails(cfg.cc), ...extra])];
+}
 function buildMails(data, cfg, base) {
   const day = vnDate(data.at).slice(0, 10);
   const time = data.at.slice(11);
@@ -205,7 +225,7 @@ function buildMails(data, cfg, base) {
         const list = (data.overdue || []).filter((t) => t.project === r.project);
         if (list.length) rows += section(`${esc(r.project)} — ${list.length} ticket trễ${r.owners.length ? ` · quản lý: ${esc(r.owners.map(nameOf).join(', '))}` : ''}`, '#B42318', ticketTable(list, base, { showAssign: true }));
       }
-      mails.push({ kind: 'all', to, cc: emails(cfg.cc).filter((x) => !to.includes(x)), subject: `[Nhắc SLA] ${data.total} ticket trễ SLA – tất cả dự án – ${day}`,
+      mails.push({ kind: 'all', to, cc: ccWith(cfg, data.overdue || []).filter((x) => !to.includes(x)), subject: `[Nhắc SLA] ${data.total} ticket trễ SLA – tất cả dự án – ${day}`,
         html: wrap('📧 Nhắc ticket trễ SLA đầu tuần', `Ngày ${esc(day)} · ${esc(data.projects.join(', '))}`, rows, data.total ? '#1F4E79' : '#2F7D4F'), count: data.total });
     }
     return mails;
@@ -221,7 +241,7 @@ function buildMails(data, cfg, base) {
         const list = g.tickets.filter((t) => t.project === pj);
         if (list.length) rows += section(`${esc(pj)} — ${list.length} ticket trễ`, '#B42318', ticketTable(list, base, { showAssign: true }));
       }
-      mails.push({ kind: 'owner', to: [o], cc: emails(cfg.cc).filter((x) => x !== o),
+      mails.push({ kind: 'owner', to: [o], cc: ccWith(cfg, g.tickets).filter((x) => x !== o),
         subject: g.tickets.length ? `[Nhắc SLA] ${g.tickets.length} ticket trễ SLA – dự án ${g.projects.join(', ')} – ${day}` : `[Nhắc SLA] Không có ticket trễ – ${day}`,
         html: wrap('📧 Nhắc ticket trễ SLA đầu tuần', `Ngày ${esc(day)} · Dự án: ${esc(g.projects.join(', '))}`, rows, g.tickets.length ? '#1F4E79' : '#2F7D4F'), count: g.tickets.length });
     }
