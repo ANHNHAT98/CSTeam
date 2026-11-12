@@ -5,13 +5,15 @@
    - Phạm vi: ticket có Opening On trong tháng, thuộc các dự án được chọn (mặc định AnVy + Merap).
    - Đúng/trượt SLA dùng đúng quy tắc của các trang SLA khác (customerReport.js → slaOne): ngưỡng theo Priority,
      Critical/Urgent tính giờ liên tục, mức khác tính giờ làm việc.
+   - CS02: Ngày mở = opening_date, Ngày hoàn tất = resolution_date — giống trang /tickets/sla-resolution
+     (ticket Closed mà thiếu resolution_date = thiếu log → Trượt).
    - Ticket CHƯA CÓ MỐC (CS01: First Responded On; CS02: Resolution Date/Closed) coi như thiếu log → tính là TRƯỢT, không có "Đang chờ".
    - Actual = đúng SLA ÷ (đúng + trượt) × 100%. Progress nội suy theo Min/Target/Max của level; KPI Completion = Progress × trọng số.
    - Ngưỡng + trọng số theo level: kpi-sla-config.json (lấy từ file Master KPI). */
 
 const fs = require('fs');
 const path = require('path');
-const { normalize, slaOne, vnNow } = require('./customerReport');
+const { normalize, slaOne, vnNow, parseNaive } = require('./customerReport');
 const { monthStartOf, monthEndOf, isMonthKey } = require('./customerReportMonthly');
 
 const CONFIG_FILE = path.join(__dirname, 'kpi-sla-config.json');
@@ -55,6 +57,12 @@ function evaluateMember(rows, { month, projects, member, by = 'assign', level, k
     seen.add(r.name);
     if (!projects.includes(r.project)) continue;
     const t = normalize(r);
+    if (kpiKey === 'resolution') {
+      // CS02 lấy mốc giống trang /tickets/sla-resolution: Ngày mở = opening_date, Ngày hoàn tất = resolution_date
+      // (không lấy creation khi thiếu opening_date, không lấy modified của ticket Closed khi thiếu resolution_date).
+      t.opening = r.opening_date || ''; t.openDt = parseNaive(t.opening); t.openDay = /^\d{4}-\d{2}-\d{2}/.test(t.opening) ? t.opening.slice(0, 10) : '';
+      t.resolvedStr = r.resolution_date || ''; t.resolvedDt = parseNaive(t.resolvedStr);
+    }
     if (!(t.openDay >= ms && t.openDay <= me)) continue;
     const mine = by === 'owner' ? lc(r.owner) === who : t.assign.some((a) => lc(a) === who);
     if (!mine) continue;
