@@ -1648,7 +1648,7 @@ app.get('/api/sla-reminder/config', requireAuth, async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store');
     const [config, runs] = await Promise.all([slaReminder.getConfig(), slaReminder.readRuns()]);
-    res.json({ config, projects: await slaReminder.projectsOf(config), runs: runs.slice(0, 20), statuses: slaReminder.ALL_OPEN_STATUSES, webhookReady: slaReminder.webhookReady(), cronReady: Boolean(process.env.CRON_SECRET), githubBacked: slaReminder.isGithubBacked() });
+    res.json({ config, projects: await slaReminder.projectsOf(config), projectOptions: await slaReminder.projectOptions(config), projectsOwn: Boolean(config.projects && config.projects.length), runs: runs.slice(0, 20), statuses: slaReminder.ALL_OPEN_STATUSES, webhookReady: slaReminder.webhookReady(), cronReady: Boolean(process.env.CRON_SECRET), githubBacked: slaReminder.isGithubBacked() });
   } catch (e) { res.status(502).json({ error: e.message }); }
 });
 app.post('/api/sla-reminder/config', requireAuth, async (req, res) => {

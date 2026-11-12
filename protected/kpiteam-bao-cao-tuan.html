@@ -365,13 +365,22 @@ Hỗ trợ thanh toán công cho MDS và kế toán</textarea>
   <div class="tab-panel" id="tab-sla">
   <div class="panel no-print">
     <h2><span class="n">📧</span> Nhắc ticket trễ SLA đầu tuần <span class="pill" id="sl_state">…</span></h2>
-    <div class="field" style="margin-top:12px"><label>Thành viên nhận nhắc (mỗi người 1 mail với ticket trễ được giao cho họ)</label><input type="text" id="sl_members" style="width:100%;box-sizing:border-box"></div>
+    <div class="field" style="margin-top:12px"><label>Gửi theo</label>
+      <select id="sl_sendBy" style="min-width:420px">
+        <option value="owner">Chủ dự án — mỗi owner 1 mail cho các dự án của mình (Project Owner trên ERP)</option>
+        <option value="assign">Người được giao — mỗi thành viên 1 mail ticket giao cho họ</option>
+        <option value="both">Cả hai</option>
+      </select></div>
+    <div class="field sl-owner" style="margin-top:12px"><label>Đổi email chủ dự án (tài khoản ERP → hộp mail thật), mỗi dòng: <code>tài-khoản-erp = mail-thật</code></label>
+      <textarea id="sl_ownerMap" rows="2" style="width:100%;box-sizing:border-box;font-family:'IBM Plex Mono',monospace;font-size:12.5px" placeholder="lamlt1@hqsoft.com.vn = lamlt@hqsoft.com.vn"></textarea>
+      <div class="list-hint">Chủ dự án lấy từ ERP; nếu tài khoản ERP khác email thật (vd có số 1) thì khai báo ở đây. Bấm <b>Xem trước mail</b> để kiểm tra mỗi owner nhận mail gì.</div></div>
+    <div class="field sl-assign" style="margin-top:12px"><label>Thành viên nhận nhắc (mỗi người 1 mail với ticket trễ được giao cho họ)</label><input type="text" id="sl_members" style="width:100%;box-sizing:border-box"></div>
     <div class="auto-grid">
       <div class="field" style="grid-column:span 2"><label>Nhận mail tổng hợp</label><input type="text" id="sl_summaryTo"></div>
       <div class="field" style="grid-column:span 2"><label>CC thêm vào mail từng người</label><input type="text" id="sl_cc"></div>
     </div>
     <div class="field" style="margin-top:12px"><label>Trạng thái ticket cần nhắc</label><div id="sl_statuses"></div></div>
-    <div class="field" style="margin-top:12px"><label>Dự án (theo danh sách đã lưu ở tab Tự động gửi ERP)</label><div id="sl_projects" class="list-hint">—</div></div>
+    <div class="field" style="margin-top:12px"><label>Dự án cần nhắc (riêng cho Nhắc SLA, không phụ thuộc Tự động gửi ERP)</label><div id="sl_projNote" class="list-hint" style="margin:2px 0 6px"></div><div id="sl_projects" style="display:flex;flex-wrap:wrap;gap:6px 0"></div></div>
     <div style="margin-top:12px">
       <label class="chk"><input type="checkbox" id="sl_enabled"> Bật gửi tự động theo lịch</label>
       <label class="chk"><input type="checkbox" id="sl_skipEmpty"> Không gửi cho người không có ticket trễ</label>
@@ -1299,18 +1308,28 @@ function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;'); }
 const SL = { config:null, statuses:[] };
 function slStatus(msg, cls){ au$('sl_status').textContent = msg; au$('sl_status').className = 'status ' + (cls||''); }
 const slList = id => au$(id).value.split(/[\s,;]+/).map(x => x.trim()).filter(Boolean);
+function slSyncSendBy(){
+  const v = au$('sl_sendBy').value;
+  document.querySelectorAll('.sl-owner').forEach(e => e.style.display = v === 'assign' ? 'none' : '');
+  document.querySelectorAll('.sl-assign').forEach(e => e.style.display = v === 'owner' ? 'none' : '');
+}
+au$('sl_sendBy').addEventListener('change', slSyncSendBy);
 async function loadSla(){
   try{
     const res = await fetch('/api/sla-reminder/config', { credentials:'same-origin' });
     const d = await res.json(); if (!res.ok) throw new Error(d.error || 'HTTP ' + res.status);
     const c = SL.config = d.config; SL.statuses = d.statuses;
     au$('sl_members').value = (c.members||[]).join(', ');
+    au$('sl_sendBy').value = c.sendBy || 'owner'; slSyncSendBy();
+    au$('sl_ownerMap').value = Object.entries(c.ownerMap || {}).map(([a, b]) => a + ' = ' + b).join('\n');
     au$('sl_summaryTo').value = (c.summaryTo||[]).join(', ');
     au$('sl_cc').value = (c.cc||[]).join(', ');
     au$('sl_enabled').checked = !!c.enabled; au$('sl_skipEmpty').checked = !!c.skipEmpty;
     au$('sl_statuses').innerHTML = d.statuses.map(s => `<label class="chk"><input type="checkbox" value="${escapeAttr(s)}"${(c.statuses||[]).includes(s) ? ' checked' : ''}> ${escapeHtml(s)}</label>`).join('');
     const projs = d.projects || [];
-    au$('sl_projects').textContent = projs.length ? projs.join(' · ') : '(chưa có — lưu danh sách dự án ở tab Tự động gửi ERP)';
+    const own = !!d.projectsOwn, sel = d.projects || [];
+    au$('sl_projects').innerHTML = (d.projectOptions || []).map(p => `<label class="chk" style="min-width:230px"><input type="checkbox" class="sl-proj" value="${escapeAttr(p.code)}"${sel.includes(p.code) ? ' checked' : ''}> ${escapeHtml(p.name)} <span class="list-hint" style="font-size:11.5px">${escapeHtml(p.code)}</span></label>`).join('') || '<span class="list-hint">Không có danh sách dự án.</span>';
+    au$('sl_projNote').innerHTML = own ? 'Đã chọn ' + sel.length + ' dự án riêng cho Nhắc SLA.' : '⚠ Chưa chọn riêng — đang tạm dùng danh sách của Tự động gửi ERP (đã tick sẵn). Chỉnh lại rồi bấm <b>Lưu cấu hình</b> để tách riêng.';
     if (!au$('sl_testTo').value) au$('sl_testTo').value = (c.summaryTo||[])[0] || '';
     const st = au$('sl_state');
     st.className = 'pill' + (c.enabled && d.webhookReady && d.cronReady ? '' : ' warn');
@@ -1321,10 +1340,11 @@ async function loadSla(){
   }catch(e){ slStatus('Không tải được cấu hình nhắc SLA: ' + e.message, 'err'); }
 }
 au$('sl_save').addEventListener('click', async () => {
+  if (!au$('sl_projects').querySelector('input.sl-proj:checked')) return slStatus('Chọn ít nhất 1 dự án cần nhắc.', 'err');
   slStatus('Đang lưu…', 'busy');
   try{
-    await postJson('/api/sla-reminder/config', { members: slList('sl_members'), summaryTo: slList('sl_summaryTo'), cc: slList('sl_cc'),
-      statuses: [...au$('sl_statuses').querySelectorAll('input:checked')].map(i => i.value), enabled: au$('sl_enabled').checked, skipEmpty: au$('sl_skipEmpty').checked });
+    await postJson('/api/sla-reminder/config', { sendBy: au$('sl_sendBy').value, ownerMap: au$('sl_ownerMap').value, members: slList('sl_members'), summaryTo: slList('sl_summaryTo'), cc: slList('sl_cc'),
+      statuses: [...au$('sl_statuses').querySelectorAll('input:checked')].map(i => i.value), projects: [...au$('sl_projects').querySelectorAll('input.sl-proj:checked')].map(i => i.value), enabled: au$('sl_enabled').checked, skipEmpty: au$('sl_skipEmpty').checked });
     slStatus('Đã lưu cấu hình.', 'ok'); loadSla();
   }catch(e){ slStatus('Không lưu được: ' + e.message, 'err'); }
 });
