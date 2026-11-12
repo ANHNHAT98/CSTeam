@@ -5,6 +5,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Báo Cáo Tuần ERP</title>
+<script>
+/* Cấu hình Tự động gửi ERP / Nhắc SLA đã chuyển sang trang Cài đặt (/cai-dat): trang này nhúng lại với ?cfg=auto|sla */
+var CFG_MODE = new URLSearchParams(location.search).get('cfg');
+if (CFG_MODE) document.documentElement.classList.add('cfg-embed');
+else if (location.hash === '#tu-dong' || location.hash === '#nhac-sla') location.replace('/cai-dat' + (location.hash === '#tu-dong' ? '#erp' : '#nhac-sla'));
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -126,6 +132,10 @@
   .tabs{display:flex;gap:4px;margin-bottom:16px;}
   .tab-btn{background:transparent;border:1px solid var(--grid-line-strong);border-bottom:none;padding:8px 16px;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border-radius:8px 8px 0 0;}
   .tab-btn.active{background:var(--panel);color:var(--blueprint);}
+  .cfg-embed .ops-topbar,.cfg-embed .wrap > h1,.cfg-embed .wrap > p.sub,.cfg-embed .tabs{display:none !important;}
+  .cfg-embed body{background-image:none;} .cfg-embed .wrap{padding-top:4px;padding-bottom:20px;}
+  html:not(.cfg-embed) .tab-btn[data-tab="auto"],html:not(.cfg-embed) .tab-btn[data-tab="sla"]{display:none;}
+  .cfg-link{margin-left:auto;align-self:center;font-size:12.5px;color:var(--muted);text-decoration:none;} .cfg-link:hover{color:var(--blueprint);text-decoration:underline;}
   .tab-panel{display:none;}
   .tab-panel.active{display:block;}
 
@@ -168,6 +178,7 @@
     <button class="tab-btn active" type="button" data-tab="manual">📝 Báo cáo tuần</button>
     <button class="tab-btn" type="button" data-tab="auto">🤖 Tự động gửi ERP</button>
     <button class="tab-btn" type="button" data-tab="sla">📧 Nhắc SLA</button>
+    <a class="cfg-link" href="/cai-dat#erp">⚙ Tự động gửi ERP &amp; Nhắc SLA → Cài đặt</a>
   </div>
   <div class="tab-panel active" id="tab-manual">
 
@@ -1347,7 +1358,7 @@ function showTab(name){
   if (name === 'sla') loadSla();
 }
 document.querySelectorAll('.tabs .tab-btn').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
-showTab(Object.keys(TAB_HASH).find(k => TAB_HASH[k] === location.hash) || 'manual');
+showTab(CFG_MODE === 'auto' || CFG_MODE === 'sla' ? CFG_MODE : 'manual');
 loadAuto();
 </script>
 </body>

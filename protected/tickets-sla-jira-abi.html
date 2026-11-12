@@ -5,6 +5,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ticket dự án — SLA Jira ABI</title>
+<script>
+/* Cấu hình Cảnh báo First Response đã chuyển sang trang Cài đặt (/cai-dat#frt): trang này nhúng lại với ?cfg=alert */
+var CFG_MODE = new URLSearchParams(location.search).get('cfg');
+if (CFG_MODE) document.documentElement.classList.add('cfg-embed');
+else if (location.hash === '#canh-bao') location.replace('/cai-dat#frt');
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -98,6 +104,10 @@
   .tab-panel.active{display:block;}
   .fa details>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .fa details>summary::-webkit-details-marker{display:none;}
+  .cfg-embed .ops-topbar,.cfg-embed .wrap > h1,.cfg-embed .pg-tabs,.cfg-embed #pgSla,.cfg-embed .cfg-link{display:none !important;}
+  .cfg-embed body{background-image:none;} .cfg-embed .wrap{padding-top:4px;padding-bottom:20px;}
+  html:not(.cfg-embed) .pg-tabs{display:none !important;}
+  .cfg-link{display:inline-block;margin:-6px 0 14px;font-size:12.5px;color:var(--muted);text-decoration:none;} .cfg-link:hover{color:var(--blueprint);text-decoration:underline;}
   .pg-tabs .pill,.fa .pill{font-size:11.5px;font-family:'IBM Plex Mono',monospace;padding:2px 8px;border-radius:999px;border:1px solid var(--grid-line-strong);color:var(--muted);}
   .pg-tabs .pill.on,.fa .pill.on{background:#E7F5EC;color:#1E7B45;border-color:#B9E0C7;} .pg-tabs .pill.off,.fa .pill.off{background:#FBEAEA;color:#A33;border-color:#F0C4C4;}
   .fa .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:14px;}
@@ -118,6 +128,7 @@
 
 <div class="wrap">
   <h1>SLA Jira — Dự án ABI</h1>
+  <a class="cfg-link" href="/cai-dat#frt">⚙ Cảnh báo First Response (gửi mail/Zalo) → Cài đặt</a>
   <div class="tabs pg-tabs" style="margin-bottom:20px;flex-wrap:wrap">
     <style>.pg-tabs .tab-btn{white-space:nowrap}</style>
     <button class="tab-btn active" type="button" data-pg="sla">📊 Phân tích SLA</button>
@@ -1156,7 +1167,7 @@ exportBtn.addEventListener('click', () => {
     history.replaceState(null, '', pg==='alert' ? '#canh-bao' : location.pathname + location.search);
   }
   btns.forEach(b=>b.onclick=()=>show(b.dataset.pg));
-  if(location.hash==='#canh-bao') show('alert');
+  if(CFG_MODE==='alert') show('alert');
 })();
 </script>
 </body>

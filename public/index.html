@@ -60,6 +60,7 @@
   }
   .logout-btn:hover{color:var(--danger);border-color:var(--danger);}
   .logout-btn.show{display:inline-flex;}
+  .settings-btn{text-decoration:none;margin-right:8px;} .settings-btn:hover{color:var(--blueprint);border-color:var(--blueprint);}
 
   /* ---- login gate ---- */
   .login-gate{
@@ -198,7 +199,9 @@
   tbody td:last-child{font-family:'IBM Plex Mono',monospace;text-align:right;}
 
   /* ---- dashboard tổng quan ---- */
-  .dash-actions{display:flex;align-items:center;gap:14px;margin-bottom:20px;}
+  .dash-actions{display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap;}
+  .dash-period{display:flex;align-items:center;gap:8px;font-size:13px;}
+  .dash-period select,.dash-period input{font:inherit;font-size:13.5px;padding:8px 10px;border-radius:7px;border:1px solid var(--grid-line-strong,#cbd5e1);background:var(--panel,#fff);color:inherit;}
   .dash-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;}
   @media(max-width:800px){.dash-grid{grid-template-columns:1fr;}}
   .dash-kpi{margin-bottom:0;}
@@ -430,6 +433,7 @@
 <div class="content-col">
 
 <div class="topbar">
+  <a class="logout-btn settings-btn" id="settingsBtn" href="/cai-dat" title="Cấu hình gửi tự động: báo cáo tuần ERP, nhắc SLA, cảnh báo First Response">⚙ Cài đặt</a>
   <button class="logout-btn" id="logoutBtn">⎋ Đăng xuất</button>
 </div>
 
@@ -443,23 +447,33 @@
   </div>
 
   <div class="dash-actions">
+    <div class="dash-period">
+      <label for="dashMode" style="font-weight:600;">Kỳ xem</label>
+      <select id="dashMode">
+        <option value="all">Tất cả (hiện tại)</option>
+        <option value="month">Theo tháng</option>
+        <option value="year">Theo năm</option>
+      </select>
+      <input type="month" id="dashMonth" style="display:none">
+      <select id="dashYear" style="display:none"></select>
+    </div>
     <button class="btn btn-primary" id="loadDashBtn">⟳ Tải dữ liệu ERP</button>
     <span class="status" id="dashStatus"></span>
   </div>
 
   <div class="dash-grid">
     <div class="panel dash-kpi">
-      <div class="label">Tổng ticket đang mở</div>
+      <div class="label" id="kpiOpenLabel">Tổng ticket đang mở</div>
       <div class="value" id="kpiOpenTotal">—</div>
-      <div class="note">5 dự án · trạng thái chưa Closed</div>
+      <div class="note" id="kpiOpenNote">Các dự án · trạng thái chưa Closed</div>
     </div>
     <div class="panel dash-kpi">
-      <div class="label">First Response Time (SLA) — % Pass tháng này</div>
+      <div class="label" id="kpiFrtLabel">First Response Time (SLA) — % Pass tháng này</div>
       <div class="value" id="kpiFrt">—</div>
       <div class="note" id="kpiFrtNote">Pass nếu W = First Responded On − Opening On &lt; ngưỡng theo Priority</div>
     </div>
     <div class="panel dash-kpi">
-      <div class="label">Resolution Time (SLA) — % Pass tháng này</div>
+      <div class="label" id="kpiResLabel">Resolution Time (SLA) — % Pass tháng này</div>
       <div class="value" id="kpiRes">—</div>
       <div class="note" id="kpiResNote">Pass nếu W = Resolution Date − Opening On &lt; ngưỡng theo Priority</div>
     </div>
@@ -468,18 +482,18 @@
   <div class="dash-cols">
     <div class="panel">
       <div class="panel-title">Theo dự án</div>
-      <div class="panel-sub">Số ticket đang mở, nhóm theo project</div>
+      <div class="panel-sub" id="byProjectSub">Số ticket đang mở, nhóm theo project</div>
       <table id="byProjectTable"><thead><tr><th>Project</th><th style="text-align:right;">Số ticket</th></tr></thead><tbody id="byProjectBody"></tbody></table>
     </div>
     <div class="panel">
       <div class="panel-title">Theo trạng thái</div>
-      <div class="panel-sub">Số ticket đang mở, nhóm theo status</div>
+      <div class="panel-sub" id="byStatusSub">Số ticket đang mở, nhóm theo status</div>
       <table id="byStatusTable"><thead><tr><th>Status</th><th style="text-align:right;">Số ticket</th></tr></thead><tbody id="byStatusBody"></tbody></table>
     </div>
   </div>
 
   <div class="panel">
-    <div class="panel-title">SLA — So sánh 3 tháng gần nhất</div>
+    <div class="panel-title" id="slaTrendTitle">SLA — So sánh 3 tháng gần nhất</div>
     <div class="panel-sub" id="slaTrendSub">Pass/Fail theo công thức: W = (First Responded On hoặc Resolution Date) − Opening On (phút); Fail nếu chưa có mốc thời gian đó (W=1.1) hoặc W ≥ ngưỡng theo Priority (Critical 60 / Urgent 240 / High 480 / Medium 4320 / khác 7200 phút). Trọng số = Actual 1 (P1&amp;P2) × 70% + Actual 2 (P3-P5) × 30% — giữ nguyên % thực tế (không làm tròn về 0) để theo dõi xu hướng cải thiện dần tới ngưỡng 90%. Lọc theo Opening On.</div>
     <div class="dash-cols">
       <div>
@@ -508,7 +522,7 @@
   </div>
 
   <div class="panel">
-    <div class="panel-title">SLA — Tháng hiện tại theo dự án (First Response &amp; Resolution)</div>
+    <div class="panel-title" id="slaMonthTitle">SLA — Tháng hiện tại theo dự án (First Response &amp; Resolution)</div>
     <div class="panel-sub" id="slaMonthSub">Lọc theo Opening On rơi vào tháng hiện tại, gộp theo dự án.</div>
     <div id="slaMonthCharts"></div>
     <table id="slaMonthTable" style="margin-top:14px;">
@@ -528,7 +542,7 @@
   </div>
 
   <div class="panel">
-    <div class="panel-title">SLA — Xu hướng theo tuần (tháng hiện tại)</div>
+    <div class="panel-title" id="slaWeekTitle">SLA — Xu hướng theo tuần (tháng hiện tại)</div>
     <div class="panel-sub" id="frtWeekSub">Mỗi tuần tính từ Thứ 2 → Chủ Nhật (% Pass, theo công thức Priority), chỉ tính ticket có Opening On trong tháng hiện tại.</div>
     <div class="dash-cols">
       <div>
@@ -540,6 +554,7 @@
         <canvas id="resWeekChart" height="180"></canvas>
       </div>
     </div>
+    <div id="slaLowNote" style="margin-top:12px;font-size:13px;"></div>
   </div>
 
   <footer>
@@ -578,12 +593,14 @@ async function api(path, opts){
 function showApp(username){
   loginGate.style.display = 'none';
   logoutBtn.classList.add('show');
+  document.getElementById('settingsBtn').classList.add('show');
   whoamiBox.innerHTML = `<b>${username}</b>Đăng nhập lúc ${new Date().toLocaleTimeString('vi-VN')}`;
   if (typeof loadDashboard === 'function') loadDashboard();
 }
 function showGate(){
   loginGate.style.display = 'flex';
   logoutBtn.classList.remove('show');
+  document.getElementById('settingsBtn').classList.remove('show');
 }
 
 // Nếu bị chuyển về đây kèm ?next=/duong-dan (do phiên hết hạn khi đang xem 1
@@ -667,8 +684,9 @@ function setDashStatus(msg, cls){
   dashStatus.className = 'status ' + (cls||'');
 }
 
-async function fetchTickets(projects, statuses, openingFrom, openingTo){
+async function fetchTickets(projects, statuses, openingFrom, openingTo, limit){
   const qs = new URLSearchParams();
+  if (limit) qs.set('limit', String(limit));
   qs.set('projects', JSON.stringify(projects));
   qs.set('statuses', JSON.stringify(statuses));
   if (openingFrom) qs.set('opening_from', openingFrom);
@@ -681,21 +699,71 @@ async function fetchTickets(projects, statuses, openingFrom, openingTo){
 
 function toIsoDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
+/* ---------- Kỳ xem: Tất cả (mặc định, như cũ) / Theo tháng / Theo năm — đồng bộ với URL ?month=YYYY-MM hoặc ?year=YYYY ---------- */
+const dashMode = document.getElementById('dashMode');
+const dashMonth = document.getElementById('dashMonth');
+const dashYear = document.getElementById('dashYear');
+(function initPeriod(){
+  const now = new Date(); const curYear = now.getFullYear();
+  for (let y = curYear; y >= 2024; y--) dashYear.insertAdjacentHTML('beforeend', `<option value="${y}">${y}</option>`);
+  dashMonth.value = curYear + '-' + String(now.getMonth()+1).padStart(2,'0');
+  dashMonth.max = dashMonth.value;
+  const q = new URLSearchParams(location.search);
+  const qm = q.get('month'), qy = q.get('year');
+  if (/^\d{4}-\d{2}$/.test(qm || '')) { dashMode.value = 'month'; dashMonth.value = qm; }
+  else if (/^\d{4}$/.test(qy || '')) { dashMode.value = 'year'; if (![...dashYear.options].some(o => o.value === qy)) dashYear.insertAdjacentHTML('beforeend', `<option value="${qy}">${qy}</option>`); dashYear.value = qy; }
+  syncPeriodUi();
+})();
+function syncPeriodUi(){
+  dashMonth.style.display = dashMode.value === 'month' ? '' : 'none';
+  dashYear.style.display = dashMode.value === 'year' ? '' : 'none';
+}
+function syncPeriodUrl(){
+  const q = new URLSearchParams(location.search);
+  q.delete('month'); q.delete('year');
+  if (dashMode.value === 'month' && dashMonth.value) q.set('month', dashMonth.value);
+  if (dashMode.value === 'year') q.set('year', dashYear.value);
+  const qs = q.toString();
+  history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+}
+function getPeriod(){
+  const mm = d => String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+  if (dashMode.value === 'month' && /^\d{4}-\d{2}$/.test(dashMonth.value)){
+    const [y, m] = dashMonth.value.split('-').map(Number);
+    const start = new Date(y, m-1, 1, 0,0,0,0), end = new Date(y, m, 0, 23,59,59,999);
+    return { mode:'month', start, end, trendStart: new Date(y, m-3, 1, 0,0,0,0), trendEnd: end,
+      label: 'tháng ' + mm(start), trendLabel: '3 tháng tới ' + mm(start), weekLabel: 'tháng ' + mm(start) };
+  }
+  if (dashMode.value === 'year'){
+    const y = Number(dashYear.value);
+    const start = new Date(y, 0, 1, 0,0,0,0), end = new Date(y, 11, 31, 23,59,59,999);
+    return { mode:'year', start, end, trendStart: start, trendEnd: end,
+      label: 'năm ' + y, trendLabel: 'các tháng năm ' + y, weekLabel: 'năm ' + y };
+  }
+  const { start, end } = getCurrentMonthRange();
+  const { start: trendStart, end: trendEnd } = getLast3MonthsRange();
+  return { mode:'all', start, end, trendStart, trendEnd, label: 'tháng này', trendLabel: '3 tháng gần nhất', weekLabel: 'tháng hiện tại' };
+}
+dashMode.addEventListener('change', () => { syncPeriodUi(); syncPeriodUrl(); loadDashboard(); });
+dashMonth.addEventListener('change', () => { if (dashMonth.value) { syncPeriodUrl(); loadDashboard(); } });
+dashYear.addEventListener('change', () => { syncPeriodUrl(); loadDashboard(); });
+
 async function loadDashboard(){
   loadDashBtn.disabled = true;
   setDashStatus('Đang tải dữ liệu từ ERP…','');
   try{
-    const { start: last3Start, end: last3End } = getLast3MonthsRange();
+    const period = getPeriod();
+    // Lọc theo opening_date ngay trên ERP (đủ cho khoảng so sánh xu hướng) để không bị cắt bớt dữ liệu.
+    const slaPromise = fetchTickets(ALL_PROJECTS, [], toIsoDate(period.trendStart), toIsoDate(period.trendEnd), period.mode === 'year' ? 20000 : 5000);
     const [openRows, slaRows] = await Promise.all([
-      fetchTickets(ALL_PROJECTS, OPEN_STATUSES),
-      // Chỉ cần đúng 3 tháng gần nhất cho toàn bộ tính SLA (First Response & Resolution) —
-      // lọc theo opening_date ngay trên ERP để không bao giờ bị cắt bớt dữ liệu (limit_page_length)
-      // dù các dự án có rất nhiều lịch sử ticket từ trước.
-      fetchTickets(ALL_PROJECTS, [], toIsoDate(last3Start), toIsoDate(last3End)),
+      period.mode === 'all' ? fetchTickets(ALL_PROJECTS, OPEN_STATUSES) : slaPromise.then(rows => rows.filter(r => { const d = r.opening_date ? new Date(r.opening_date) : null; return d && d >= period.start && d <= period.end; })),
+      slaPromise,
     ]);
-    renderDashboard(openRows);
-    renderSla(slaRows);
-    setDashStatus(`Xong — ${openRows.length} ticket đang mở / ${slaRows.length} ticket trong 3 tháng gần nhất (cập nhật ${new Date().toLocaleTimeString('vi-VN')}).`, 'ok');
+    renderDashboard(openRows, period);
+    renderSla(slaRows, period);
+    setDashStatus(period.mode === 'all'
+      ? `Xong — ${openRows.length} ticket đang mở / ${slaRows.length} ticket trong 3 tháng gần nhất (cập nhật ${new Date().toLocaleTimeString('vi-VN')}).`
+      : `Xong — ${openRows.length} ticket mở trong ${period.label} (cập nhật ${new Date().toLocaleTimeString('vi-VN')}).`, 'ok');
   }catch(err){
     console.error(err);
     setDashStatus('Lỗi: ' + err.message, 'err');
@@ -704,8 +772,13 @@ async function loadDashboard(){
   }
 }
 
-function renderDashboard(rows){
+function renderDashboard(rows, period){
   document.getElementById('kpiOpenTotal').textContent = rows.length;
+  const isAll = !period || period.mode === 'all';
+  document.getElementById('kpiOpenLabel').textContent = isAll ? 'Tổng ticket đang mở' : 'Ticket mở trong ' + period.label;
+  document.getElementById('kpiOpenNote').textContent = isAll ? 'Các dự án · trạng thái chưa Closed' : 'Các dự án · theo Opening On · mọi trạng thái';
+  document.getElementById('byProjectSub').textContent = isAll ? 'Số ticket đang mở, nhóm theo project' : 'Số ticket mở trong ' + period.label + ', nhóm theo project';
+  document.getElementById('byStatusSub').textContent = isAll ? 'Số ticket đang mở, nhóm theo status' : 'Ticket mở trong ' + period.label + ', nhóm theo trạng thái hiện tại';
 
   const byProject = {};
   const byStatus = {};
@@ -898,9 +971,17 @@ let resWeekChartInst = null;
 function destroyAllCharts(){
   [slaTrendChartFrtInst, slaTrendChartResInst, frtWeekChartInst, resWeekChartInst, ...slaMonthChartInsts].forEach(c => { if (c) c.destroy(); });
   slaTrendChartFrtInst = null; slaTrendChartResInst = null; slaMonthChartInsts = []; frtWeekChartInst = null; resWeekChartInst = null;
+  const ln = document.getElementById('slaLowNote'); if (ln) ln.innerHTML = '';
 }
 
-function renderSla(rows){
+function renderSla(rows, period){
+  period = period || getPeriod();
+  document.getElementById('kpiFrtLabel').textContent = 'First Response Time (SLA) — % Pass ' + period.label;
+  document.getElementById('kpiResLabel').textContent = 'Resolution Time (SLA) — % Pass ' + period.label;
+  document.getElementById('slaTrendTitle').textContent = 'SLA — So sánh ' + period.trendLabel;
+  document.getElementById('slaMonthTitle').textContent = 'SLA — ' + (period.mode === 'all' ? 'Tháng hiện tại' : period.label.charAt(0).toUpperCase() + period.label.slice(1)) + ' theo dự án (First Response & Resolution)';
+  document.getElementById('slaWeekTitle').textContent = period.mode === 'year' ? 'SLA — Các tháng thấp SLA trong ' + period.label + ' (cột đỏ: dưới 90%)' : 'SLA — Xu hướng theo tuần (' + period.weekLabel + ')';
+  document.getElementById('frtWeekSub').textContent = period.mode === 'year' ? '% Pass theo từng tháng (theo Opening On). Tháng dưới 90% tô đỏ và liệt kê bên dưới, thấp nhất trước.' : 'Mỗi tuần tính từ Thứ 2 → Chủ Nhật (% Pass, theo công thức Priority), chỉ tính ticket có Opening On trong ' + period.weekLabel + '.';
   const { items: frtItems, fields: frtFields, missing: frtMissing } = computeSlaItems(rows, FRT_KEYWORDS);
   const { items: resItems, fields: resFields, missing: resMissing } = computeSlaItems(rows, RES_KEYWORDS);
 
@@ -946,7 +1027,7 @@ function renderSla(rows){
   const monthRows = Object.values(monthGroups).sort((a,b) => a.key.localeCompare(b.key));
 
   document.getElementById('slaTrendSub').textContent =
-    `W = mốc thời gian đích − Opening On (phút); Fail nếu chưa có mốc đó hoặc vượt ngưỡng theo Priority. Field dùng: Priority=${frtFields.priorityField}, Opening=${frtFields.openingField}, First Responded=${frtFields.targetField}, Resolution=${resFields.targetField}. Phạm vi: 3 tháng gần nhất (theo Opening On).`;
+    `W = mốc thời gian đích − Opening On (phút); Fail nếu chưa có mốc đó hoặc vượt ngưỡng theo Priority. Field dùng: Priority=${frtFields.priorityField}, Opening=${frtFields.openingField}, First Responded=${frtFields.targetField}, Resolution=${resFields.targetField}. Phạm vi: ${period.trendLabel} (theo Opening On).`;
 
   document.getElementById('slaTrendBody').innerHTML = monthRows.length ? monthRows.map(m => {
     const f = weightedSlaScore(m.frt);
@@ -957,7 +1038,7 @@ function renderSla(rows){
       <td style="text-align:right;">${f.total}</td><td style="text-align:right;color:var(--success);">${f.pass}</td><td style="text-align:right;">${fRate}%</td><td style="text-align:right;font-weight:700;">${f.weighted.toFixed(1)}%</td>
       <td style="text-align:right;">${r.total}</td><td style="text-align:right;color:var(--success);">${r.pass}</td><td style="text-align:right;">${rRate}%</td><td style="text-align:right;font-weight:700;">${r.weighted.toFixed(1)}%</td>
     </tr>`;
-  }).join('') : '<tr><td colspan="9" style="color:var(--muted);">Không có ticket nào trong 3 tháng gần nhất</td></tr>';
+  }).join('') : `<tr><td colspan="9" style="color:var(--muted);">Không có ticket nào trong ${period.trendLabel}</td></tr>`;
 
   function buildTrendChart(canvasId, existingInst, label, color, dataValues, labels){
     if (existingInst) existingInst.destroy();
@@ -980,11 +1061,11 @@ function renderSla(rows){
     '#B5533C', monthRows.map(m => weightedSlaScore(m.res).weighted.toFixed(1)), monthRows.map(m => m.label));
 
   /* ---- Tháng hiện tại (lọc theo Opening On), gộp theo dự án — cả First Response & Resolution ---- */
-  const { start, end } = getCurrentMonthRange();
+  const { start, end } = period;
   const frtMonthItems = frtItems.filter(it => it.openDate && it.openDate >= start && it.openDate <= end);
   const resMonthItems = resItems.filter(it => it.openDate && it.openDate >= start && it.openDate <= end);
   document.getElementById('slaMonthSub').textContent =
-    `Từ ${fmtDdMm(start)} đến ${fmtDdMm(end)}/${end.getFullYear()} (theo Opening On) — ${frtMonthItems.length} ticket.`;
+    `Từ ${fmtDdMm(start)}/${start.getFullYear()} đến ${fmtDdMm(end)}/${end.getFullYear()} (theo Opening On) — ${frtMonthItems.length} ticket.`;
 
   const byProject = ALL_PROJECTS.map(p => {
     const f = weightedSlaScore(frtMonthItems.filter(it => it.project === p));
@@ -1043,10 +1124,10 @@ function renderSla(rows){
   document.getElementById('kpiRes').textContent = resMissing ? '—' : passRate(resMonthItems).toFixed(1) + '%';
   document.getElementById('kpiFrtNote').textContent = frtMissing
     ? 'Không dò được field First Responded On từ ERP.'
-    : `Pass nếu W = First Responded On − Opening On < ngưỡng theo Priority (${frtMonthItems.length} ticket tháng này)`;
+    : `Pass nếu W = First Responded On − Opening On < ngưỡng theo Priority (${frtMonthItems.length} ticket ${period.label})`;
   document.getElementById('kpiResNote').textContent = resMissing
     ? 'Không dò được field Resolution Date từ ERP.'
-    : `Pass nếu W = Resolution Date − Opening On < ngưỡng theo Priority (${resMonthItems.length} ticket tháng này)`;
+    : `Pass nếu W = Resolution Date − Opening On < ngưỡng theo Priority (${resMonthItems.length} ticket ${period.label})`;
 
   /* ---- Theo tuần trong tháng hiện tại (Thứ 2 -> Chủ Nhật) — cả First Response & Resolution ---- */
   function groupByWeek(items){
@@ -1082,8 +1163,49 @@ function renderSla(rows){
       options: { responsive:true, plugins:{ legend:{ display:true } }, scales:{ y:{ min:0, max:100, ticks:{ callback:v => v+'%' } } } },
     });
   }
-  frtWeekChartInst = buildWeekChart('frtWeekChart', frtWeekChartInst, 'First Response — % Pass', '#2E6F95', frtWeekRows);
-  resWeekChartInst = buildWeekChart('resWeekChart', resWeekChartInst, 'Resolution — % Pass', '#B5533C', resWeekRows);
+  const lowNote = document.getElementById('slaLowNote');
+  if (period.mode !== 'year'){
+    lowNote.innerHTML = '';
+    frtWeekChartInst = buildWeekChart('frtWeekChart', frtWeekChartInst, 'First Response — % Pass', '#2E6F95', frtWeekRows);
+    resWeekChartInst = buildWeekChart('resWeekChart', resWeekChartInst, 'Resolution — % Pass', '#B5533C', resWeekRows);
+    return;
+  }
+
+  /* ---- Chế độ Năm: thay xu hướng tuần bằng % Pass từng tháng, tô đỏ tháng dưới 90% để thấy tháng trọng điểm bị thấp SLA ---- */
+  const LOW = 90;
+  function groupByMonth(items){
+    const g = {};
+    items.forEach(it => {
+      const { key, label } = monthKeyLabel(it.openDate);
+      if (!g[key]) g[key] = { key, label: 'T' + key.slice(5), full: label, total:0, pass:0 };
+      g[key].total++; if (it.result === 'Pass') g[key].pass++;
+    });
+    return Object.values(g).sort((a,b) => a.key.localeCompare(b.key)).map(m => ({ ...m, rate: m.total ? m.pass/m.total*100 : 0 }));
+  }
+  const frtMonths = groupByMonth(frtMonthItems);
+  const resMonths = groupByMonth(resMonthItems);
+  function buildMonthBar(canvasId, existingInst, label, color, rows){
+    if (existingInst) existingInst.destroy();
+    if (!rows.length) return null;
+    return new Chart(document.getElementById(canvasId), {
+      type: 'bar',
+      data: {
+        labels: rows.map(m => m.label),
+        datasets: [
+          { type:'bar', label, data: rows.map(m => Number(m.rate.toFixed(1))), backgroundColor: rows.map(m => m.rate < LOW ? '#dc2626' : color) },
+          { type:'line', label: 'Ngưỡng ' + LOW + '%', data: rows.map(() => LOW), borderColor:'#dc2626', borderDash:[6,4], borderWidth:2, pointRadius:0 },
+        ],
+      },
+      options: { responsive:true, plugins:{ legend:{ display:true }, tooltip:{ callbacks:{ afterLabel: c => c.datasetIndex === 0 ? (rows[c.dataIndex].pass + '/' + rows[c.dataIndex].total + ' ticket Pass') : '' } } },
+        scales:{ y:{ min:0, max:100, ticks:{ callback:v => v+'%' } } } },
+    });
+  }
+  frtWeekChartInst = buildMonthBar('frtWeekChart', frtWeekChartInst, 'First Response — % Pass', '#2E6F95', frtMonths);
+  resWeekChartInst = buildMonthBar('resWeekChart', resWeekChartInst, 'Resolution — % Pass', '#B5533C', resMonths);
+  const lowList = (rows) => rows.filter(m => m.rate < LOW).sort((a,b) => a.rate - b.rate)
+    .map(m => `<span style="display:inline-block;margin:2px 6px 2px 0;padding:2px 8px;border-radius:10px;background:#FDECEC;color:#B42318;font-weight:600;">${m.full.replace('Tháng ','T')}: ${m.rate.toFixed(1)}% <span style="font-weight:400">(${m.pass}/${m.total})</span></span>`).join('') || '<span style="color:var(--success);font-weight:600;">Không có tháng nào dưới ' + LOW + '%</span>';
+  lowNote.innerHTML = `<div style="margin-bottom:6px;"><b>Tháng thấp SLA — First Response</b> (thấp nhất trước): ${lowList(frtMonths)}</div>`
+    + `<div><b>Tháng thấp SLA — Resolution</b> (thấp nhất trước): ${lowList(resMonths)}</div>`;
 }
 
 loadDashBtn.addEventListener('click', loadDashboard);

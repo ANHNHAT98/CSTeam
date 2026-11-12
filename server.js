@@ -91,6 +91,11 @@ function requireAuth(req, res, next) {
   next();
 }
 
+app.get('/cai-dat', requirePageAuth, (req, res) => { // Cài đặt: gom cấu hình gửi tự động (nhúng các trang cấu hình với ?cfg=)
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'protected', 'cai-dat.html'));
+});
+
 app.get('/abi/dashboard-ticket', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'abi-dashboard-ticket.html'));
 });

@@ -74,7 +74,8 @@ function evaluateMember(rows, { month, projects, member, by = 'assign', level, k
       minutes: sla && sla.done ? sla.minutes : null, threshold: sla ? sla.threshold : null,
     });
   }
-  tickets.sort((a, b) => String(a.opening).localeCompare(String(b.opening)));
+  // Trượt SLA lên trước, rồi theo Ngày mở
+  tickets.sort((a, b) => (a.result === 'Trượt' ? 0 : 1) - (b.result === 'Trượt' ? 0 : 1) || String(a.opening).localeCompare(String(b.opening)));
 
   const pass = tickets.filter((t) => t.result === 'Đạt').length;
   const fail = tickets.filter((t) => t.result === 'Trượt').length;
