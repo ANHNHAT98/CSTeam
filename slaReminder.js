@@ -185,7 +185,7 @@ const stat = (n, label, color) => `<td style="padding:0 22px 0 0;${F}"><div styl
 const wrap = (title, subtitle, rowsHtml, headColor = '#1F4E79') => `<div style="background:#F2F4F7;padding:20px 0;${F}"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:820px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #E3E8EF">`
   + `<tr><td style="background:${headColor};padding:16px 24px;${F}"><div style="color:#fff;font-size:17px;font-weight:700">${title}</div><div style="color:#D6E4F0;font-size:12.5px;margin-top:4px">${subtitle}</div></td></tr>`
   + rowsHtml
-  + `<tr><td style="padding:12px 24px 18px;${F};font-size:11.5px;color:#8792A2;border-top:1px solid #EEF2F7">SLA xử lý tính theo giờ làm việc T2–T6 (Critical/Urgent tính liên tục), trừ ngày lễ — cùng quy tắc trang SLA của tool.<br>Mail tự động từ HQSOFT Ops Console.</td></tr></table></div>`;
+  + `<tr><td style="padding:12px 24px 18px;${F};font-size:11.5px;color:#8792A2;border-top:1px solid #EEF2F7">SLA xử lý tính theo giờ làm việc T2–T6 (Critical/Urgent tính liên tục), trừ ngày lễ.</td></tr></table></div>`;
 const p = (html) => `<tr><td style="padding:16px 24px 4px;${F};font-size:14px;color:#1F2933;line-height:1.5">${html}</td></tr>`;
 
 function buildMails(data, cfg, base) {
@@ -198,9 +198,9 @@ function buildMails(data, cfg, base) {
     const to = [...new Set([...Object.keys(data.byOwner || {}), ...emails(cfg.summaryTo)])];
     if (to.length && (data.total || !cfg.skipEmpty)) {
       let rows = data.total
-        ? p(`Chào anh/chị,<br>Các dự án hiện có <b style="color:#B42318">${data.total} ticket đã trễ SLA xử lý</b> (tính đến ${esc(time)} ngày ${esc(day)}). Nhờ người quản lý từng dự án nhắc người xử lý ưu tiên giải quyết hoặc cập nhật trạng thái / phản hồi khách.`)
+        ? p(`Chào cả team 👋,<br>Đầu tuần mình điểm qua chút nhé: các dự án đang có <b style="color:#B42318">${data.total} ticket đã trễ SLA xử lý</b> (tính đến ${esc(time)} ngày ${esc(day)}). Mọi người xem giúp ticket của dự án mình, ưu tiên xử lý hoặc cập nhật trạng thái / phản hồi khách để kéo SLA về lại nha. Cảm ơn cả nhà! 💪`)
           + `<tr><td style="padding:12px 24px 4px"><table role="presentation" cellpadding="0" cellspacing="0"><tr>${stat(data.total, 'ticket trễ SLA', '#B42318')}${stat(data.unassigned.length, 'chưa giao ai', '#B54708')}${stat((data.overdue || []).filter((t) => t.noResponse).length, 'chưa phản hồi khách', '#5F6B7A')}</tr></table></td></tr>`
-        : p('Các dự án không có ticket nào trễ SLA. 🎉');
+        : p('Chào cả team 👋,<br>Tuần này không có ticket nào trễ SLA. Cảm ơn mọi người, giữ vững phong độ nha! 🎉');
       for (const r of data.byProject || []) {
         const list = (data.overdue || []).filter((t) => t.project === r.project);
         if (list.length) rows += section(`${esc(r.project)} — ${list.length} ticket trễ${r.owners.length ? ` · quản lý: ${esc(r.owners.map(nameOf).join(', '))}` : ''}`, '#B42318', ticketTable(list, base, { showAssign: true }));
@@ -214,9 +214,9 @@ function buildMails(data, cfg, base) {
     for (const [o, g] of Object.entries(data.byOwner || {})) {
       if (!g.tickets.length && cfg.skipEmpty) continue;
       let rows = g.tickets.length
-        ? p(`Chào <b>${esc(nameOf(o))}</b>,<br>Các dự án bạn quản lý hiện có <b style="color:#B42318">${g.tickets.length} ticket đã trễ SLA xử lý</b> (tính đến ${esc(time)} ngày ${esc(day)}). Bạn nhắc người xử lý ưu tiên giải quyết hoặc cập nhật trạng thái / phản hồi khách giúp nhé.`)
+        ? p(`Chào <b>${esc(nameOf(o))}</b> 👋,<br>Các dự án bạn đang quản lý có <b style="color:#B42318">${g.tickets.length} ticket đã trễ SLA xử lý</b> (tính đến ${esc(time)} ngày ${esc(day)}). Bạn xem giúp và nhắc anh em ưu tiên xử lý, hoặc cập nhật trạng thái / phản hồi khách giúp mình nhé. Cảm ơn bạn! 🙌`)
           + `<tr><td style="padding:12px 24px 4px"><table role="presentation" cellpadding="0" cellspacing="0"><tr>${stat(g.tickets.length, 'ticket trễ SLA', '#B42318')}${stat(g.tickets.filter((t) => !t.assign.length).length, 'chưa giao ai', '#B54708')}${stat(g.tickets.filter((t) => t.noResponse).length, 'chưa phản hồi khách', '#5F6B7A')}</tr></table></td></tr>`
-        : p(`Chào <b>${esc(nameOf(o))}</b>,<br>Các dự án bạn quản lý không có ticket nào trễ SLA. 🎉`);
+        : p(`Chào <b>${esc(nameOf(o))}</b> 👋,<br>Tuần này các dự án bạn quản lý không có ticket nào trễ SLA. Giỏi quá, giữ phong độ nha! 🎉`);
       for (const pj of g.projects) {
         const list = g.tickets.filter((t) => t.project === pj);
         if (list.length) rows += section(`${esc(pj)} — ${list.length} ticket trễ`, '#B42318', ticketTable(list, base, { showAssign: true }));
@@ -229,9 +229,9 @@ function buildMails(data, cfg, base) {
   for (const [m, list] of (sendBy === 'owner' ? [] : Object.entries(data.byMember))) {
     if (!list.length && cfg.skipEmpty) continue;
     const rows = list.length
-      ? p(`Chào <b>${esc(nameOf(m))}</b>,<br>Hiện bạn có <b style="color:#B42318">${list.length} ticket đã trễ SLA xử lý</b> (tính đến ${esc(time)} ngày ${esc(day)}). Bạn ưu tiên xử lý hoặc cập nhật trạng thái / phản hồi khách giúp nhé.`)
+      ? p(`Chào <b>${esc(nameOf(m))}</b> 👋,<br>Bạn đang có <b style="color:#B42318">${list.length} ticket đã trễ SLA xử lý</b> (tính đến ${esc(time)} ngày ${esc(day)}). Bạn ưu tiên xử lý hoặc cập nhật trạng thái / phản hồi khách giúp mình nhé. Cảm ơn bạn! 🙌`)
         + section('Ticket trễ SLA của bạn', '#B42318', ticketTable(list, base))
-      : p(`Chào <b>${esc(nameOf(m))}</b>,<br>Bạn không có ticket nào trễ SLA. Cảm ơn bạn! 🎉`);
+      : p(`Chào <b>${esc(nameOf(m))}</b> 👋,<br>Tuần này bạn không có ticket nào trễ SLA. Giỏi quá, giữ phong độ nha! 🎉`);
     mails.push({ kind: 'member', to: [m], cc: emails(cfg.cc).filter((x) => x !== m),
       subject: list.length ? `[Nhắc SLA] Bạn có ${list.length} ticket trễ SLA – ${day}` : `[Nhắc SLA] Không có ticket trễ – ${day}`,
       html: wrap('📧 Nhắc ticket trễ SLA đầu tuần', `Ngày ${esc(day)} · ${esc(data.projects.join(', '))}`, rows, list.length ? '#1F4E79' : '#2F7D4F'), count: list.length });
