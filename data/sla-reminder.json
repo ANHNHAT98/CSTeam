@@ -1,0 +1,72 @@
+[
+  {
+    "enabled": true,
+    "members": [
+      "lamlt1@hqsoft.com.vn",
+      "phuctm@hqsoft.com.vn",
+      "nhatha@hqsoft.com.vn",
+      "nhuttm@hqsoft.com.vn"
+    ],
+    "cc": [],
+    "summaryTo": [
+      "nhatha@hqsoft.com.vn"
+    ],
+    "projects": [
+      "ABI_eSales_Support",
+      "MerapLion_eSales",
+      "ANVY_eSale_Support",
+      "Sabeco_PG",
+      "Sabeco_B2B_Support",
+      "FES_eSales",
+      "ANKO_eSales_Support",
+      "HaiHa_eSales_Support",
+      "Jotun_VN_eSales"
+    ],
+    "statuses": [
+      "Open",
+      "Assign",
+      "Working",
+      "Reviewing",
+      "Re-open"
+    ],
+    "sendBy": "all",
+    "owners": [
+      {
+        "email": "lamlt@hqsoft.com.vn",
+        "projects": [
+          "ABI_eSales_Support"
+        ]
+      },
+      {
+        "email": "phuctm@hqsoft.com.vn",
+        "projects": [
+          "MerapLion_eSales",
+          "ANVY_eSale_Support"
+        ]
+      },
+      {
+        "email": "nhatha@hqsoft.com.vn",
+        "projects": []
+      },
+      {
+        "email": "nhuttm@hqsoft.com.vn",
+        "projects": [
+          "Sabeco_PG",
+          "Sabeco_B2B_Support"
+        ]
+      },
+      {
+        "email": "thaontt@hqsoft.com.vn",
+        "projects": [
+          "FES_eSales",
+          "ANKO_eSales_Support",
+          "HaiHa_eSales_Support",
+          "Jotun_VN_eSales"
+        ]
+      }
+    ],
+    "skipEmpty": true,
+    "updatedAt": "2026-11-12T04:41:54.009Z",
+    "updatedBy": "admin"
+  }
+]
