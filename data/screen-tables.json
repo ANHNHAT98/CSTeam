@@ -1396,5 +1396,3053 @@
     ],
     "updatedAt": "2026-11-09T04:09:41.321Z",
     "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686610_ako5h",
+    "project": "MerapLion_eSales",
+    "code": "OM00000",
+    "name": "Cài Đặt Bán Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_Setup",
+        "role": "Bảng chính",
+        "desc": "Cài đặt phân hệ bán hàng",
+        "where": "SetupID = '...'"
+      },
+      {
+        "name": "OM_Discount",
+        "role": "Danh mục",
+        "desc": "Chương trình khuyến mãi — header",
+        "where": "DiscID = '...'"
+      },
+      {
+        "name": "OM_OrderType",
+        "role": "Danh mục",
+        "desc": "Danh mục kiểu đơn hàng",
+        "where": "OrderType = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_oxdgv",
+    "project": "MerapLion_eSales",
+    "code": "OM10100",
+    "name": "Đơn Trả Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_SalesOrd",
+        "role": "Bảng chính",
+        "desc": "Đơn hàng bán (BO) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_SalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn bán",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_DiscCpny",
+        "role": "Bảng chi tiết",
+        "desc": "NPP được áp dụng KM",
+        "where": "DiscID = '...' AND DiscSeq = '...' AND CpnyID = '...' AND State = '...'"
+      },
+      {
+        "name": "OM_DiscDescrItem",
+        "role": "Bảng chi tiết",
+        "desc": "Mặt hàng của KM tay",
+        "where": "DiscCode = '...' AND InvtID = '...' AND InvtType = '...'"
+      },
+      {
+        "name": "OM_DiscFreeItemSite",
+        "role": "Bảng chi tiết",
+        "desc": "Kho xuất hàng tặng KM",
+        "where": "DiscID = '...' AND DiscSeq = '...' AND LineRef = '...' AND InvtID = '...' AND SiteID = '...'"
+      },
+      {
+        "name": "OM_OrderType",
+        "role": "Danh mục",
+        "desc": "Danh mục kiểu đơn hàng",
+        "where": "OrderType = '...'"
+      },
+      {
+        "name": "OM_DiscSeq",
+        "role": "Danh mục",
+        "desc": "Nội dung (Seq) của chương trình KM",
+        "where": "DiscID = '...' AND DiscSeq = '...'"
+      },
+      {
+        "name": "OM_Setup",
+        "role": "Danh mục",
+        "desc": "Cài đặt phân hệ bán hàng",
+        "where": "SetupID = '...'"
+      },
+      {
+        "name": "OM_BranchRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến công ty / chi nhánh",
+        "where": "BranchRouteID = '...'"
+      },
+      {
+        "name": "OM_OrdDisc",
+        "role": "Khác",
+        "desc": "Khuyến mãi áp dụng trên đơn bán",
+        "where": "BranchID = '...' AND DiscID = '...' AND DiscSeq = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_DiscDescr",
+        "role": "Khác",
+        "desc": "KM tay / chiết khấu thủ công",
+        "where": "DiscCode = '...'"
+      },
+      {
+        "name": "OM_DISCITEM",
+        "role": "Khác",
+        "desc": "Mặt hàng mua của KM",
+        "where": "DiscID = '...' AND DiscSeq = '...' AND InvtID = '...' AND SiteID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_8vzt3",
+    "project": "MerapLion_eSales",
+    "code": "OM10101",
+    "name": "Đơn Bán Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_PDASalesOrd",
+        "role": "Bảng chính",
+        "desc": "Đơn hàng từ app (PDA) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_SalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn bán",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn PDA",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_LotTrans",
+        "role": "Bảng chi tiết",
+        "desc": "Lô / hạn dùng của dòng đơn bán",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LotSerNbr = '...' AND OMLineRef = '...'"
+      },
+      {
+        "name": "OM_DiscCpny",
+        "role": "Bảng chi tiết",
+        "desc": "NPP được áp dụng KM",
+        "where": "DiscID = '...' AND DiscSeq = '...' AND CpnyID = '...' AND State = '...'"
+      },
+      {
+        "name": "OM_PDALotTrans",
+        "role": "Bảng chi tiết",
+        "desc": "Lô / hạn dùng của dòng đơn PDA",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LotSerNbr = '...' AND OMLineRef = '...' AND RefOrderNbr = '...'"
+      },
+      {
+        "name": "OM_AccumulatedResult",
+        "role": "Bảng chi tiết",
+        "desc": "Kết quả chốt tích lũy theo khách",
+        "where": "LineRef = '...' AND AccumulateID = '...' AND BranchID = '...' AND CustID = '...'"
+      },
+      {
+        "name": "OM_DiscSeq",
+        "role": "Danh mục",
+        "desc": "Nội dung (Seq) của chương trình KM",
+        "where": "DiscID = '...' AND DiscSeq = '...'"
+      },
+      {
+        "name": "OM_OrderType",
+        "role": "Danh mục",
+        "desc": "Danh mục kiểu đơn hàng",
+        "where": "OrderType = '...'"
+      },
+      {
+        "name": "OM_Accumulated",
+        "role": "Danh mục",
+        "desc": "Chương trình tích lũy — header",
+        "where": "AccumulateID = '...'"
+      },
+      {
+        "name": "OM_SalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng bán (BO) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_PDAOrdDisc",
+        "role": "Khác",
+        "desc": "Khuyến mãi áp dụng trên đơn PDA",
+        "where": "BranchID = '...' AND DiscID = '...' AND DiscSeq = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_3q5el",
+    "project": "MerapLion_eSales",
+    "code": "OM10800",
+    "name": "Giao Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_ShipDelivery",
+        "role": "Bảng chính",
+        "desc": "Phiếu giao hàng theo NVGH",
+        "where": "BranchID = '...' AND BatNbr = '...' AND SlsperID = '...'"
+      },
+      {
+        "name": "OM_ShipLine",
+        "role": "Bảng chi tiết",
+        "desc": "Đơn hàng trong phiếu giao",
+        "where": "BranchID = '...' AND BatNbr = '...' AND OrdNbr = '...'"
+      },
+      {
+        "name": "OM_DeliveryRouteDet",
+        "role": "Bảng chi tiết",
+        "desc": "Địa bàn (tỉnh/huyện/xã) của tuyến giao",
+        "where": "RouteID = '...' AND State = '...' AND District = '...' AND Ward = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn PDA",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_MasterDeliveryTime",
+        "role": "Danh mục",
+        "desc": "Danh mục thời gian giao",
+        "where": "Code = '...'"
+      },
+      {
+        "name": "Batch",
+        "role": "Khác",
+        "desc": "Batch sinh từ đơn bán: Module = IN (xuất kho, IN10200) hoặc AR (công nợ, AR10100)",
+        "where": "BranchID = '...' AND BatNbr = '...' AND Module IN ('IN','AR')"
+      },
+      {
+        "name": "OM_PDASalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng từ app (PDA) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_SalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng bán (BO) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrdShip",
+        "role": "Khác",
+        "desc": "Trạng thái giao của đơn PDA",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND Sequence = '...'"
+      },
+      {
+        "name": "OM_Delivery",
+        "role": "Khác",
+        "desc": "Lần giao hàng của đơn",
+        "where": "BranchID = '...' AND BatNbr = '...' AND OrderNbr = '...' AND Sequence = '...'"
+      },
+      {
+        "name": "OM_DeliveryRouteShipper",
+        "role": "Khác",
+        "desc": "Gán tuyến giao cho NVGH",
+        "where": "BranchID = '...' AND RouteID = '...'"
+      },
+      {
+        "name": "OM_DeliveryRoute",
+        "role": "Khác",
+        "desc": "Tuyến giao hàng",
+        "where": "RouteID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_n96xg",
+    "project": "MerapLion_eSales",
+    "code": "OM11000",
+    "name": "Báo Cáo Sell Out Cấp 1",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_SellOutLevelOneHeader",
+        "role": "Bảng chính",
+        "desc": "Sell out cấp 1 — header",
+        "where": "BranchID = '...' AND BatNbr = '...'"
+      },
+      {
+        "name": "OM_SellOutLevelOneDetail",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết sell out cấp 1",
+        "where": "BranchID = '...' AND BatNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn PDA",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_SalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn bán",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_SellOutLevelTwoDetail",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết sell out cấp 2",
+        "where": "BranchID = '...' AND BatNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_SellOutLevelTwoHeader",
+        "role": "Bảng chi tiết",
+        "desc": "Sell out cấp 2 — header",
+        "where": "BranchID = '...' AND BatNbr = '...'"
+      },
+      {
+        "name": "OM_SellOutAgencyItemSite",
+        "role": "Bảng chi tiết",
+        "desc": "Tồn / bán theo đại lý",
+        "where": "BranchID = '...' AND AgencyID = '...' AND OrderNbr = '...' AND InvtID = '...' AND Month = '...'"
+      },
+      {
+        "name": "OM_SellOutLevelOneGenMonth",
+        "role": "Bảng chi tiết",
+        "desc": "Tháng đã sinh sell out",
+        "where": ""
+      },
+      {
+        "name": "OM_SellOutLevelOneItemSite",
+        "role": "Bảng chi tiết",
+        "desc": "Tồn / bán theo khách cấp 1",
+        "where": "BranchID = '...' AND CustID = '...' AND OrderNbr = '...' AND InvtID = '...' AND Month = '...'"
+      },
+      {
+        "name": "OM_Master_AutoSellOutBatchNumber",
+        "role": "Danh mục",
+        "desc": "Đánh số tự động sell out",
+        "where": "CpnyID = '...'"
+      },
+      {
+        "name": "OM_SalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng bán (BO) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng từ app (PDA) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_snmwn",
+    "project": "MerapLion_eSales",
+    "code": "OM11100",
+    "name": "Báo Cáo Sell Out Cấp 2",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_SellOutLevelTwoHeader",
+        "role": "Bảng chính",
+        "desc": "Sell out cấp 2 — header",
+        "where": "BranchID = '...' AND BatNbr = '...'"
+      },
+      {
+        "name": "OM_SellOutLevelTwoDetail",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết sell out cấp 2",
+        "where": "BranchID = '...' AND BatNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn PDA",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_SalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn bán",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_SellOutLevelOneDetail",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết sell out cấp 1",
+        "where": "BranchID = '...' AND BatNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_SellOutLevelOneHeader",
+        "role": "Bảng chi tiết",
+        "desc": "Sell out cấp 1 — header",
+        "where": "BranchID = '...' AND BatNbr = '...'"
+      },
+      {
+        "name": "OM_SellOutLevelTwoDetailUnUsed",
+        "role": "Bảng chi tiết",
+        "desc": "Dòng sell out cấp 2 chưa dùng",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_SellOutLevelOneGenMonth",
+        "role": "Bảng chi tiết",
+        "desc": "Tháng đã sinh sell out",
+        "where": ""
+      },
+      {
+        "name": "OM_SellOutLevelTwoItemSite",
+        "role": "Bảng chi tiết",
+        "desc": "Tồn / bán theo HCP cấp 2",
+        "where": "BranchID = '...' AND HCPID = '...' AND OrderNbr = '...' AND InvtID = '...' AND Month = '...'"
+      },
+      {
+        "name": "OM_Master_AutoSellOutBatchNumber",
+        "role": "Danh mục",
+        "desc": "Đánh số tự động sell out",
+        "where": "CpnyID = '...'"
+      },
+      {
+        "name": "OM_SalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng bán (BO) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng từ app (PDA) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_452ml",
+    "project": "MerapLion_eSales",
+    "code": "OM11400",
+    "name": "Đơn Hàng Trả Thưởng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_RewardOrd",
+        "role": "Bảng chính",
+        "desc": "Đơn trả thưởng — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_RewardOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết đơn trả thưởng",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_Reward_Customer",
+        "role": "Bảng chi tiết",
+        "desc": "Khách nhận hàng trả thưởng",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND ShipCustID = '...'"
+      },
+      {
+        "name": "OM_TDisplayCpny",
+        "role": "Bảng chi tiết",
+        "desc": "NPP áp dụng CTTB",
+        "where": "DisplayID = '...' AND CpnyID = '...' AND State = '...'"
+      },
+      {
+        "name": "OM_Reward_LotTrans",
+        "role": "Bảng chi tiết",
+        "desc": "Lô / hạn dùng đơn trả thưởng",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LotSerNbr = '...' AND OMLineRef = '...'"
+      },
+      {
+        "name": "OM_SlsPriceCpny",
+        "role": "Bảng chi tiết",
+        "desc": "NPP áp dụng bảng giá",
+        "where": "PriceID = '...' AND CpnyID = '...' AND State = '...'"
+      },
+      {
+        "name": "OM_TDisplay",
+        "role": "Danh mục",
+        "desc": "Chương trình trưng bày — header",
+        "where": "DisplayID = '...'"
+      },
+      {
+        "name": "OM_APIViettelSecretKey",
+        "role": "Danh mục",
+        "desc": "Khóa API hóa đơn điện tử Viettel theo NPP",
+        "where": "BranchID = '...' AND BatNbr = '...'"
+      },
+      {
+        "name": "OM_CloseDisplay",
+        "role": "Khác",
+        "desc": "Chốt kỳ trưng bày",
+        "where": "DisplayID = '...' AND PeriodID = '...'"
+      },
+      {
+        "name": "OM_TDisplayReward",
+        "role": "Khác",
+        "desc": "Thưởng trưng bày theo khách / kỳ",
+        "where": "BranchID = '...' AND DisplayID = '...' AND PeriodID = '...' AND LevelID = '...' AND CustID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_SalesPrice",
+        "role": "Khác",
+        "desc": "Giá bán theo mặt hàng / đơn vị",
+        "where": "PriceID = '...' AND InvtID = '...' AND SlsUnit = '...'"
+      },
+      {
+        "name": "OM_SalesPriceHeader",
+        "role": "Khác",
+        "desc": "Bảng giá bán — header",
+        "where": "PriceID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_e9cxq",
+    "project": "MerapLion_eSales",
+    "code": "OM11500",
+    "name": "Phân Bổ Thu Nợ",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_DebtAllocate",
+        "role": "Bảng chính",
+        "desc": "Phiếu phân bổ thu nợ — header",
+        "where": "BranchID = '...' AND BatNbr = '...'"
+      },
+      {
+        "name": "OM_DebtAllocateDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết phân bổ thu nợ theo đơn / hóa đơn",
+        "where": "BranchID = '...' AND ARBatNbr = '...' AND OrderNbr = '...' AND InvcNbr = '...' AND BatNbr = '...'"
+      },
+      {
+        "name": "OM_SetupNumber",
+        "role": "Danh mục",
+        "desc": "Cấu hình đánh số theo NPP",
+        "where": "BranchID = '...' AND Type = '...'"
+      },
+      {
+        "name": "OM_SalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng bán (BO) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "Batch",
+        "role": "Khác",
+        "desc": "Batch sinh từ đơn bán: Module = IN (xuất kho, IN10200) hoặc AR (công nợ, AR10100)",
+        "where": "BranchID = '...' AND BatNbr = '...' AND Module IN ('IN','AR')"
+      },
+      {
+        "name": "OM_DebtAllocateHistory",
+        "role": "Khác",
+        "desc": "Lịch sử phân bổ thu nợ",
+        "where": "Idx = '...'"
+      },
+      {
+        "name": "OM_DeliHistory",
+        "role": "Khác",
+        "desc": "Lịch sử giao hàng",
+        "where": "BranchID = '...' AND BatNbr = '...' AND OrderNbr = '...' AND ShipDate = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_zzdve",
+    "project": "MerapLion_eSales",
+    "code": "OM11600",
+    "name": "Danh Mục Trúng Thầu",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_ContractorHeader",
+        "role": "Bảng chính",
+        "desc": "Danh mục trúng thầu — header",
+        "where": "ID = '...'"
+      },
+      {
+        "name": "OM_ContractorDet",
+        "role": "Bảng chi tiết",
+        "desc": "Mặt hàng trúng thầu",
+        "where": "ID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_ContractInvtAllocate",
+        "role": "Bảng chi tiết",
+        "desc": "Phân bổ mặt hàng trúng thầu theo khách",
+        "where": "ID = '...' AND CustID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_Contractor",
+        "role": "Bảng chi tiết",
+        "desc": "Nhà thầu",
+        "where": "Code = '...'"
+      },
+      {
+        "name": "OM_Investor",
+        "role": "Danh mục",
+        "desc": "Chủ đầu tư",
+        "where": "InvestorID = '...'"
+      },
+      {
+        "name": "OM_OriginalContract",
+        "role": "Danh mục",
+        "desc": "Hợp đồng gốc",
+        "where": "ContractID = '...'"
+      },
+      {
+        "name": "OM_MasterUnitType",
+        "role": "Danh mục",
+        "desc": "Danh mục loại đơn vị",
+        "where": "Code = '...'"
+      },
+      {
+        "name": "OM_AppendixOriginalContract",
+        "role": "Khác",
+        "desc": "Phụ lục hợp đồng gốc",
+        "where": "ID = '...' AND AppendixContractID = '...' AND ContractID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_AppendixPriceContractor",
+        "role": "Khác",
+        "desc": "Phụ lục giá trúng thầu",
+        "where": "ID = '...' AND AppendixContractID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_AppendixPriceContractorHeader",
+        "role": "Khác",
+        "desc": "Phụ lục giá trúng thầu — header",
+        "where": "ID = '...' AND AppendixID = '...' AND AppendixContractID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_fv96s",
+    "project": "MerapLion_eSales",
+    "code": "OM20360",
+    "name": "Khởi Tạo Tuyến Giao Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_DeliveryRoute",
+        "role": "Bảng chính",
+        "desc": "Tuyến giao hàng",
+        "where": "RouteID = '...'"
+      },
+      {
+        "name": "OM_DeliveryRouteDet",
+        "role": "Bảng chi tiết",
+        "desc": "Địa bàn (tỉnh/huyện/xã) của tuyến giao",
+        "where": "RouteID = '...' AND State = '...' AND District = '...' AND Ward = '...'"
+      },
+      {
+        "name": "OM_DeliveryRouteShipper",
+        "role": "Bảng chi tiết",
+        "desc": "Gán tuyến giao cho NVGH",
+        "where": "BranchID = '...' AND RouteID = '...'"
+      },
+      {
+        "name": "OM_DeliveryRouteType",
+        "role": "Danh mục",
+        "desc": "Loại tuyến giao",
+        "where": "Code = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_9s9f2",
+    "project": "MerapLion_eSales",
+    "code": "OM20370",
+    "name": "Thiết Lập Tuyến Giao Hàng Cho NVGH",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_DeliveryRouteShipper",
+        "role": "Bảng chính",
+        "desc": "Gán tuyến giao cho NVGH",
+        "where": "BranchID = '...' AND RouteID = '...'"
+      },
+      {
+        "name": "OM_DeliveryRouteDet",
+        "role": "Bảng chi tiết",
+        "desc": "Địa bàn (tỉnh/huyện/xã) của tuyến giao",
+        "where": "RouteID = '...' AND State = '...' AND District = '...' AND Ward = '...'"
+      },
+      {
+        "name": "OM_DeliveryRoute",
+        "role": "Khác",
+        "desc": "Tuyến giao hàng",
+        "where": "RouteID = '...'"
+      },
+      {
+        "name": "OM_DeliveryRouteShipperHis",
+        "role": "Khác",
+        "desc": "Lịch sử gán tuyến giao",
+        "where": "ID = '...'"
+      },
+      {
+        "name": "OM_MasterRouteHistory",
+        "role": "Khác",
+        "desc": "Danh mục loại lịch sử tuyến",
+        "where": "Code = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_dn2ph",
+    "project": "MerapLion_eSales",
+    "code": "OM20400",
+    "name": "Kiểu Đơn Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_OrderType",
+        "role": "Bảng chính",
+        "desc": "Danh mục kiểu đơn hàng",
+        "where": "OrderType = '...'"
+      },
+      {
+        "name": "OM_DocNumbering",
+        "role": "Danh mục",
+        "desc": "Đánh số chứng từ theo kiểu đơn / NPP",
+        "where": "BranchID = '...' AND OrderType = '...'"
+      },
+      {
+        "name": "OM_MasterEditSlsPrice",
+        "role": "Danh mục",
+        "desc": "Danh mục cho phép sửa giá",
+        "where": "Code = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_gz32b",
+    "project": "MerapLion_eSales",
+    "code": "OM20500",
+    "name": "Duyệt Đơn Bán Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_PDASalesOrd",
+        "role": "Bảng chính",
+        "desc": "Đơn hàng từ app (PDA) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn PDA",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_SalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn bán",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_PDALotTrans",
+        "role": "Bảng chi tiết",
+        "desc": "Lô / hạn dùng của dòng đơn PDA",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LotSerNbr = '...' AND OMLineRef = '...' AND RefOrderNbr = '...'"
+      },
+      {
+        "name": "OM_OrderType",
+        "role": "Danh mục",
+        "desc": "Danh mục kiểu đơn hàng",
+        "where": "OrderType = '...'"
+      },
+      {
+        "name": "OM_OriginalContract",
+        "role": "Danh mục",
+        "desc": "Hợp đồng gốc",
+        "where": "ContractID = '...'"
+      },
+      {
+        "name": "OM_DiscSeq",
+        "role": "Danh mục",
+        "desc": "Nội dung (Seq) của chương trình KM",
+        "where": "DiscID = '...' AND DiscSeq = '...'"
+      },
+      {
+        "name": "OM_SalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng bán (BO) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_PDAOrdDisc",
+        "role": "Khác",
+        "desc": "Khuyến mãi áp dụng trên đơn PDA",
+        "where": "BranchID = '...' AND DiscID = '...' AND DiscSeq = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_OrdDisc",
+        "role": "Khác",
+        "desc": "Khuyến mãi áp dụng trên đơn bán",
+        "where": "BranchID = '...' AND DiscID = '...' AND DiscSeq = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_LogCalTax",
+        "role": "Khác",
+        "desc": "Log tính thuế đơn hàng",
+        "where": ""
+      },
+      {
+        "name": "OM_DistProgram",
+        "role": "Khác",
+        "desc": "Chương trình phân bổ hàng hóa",
+        "where": "CpnyID = '...' AND ProgramID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_lyg54",
+    "project": "MerapLion_eSales",
+    "code": "OM20510",
+    "name": "Lập Kế Hoạch Làm Việc Cho Trade",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_WorkSchedule",
+        "role": "Bảng chính",
+        "desc": "Kế hoạch làm việc trade — header",
+        "where": "WorkScheduleID = '...'"
+      },
+      {
+        "name": "OM_WorkScheduleCustomer",
+        "role": "Bảng chi tiết",
+        "desc": "Khách hàng trong kế hoạch",
+        "where": "WorkScheduleID = '...' AND State = '...' AND District = '...' AND CustID = '...'"
+      },
+      {
+        "name": "OM_WorkScheduleDistict",
+        "role": "Bảng chi tiết",
+        "desc": "Địa bàn trong kế hoạch",
+        "where": "WorkScheduleID = '...' AND State = '...' AND District = '...'"
+      },
+      {
+        "name": "OM_WorkSchedule_Imp",
+        "role": "Khác",
+        "desc": "Dữ liệu import kế hoạch",
+        "where": "ScheduleID = '...' AND SessionKey = '...' AND ExcelRow = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_yj5nr",
+    "project": "MerapLion_eSales",
+    "code": "OM20650",
+    "name": "Hình Mẫu Khách Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_SampleImages",
+        "role": "Bảng chính",
+        "desc": "Hình mẫu khách hàng",
+        "where": "ImgTypeID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_hztwy",
+    "project": "MerapLion_eSales",
+    "code": "OM20700",
+    "name": "Giá Bán",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_SalesPriceHeader",
+        "role": "Bảng chính",
+        "desc": "Bảng giá bán — header",
+        "where": "PriceID = '...'"
+      },
+      {
+        "name": "OM_SalesPriceChannel",
+        "role": "Bảng chi tiết",
+        "desc": "Kênh áp dụng bảng giá",
+        "where": "Channel = '...' AND PriceID = '...'"
+      },
+      {
+        "name": "OM_SalesPriceCust",
+        "role": "Bảng chi tiết",
+        "desc": "Khách áp dụng bảng giá",
+        "where": "PriceID = '...' AND CustID = '...' AND BranchID = '...'"
+      },
+      {
+        "name": "OM_SalesPriceCustClass",
+        "role": "Bảng chi tiết",
+        "desc": "Nhóm khách áp dụng bảng giá",
+        "where": "CustClassID = '...' AND PriceID = '...'"
+      },
+      {
+        "name": "OM_SlsPriceCpny",
+        "role": "Bảng chi tiết",
+        "desc": "NPP áp dụng bảng giá",
+        "where": "PriceID = '...' AND CpnyID = '...' AND State = '...'"
+      },
+      {
+        "name": "OM_SalesPrice",
+        "role": "Bảng chi tiết",
+        "desc": "Giá bán theo mặt hàng / đơn vị",
+        "where": "PriceID = '...' AND InvtID = '...' AND SlsUnit = '...'"
+      },
+      {
+        "name": "OM_PriceClass",
+        "role": "Danh mục",
+        "desc": "Nhóm giá / nhóm hàng KM",
+        "where": "PriceClassID = '...' AND PriceClassType = '...'"
+      },
+      {
+        "name": "SI_ApprovalFlowStatus",
+        "role": "Khác",
+        "desc": "Luồng duyệt — trạng thái",
+        "where": "AppFolID = 'OM20700'"
+      },
+      {
+        "name": "SI_ApprovalFlowHandle",
+        "role": "Khác",
+        "desc": "Luồng duyệt — thao tác",
+        "where": "AppFolID = 'OM20700'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_yn5da",
+    "project": "MerapLion_eSales",
+    "code": "OM20780",
+    "name": "Phân Bổ Hàng Hóa",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_DistProgram",
+        "role": "Bảng chính",
+        "desc": "Chương trình phân bổ hàng hóa",
+        "where": "CpnyID = '...' AND ProgramID = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn PDA",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_DistSales",
+        "role": "Khác",
+        "desc": "Phân bổ theo nhân viên",
+        "where": "CpnyID = '...' AND ProgramID = '...' AND InvtID = '...' AND SlsperID = '...'"
+      },
+      {
+        "name": "OM_DistProduct",
+        "role": "Khác",
+        "desc": "Mặt hàng phân bổ",
+        "where": "CpnyID = '...' AND ProgramID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng từ app (PDA) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_4md3b",
+    "project": "MerapLion_eSales",
+    "code": "OM20790",
+    "name": "Loại Hợp Đồng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_ContractType",
+        "role": "Bảng chính",
+        "desc": "Loại hợp đồng",
+        "where": "ContractID = '...'"
+      },
+      {
+        "name": "OM_OriginalContract",
+        "role": "Danh mục",
+        "desc": "Hợp đồng gốc",
+        "where": "ContractID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_ewv5w",
+    "project": "MerapLion_eSales",
+    "code": "OM20810",
+    "name": "Danh Mục Hợp Đồng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_OriginalContract",
+        "role": "Bảng chính",
+        "desc": "Hợp đồng gốc",
+        "where": "ContractID = '...'"
+      },
+      {
+        "name": "OM_AppendixContractDet",
+        "role": "Bảng chi tiết",
+        "desc": "Mặt hàng phụ lục hợp đồng",
+        "where": "ContractID = '...' AND InvtID = '...' AND AppendixID = '...'"
+      },
+      {
+        "name": "OM_GenContractDet",
+        "role": "Bảng chi tiết",
+        "desc": "Mặt hàng hợp đồng",
+        "where": "ContractID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_OriginalContractDet",
+        "role": "Bảng chi tiết",
+        "desc": "Mặt hàng hợp đồng gốc",
+        "where": "ContractID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_ContractForm",
+        "role": "Danh mục",
+        "desc": "Hình thức hợp đồng",
+        "where": "FormID = '...'"
+      },
+      {
+        "name": "OM_ContractType",
+        "role": "Danh mục",
+        "desc": "Loại hợp đồng",
+        "where": "ContractID = '...'"
+      },
+      {
+        "name": "OM_MasterAppendixType",
+        "role": "Danh mục",
+        "desc": "Danh mục loại phụ lục",
+        "where": ""
+      },
+      {
+        "name": "OM_AppendixContract",
+        "role": "Khác",
+        "desc": "Phụ lục hợp đồng",
+        "where": "AppendixID = '...'"
+      },
+      {
+        "name": "OM_GenContract",
+        "role": "Khác",
+        "desc": "Hợp đồng (sinh từ hợp đồng gốc)",
+        "where": "ContractID = '...'"
+      },
+      {
+        "name": "OM_ContractorHeader",
+        "role": "Khác",
+        "desc": "Danh mục trúng thầu — header",
+        "where": "ID = '...'"
+      },
+      {
+        "name": "OM_GenContractHist",
+        "role": "Khác",
+        "desc": "Lịch sử hợp đồng",
+        "where": "Index = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_28gm2",
+    "project": "MerapLion_eSales",
+    "code": "OM20811",
+    "name": "Danh Mục Hợp Đồng (chi tiết)",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_OriginalContract",
+        "role": "Bảng chính",
+        "desc": "Hợp đồng gốc",
+        "where": "ContractID = '...'"
+      },
+      {
+        "name": "OM_AppendixContractDet",
+        "role": "Bảng chi tiết",
+        "desc": "Mặt hàng phụ lục hợp đồng",
+        "where": "ContractID = '...' AND InvtID = '...' AND AppendixID = '...'"
+      },
+      {
+        "name": "OM_OriginalContractDet",
+        "role": "Bảng chi tiết",
+        "desc": "Mặt hàng hợp đồng gốc",
+        "where": "ContractID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_ContractInvtAllocate",
+        "role": "Bảng chi tiết",
+        "desc": "Phân bổ mặt hàng trúng thầu theo khách",
+        "where": "ID = '...' AND CustID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_GenContractDet",
+        "role": "Bảng chi tiết",
+        "desc": "Mặt hàng hợp đồng",
+        "where": "ContractID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn PDA",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_Investor",
+        "role": "Danh mục",
+        "desc": "Chủ đầu tư",
+        "where": "InvestorID = '...'"
+      },
+      {
+        "name": "OM_ContractorHeader",
+        "role": "Khác",
+        "desc": "Danh mục trúng thầu — header",
+        "where": "ID = '...'"
+      },
+      {
+        "name": "OM_AppendixContract",
+        "role": "Khác",
+        "desc": "Phụ lục hợp đồng",
+        "where": "AppendixID = '...'"
+      },
+      {
+        "name": "OM_AppendixOriginalContract",
+        "role": "Khác",
+        "desc": "Phụ lục hợp đồng gốc",
+        "where": "ID = '...' AND AppendixContractID = '...' AND ContractID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_AppendixPriceContractor",
+        "role": "Khác",
+        "desc": "Phụ lục giá trúng thầu",
+        "where": "ID = '...' AND AppendixContractID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng từ app (PDA) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_3c4bo",
+    "project": "MerapLion_eSales",
+    "code": "OM20820",
+    "name": "Danh Mục Thư Viện",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_LibraryAlbum",
+        "role": "Bảng chính",
+        "desc": "Album thư viện",
+        "where": "AlbumID = '...'"
+      },
+      {
+        "name": "OM_LibraryCategory",
+        "role": "Khác",
+        "desc": "Hình ảnh trong album",
+        "where": "AlbumID = '...' AND ImageID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_5gg8t",
+    "project": "MerapLion_eSales",
+    "code": "OM20830",
+    "name": "Hình Thức Hợp Đồng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_ContractForm",
+        "role": "Bảng chính",
+        "desc": "Hình thức hợp đồng",
+        "where": "FormID = '...'"
+      },
+      {
+        "name": "OM_OriginalContract",
+        "role": "Danh mục",
+        "desc": "Hợp đồng gốc",
+        "where": "ContractID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_jdvm1",
+    "project": "MerapLion_eSales",
+    "code": "OM20840",
+    "name": "Danh Mục Chủ Đầu Tư",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_Investor",
+        "role": "Bảng chính",
+        "desc": "Chủ đầu tư",
+        "where": "InvestorID = '...'"
+      },
+      {
+        "name": "OM_ContractorHeader",
+        "role": "Khác",
+        "desc": "Danh mục trúng thầu — header",
+        "where": "ID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_htn59",
+    "project": "MerapLion_eSales",
+    "code": "OM20870",
+    "name": "Chốt Tích Lũy",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_AccumulatedResult",
+        "role": "Bảng chính",
+        "desc": "Kết quả chốt tích lũy theo khách",
+        "where": "LineRef = '...' AND AccumulateID = '...' AND BranchID = '...' AND CustID = '...'"
+      },
+      {
+        "name": "OM_AccumulatedInvtSetup",
+        "role": "Bảng chi tiết",
+        "desc": "Cài đặt mặt hàng tính tích lũy",
+        "where": "AccumulateID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_AccumulatedResultDet",
+        "role": "Bảng chi tiết",
+        "desc": "Đơn hàng trong kết quả tích lũy",
+        "where": "LineRef = '...' AND AccumulateID = '...' AND BranchID = '...' AND CustID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn PDA",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_AccumulatedLevel",
+        "role": "Bảng chi tiết",
+        "desc": "Mức tích lũy",
+        "where": "AccumulateID = '...' AND LevelID = '...'"
+      },
+      {
+        "name": "OM_Accumulated",
+        "role": "Danh mục",
+        "desc": "Chương trình tích lũy — header",
+        "where": "AccumulateID = '...'"
+      },
+      {
+        "name": "OM_OrderType",
+        "role": "Danh mục",
+        "desc": "Danh mục kiểu đơn hàng",
+        "where": "OrderType = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng từ app (PDA) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_SalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng bán (BO) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_AccumulatedOrderApproval",
+        "role": "Khác",
+        "desc": "Đơn hàng được duyệt tính tích lũy",
+        "where": "AccumulateID = '...' AND BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_AccumulatedRegis",
+        "role": "Khác",
+        "desc": "Khách đăng ký tích lũy",
+        "where": "BranchID = '...' AND SlsperID = '...' AND CustID = '...' AND AccumulateID = '...'"
+      },
+      {
+        "name": "OM_PDAOrdDisc",
+        "role": "Khác",
+        "desc": "Khuyến mãi áp dụng trên đơn PDA",
+        "where": "BranchID = '...' AND DiscID = '...' AND DiscSeq = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_0osd8",
+    "project": "MerapLion_eSales",
+    "code": "OM20880",
+    "name": "Duyệt Kế Hoạch Làm Việc Của TDV Kênh ETC",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_WorkingPlanETC",
+        "role": "Bảng chính",
+        "desc": "Kế hoạch làm việc TDV ETC",
+        "where": "SlsperID = '...' AND TurnID = '...'"
+      },
+      {
+        "name": "OM_WorkingPlanETCDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết kế hoạch TDV ETC",
+        "where": "CustID = '...' AND SlsperID = '...' AND HCPID = '...' AND TurnID = '...' AND VisitDate = '...'"
+      },
+      {
+        "name": "OM_ObjectCall",
+        "role": "Danh mục",
+        "desc": "Danh mục mục tiêu call",
+        "where": "CallID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_k1sq2",
+    "project": "MerapLion_eSales",
+    "code": "OM20890",
+    "name": "Sổ Xuất Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_IssueBook",
+        "role": "Bảng chính",
+        "desc": "Sổ xuất hàng — header",
+        "where": "BranchID = '...' AND BatNbr = '...'"
+      },
+      {
+        "name": "OM_IssueBookdet",
+        "role": "Bảng chi tiết",
+        "desc": "Đơn hàng trong sổ xuất",
+        "where": "BranchID = '...' AND BatNbr = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn PDA",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_SalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn bán",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_MasterDeliveryTime",
+        "role": "Danh mục",
+        "desc": "Danh mục thời gian giao",
+        "where": "Code = '...'"
+      },
+      {
+        "name": "OM_OrderType",
+        "role": "Danh mục",
+        "desc": "Danh mục kiểu đơn hàng",
+        "where": "OrderType = '...'"
+      },
+      {
+        "name": "OM_APIViettelSecretKey",
+        "role": "Danh mục",
+        "desc": "Khóa API hóa đơn điện tử Viettel theo NPP",
+        "where": "BranchID = '...' AND BatNbr = '...'"
+      },
+      {
+        "name": "OM_CircularEffect",
+        "role": "Danh mục",
+        "desc": "Thông tư hóa đơn có hiệu lực theo NPP",
+        "where": "BranchID = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng từ app (PDA) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_SalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng bán (BO) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_Delivery",
+        "role": "Khác",
+        "desc": "Lần giao hàng của đơn",
+        "where": "BranchID = '...' AND BatNbr = '...' AND OrderNbr = '...' AND Sequence = '...'"
+      },
+      {
+        "name": "OM_RewardOrd",
+        "role": "Khác",
+        "desc": "Đơn trả thưởng — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_3rkc9",
+    "project": "MerapLion_eSales",
+    "code": "OM20940",
+    "name": "Danh Mục Mục Tiêu Call",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_ObjectCall",
+        "role": "Bảng chính",
+        "desc": "Danh mục mục tiêu call",
+        "where": "CallID = '...'"
+      },
+      {
+        "name": "OM_WorkingPlanETCDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết kế hoạch TDV ETC",
+        "where": "CustID = '...' AND SlsperID = '...' AND HCPID = '...' AND TurnID = '...' AND VisitDate = '...'"
+      },
+      {
+        "name": "OM_CallingAssessETC",
+        "role": "Khác",
+        "desc": "Đánh giá cuộc gọi ETC",
+        "where": "SlsperID = '...' AND CustID = '...' AND HCPID = '...' AND VisitDate = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_xaaq2",
+    "project": "MerapLion_eSales",
+    "code": "OM21100",
+    "name": "Khởi Tạo Chương Trình Khuyến Mãi",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_Discount",
+        "role": "Bảng chính",
+        "desc": "Chương trình khuyến mãi — header",
+        "where": "DiscID = '...'"
+      },
+      {
+        "name": "OM_DiscItem",
+        "role": "Bảng chi tiết",
+        "desc": "Mặt hàng mua của KM",
+        "where": "DiscID = '...' AND DiscSeq = '...' AND InvtID = '...' AND SiteID = '...'"
+      },
+      {
+        "name": "OM_DiscCpny",
+        "role": "Bảng chi tiết",
+        "desc": "NPP được áp dụng KM",
+        "where": "DiscID = '...' AND DiscSeq = '...' AND CpnyID = '...' AND State = '...'"
+      },
+      {
+        "name": "OM_DiscBreak",
+        "role": "Bảng chi tiết",
+        "desc": "Mức (break) KM",
+        "where": "DiscID = '...' AND DiscSeq = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_DiscFreeItem",
+        "role": "Bảng chi tiết",
+        "desc": "Hàng tặng theo mức KM",
+        "where": "DiscID = '...' AND DiscSeq = '...' AND LineRef = '...' AND FreeItemID = '...'"
+      },
+      {
+        "name": "OM_PPCpny",
+        "role": "Bảng chi tiết",
+        "desc": "Ngân sách KM phân bổ theo NPP",
+        "where": "BudgetID = '...' AND CpnyID = '...' AND FreeItemID = '...'"
+      },
+      {
+        "name": "OM_DiscFreeItemSite",
+        "role": "Bảng chi tiết",
+        "desc": "Kho xuất hàng tặng KM",
+        "where": "DiscID = '...' AND DiscSeq = '...' AND LineRef = '...' AND InvtID = '...' AND SiteID = '...'"
+      },
+      {
+        "name": "OM_DiscSeq",
+        "role": "Danh mục",
+        "desc": "Nội dung (Seq) của chương trình KM",
+        "where": "DiscID = '...' AND DiscSeq = '...'"
+      },
+      {
+        "name": "OM_Accumulated",
+        "role": "Danh mục",
+        "desc": "Chương trình tích lũy — header",
+        "where": "AccumulateID = '...'"
+      },
+      {
+        "name": "OM_PriceClass",
+        "role": "Danh mục",
+        "desc": "Nhóm giá / nhóm hàng KM",
+        "where": "PriceClassID = '...' AND PriceClassType = '...'"
+      },
+      {
+        "name": "OM_DiscDescr",
+        "role": "Khác",
+        "desc": "KM tay / chiết khấu thủ công",
+        "where": "DiscCode = '...'"
+      },
+      {
+        "name": "OM_PPBudget",
+        "role": "Khác",
+        "desc": "Ngân sách KM",
+        "where": "BudgetID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_720h1",
+    "project": "MerapLion_eSales",
+    "code": "OM21200",
+    "name": "Thông Tin Mặc Định Cho Người Dùng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_UserDefault",
+        "role": "Bảng chính",
+        "desc": "Thông tin mặc định của người dùng (NPP, kho, kiểu đơn)",
+        "where": "UserID = '...' AND DfltBranchID = '...'"
+      },
+      {
+        "name": "OM_OrderType",
+        "role": "Danh mục",
+        "desc": "Danh mục kiểu đơn hàng",
+        "where": "OrderType = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_qlqtn",
+    "project": "MerapLion_eSales",
+    "code": "OM21600",
+    "name": "Tuyến Bán Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_SalesRoute",
+        "role": "Bảng chính",
+        "desc": "Tuyến bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_SalesRouteMaster",
+        "role": "Bảng chi tiết",
+        "desc": "MCP — khách hàng theo tuyến / nhân viên",
+        "where": "PJPID = '...' AND SalesRouteID = '...' AND CustID = '...' AND SlsPerID = '...' AND BranchID = '...'"
+      },
+      {
+        "name": "OM_BranchRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến công ty / chi nhánh",
+        "where": "BranchRouteID = '...'"
+      },
+      {
+        "name": "OM_RouteType",
+        "role": "Danh mục",
+        "desc": "Loại tuyến",
+        "where": "Code = '...'"
+      },
+      {
+        "name": "OM_SalespersonRoute",
+        "role": "Danh mục",
+        "desc": "Gán tuyến cho nhân viên bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_SalesRouteHistory",
+        "role": "Khác",
+        "desc": "Lịch sử thay đổi tuyến",
+        "where": "SalesRouteID = '...' AND ID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_jjal1",
+    "project": "MerapLion_eSales",
+    "code": "OM22001",
+    "name": "Khởi Tạo Chương Trình Trưng Bày",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_TDisplay",
+        "role": "Bảng chính",
+        "desc": "Chương trình trưng bày — header",
+        "where": "DisplayID = '...'"
+      },
+      {
+        "name": "OM_TDisplayCpny",
+        "role": "Bảng chi tiết",
+        "desc": "NPP áp dụng CTTB",
+        "where": "DisplayID = '...' AND CpnyID = '...' AND State = '...'"
+      },
+      {
+        "name": "OM_TDisplayEvaluationCriteria",
+        "role": "Bảng chi tiết",
+        "desc": "Tiêu chí đánh giá CTTB",
+        "where": "DisplayID = '...' AND CriteriaID = '...'"
+      },
+      {
+        "name": "OM_TDisplayEvaluationCriteriaDetail",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết tiêu chí đánh giá",
+        "where": "DisplayID = '...' AND CriteriaID = '...' AND ID = '...'"
+      },
+      {
+        "name": "OM_TDisplayInvt",
+        "role": "Bảng chi tiết",
+        "desc": "Mặt hàng trưng bày theo mức",
+        "where": "DisplayID = '...' AND LevelID = '...' AND DisplayType = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_TDisplayLevel",
+        "role": "Bảng chi tiết",
+        "desc": "Mức trưng bày",
+        "where": "DisplayID = '...' AND LevelID = '...' AND DisplayType = '...'"
+      },
+      {
+        "name": "OM_TDisplayLocation",
+        "role": "Bảng chi tiết",
+        "desc": "Vị trí trưng bày",
+        "where": "DisplayID = '...' AND LocationID = '...'"
+      },
+      {
+        "name": "OM_TDisplaySetup",
+        "role": "Bảng chi tiết",
+        "desc": "Cài đặt mặt hàng CTTB",
+        "where": "DisplayID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_TDisplayCpnyAlloctionLimit",
+        "role": "Bảng chi tiết",
+        "desc": "Hạn mức phân bổ CTTB theo NPP",
+        "where": "DisplayID = '...' AND LevelID = '...' AND CpnyID = '...'"
+      },
+      {
+        "name": "OM_TDisplayCycle",
+        "role": "Bảng chi tiết",
+        "desc": "Kỳ đánh giá CTTB",
+        "where": "DisplayID = '...' AND CycleID = '...'"
+      },
+      {
+        "name": "OM_TDisplayInvtSales",
+        "role": "Bảng chi tiết",
+        "desc": "Mặt hàng doanh số CTTB",
+        "where": "DisplayID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_BranchRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến công ty / chi nhánh",
+        "where": "BranchRouteID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_wtip1",
+    "project": "MerapLion_eSales",
+    "code": "OM22002",
+    "name": "Đăng Ký Tham Gia CTTB",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_TDisplayCustomer",
+        "role": "Bảng chính",
+        "desc": "Khách hàng đăng ký CTTB",
+        "where": "BranchID = '...' AND SlsperID = '...' AND CustID = '...' AND DisplayID = '...'"
+      },
+      {
+        "name": "OM_TDisplayCpny",
+        "role": "Bảng chi tiết",
+        "desc": "NPP áp dụng CTTB",
+        "where": "DisplayID = '...' AND CpnyID = '...' AND State = '...'"
+      },
+      {
+        "name": "OM_TDisplayLevel",
+        "role": "Bảng chi tiết",
+        "desc": "Mức trưng bày",
+        "where": "DisplayID = '...' AND LevelID = '...' AND DisplayType = '...'"
+      },
+      {
+        "name": "OM_TBonusCustomer",
+        "role": "Bảng chi tiết",
+        "desc": "Khách tham gia chương trình thưởng",
+        "where": "BranchID = '...' AND SlsperID = '...' AND CustID = '...' AND BonusID = '...' AND ClassID = '...'"
+      },
+      {
+        "name": "OM_BranchRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến công ty / chi nhánh",
+        "where": "BranchRouteID = '...'"
+      },
+      {
+        "name": "OM_SalespersonRoute",
+        "role": "Danh mục",
+        "desc": "Gán tuyến cho nhân viên bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_SalesRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_TDisplay",
+        "role": "Danh mục",
+        "desc": "Chương trình trưng bày — header",
+        "where": "DisplayID = '...'"
+      },
+      {
+        "name": "OM_TBonus",
+        "role": "Khác",
+        "desc": "Chương trình thưởng",
+        "where": "BonusID = '...'"
+      },
+      {
+        "name": "OM_TDisplayLocation",
+        "role": "Khác",
+        "desc": "Vị trí trưng bày",
+        "where": "DisplayID = '...' AND LocationID = '...'"
+      },
+      {
+        "name": "OM_TBonusKA",
+        "role": "Khác",
+        "desc": "Mức thưởng KA",
+        "where": "LevelNbr = '...' AND BonusID = '...' AND KaType = '...'"
+      },
+      {
+        "name": "OM_TDisplayCustomerHist",
+        "role": "Khác",
+        "desc": "Lịch sử đăng ký CTTB",
+        "where": "ID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_55jrh",
+    "project": "MerapLion_eSales",
+    "code": "OM22003",
+    "name": "Đánh Giá Chương Trình Trưng Bày",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_TDisplayCustomerApproveDetail",
+        "role": "Bảng chính",
+        "desc": "Kết quả đánh giá trưng bày theo kỳ",
+        "where": "BranchID = '...' AND CustID = '...' AND DisplayID = '...' AND No = '...' AND SlsperID = '...' AND PeriodID = '...'"
+      },
+      {
+        "name": "OM_TDisplayCpny",
+        "role": "Bảng chi tiết",
+        "desc": "NPP áp dụng CTTB",
+        "where": "DisplayID = '...' AND CpnyID = '...' AND State = '...'"
+      },
+      {
+        "name": "OM_TDisplayCustomer",
+        "role": "Bảng chi tiết",
+        "desc": "Khách hàng đăng ký CTTB",
+        "where": "BranchID = '...' AND SlsperID = '...' AND CustID = '...' AND DisplayID = '...'"
+      },
+      {
+        "name": "OM_TDisplayLevel",
+        "role": "Bảng chi tiết",
+        "desc": "Mức trưng bày",
+        "where": "DisplayID = '...' AND LevelID = '...' AND DisplayType = '...'"
+      },
+      {
+        "name": "OM_TDisplay",
+        "role": "Danh mục",
+        "desc": "Chương trình trưng bày — header",
+        "where": "DisplayID = '...'"
+      },
+      {
+        "name": "OM_BranchRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến công ty / chi nhánh",
+        "where": "BranchRouteID = '...'"
+      },
+      {
+        "name": "OM_OrderType",
+        "role": "Danh mục",
+        "desc": "Danh mục kiểu đơn hàng",
+        "where": "OrderType = '...'"
+      },
+      {
+        "name": "OM_CloseDisplay",
+        "role": "Khác",
+        "desc": "Chốt kỳ trưng bày",
+        "where": "DisplayID = '...' AND PeriodID = '...'"
+      },
+      {
+        "name": "PPC_DisplayRemarkImage",
+        "role": "Khác",
+        "desc": "Hình ảnh trưng bày từ app",
+        "where": "BranchID = '...' AND CustID = '...' AND DisplayID = '...' AND VisitDate = '...' AND ImageID = '...' AND ImageName = '...'"
+      },
+      {
+        "name": "OM_TDisplayCycle",
+        "role": "Khác",
+        "desc": "Kỳ đánh giá CTTB",
+        "where": "DisplayID = '...' AND CycleID = '...'"
+      },
+      {
+        "name": "PPC_DisplayRemark",
+        "role": "Khác",
+        "desc": "Ghi nhận trưng bày từ app",
+        "where": "BranchID = '...' AND CustID = '...' AND DisplayID = '...' AND VisitDate = '...'"
+      },
+      {
+        "name": "OM_TDisplaySetup",
+        "role": "Khác",
+        "desc": "Cài đặt mặt hàng CTTB",
+        "where": "DisplayID = '...' AND InvtID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_6yr24",
+    "project": "MerapLion_eSales",
+    "code": "OM23800",
+    "name": "Tạo Chỉnh Tuyến Bán Hàng Và Khách Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_SalesRouteMaster",
+        "role": "Bảng chính",
+        "desc": "MCP — khách hàng theo tuyến / nhân viên",
+        "where": "PJPID = '...' AND SalesRouteID = '...' AND CustID = '...' AND SlsPerID = '...' AND BranchID = '...'"
+      },
+      {
+        "name": "OM_SalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn bán",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_SalesRouteDet",
+        "role": "Bảng chi tiết",
+        "desc": "Lịch viếng thăm chi tiết theo ngày",
+        "where": "SalesRouteID = '...' AND CustID = '...' AND SlsPerID = '...' AND VisitDate = '...' AND BranchID = '...'"
+      },
+      {
+        "name": "OM_SalespersonRoute",
+        "role": "Danh mục",
+        "desc": "Gán tuyến cho nhân viên bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_BranchRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến công ty / chi nhánh",
+        "where": "BranchRouteID = '...'"
+      },
+      {
+        "name": "OM_SalesRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_WeekOfVisit",
+        "role": "Danh mục",
+        "desc": "Tần suất / tuần viếng thăm",
+        "where": "SlsFreqID = '...' AND WeekofVisit = '...'"
+      },
+      {
+        "name": "OM_SubRoute",
+        "role": "Danh mục",
+        "desc": "Sub-route",
+        "where": "SubRouteID = '...'"
+      },
+      {
+        "name": "OM_SalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng bán (BO) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_AccumulatedRegis",
+        "role": "Khác",
+        "desc": "Khách đăng ký tích lũy",
+        "where": "BranchID = '...' AND SlsperID = '...' AND CustID = '...' AND AccumulateID = '...'"
+      },
+      {
+        "name": "OM_OverlaysMCP",
+        "role": "Khác",
+        "desc": "Vùng vẽ MCP trên bản đồ",
+        "where": "ID = '...'"
+      },
+      {
+        "name": "OM_SALESROUTEMASTERIMPORT",
+        "role": "Khác",
+        "desc": "Dữ liệu import MCP",
+        "where": "ID = '...' AND BranchID = '...' AND PJPID = '...' AND SalesRouteID = '...' AND CustID = '...' AND SlsPerID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_ew3i4",
+    "project": "MerapLion_eSales",
+    "code": "OM23802",
+    "name": "Tạo MCP",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_SalesRouteMaster",
+        "role": "Bảng chính",
+        "desc": "MCP — khách hàng theo tuyến / nhân viên",
+        "where": "PJPID = '...' AND SalesRouteID = '...' AND CustID = '...' AND SlsPerID = '...' AND BranchID = '...'"
+      },
+      {
+        "name": "OM_SalesRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_BranchRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến công ty / chi nhánh",
+        "where": "BranchRouteID = '...'"
+      },
+      {
+        "name": "OM_RouteType",
+        "role": "Danh mục",
+        "desc": "Loại tuyến",
+        "where": "Code = '...'"
+      },
+      {
+        "name": "OM_SalespersonRoute",
+        "role": "Danh mục",
+        "desc": "Gán tuyến cho nhân viên bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_SubRoute",
+        "role": "Danh mục",
+        "desc": "Sub-route",
+        "where": "SubRouteID = '...'"
+      },
+      {
+        "name": "OM_WeekOfVisit",
+        "role": "Danh mục",
+        "desc": "Tần suất / tuần viếng thăm",
+        "where": "SlsFreqID = '...' AND WeekofVisit = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_4703z",
+    "project": "MerapLion_eSales",
+    "code": "OM24100",
+    "name": "Xem Và Hiệu Chỉnh Vị Trí Khách Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_SalesRouteMaster",
+        "role": "Bảng chính",
+        "desc": "MCP — khách hàng theo tuyến / nhân viên",
+        "where": "PJPID = '...' AND SalesRouteID = '...' AND CustID = '...' AND SlsPerID = '...' AND BranchID = '...'"
+      },
+      {
+        "name": "OM_BranchRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến công ty / chi nhánh",
+        "where": "BranchRouteID = '...'"
+      },
+      {
+        "name": "OM_SalespersonRoute",
+        "role": "Danh mục",
+        "desc": "Gán tuyến cho nhân viên bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_SalesRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến bán hàng",
+        "where": "SalesRouteID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686611_abqjf",
+    "project": "MerapLion_eSales",
+    "code": "OM25000",
+    "name": "Danh Mục KPIs",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_KPI",
+        "role": "Bảng chính",
+        "desc": "Danh mục KPI",
+        "where": "KPI = '...'"
+      },
+      {
+        "name": "OM_KPIHeader",
+        "role": "Bảng chi tiết",
+        "desc": "Chỉ tiêu KPI theo kỳ — header",
+        "where": "CycleNbr = '...' AND KPI = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686612_rrw5h",
+    "project": "MerapLion_eSales",
+    "code": "OM25100",
+    "name": "Chỉ Tiêu KPIs",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_KPIHeader",
+        "role": "Bảng chính",
+        "desc": "Chỉ tiêu KPI theo kỳ — header",
+        "where": "CycleNbr = '...' AND KPI = '...'"
+      },
+      {
+        "name": "OM_KPISales_Class",
+        "role": "Bảng chi tiết",
+        "desc": "Chỉ tiêu KPI nhân viên theo nhóm hàng",
+        "where": "CycleNbr = '...' AND KPI = '...' AND BranchID = '...' AND SlsperId = '...' AND ClassID = '...'"
+      },
+      {
+        "name": "OM_KPICartonCondition",
+        "role": "Bảng chi tiết",
+        "desc": "Điều kiện thùng của KPI",
+        "where": "CycleNbr = '...' AND KPI = '...' AND TerritoryID = '...' AND Position = '...' AND GroupInvt = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_KPISubCondition",
+        "role": "Bảng chi tiết",
+        "desc": "Điều kiện phụ của KPI",
+        "where": "CycleNbr = '...' AND KPI = '...' AND TerritoryID = '...' AND Position = '...' AND Condition = '...' AND GroupItem = '...' AND InvtID = '...' AND SlsperID = '...'"
+      },
+      {
+        "name": "OM_KPITargetCondition",
+        "role": "Bảng chi tiết",
+        "desc": "Điều kiện chỉ tiêu KPI",
+        "where": "CycleNbr = '...' AND KPI = '...' AND TerritoryID = '...' AND Position = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_KPICpny_All",
+        "role": "Bảng chi tiết",
+        "desc": "Chỉ tiêu KPI theo NPP",
+        "where": "CycleNbr = '...' AND KPI = '...' AND BranchID = '...'"
+      },
+      {
+        "name": "OM_KPICpny_Class",
+        "role": "Bảng chi tiết",
+        "desc": "KPI NPP theo nhóm hàng",
+        "where": "CycleNbr = '...' AND KPI = '...' AND BranchID = '...' AND ClassID = '...'"
+      },
+      {
+        "name": "OM_KPICpny_Invt",
+        "role": "Bảng chi tiết",
+        "desc": "KPI NPP theo mặt hàng",
+        "where": "CycleNbr = '...' AND KPI = '...' AND BranchID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_KPICustomer_All",
+        "role": "Bảng chi tiết",
+        "desc": "Chỉ tiêu KPI theo khách",
+        "where": "CycleNbr = '...' AND KPI = '...' AND BranchID = '...' AND CustID = '...'"
+      },
+      {
+        "name": "OM_KPICustomer_Class",
+        "role": "Bảng chi tiết",
+        "desc": "KPI khách theo nhóm hàng",
+        "where": "CycleNbr = '...' AND KPI = '...' AND BranchID = '...' AND CustID = '...' AND ClassID = '...'"
+      },
+      {
+        "name": "OM_KPICustomer_Invt",
+        "role": "Bảng chi tiết",
+        "desc": "KPI khách theo mặt hàng",
+        "where": "CycleNbr = '...' AND KPI = '...' AND BranchID = '...' AND CustID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_BranchRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến công ty / chi nhánh",
+        "where": "BranchRouteID = '...'"
+      },
+      {
+        "name": "OM_KPI",
+        "role": "Danh mục",
+        "desc": "Danh mục KPI",
+        "where": "KPI = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686612_zms25",
+    "project": "MerapLion_eSales",
+    "code": "OM26600",
+    "name": "Danh Mục Xe",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_Truck",
+        "role": "Bảng chính",
+        "desc": "Danh mục xe",
+        "where": "BranchID = '...' AND Code = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686612_gm69t",
+    "project": "MerapLion_eSales",
+    "code": "OM27700",
+    "name": "Khởi Tạo Chương Trình Tích Lũy",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_Accumulated",
+        "role": "Bảng chính",
+        "desc": "Chương trình tích lũy — header",
+        "where": "AccumulateID = '...'"
+      },
+      {
+        "name": "OM_AccumulatedCpny",
+        "role": "Bảng chi tiết",
+        "desc": "NPP áp dụng tích lũy",
+        "where": "AccumulateID = '...' AND CpnyID = '...' AND State = '...'"
+      },
+      {
+        "name": "OM_AccumulatedInvt",
+        "role": "Bảng chi tiết",
+        "desc": "Mặt hàng tích lũy theo mức",
+        "where": "AccumulateID = '...' AND LevelID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_AccumulatedRegis",
+        "role": "Bảng chi tiết",
+        "desc": "Khách đăng ký tích lũy",
+        "where": "BranchID = '...' AND SlsperID = '...' AND CustID = '...' AND AccumulateID = '...'"
+      },
+      {
+        "name": "OM_AccumulatedCustomer",
+        "role": "Bảng chi tiết",
+        "desc": "Khách áp dụng tích lũy",
+        "where": "AccumulateID = '...' AND CpnyID = '...' AND CustID = '...'"
+      },
+      {
+        "name": "OM_AccumulatedInvtSetup",
+        "role": "Bảng chi tiết",
+        "desc": "Cài đặt mặt hàng tính tích lũy",
+        "where": "AccumulateID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_AccumulatedLevel",
+        "role": "Bảng chi tiết",
+        "desc": "Mức tích lũy",
+        "where": "AccumulateID = '...' AND LevelID = '...'"
+      },
+      {
+        "name": "OM_AccumulatedSalesPerson",
+        "role": "Bảng chi tiết",
+        "desc": "Nhân viên áp dụng tích lũy",
+        "where": "AccumulateID = '...' AND CpnyID = '...' AND SlsperID = '...'"
+      },
+      {
+        "name": "OM_AccumulatedCpnyAlloctionLimit",
+        "role": "Bảng chi tiết",
+        "desc": "Hạn mức tích lũy theo NPP",
+        "where": "AccumulateID = '...' AND LevelID = '...' AND CpnyID = '...'"
+      },
+      {
+        "name": "OM_BranchRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến công ty / chi nhánh",
+        "where": "BranchRouteID = '...'"
+      },
+      {
+        "name": "OM_SalespersonRoute",
+        "role": "Danh mục",
+        "desc": "Gán tuyến cho nhân viên bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_SalesRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến bán hàng",
+        "where": "SalesRouteID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686612_dytsd",
+    "project": "MerapLion_eSales",
+    "code": "OM28500",
+    "name": "Tạo Tuyến Khách Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_SalesRouteMaster",
+        "role": "Bảng chính",
+        "desc": "MCP — khách hàng theo tuyến / nhân viên",
+        "where": "PJPID = '...' AND SalesRouteID = '...' AND CustID = '...' AND SlsPerID = '...' AND BranchID = '...'"
+      },
+      {
+        "name": "OM_SalesRouteDet",
+        "role": "Bảng chi tiết",
+        "desc": "Lịch viếng thăm chi tiết theo ngày",
+        "where": "SalesRouteID = '...' AND CustID = '...' AND SlsPerID = '...' AND VisitDate = '...' AND BranchID = '...'"
+      },
+      {
+        "name": "OM_SalesRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_BranchRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến công ty / chi nhánh",
+        "where": "BranchRouteID = '...'"
+      },
+      {
+        "name": "OM_RouteType",
+        "role": "Danh mục",
+        "desc": "Loại tuyến",
+        "where": "Code = '...'"
+      },
+      {
+        "name": "OM_SubRoute",
+        "role": "Danh mục",
+        "desc": "Sub-route",
+        "where": "SubRouteID = '...'"
+      },
+      {
+        "name": "OM_SalespersonRoute",
+        "role": "Danh mục",
+        "desc": "Gán tuyến cho nhân viên bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_WeekOfVisit",
+        "role": "Danh mục",
+        "desc": "Tần suất / tuần viếng thăm",
+        "where": "SlsFreqID = '...' AND WeekofVisit = '...'"
+      },
+      {
+        "name": "OM_SalesRouteMasterHistory",
+        "role": "Khác",
+        "desc": "Lịch sử MCP",
+        "where": "PJPID = '...' AND SalesRouteID = '...' AND CustID = '...' AND SlsPerID = '...' AND BranchID = '...' AND ID = '...'"
+      },
+      {
+        "name": "OM_SalesRouteMasterImport",
+        "role": "Khác",
+        "desc": "Dữ liệu import MCP",
+        "where": "ID = '...' AND BranchID = '...' AND PJPID = '...' AND SalesRouteID = '...' AND CustID = '...' AND SlsPerID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686612_pze5t",
+    "project": "MerapLion_eSales",
+    "code": "OM28600",
+    "name": "Gắn Tuyến Nhân Viên",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_SalespersonRoute",
+        "role": "Bảng chính",
+        "desc": "Gán tuyến cho nhân viên bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_SalesRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_BranchRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến công ty / chi nhánh",
+        "where": "BranchRouteID = '...'"
+      },
+      {
+        "name": "OM_RouteType",
+        "role": "Danh mục",
+        "desc": "Loại tuyến",
+        "where": "Code = '...'"
+      },
+      {
+        "name": "OM_SalesRouteMaster",
+        "role": "Khác",
+        "desc": "MCP — khách hàng theo tuyến / nhân viên",
+        "where": "PJPID = '...' AND SalesRouteID = '...' AND CustID = '...' AND SlsPerID = '...' AND BranchID = '...'"
+      },
+      {
+        "name": "OM_SalespersonRouteHistory",
+        "role": "Khác",
+        "desc": "Lịch sử gán tuyến nhân viên",
+        "where": "ID = '...' AND SalesRouteID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686612_vsye9",
+    "project": "MerapLion_eSales",
+    "code": "OM28900",
+    "name": "Tuyến Công Ty/CN",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_BranchRoute",
+        "role": "Bảng chính",
+        "desc": "Tuyến công ty / chi nhánh",
+        "where": "BranchRouteID = '...'"
+      },
+      {
+        "name": "OM_SalesRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_SalespersonRoute",
+        "role": "Danh mục",
+        "desc": "Gán tuyến cho nhân viên bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_BranchRouteHistory",
+        "role": "Khác",
+        "desc": "Lịch sử tuyến công ty",
+        "where": "BranchRouteID = '...' AND ID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686612_lxly5",
+    "project": "MerapLion_eSales",
+    "code": "OM29000",
+    "name": "Sub-Route",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_SubRoute",
+        "role": "Bảng chính",
+        "desc": "Sub-route",
+        "where": "SubRouteID = '...'"
+      },
+      {
+        "name": "OM_SalesRouteMaster",
+        "role": "Khác",
+        "desc": "MCP — khách hàng theo tuyến / nhân viên",
+        "where": "PJPID = '...' AND SalesRouteID = '...' AND CustID = '...' AND SlsPerID = '...' AND BranchID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686612_0tzyq",
+    "project": "MerapLion_eSales",
+    "code": "OM32600",
+    "name": "Báo Cáo Gửi Hàng Tỉnh",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_DeliReport",
+        "role": "Bảng chính",
+        "desc": "Báo cáo gửi hàng tỉnh — header",
+        "where": "BranchID = '...' AND ReportID = '...'"
+      },
+      {
+        "name": "OM_DeliReportDet",
+        "role": "Bảng chi tiết",
+        "desc": "Đơn hàng trong báo cáo gửi hàng",
+        "where": "BranchID = '...' AND ReportID = '...' AND BatNbr = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_IssueBookDet",
+        "role": "Bảng chi tiết",
+        "desc": "Đơn hàng trong sổ xuất",
+        "where": "BranchID = '...' AND BatNbr = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_MasterDeliveryTime",
+        "role": "Danh mục",
+        "desc": "Danh mục thời gian giao",
+        "where": "Code = '...'"
+      },
+      {
+        "name": "OM_Truck",
+        "role": "Danh mục",
+        "desc": "Danh mục xe",
+        "where": "BranchID = '...' AND Code = '...'"
+      },
+      {
+        "name": "OM_IssueBook",
+        "role": "Khác",
+        "desc": "Sổ xuất hàng — header",
+        "where": "BranchID = '...' AND BatNbr = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng từ app (PDA) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "SI_ApprovalFlowStatus",
+        "role": "Khác",
+        "desc": "Luồng duyệt — trạng thái",
+        "where": "AppFolID = 'OM32600'"
+      },
+      {
+        "name": "SI_ApprovalFlowHandle",
+        "role": "Khác",
+        "desc": "Luồng duyệt — thao tác",
+        "where": "AppFolID = 'OM32600'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686612_cgaa0",
+    "project": "MerapLion_eSales",
+    "code": "OM32700",
+    "name": "Biên Bản Nhận Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_Receipt",
+        "role": "Bảng chính",
+        "desc": "Biên bản nhận hàng — header",
+        "where": "BranchID = '...' AND ReportID = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn PDA",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_ReceiptDet",
+        "role": "Bảng chi tiết",
+        "desc": "Đơn hàng trong biên bản nhận",
+        "where": "BranchID = '...' AND ReportID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_IssueBookDet",
+        "role": "Bảng chi tiết",
+        "desc": "Đơn hàng trong sổ xuất",
+        "where": "BranchID = '...' AND BatNbr = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_ReceiptSlsper",
+        "role": "Bảng chi tiết",
+        "desc": "Nhân viên của biên bản nhận",
+        "where": "ReportID = '...' AND SlsperID = '...'"
+      },
+      {
+        "name": "OM_MasterDeliveryTime",
+        "role": "Danh mục",
+        "desc": "Danh mục thời gian giao",
+        "where": "Code = '...'"
+      },
+      {
+        "name": "OM_Truck",
+        "role": "Danh mục",
+        "desc": "Danh mục xe",
+        "where": "BranchID = '...' AND Code = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng từ app (PDA) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_SalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng bán (BO) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_Delivery",
+        "role": "Khác",
+        "desc": "Lần giao hàng của đơn",
+        "where": "BranchID = '...' AND BatNbr = '...' AND OrderNbr = '...' AND Sequence = '...'"
+      },
+      {
+        "name": "OM_IssueBook",
+        "role": "Khác",
+        "desc": "Sổ xuất hàng — header",
+        "where": "BranchID = '...' AND BatNbr = '...'"
+      },
+      {
+        "name": "SI_ApprovalFlowStatus",
+        "role": "Khác",
+        "desc": "Luồng duyệt — trạng thái",
+        "where": "AppFolID = 'OM32700'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686612_hg3y5",
+    "project": "MerapLion_eSales",
+    "code": "OM41200",
+    "name": "Duyệt Chương Trình Trưng Bày",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_TDisplayCustomer",
+        "role": "Bảng chính",
+        "desc": "Khách hàng đăng ký CTTB",
+        "where": "BranchID = '...' AND SlsperID = '...' AND CustID = '...' AND DisplayID = '...'"
+      },
+      {
+        "name": "OM_TDisplayLevel",
+        "role": "Bảng chi tiết",
+        "desc": "Mức trưng bày",
+        "where": "DisplayID = '...' AND LevelID = '...' AND DisplayType = '...'"
+      },
+      {
+        "name": "OM_TDisplayCpny",
+        "role": "Bảng chi tiết",
+        "desc": "NPP áp dụng CTTB",
+        "where": "DisplayID = '...' AND CpnyID = '...' AND State = '...'"
+      },
+      {
+        "name": "OM_BranchRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến công ty / chi nhánh",
+        "where": "BranchRouteID = '...'"
+      },
+      {
+        "name": "OM_SalespersonRoute",
+        "role": "Danh mục",
+        "desc": "Gán tuyến cho nhân viên bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_TDisplay",
+        "role": "Danh mục",
+        "desc": "Chương trình trưng bày — header",
+        "where": "DisplayID = '...'"
+      },
+      {
+        "name": "OM_SalesRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_BudgetTrade",
+        "role": "Khác",
+        "desc": "Ngân sách trade",
+        "where": "BugetID = '...' AND TradeID = '...' AND LevelID = '...'"
+      },
+      {
+        "name": "OM_TDisplayLocation",
+        "role": "Khác",
+        "desc": "Vị trí trưng bày",
+        "where": "DisplayID = '...' AND LocationID = '...'"
+      },
+      {
+        "name": "SI_ApprovalFlowStatus",
+        "role": "Khác",
+        "desc": "Luồng duyệt — trạng thái",
+        "where": "AppFolID = 'OM41200'"
+      },
+      {
+        "name": "SI_ApprovalFlowHandle",
+        "role": "Khác",
+        "desc": "Luồng duyệt — thao tác",
+        "where": "AppFolID = 'OM41200'"
+      },
+      {
+        "name": "OM_TDisplayCustomerHist",
+        "role": "Khác",
+        "desc": "Lịch sử đăng ký CTTB",
+        "where": "ID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686612_67ddi",
+    "project": "MerapLion_eSales",
+    "code": "OM43100",
+    "name": "Duyệt Đăng Ký Tích Lũy",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_AccumulatedRegis",
+        "role": "Bảng chính",
+        "desc": "Khách đăng ký tích lũy",
+        "where": "BranchID = '...' AND SlsperID = '...' AND CustID = '...' AND AccumulateID = '...'"
+      },
+      {
+        "name": "OM_AccumulatedCpny",
+        "role": "Bảng chi tiết",
+        "desc": "NPP áp dụng tích lũy",
+        "where": "AccumulateID = '...' AND CpnyID = '...' AND State = '...'"
+      },
+      {
+        "name": "OM_AccumulatedLevel",
+        "role": "Bảng chi tiết",
+        "desc": "Mức tích lũy",
+        "where": "AccumulateID = '...' AND LevelID = '...'"
+      },
+      {
+        "name": "OM_BudgetTradeCpny",
+        "role": "Bảng chi tiết",
+        "desc": "Ngân sách trade theo NPP",
+        "where": "BugetID = '...' AND TradeID = '...' AND LevelID = '...' AND BranchID = '...'"
+      },
+      {
+        "name": "OM_BranchRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến công ty / chi nhánh",
+        "where": "BranchRouteID = '...'"
+      },
+      {
+        "name": "OM_SalesRoute",
+        "role": "Danh mục",
+        "desc": "Tuyến bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_Accumulated",
+        "role": "Danh mục",
+        "desc": "Chương trình tích lũy — header",
+        "where": "AccumulateID = '...'"
+      },
+      {
+        "name": "OM_SalespersonRoute",
+        "role": "Danh mục",
+        "desc": "Gán tuyến cho nhân viên bán hàng",
+        "where": "SalesRouteID = '...'"
+      },
+      {
+        "name": "OM_AccumulatedLatchType",
+        "role": "Danh mục",
+        "desc": "Loại chốt tích lũy",
+        "where": "Code = '...'"
+      },
+      {
+        "name": "OM_Master_PurchaseAgreement",
+        "role": "Danh mục",
+        "desc": "Thỏa thuận mua hàng theo NPP",
+        "where": "CpnyID = '...'"
+      },
+      {
+        "name": "OM_BudgetTrade",
+        "role": "Khác",
+        "desc": "Ngân sách trade",
+        "where": "BugetID = '...' AND TradeID = '...' AND LevelID = '...'"
+      },
+      {
+        "name": "OM_SalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng bán (BO) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686612_cruxz",
+    "project": "MerapLion_eSales",
+    "code": "OM44000",
+    "name": "Cập Nhật Ngày Đơn Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_SalesOrd",
+        "role": "Bảng chính",
+        "desc": "Đơn hàng bán (BO) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng từ app (PDA) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_RewardOrd",
+        "role": "Khác",
+        "desc": "Đơn trả thưởng — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_Invoice",
+        "role": "Khác",
+        "desc": "Hóa đơn của đơn hàng",
+        "where": "BranchID = '...' AND RefNbr = '...'"
+      },
+      {
+        "name": "OM_UpdateSalesOrdDetHis",
+        "role": "Khác",
+        "desc": "Lịch sử cập nhật ngày đơn hàng",
+        "where": "ID = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686612_uj1zu",
+    "project": "MerapLion_eSales",
+    "code": "OM44500",
+    "name": "Duyệt Kế Hoạch Làm Việc Cho Trade",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_WorkSchedule",
+        "role": "Bảng chính",
+        "desc": "Kế hoạch làm việc trade — header",
+        "where": "WorkScheduleID = '...'"
+      },
+      {
+        "name": "OM_WorkScheduleCustomer",
+        "role": "Bảng chi tiết",
+        "desc": "Khách hàng trong kế hoạch",
+        "where": "WorkScheduleID = '...' AND State = '...' AND District = '...' AND CustID = '...'"
+      },
+      {
+        "name": "OM_WorkScheduleDistict",
+        "role": "Bảng chi tiết",
+        "desc": "Địa bàn trong kế hoạch",
+        "where": "WorkScheduleID = '...' AND State = '...' AND District = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686612_a69pc",
+    "project": "MerapLion_eSales",
+    "code": "OM45100",
+    "name": "Cập Nhật CVBH Theo Đơn Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_PDASalesOrd",
+        "role": "Bảng chính",
+        "desc": "Đơn hàng từ app (PDA) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn PDA",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "SI_ApprovalFlowStatus",
+        "role": "Khác",
+        "desc": "Luồng duyệt — trạng thái",
+        "where": "AppFolID = 'OM45100'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686612_sai2f",
+    "project": "MerapLion_eSales",
+    "code": "OM45200",
+    "name": "Cập Nhật CVBH Theo Hợp Đồng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_GenContract",
+        "role": "Bảng chính",
+        "desc": "Hợp đồng (sinh từ hợp đồng gốc)",
+        "where": "ContractID = '...'"
+      },
+      {
+        "name": "OM_GenContractDet",
+        "role": "Bảng chi tiết",
+        "desc": "Mặt hàng hợp đồng",
+        "where": "ContractID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_OriginalContractDet",
+        "role": "Bảng chi tiết",
+        "desc": "Mặt hàng hợp đồng gốc",
+        "where": "ContractID = '...' AND InvtID = '...'"
+      },
+      {
+        "name": "OM_OriginalContract",
+        "role": "Danh mục",
+        "desc": "Hợp đồng gốc",
+        "where": "ContractID = '...'"
+      },
+      {
+        "name": "OM_ContractForm",
+        "role": "Danh mục",
+        "desc": "Hình thức hợp đồng",
+        "where": "FormID = '...'"
+      },
+      {
+        "name": "OM_ContractType",
+        "role": "Danh mục",
+        "desc": "Loại hợp đồng",
+        "where": "ContractID = '...'"
+      },
+      {
+        "name": "OM_ContractorHeader",
+        "role": "Khác",
+        "desc": "Danh mục trúng thầu — header",
+        "where": "ID = '...'"
+      },
+      {
+        "name": "OM_ContractDetHist",
+        "role": "Khác",
+        "desc": "Lịch sử chi tiết hợp đồng",
+        "where": "Index = '...'"
+      },
+      {
+        "name": "OM_Import_UpdSlsper",
+        "role": "Khác",
+        "desc": "Dữ liệu import cập nhật CVBH",
+        "where": ""
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
+  },
+  {
+    "id": "scr_1794564686612_dwt2t",
+    "project": "MerapLion_eSales",
+    "code": "OM45400",
+    "name": "Hóa Đơn Bán Hàng",
+    "module": "BO",
+    "note": "",
+    "tables": [
+      {
+        "name": "OM_SalesOrd",
+        "role": "Bảng chính",
+        "desc": "Đơn hàng bán (BO) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_SalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn bán",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_LotTrans",
+        "role": "Bảng chi tiết",
+        "desc": "Lô / hạn dùng của dòng đơn bán",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LotSerNbr = '...' AND OMLineRef = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrdDet",
+        "role": "Bảng chi tiết",
+        "desc": "Chi tiết mặt hàng đơn PDA",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_PDALotTrans",
+        "role": "Bảng chi tiết",
+        "desc": "Lô / hạn dùng của dòng đơn PDA",
+        "where": "BranchID = '...' AND OrderNbr = '...' AND LotSerNbr = '...' AND OMLineRef = '...' AND RefOrderNbr = '...'"
+      },
+      {
+        "name": "OM_CircularEffect",
+        "role": "Danh mục",
+        "desc": "Thông tư hóa đơn có hiệu lực theo NPP",
+        "where": "BranchID = '...'"
+      },
+      {
+        "name": "OM_Master_SalesOrderType",
+        "role": "Danh mục",
+        "desc": "Danh mục loại đơn bán",
+        "where": "OrderType = '...'"
+      },
+      {
+        "name": "OM_APIViettelSecretKey",
+        "role": "Danh mục",
+        "desc": "Khóa API hóa đơn điện tử Viettel theo NPP",
+        "where": "BranchID = '...' AND BatNbr = '...'"
+      },
+      {
+        "name": "OM_OrderType",
+        "role": "Danh mục",
+        "desc": "Danh mục kiểu đơn hàng",
+        "where": "OrderType = '...'"
+      },
+      {
+        "name": "OM_PDASalesOrd",
+        "role": "Khác",
+        "desc": "Đơn hàng từ app (PDA) — header",
+        "where": "BranchID = '...' AND OrderNbr = '...'"
+      },
+      {
+        "name": "OM_PDAOrdDisc",
+        "role": "Khác",
+        "desc": "Khuyến mãi áp dụng trên đơn PDA",
+        "where": "BranchID = '...' AND DiscID = '...' AND DiscSeq = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      },
+      {
+        "name": "OM_OrdDisc",
+        "role": "Khác",
+        "desc": "Khuyến mãi áp dụng trên đơn bán",
+        "where": "BranchID = '...' AND DiscID = '...' AND DiscSeq = '...' AND OrderNbr = '...' AND LineRef = '...'"
+      }
+    ],
+    "updatedAt": "2026-11-13T10:11:26.361Z",
+    "updatedBy": "admin"
   }
 ]
