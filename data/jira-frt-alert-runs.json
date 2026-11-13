@@ -1,5 +1,19 @@
 [
   {
+    "at": "2026-11-13T02:30:56.115Z",
+    "by": "lịch tự động",
+    "test": "",
+    "to": "lamlt@hqsoft.com.vn, sales02@hqsoft.com.vn",
+    "keys": [
+      "HQ-316 (còn 179p)",
+      "HQ-315 (còn 179p)",
+      "HQ-314 (còn 179p)"
+    ],
+    "ok": true,
+    "error": "",
+    "zalo": ""
+  },
+  {
     "at": "2026-11-12T10:30:51.941Z",
     "by": "lịch tự động",
     "test": "",
