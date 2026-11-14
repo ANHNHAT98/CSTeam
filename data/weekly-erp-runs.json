@@ -1,6 +1,20 @@
 [
   {
     "project": "ANVY_eSale_Support",
+    "from": "2026-10-30",
+    "to": "2026-11-05",
+    "by": "admin",
+    "at": "2026-11-14T03:16:17.697Z",
+    "key": "ANVY_eSale_Support|2026-10-30",
+    "ok": true,
+    "doc": "ANVY_eSale_Support",
+    "url": "https://erp.hqsoft.vn/app/project-progress-update/ANVY_eSale_Support",
+    "submitted": false,
+    "added": "note",
+    "note": ""
+  },
+  {
+    "project": "ANVY_eSale_Support",
     "from": "2026-11-02",
     "to": "2026-11-08",
     "by": "lịch tự động",
