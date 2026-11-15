@@ -200,8 +200,8 @@ function ticketTable(list, base, owners = []) {
   const rows = list.map((t, n) => {
     const td = (extra = '') => `style="padding:11px 12px;border-bottom:1px solid #EDF0F5;vertical-align:top;background:${n % 2 ? '#FAFBFD' : '#FFFFFF'};${F};font-size:13px;color:#1F2933;${extra}"`;
     const people = (t.assign || []).filter((e) => !own.has(e));
-    const who = !(t.assign || []).length ? '<span style="color:#B54708;font-weight:600">chưa giao</span>'
-      : people.length ? people.map((e) => `<div style="white-space:nowrap">${esc(e)}</div>`).join('') : '<span style="color:#8792A2;white-space:nowrap">— (quản lý tự xử lý)</span>';
+    // chỉ hiện người xử lý KHÁC người quản lý dự án; không còn ai khác → coi như "chưa giao"
+    const who = people.length ? people.map((e) => `<div style="white-space:nowrap">${esc(e)}</div>`).join('') : '<span style="color:#B54708;font-weight:600">chưa giao</span>';
     return `<tr><td ${td('white-space:nowrap')}>${link(t.name)}<div style="margin-top:5px">${badge(t.priority, PRIO_COLOR[t.priority.toLowerCase()] || '#5F6B7A')}</div></td>`
       + `<td ${td()}><div style="font-weight:600;line-height:1.4">${esc(t.subject)}</div><div style="margin-top:4px;font-size:12px;color:#6B7685">${esc(t.status)}${t.noResponse ? ' · <span style="color:#B42318;font-weight:600">chưa phản hồi khách</span>' : ''}</div></td>`
       + `<td ${td('white-space:nowrap')}>${badge('Trễ ' + fmtDur(t.lateMin), '#FDECEC', '#B42318')}</td>`
@@ -225,9 +225,11 @@ const wrap = (title, subtitle, rowsHtml, headColor = '#1F4E79') => `<div style="
   + `<tr><td style="background:${headColor};padding:20px 28px;${F}"><div style="color:#fff;font-size:19px;font-weight:700">${title}</div><div style="color:#D6E4F0;font-size:13px;margin-top:6px;line-height:1.5">${subtitle}</div></td></tr>`
   + rowsHtml
   + `<tr><td style="padding:18px 28px 20px;${F};font-size:12px;color:#8792A2;border-top:1px solid #EEF2F7">SLA xử lý tính theo giờ làm việc T2–T6 (Critical/Urgent tính liên tục), trừ ngày lễ.</td></tr></table></div>`;
-const statRow = (list) => stats([
+/** "Chưa giao" = không có người xử lý nào khác người quản lý dự án (khớp với cột Người xử lý). */
+const isUnassigned = (t, ownersOf) => !(t.assign || []).some((e) => !(ownersOf[t.project] || []).includes(e));
+const statRow = (list, ownersOf = {}) => stats([
   [list.length, 'ticket trễ SLA', '#B42318', '#FDECEC'],
-  [list.filter((t) => !(t.assign || []).length).length, 'chưa giao ai', '#B54708', '#FFF4E5'],
+  [list.filter((t) => isUnassigned(t, ownersOf)).length, 'chưa giao ai', '#B54708', '#FFF4E5'],
   [list.filter((t) => t.noResponse).length, 'chưa phản hồi khách', '#1F4E79', '#EEF4FA'],
   [new Set(list.map((t) => t.project)).size, 'dự án có ticket trễ', '#2F7D4F', '#E9F5EE'],
 ]);
@@ -246,7 +248,7 @@ function buildMails(data, cfg, base) {
     if (to.length && (data.total || !cfg.skipEmpty)) {
       const rows = data.total
         ? p(`Chào cả team 👋,<br>Đầu tuần mình điểm qua chút nhé: các dự án đang có <b style="color:#B42318">${data.total} ticket đã trễ SLA xử lý</b> (tính đến ${esc(time)} ngày ${esc(day)}). Mọi người xem giúp ticket của dự án mình, ưu tiên xử lý hoặc cập nhật trạng thái / phản hồi khách để kéo SLA về lại nha. Cảm ơn cả nhà! 💪`)
-          + statRow(overdue) + blocks(data.projects, overdue)
+          + statRow(overdue, ownersOf) + blocks(data.projects, overdue)
         : p('Chào cả team 👋,<br>Tuần này không có ticket nào trễ SLA. Cảm ơn mọi người, giữ vững phong độ nha! 🎉');
       const nProj = new Set(overdue.map((t) => t.project)).size;
       mails.push({ kind: 'all', to, cc: emails(cfg.cc).filter((x) => !to.includes(x)),
@@ -260,7 +262,7 @@ function buildMails(data, cfg, base) {
     if (!g.tickets.length && cfg.skipEmpty) continue;
     const rows = g.tickets.length
       ? p(`Chào <b>${esc(nameOf(o))}</b> 👋,<br>Các dự án bạn đang quản lý có <b style="color:#B42318">${g.tickets.length} ticket đã trễ SLA xử lý</b> (tính đến ${esc(time)} ngày ${esc(day)}). Bạn xem giúp và nhắc anh em ưu tiên xử lý, hoặc cập nhật trạng thái / phản hồi khách giúp mình nhé. Cảm ơn bạn! 🙌`)
-        + statRow(g.tickets) + blocks(g.projects, g.tickets)
+        + statRow(g.tickets, ownersOf) + blocks(g.projects, g.tickets)
       : p(`Chào <b>${esc(nameOf(o))}</b> 👋,<br>Tuần này các dự án bạn quản lý không có ticket nào trễ SLA. Giỏi quá, giữ phong độ nha! 🎉`);
     const withLate = g.projects.filter((c) => g.tickets.some((t) => t.project === c));
     const projTxt = withLate.length > 3 ? `${withLate.length} dự án` : labelsOf(withLate.length ? withLate : g.projects).replace(/ · /g, ', ');
@@ -274,10 +276,11 @@ function buildMails(data, cfg, base) {
     const th = (h, al = 'left') => `<th align="${al}" style="padding:9px 12px;background:#F4F6FA;color:#52606D;font-size:11px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #E3E8EF;${F}">${h}</th>`;
     const tdc = (v, n, al = 'left') => `<td align="${al}" style="padding:9px 12px;border-bottom:1px solid #EDF0F5;background:${n % 2 ? '#FAFBFD' : '#fff'};${F};font-size:13px">${v}</td>`;
     const projTable = `<tr><td style="padding:18px 28px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #E3E8EF"><tr>${th('Dự án')}${th('Người quản lý')}${th('Ticket trễ', 'right')}${th('Chưa giao', 'right')}</tr>`
-      + (data.byProject || []).map((r, n) => { const l = overdue.filter((t) => t.project === r.project); return `<tr>${tdc(`<b>${esc(labelOf(r.project))}</b> <span style="color:#8792A2;font-size:12px">${esc(r.project)}</span>`, n)}${tdc(r.owners.length ? esc(r.owners.join(', ')) : '<span style="color:#B54708">chưa có người quản lý</span>', n)}${tdc(`<b style="color:${l.length ? '#B42318' : '#2F7D4F'}">${l.length}</b>`, n, 'right')}${tdc(l.filter((t) => !(t.assign || []).length).length, n, 'right')}</tr>`; }).join('')
+      + (data.byProject || []).map((r, n) => { const l = overdue.filter((t) => t.project === r.project); return `<tr>${tdc(`<b>${esc(labelOf(r.project))}</b> <span style="color:#8792A2;font-size:12px">${esc(r.project)}</span>`, n)}${tdc(r.owners.length ? esc(r.owners.join(', ')) : '<span style="color:#B54708">chưa có người quản lý</span>', n)}${tdc(`<b style="color:${l.length ? '#B42318' : '#2F7D4F'}">${l.length}</b>`, n, 'right')}${tdc(l.filter((t) => isUnassigned(t, ownersOf)).length, n, 'right')}</tr>`; }).join('')
       + '</table></td></tr>';
-    let rows = statRow(overdue) + projTable;
-    if (data.unassigned.length) rows += `<tr><td style="padding:18px 28px 0;${F};font-size:15px;font-weight:700;color:#B54708">Chưa giao cho ai (${data.unassigned.length})</td></tr><tr><td style="padding:8px 28px 0">${ticketTable(data.unassigned, base)}</td></tr>`;
+    let rows = statRow(overdue, ownersOf) + projTable;
+    const unassigned = overdue.filter((t) => isUnassigned(t, ownersOf));
+    if (unassigned.length) rows += `<tr><td style="padding:18px 28px 0;${F};font-size:15px;font-weight:700;color:#B54708">Chưa giao cho ai (${unassigned.length})</td></tr><tr><td style="padding:8px 28px 0">${ticketTable(unassigned, base)}</td></tr>`;
     if (!data.total) rows += p('Không có ticket nào trễ SLA. 🎉');
     mails.push({ kind: 'summary', to: summaryTo, cc: [], subject: `[Nhắc SLA ${dd}] Tổng hợp ${data.total} ticket trễ`,
       html: wrap('📊 Tổng hợp ticket trễ SLA', `Ngày ${esc(day)} · ${esc(labelsOf(data.projects))}`, rows), count: data.total });

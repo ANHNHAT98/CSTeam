@@ -1747,7 +1747,8 @@ app.get('/feed/mail/:key', async (req, res) => {
   if (!mailOutbox.keyOk(req.params.key)) return res.status(404).send('Not found');
   try {
     const self = `${req.protocol}://${req.get('host')}/feed/mail/...`;
-    res.set('Cache-Control', 'no-store').type('application/rss+xml; charset=utf-8').send(await mailOutbox.rss(self));
+    const pop = /^(1|true)$/i.test(String(req.query.pop || '')); // ?pop=1: chỉ mail chưa lấy, lấy xong đánh dấu (flow "Lặp lại")
+    res.set('Cache-Control', 'no-store').type('application/rss+xml; charset=utf-8').send(await mailOutbox.rss(self, { pop }));
   } catch (e) { res.status(502).send(e.message); }
 });
 

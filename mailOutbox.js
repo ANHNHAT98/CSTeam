@@ -43,8 +43,25 @@ async function list() { const r = await store.readAll(); return Array.isArray(r)
 
 const xmlEsc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
 
-async function rss(selfUrl) {
-  const items = await list();
+/** pop: chỉ trả mail CHƯA lấy (tạo trong 30 phút gần nhất) rồi đánh dấu đã lấy — dùng cho flow "Lặp lại" + "Liệt kê mục RSS"
+    (mỗi mail chỉ được lấy 1 lần, không gửi trùng; mail cũ hơn 30 phút không bao giờ bị lấy lại). */
+const POP_WINDOW_MS = 30 * 60 * 1000;
+async function popUndelivered() {
+  const now = Date.now();
+  const fresh = (x) => !x.deliveredAt && now - Date.parse(x.at) < POP_WINDOW_MS;
+  if (!(await list()).some(fresh)) return []; // không có mail mới → không ghi gì (flow hỏi mỗi 1–2 phút)
+  let picked = [];
+  await store.mutate((all) => {
+    const listAll = Array.isArray(all) ? all : [];
+    picked = listAll.filter(fresh);
+    const ids = new Set(picked.map((x) => x.id));
+    return { list: listAll.map((x) => (ids.has(x.id) ? { ...x, deliveredAt: new Date(now).toISOString() } : x)), result: {} };
+  }, 'mail-outbox: Power Automate đã lấy mail');
+  return picked;
+}
+
+async function rss(selfUrl, { pop = false } = {}) {
+  const items = pop ? await popUndelivered() : await list();
   const body = items.map((x) => {
     const payload = Buffer.from(JSON.stringify({ to: x.to, cc: x.cc, subject: x.subject, html: x.html }), 'utf8').toString('base64');
     return `<item><guid isPermaLink="false">${xmlEsc(x.id)}</guid><title>${xmlEsc(x.subject)}</title><link>${xmlEsc(selfUrl)}#${xmlEsc(x.id)}</link><pubDate>${new Date(x.at).toUTCString()}</pubDate><description>${payload}</description></item>`;
@@ -52,4 +69,4 @@ async function rss(selfUrl) {
   return `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>CS Tool - mail cho Power Automate</title><link>${xmlEsc(selfUrl)}</link><description>Hộp thư chờ gửi</description>${body}</channel></rss>`;
 }
 
-module.exports = { enabled, keyOk, enqueue, list, rss };
+module.exports = { enabled, keyOk, enqueue, list, rss, popUndelivered };
