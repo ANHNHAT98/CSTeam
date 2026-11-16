@@ -1,6 +1,48 @@
 [
   {
     "project": "ANVY_eSale_Support",
+    "from": "2026-11-09",
+    "to": "2026-11-15",
+    "by": "lịch tự động",
+    "at": "2026-11-16T01:05:27.871Z",
+    "key": "ANVY_eSale_Support|2026-11-09",
+    "ok": true,
+    "doc": "ANVY_eSale_Support",
+    "url": "https://erp.hqsoft.vn/app/project-progress-update/ANVY_eSale_Support",
+    "submitted": false,
+    "added": "note",
+    "note": ""
+  },
+  {
+    "project": "Sabeco_B2B_Support",
+    "from": "2026-11-09",
+    "to": "2026-11-15",
+    "by": "lịch tự động",
+    "at": "2026-11-16T01:05:37.137Z",
+    "key": "Sabeco_B2B_Support|2026-11-09",
+    "ok": true,
+    "doc": "Sabeco_B2B_Support",
+    "url": "https://erp.hqsoft.vn/app/project-progress-update/Sabeco_B2B_Support",
+    "submitted": false,
+    "added": "note",
+    "note": ""
+  },
+  {
+    "project": "Sabeco_PG",
+    "from": "2026-11-09",
+    "to": "2026-11-15",
+    "by": "lịch tự động",
+    "at": "2026-11-16T01:05:41.418Z",
+    "key": "Sabeco_PG|2026-11-09",
+    "ok": true,
+    "doc": "Sabeco_PG",
+    "url": "https://erp.hqsoft.vn/app/project-progress-update/Sabeco_PG",
+    "submitted": false,
+    "added": "note",
+    "note": ""
+  },
+  {
+    "project": "ANVY_eSale_Support",
     "from": "2026-10-30",
     "to": "2026-11-05",
     "by": "admin",
