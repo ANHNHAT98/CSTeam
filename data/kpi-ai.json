@@ -136,15 +136,16 @@
     "id": "ai_1794928647223_hyzo7",
     "kind": "time",
     "member": "phuctm@hqsoft.com.vn",
-    "evidence": "https://hqsoftcomvn.sharepoint.com/:p:/r/sites/hqsoftstorage/_layouts/15/Doc.aspx?sourcedoc=%7B8A9B6C82-62FF-4432-8D7B-B2CB961BF7DE%7D&file=ANVY_HQsoft_HDSD_CRS_CTTL_Ngu%E1%BB%93n%20Kh%C3%A1ch%20H%C3%A0ng.pptx&action=edit&mobileredirect=true",
-    "note": "Gen tài liệu HDSD CRs cho Anvy",
+    "evidence": "https://chatgpt.com/c/6ab37726-a6b4-83ec-9c51-03a0545e3cc7",
+    "note": "Gen ticket cho dự án",
     "date": "2026-10-22",
     "month": "2026-10",
     "task": "GEN ra ticket và copy thông tin vào ticket",
     "taskKind": "Ticket",
     "minutesNormal": 15,
     "minutesAi": 5,
-    "createdAt": "2026-11-17T15:17:27.223Z"
+    "createdAt": "2026-11-17T15:17:27.223Z",
+    "updatedAt": "2026-11-17T15:22:25.456Z"
   },
   {
     "id": "ai_1794928647223_0kf8h",
