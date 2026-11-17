@@ -10,5 +10,59 @@
     "note": "",
     "by": "admin",
     "at": "2026-10-22T14:41:56.664Z"
+  },
+  {
+    "id": "ai_1794902445602_6m13t",
+    "kind": "workflow",
+    "member": "nhuttm@hqsoft.com.vn",
+    "evidence": "",
+    "note": "",
+    "date": "2026-11-17",
+    "month": "2026-11",
+    "title": "Tổng hợp các trường dữ liệu trong database",
+    "taskKind": "Khác",
+    "prompt": "Tôi có đính kèm một số file SQL của các báo cáo trên PA App. Hãy gộp các file này vào một file Excel tên Sabeco_PAApp_Report_StoredProcedures.xlsx.\n\nMỗi stored procedure để ở một sheet riêng, đặt tên sheet theo tên báo cáo cho dễ tìm. Trong từng sheet, cột A để số dòng, cột B để nội dung SQL, mỗi dòng code một ô. Giữ nguyên code như trong file tôi gửi, kể cả dòng trống và phần thụt lề, để tôi có thể copy cột B rồi dán vào SSMS.\n\nThêm một sheet Mục lục ở đầu file, ghi tên báo cáo, tên stored procedure, tên file SQL gốc và số dòng code. Nếu được, gắn link để bấm từ mục lục sang sheet tương ứng.\n\nKiểm tra xem đã đưa đủ các file vào Excel chưa rồi gửi lại cho tôi link tải file .xlsx.",
+    "flow": "",
+    "minutesNormal": null,
+    "minutesAi": null,
+    "sensitive": [],
+    "createdAt": "2026-11-17T08:00:45.602Z",
+    "rubric": [
+      "goal",
+      "format",
+      "review",
+      "security"
+    ],
+    "graded": true,
+    "gradedBy": "tự đánh giá",
+    "gradedAt": "2026-11-17T08:00:45.602Z"
+  },
+  {
+    "id": "ai_1794902445603_dsqdp",
+    "kind": "time",
+    "member": "nhuttm@hqsoft.com.vn",
+    "evidence": "",
+    "note": "",
+    "date": "2026-11-17",
+    "month": "2026-11",
+    "task": "Email",
+    "taskKind": "Email",
+    "minutesNormal": 10,
+    "minutesAi": 5,
+    "createdAt": "2026-11-17T08:00:45.602Z"
+  },
+  {
+    "id": "ai_1794902445603_j72hw",
+    "kind": "report",
+    "member": "nhuttm@hqsoft.com.vn",
+    "evidence": "",
+    "note": "",
+    "report": "Báo cáo tổng hợp ticket Sabeco PG",
+    "reportKind": "Báo cáo tháng",
+    "dueDate": "2026-11-04",
+    "month": "2026-11",
+    "doneDate": "2026-10-28",
+    "usedAi": true,
+    "createdAt": "2026-11-17T08:00:45.602Z"
   }
 ]
