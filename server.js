@@ -771,6 +771,10 @@ app.get('/api/kpi/sla-member', requireAuth, async (req, res) => {
     }
     const data = kpiSla.evaluateMember(hit.rows, { month, projects, member, by, level, kpiKey, config });
     data.warnings = hit.truncated ? [`Truy vấn chạm giới hạn ${hit.limit} ticket — số liệu có thể thiếu.`] : [];
+    const abiNote = kpiSla.abiNote(projects, config, kpiKey); // dự án ABI: ngưỡng theo bảng SLA Jira (P1–S3)
+    if (abiNote) data.warnings.push(abiNote);
+    const prioNote = kpiSla.priorityNote(projects, config, kpiKey); // ngưỡng theo Priority của các dự án khác ABI
+    if (prioNote) data.warnings.push(prioNote);
     data.config = { levels: config.levels, defaultProjects: config.defaultProjects, thresholds: config.kpis[kpiKey].thresholds, weights: config.kpis[kpiKey].weights, name: config.kpis[kpiKey].matrixName };
     res.json(data);
   } catch (e) {

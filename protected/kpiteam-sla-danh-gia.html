@@ -173,7 +173,7 @@ function howText(r, th, weight){
   else prog = 'Progress = 50% + 50% × ('+fmt(a)+' − '+fmt(th.min,0)+') ÷ ('+fmt(th.target,0)+' − '+fmt(th.min,0)+') = <b>'+fmt(r.progress)+'%</b>';
   return base+'<br>'+prog+'<br>KPI Completion = '+fmt(r.progress)+'% × '+fmt(weight,0)+'% = <b>'+fmt(r.points,2)+'%</b>';
 }
-const resCls = r => r==='Đạt' ? 'ok' : 'bad';
+const resCls = r => r==='Đạt' ? 'ok' : r==='Trượt' ? 'bad' : '';
 
 function render(d){
   const r = d.result, k = d.kpi;

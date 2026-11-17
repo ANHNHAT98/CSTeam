@@ -36,6 +36,14 @@
         "Fresher": 20.0,
         "Junior": 20.0,
         "Middle": 15.0
+      },
+      "priorityThresholds": {
+        "_note": "Phút. Critical/Urgent tính liên tục 24/7; High/Medium/Low/trống chỉ tính giờ làm việc (T2–T6 08:00–12:00, 13:30–17:30, trừ ngày lễ). Áp dụng cho các dự án KHÔNG phải ABI (ABI dùng abiJira).",
+        "critical": 60,
+        "urgent": 240,
+        "high": 240,
+        "medium": 240,
+        "default": 480
       }
     },
     "resolution": {
@@ -69,6 +77,14 @@
         "Junior": 20.0,
         "Middle": 15.0,
         "Senior": 15.0
+      },
+      "priorityThresholds": {
+        "_note": "Phút. Critical 6h, Urgent 24h tính liên tục 24/7; High 3 / Medium 5 / Low-trống 7 NGÀY LÀM VIỆC (1 ngày = 480 phút giờ làm việc). Áp dụng cho các dự án KHÔNG phải ABI (ABI dùng abiJira).",
+        "critical": 360,
+        "urgent": 1440,
+        "high": 1440,
+        "medium": 2400,
+        "default": 3360
       }
     }
   },
@@ -345,5 +361,42 @@
         "weight": 15
       }
     ]
+  },
+  "abiJira": {
+    "_note": "Dự án ABI: dữ liệu vẫn lấy từ ERP (opening_date / first_responded_on / resolution_date) nhưng NGƯỠNG + khung giờ theo bảng cam kết SLA trên Jira (trang /tickets/sla-jira-abi). ERP không có mã P1–S3 nên Priority ERP quy đổi qua priorityMap; nếu tiêu đề có tag [P1..P4]/[S1..S3] thì ưu tiên tag đó. Ngưỡng tính bằng phút. P1/P2/S1 tính 24/7; P3/P4/S2/S3 chỉ tính T2–T6 08:00–17:30.",
+    "project": "ABI_eSales_Support",
+    "priorityMap": {
+      "Critical": "P1",
+      "Urgent": "P2",
+      "High": "P3",
+      "Medium": "P3",
+      "Low": "P4"
+    },
+    "frt": {
+      "P1": 15,
+      "P2": 60,
+      "P3": 240,
+      "P4": 480,
+      "S1": 60,
+      "S2": 240,
+      "S3": 480
+    },
+    "res": {
+      "P1": 240,
+      "P2": 480,
+      "P3": 1440,
+      "P4": 2400,
+      "S1": 360,
+      "S2": 1440,
+      "S3": 2400
+    },
+    "calendar247": [
+      "P1",
+      "P2",
+      "S1"
+    ],
+    "workStartMin": 480,
+    "workEndMin": 1050,
+    "excludeHolidays": false
   }
 }
