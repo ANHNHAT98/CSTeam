@@ -739,7 +739,8 @@ app.get('/api/projects/customer-report-monthly', requireAuth, async (req, res) =
 
 /* ---------- KPI Team: CS01 "SLA Phản Hồi" / CS02 "SLA Hoàn Tất" — đánh giá THEO THÁNG cho 1 thành viên ----------
    GET /api/kpi/sla-member?kpi=firstResponse|resolution&member=<email>&level=<Fresher|Junior|Middle|Senior>&month=<YYYY-MM>
-       &projects=["ANVY_eSale_Support","MerapLion_eSales"]&by=assign|owner
+       &projects=["ANVY_eSale_Support","MerapLion_eSales"]&by=assign|owner|projectOwner
+   (projectOwner = owner dự án: lấy hết ticket của các dự án đã chọn, không lọc theo người tạo/xử lý)
    Thành viên phải nằm trong danh sách người tạo ticket (ticket-creators.json). Tính ở kpiSla.js, ngưỡng/trọng số ở kpi-sla-config.json. */
 const kpiSlaCache = new Map(); // dữ liệu ERP thô theo dự án+tháng, để đổi thành viên/level không phải gọi ERP lại
 app.get('/api/kpi/sla-member', requireAuth, async (req, res) => {
@@ -757,7 +758,7 @@ app.get('/api/kpi/sla-member', requireAuth, async (req, res) => {
   const projects = (requested.length ? requested : config.defaultProjects).filter((c) => valid.has(c));
   if (!projects.length) return res.status(400).json({ error: 'Chưa chọn dự án hợp lệ.' });
   const month = kpiSla.isMonthKey(req.query.month) ? String(req.query.month) : new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 7);
-  const by = req.query.by === 'owner' ? 'owner' : 'assign';
+  const by = ['owner', 'projectOwner'].includes(req.query.by) ? req.query.by : 'assign';
   const key = `${[...projects].sort().join(',')}|${month}`;
   try {
     let hit = kpiSlaCache.get(key);

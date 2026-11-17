@@ -6,15 +6,22 @@
     "nhuttm@hqsoft.com.vn",
     "thaontt@hqsoft.com.vn",
     "nhatha@hqsoft.com.vn",
-    "lamlt1@hqsoft.com.vn"
+    "lamlt1@hqsoft.com.vn",
+    "kietlt@hqsoft.com.vn"
   ],
   "defaults": {
-    "MerapLion_eSales": "phuctm@hqsoft.com.vn",
+    "MerapLion_eSales": [
+      "phuctm@hqsoft.com.vn",
+      "kietlt@hqsoft.com.vn"
+    ],
     "ABI_eSales_Support": [
       "lamlt1@hqsoft.com.vn",
       "viltt@hqsoft.com.vn"
     ],
-    "ANVY_eSale_Support": "phuctm@hqsoft.com.vn",
+    "ANVY_eSale_Support": [
+      "phuctm@hqsoft.com.vn",
+      "kietlt@hqsoft.com.vn"
+    ],
     "Sabeco_PG": "nhuttm@hqsoft.com.vn",
     "Sabeco_B2B_Support": "nhuttm@hqsoft.com.vn",
     "FES_eSales": "thaontt@hqsoft.com.vn",

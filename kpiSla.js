@@ -1,7 +1,8 @@
 'use strict';
 /* KPI Team → CS01 "SLA Phản Hồi" (First Response) và CS02 "SLA Hoàn Tất" (Resolution Time), đánh giá THEO THÁNG cho 1 thành viên.
    - Thành viên: chọn trong danh sách người tạo ticket (ticket-creators.json → /api/erp/ticket-creators).
-   - Ticket của thành viên: mặc định là ticket được GIAO cho người đó (_assign); có thể đổi sang ticket do người đó TẠO (owner).
+   - Ticket của thành viên: mặc định là ticket được GIAO cho người đó (_assign); có thể đổi sang ticket do người đó TẠO (owner)
+     hoặc "Owner dự án" (projectOwner): lấy hết ticket của các dự án đã tích, không cần quan tâm ai tạo.
    - Phạm vi: ticket có Opening On trong tháng, thuộc các dự án được chọn (mặc định AnVy + Merap).
    - Đúng/trượt SLA dùng đúng quy tắc của các trang SLA khác (customerReport.js → slaOne): ngưỡng theo Priority,
      Critical/Urgent tính giờ liên tục, mức khác tính giờ làm việc.
@@ -46,7 +47,7 @@ const round = (x, d) => { const f = 10 ** d; return Math.round(x * f) / f; };
 
 /**
  * rows: ticket ERP (có thể trùng, đã lọc theo dự án + tháng ở truy vấn; vẫn lọc lại ở đây cho chắc).
- * by: 'assign' (người xử lý) | 'owner' (người tạo).
+ * by: 'assign' (người xử lý) | 'owner' (người tạo) | 'projectOwner' (owner dự án: mọi ticket của dự án đã chọn).
  */
 function evaluateMember(rows, { month, projects, member, by = 'assign', level, kpiKey, config, now = vnNow() }) {
   const kpi = config.kpis[kpiKey];
@@ -64,7 +65,9 @@ function evaluateMember(rows, { month, projects, member, by = 'assign', level, k
       t.resolvedStr = r.resolution_date || ''; t.resolvedDt = parseNaive(t.resolvedStr);
     }
     if (!(t.openDay >= ms && t.openDay <= me)) continue;
-    const mine = by === 'owner' ? lc(r.owner) === who : t.assign.some((a) => lc(a) === who);
+    // by: 'assign' = ticket được giao cho thành viên · 'owner' = ticket do thành viên tạo
+    //     'projectOwner' = owner dự án → lấy TOÀN BỘ ticket của các dự án đã chọn, không quan tâm ai tạo / ai xử lý
+    const mine = by === 'projectOwner' ? true : by === 'owner' ? lc(r.owner) === who : t.assign.some((a) => lc(a) === who);
     if (!mine) continue;
     const sla = slaOne(t, kpiKey === 'firstResponse' ? 'frt' : 'res', now);
     tickets.push({
