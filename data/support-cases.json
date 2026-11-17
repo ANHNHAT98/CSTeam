@@ -75,9 +75,26 @@
     "solution": "Các bước xử lý:\nB1:Insert dữ liệu vào table: tmp_UpdatePotCust\nB2:Update các dữ liệu thay đổi vào AR_NewCustomerInfor, AR_PotentialCustomer, AR_Customer\nB3:Kiểm tra log table: AR_UpdateLog_PotCust",
     "tags": "",
     "module": "BO",
-    "images": [],
+    "images": [
+      {
+        "id": "f_mwk6wtwnofyi8",
+        "name": "B1_PotentialCustomer.sql",
+        "size": 204,
+        "assetId": "757612486",
+        "by": "admin",
+        "at": "2026-11-17T04:26:19.186Z"
+      },
+      {
+        "id": "f_mwk6wv92hty6d",
+        "name": "B2_B3_PotentialCustomer.sql",
+        "size": 7200,
+        "assetId": "757612575",
+        "by": "admin",
+        "at": "2026-11-17T04:26:20.451Z"
+      }
+    ],
     "createdAt": "2026-11-17T04:21:16.316Z",
-    "updatedAt": "2026-11-17T04:21:16.316Z",
+    "updatedAt": "2026-11-17T04:26:22.595Z",
     "createdBy": "admin",
     "updatedBy": "admin"
   }
