@@ -64,5 +64,21 @@
     "updatedAt": "2026-11-06T07:43:06.663Z",
     "createdBy": "admin",
     "updatedBy": "admin"
+  },
+  {
+    "id": "case_1794889276478_121asu",
+    "project": "ABI",
+    "title": "Cập Nhật Mã Khách Hàng Tiềm Năng",
+    "symptom": "",
+    "cause": "Khách Hàng Cần Hỗ Trợ Cập Nhật Khách Hàng Tiềm Năng: AR_NewCustomerInfor (PotCustID), AR_PotentialCustomer(Status)",
+    "sql": "",
+    "solution": "Các bước xử lý:\nB1:Insert dữ liệu vào table: tmp_UpdatePotCust\nB2:Update các dữ liệu thay đổi vào AR_NewCustomerInfor, AR_PotentialCustomer, AR_Customer\nB3:Kiểm tra log table: AR_UpdateLog_PotCust",
+    "tags": "",
+    "module": "BO",
+    "images": [],
+    "createdAt": "2026-11-17T04:21:16.316Z",
+    "updatedAt": "2026-11-17T04:21:16.316Z",
+    "createdBy": "admin",
+    "updatedBy": "admin"
   }
 ]
