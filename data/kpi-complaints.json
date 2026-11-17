@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "id": "cmp_1794926788318_joycg",
+    "date": "2026-10-08",
+    "month": "2026-10",
+    "member": "phuctm@hqsoft.com.vn",
+    "project": "MerapLion_eSales",
+    "type": "progress",
+    "issue": "Merap_20261008_01",
+    "channel": "Email",
+    "note": "h gửi: Ban Dự án HQsoft,\n\n \n\nMấy ngày qua hai bên vẫn đang phối hợp để xử lý các phát sinh sau đợt cập nhật mẫu hóa đơn mới. Tuy nhiên, em viết mail này để Ban dự án HQsoft cùng nhìn nhận lại một cách nghiêm túc toàn bộ đợt release vừa rồi, bởi số lượng lỗi và mức độ ảnh hưởng thực tế là quá lớn đối với Merap.\n\nDù phần lớn các lỗi chức năng đã và đang được team xử lý dần, nhưng em vẫn liệt kê lại đầy đủ ở đây để đánh giá:\n\nTính sai chiết khấu: Dẫn đến 10 hóa đơn bị phát sinh dòng tiền âm chiết khấu, tính toán sai lệch cả số tiền thành tiền trên hóa đơn\nIn sai mã CQT trên hóa đơn (từ 08/10 đến 22/10): Sự cố này khiến Merap phát hành và giao sai 10.313 hóa đơn cho 6.118 khách hàng trên cả nước. Hậu quả là Merap phải làm công văn giải trình,  in ấn gửi lại toàn bộ cho khách hàng, gây tốn kém chi phí (Merap sẽ tính toán phần chi phí này và báo cho HQsoft) và ảnh hưởng trực tiếp đến uy tín của công ty.\nLỗi phát hành lặp và cấp số ảo 00000 (ngày 23/10): Hóa đơn ngày 22/10 đã phát hành xong t",
+    "createdAt": "2026-11-17T14:46:28.319Z"
+  }
+]
