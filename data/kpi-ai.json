@@ -92,5 +92,86 @@
     "doneDate": "2026-10-17",
     "usedAi": true,
     "createdAt": "2026-11-17T08:52:35.530Z"
+  },
+  {
+    "id": "ai_1794928647223_e99bj",
+    "kind": "workflow",
+    "member": "phuctm@hqsoft.com.vn",
+    "evidence": "https://hqsoftcomvn.sharepoint.com/:p:/r/sites/hqsoftstorage/_layouts/15/Doc.aspx?sourcedoc=%7B8A9B6C82-62FF-4432-8D7B-B2CB961BF7DE%7D&file=ANVY_HQsoft_HDSD_CRS_CTTL_Ngu%E1%BB%93n%20Kh%C3%A1ch%20H%C3%A0ng.pptx&action=edit&mobileredirect=true",
+    "note": "Gen tài liệu HDSD CRs cho Anvy",
+    "date": "2026-10-22",
+    "month": "2026-10",
+    "title": "Gen logticket cho dự án",
+    "taskKind": "Ticket",
+    "prompt": "'==> Chỉnh theo cú pháp sau\nSubjec: [Tên Dự Án] [Mức 1, 2, 3] [Cloud/SFA/Report] <Tên module> - <Mô tả ngắn gọn lỗi>\nMức độ như sau:\n+ Mức 1: Critical , Urgent\n+ Mức 2: High\n+ Mức 3: Medium  , Low\n1/ Thông tin chung:\n+ Mức độ ưu tiên: Critical / Urgent/ High / Medium / Low\n+ Module/Chức năng: (VD: Quản lý kho, Kế toán, Bán hàng...)\n2/ Mô tả lỗi:\n+ <Mô tả rõ ràng, 1-2 câu, tránh mơ hồ>\n3/ Các bước tái hiện (Steps to reproduce):\n+ 1.\n+ 2.\n+ 3.\n4/ Kết quả mong đợi (Expected):\n<Hệ thống lẽ ra phải làm gì>\n5/ Kết quả thực tế (Actual):\n<Hệ thống đang làm gì / lỗi hiển thị>\n6/ Log lỗi / Error message:\n<Dán nguyên văn error log, stack trace nếu có>\n7/ Ảnh chụp màn hình / File đính kèm:\n<Lấy hình ảnh,file gửi vào, nếu không có thì để trống >\n8/ Môi trường UAT [Dự án]:\nThông tin môi trường: Thông tin này tùy thuộc vào mã dự án và so sánh mã dự án bên dưới, sẽ chỉ điền 1 thông tin của dự án đó theo thông tin bên dưới.\n9/ Deadline SLA: công thực tính chỉ điền ngày thực tế theo SLA bỏ qua thứ 7 và chủ nhật\nMức độ          Deadline (tính từ ngày hiện tại)\nCritical               + 0 ngày (ngay trong ngày)\nUrgent               + 1 ngày\nHigh                   + 2 ngày\nMedium             + 3 ngày\nLow                     +5 ngày\n=======================================================\nDự án [Merap]\nIP: 10.10.62.109,1437 (UAT)\nDB NAME UAT: MERAPLION_PRO\nLink Cloud:\thttps://uat.esales.vn/Merap/Login\nAccount DMS:\tAdmin\nPassword DMS:\tHqs0fteSal3sd0to2021\n--------------------------------------------------------------\nDự án [Anvy]\nIP: 10.10.62.109,1435 (UAT)\nDB NAME UAT: ANVY_eSales_UAT\nLink Cloud:\thttps:/dev.hqsoft.vn/ANVY_UAT/\nAccount:\tAdmin\nPassword:\tAdmin@2024",
+    "flow": "B1: Copy các thông tin ticket\nB2: Bỏ template gen theo cấu trúc vào AI\nB3: Sau khi gen copy thông tin đã gen vào ticket",
+    "minutesNormal": null,
+    "minutesAi": null,
+    "sensitive": [
+      {
+        "type": "Địa chỉ IP",
+        "count": 2,
+        "example": "10.***"
+      },
+      {
+        "type": "Mật khẩu / key / token",
+        "count": 1,
+        "example": "Pas***"
+      }
+    ],
+    "createdAt": "2026-11-17T15:17:27.223Z",
+    "rubric": [
+      "goal",
+      "context",
+      "format",
+      "review",
+      "security",
+      "reuse"
+    ],
+    "graded": true,
+    "gradedBy": "tự đánh giá",
+    "gradedAt": "2026-11-17T15:17:27.223Z"
+  },
+  {
+    "id": "ai_1794928647223_hyzo7",
+    "kind": "time",
+    "member": "phuctm@hqsoft.com.vn",
+    "evidence": "https://hqsoftcomvn.sharepoint.com/:p:/r/sites/hqsoftstorage/_layouts/15/Doc.aspx?sourcedoc=%7B8A9B6C82-62FF-4432-8D7B-B2CB961BF7DE%7D&file=ANVY_HQsoft_HDSD_CRS_CTTL_Ngu%E1%BB%93n%20Kh%C3%A1ch%20H%C3%A0ng.pptx&action=edit&mobileredirect=true",
+    "note": "Gen tài liệu HDSD CRs cho Anvy",
+    "date": "2026-10-22",
+    "month": "2026-10",
+    "task": "GEN ra ticket và copy thông tin vào ticket",
+    "taskKind": "Ticket",
+    "minutesNormal": 15,
+    "minutesAi": 5,
+    "createdAt": "2026-11-17T15:17:27.223Z"
+  },
+  {
+    "id": "ai_1794928647223_0kf8h",
+    "kind": "report",
+    "member": "phuctm@hqsoft.com.vn",
+    "evidence": "https://hqsoftcomvn.sharepoint.com/:p:/r/sites/hqsoftstorage/_layouts/15/Doc.aspx?sourcedoc=%7B8A9B6C82-62FF-4432-8D7B-B2CB961BF7DE%7D&file=ANVY_HQsoft_HDSD_CRS_CTTL_Ngu%E1%BB%93n%20Kh%C3%A1ch%20H%C3%A0ng.pptx&action=edit&mobileredirect=true",
+    "note": "Gen tài liệu HDSD CRs cho Anvy",
+    "report": "MeraLion_eSales",
+    "reportKind": "Báo cáo tuần",
+    "dueDate": "2026-10-31",
+    "month": "2026-10",
+    "doneDate": "2026-10-31",
+    "usedAi": true,
+    "createdAt": "2026-11-17T15:17:27.223Z"
+  },
+  {
+    "id": "ai_1794928647223_m70sx",
+    "kind": "report",
+    "member": "phuctm@hqsoft.com.vn",
+    "evidence": "https://hqsoftcomvn.sharepoint.com/:p:/r/sites/hqsoftstorage/_layouts/15/Doc.aspx?sourcedoc=%7B8A9B6C82-62FF-4432-8D7B-B2CB961BF7DE%7D&file=ANVY_HQsoft_HDSD_CRS_CTTL_Ngu%E1%BB%93n%20Kh%C3%A1ch%20H%C3%A0ng.pptx&action=edit&mobileredirect=true",
+    "note": "Gen tài liệu HDSD CRs cho Anvy",
+    "report": "Anvy_Support_eSales",
+    "reportKind": "Báo cáo tuần",
+    "dueDate": "2026-10-31",
+    "month": "2026-10",
+    "doneDate": "2026-10-31",
+    "usedAi": true,
+    "createdAt": "2026-11-17T15:17:27.223Z"
   }
 ]
