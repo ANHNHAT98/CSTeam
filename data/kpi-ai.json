@@ -196,10 +196,11 @@
     "note": "",
     "report": "Báo cáo tổng kết thống kê xử lý ticket tháng 10/2026",
     "reportKind": "Báo cáo tháng",
-    "dueDate": "2026-10-01",
+    "dueDate": "2026-10-31",
     "month": "2026-10",
-    "doneDate": "2026-10-31",
+    "doneDate": "2026-10-30",
     "usedAi": true,
-    "createdAt": "2026-11-18T06:53:10.206Z"
+    "createdAt": "2026-11-18T06:53:10.206Z",
+    "updatedAt": "2026-11-18T06:59:16.858Z"
   }
 ]
