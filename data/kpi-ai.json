@@ -146,5 +146,60 @@
     "doneDate": "2026-10-31",
     "usedAi": true,
     "createdAt": "2026-11-17T15:17:27.223Z"
+  },
+  {
+    "id": "ai_1794984790206_ucv14",
+    "kind": "workflow",
+    "member": "viltt@hqsoft.com.vn",
+    "evidence": "",
+    "note": "",
+    "date": "2026-10-01",
+    "month": "2026-10",
+    "title": "Soạn email nội dung phản hồi nguyên nhân ticket theo ngôn ngữ business",
+    "taskKind": "Email",
+    "prompt": "Bạn là một chuyên viên Customer Success chuyên nghiệp của hệ thống DMS. \nHãy soạn nội dung phản hồi ticket gửi cho khách hàng theo ngôn ngữ kinh doanh (business) tập trung trọng tâm vào nguyên nhân và hướng xử lý.\nCấu trúc nội dung phản hồi bao gồm:\n1. Nguyên nhân: Trình bày rõ ràng nguyên nhân gốc rễ (root cause) dưới góc độ hệ thống/nghiệp vụ một cách khách quan, dễ hiểu cho phía kinh doanh.\n2. Hướng xử lý: Đưa ra giải pháp cụ thể mà kỹ thuật/vận hành đã thực hiện, hoặc các bước thao tác tiếp theo để giải quyết triệt để vấn đề.",
+    "flow": "Bước 1: Tiếp nhận và phân loại ticket, xác định rõ nguyên nhân gốc rễ (root cause) từ dữ liệu hoặc phản hồi của đội ngũ kỹ thuật.\nBước 2: Ẩn danh toàn bộ thông tin bảo mật của khách hàng trước khi đưa thông tin vào công cụ AI.\nBước 3: Nhập prompt chuẩn yêu cầu AI chuyển đổi thông tin kỹ thuật thành nội dung email phản hồi theo ngôn ngữ business, tập trung làm rõ hai phần: Nguyên nhân và Hướng xử lý.\nBước 4: Kiểm tra, đối chiếu độ chính xác của nội dung AI với thực tế xử lý",
+    "minutesNormal": null,
+    "minutesAi": null,
+    "sensitive": [],
+    "createdAt": "2026-11-18T06:53:10.206Z",
+    "rubric": [
+      "goal",
+      "context",
+      "format",
+      "review",
+      "security"
+    ],
+    "graded": true,
+    "gradedBy": "tự đánh giá",
+    "gradedAt": "2026-11-18T06:53:10.206Z"
+  },
+  {
+    "id": "ai_1794984790206_6guk2",
+    "kind": "time",
+    "member": "viltt@hqsoft.com.vn",
+    "evidence": "",
+    "note": "",
+    "date": "2026-10-01",
+    "month": "2026-10",
+    "task": "Soạn email phản hồi nguyên nhân và hướng xử lý ticket",
+    "taskKind": "Email",
+    "minutesNormal": 30,
+    "minutesAi": 9,
+    "createdAt": "2026-11-18T06:53:10.206Z"
+  },
+  {
+    "id": "ai_1794984790206_zrblb",
+    "kind": "report",
+    "member": "viltt@hqsoft.com.vn",
+    "evidence": "",
+    "note": "",
+    "report": "Báo cáo tổng kết thống kê xử lý ticket tháng 10/2026",
+    "reportKind": "Báo cáo tháng",
+    "dueDate": "2026-10-01",
+    "month": "2026-10",
+    "doneDate": "2026-10-31",
+    "usedAi": true,
+    "createdAt": "2026-11-18T06:53:10.206Z"
   }
 ]
