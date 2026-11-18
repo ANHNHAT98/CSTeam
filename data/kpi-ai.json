@@ -66,20 +66,6 @@
     "createdAt": "2026-11-17T08:00:45.602Z"
   },
   {
-    "id": "ai_1794905555530_dzhjc",
-    "kind": "report",
-    "member": "phuctm@hqsoft.com.vn",
-    "evidence": "",
-    "note": "",
-    "report": "MerapLion_eSales",
-    "reportKind": "Báo cáo tuần",
-    "dueDate": "2026-10-17",
-    "month": "2026-10",
-    "doneDate": "2026-10-17",
-    "usedAi": true,
-    "createdAt": "2026-11-17T08:52:35.530Z"
-  },
-  {
     "id": "ai_1794905555531_kkngy",
     "kind": "report",
     "member": "phuctm@hqsoft.com.vn",
