@@ -1128,7 +1128,7 @@ function weekHint(){
 au$('au_weekEnd').addEventListener('change', weekHint);
 
 /* Dự án chạy tự động: chỉ dự án có Project Owner thuộc team (danh sách email ở ô Chủ dự án) */
-const DEFAULT_OWNERS = ['lamlt1@hqsoft.com.vn','phuctm@hqsoft.com.vn','nhatha@hqsoft.com.vn','nhuttm@hqsoft.com.vn','kietlt@hqsoft.com.vn'];
+const DEFAULT_OWNERS = ['lamlt1@hqsoft.com.vn','phuctm@hqsoft.com.vn','nhatha@hqsoft.com.vn','nhuttm@hqsoft.com.vn'];
 const ownersOf = () => au$('au_owners').value.split(/[,;\s]+/).map(x => x.trim().toLowerCase()).filter(Boolean);
 async function loadOwnerProjects(){
   const owners = ownersOf();

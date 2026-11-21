@@ -77,7 +77,7 @@
         <div class="monthbox"><button id="btnPrev" type="button" title="Tháng trước">◀</button><input type="month" id="pickMonth"><button id="btnNext" type="button" title="Tháng sau">▶</button><button id="btnThis" type="button" class="primary">Tháng này</button></div>
       </div>
       <div class="field">Ticket của thành viên là
-        <select id="selBy"><option value="assign">Ticket được giao xử lý (người xử lý)</option><option value="owner">Ticket do người đó tạo</option><option value="projectOwner">Owner dự án (toàn bộ ticket của dự án đã tích)</option></select>
+        <select id="selBy"><option value="assign">Ticket được giao xử lý (người xử lý)</option><option value="owner">Ticket do người đó tạo</option></select>
       </div>
       <div class="field">&nbsp;<span><button id="btnReload" type="button">↻ Tải lại từ ERP</button> <button id="btnXlsx" type="button" class="export" disabled>⬇ Xuất Excel</button></span></div>
     </div>
@@ -153,7 +153,6 @@ async function api(url){
   if(!r.ok) throw new Error(j.error || ('HTTP '+r.status));
   return j;
 }
-const BY_LABEL = {assign:'Ticket được giao xử lý', owner:'Ticket do người đó tạo', projectOwner:'Owner dự án — toàn bộ ticket của dự án đã chọn (không phân biệt người tạo/xử lý)'};
 function renderScope(){
   $('scope').innerHTML = '<span class="t">Dự án:</span>'+projects.map(p=>'<label class="'+(scope.includes(p.code)?'on':'')+'"><input type="checkbox" data-p="'+esc(p.code)+'"'+(scope.includes(p.code)?' checked':'')+'> '+esc(p.name)+'</label>').join('');
   $('scope').querySelectorAll('input').forEach(i=>i.onchange=()=>{
@@ -173,7 +172,7 @@ function howText(r, th, weight){
   else prog = 'Progress = 50% + 50% × ('+fmt(a)+' − '+fmt(th.min,0)+') ÷ ('+fmt(th.target,0)+' − '+fmt(th.min,0)+') = <b>'+fmt(r.progress)+'%</b>';
   return base+'<br>'+prog+'<br>KPI Completion = '+fmt(r.progress)+'% × '+fmt(weight,0)+'% = <b>'+fmt(r.points,2)+'%</b>';
 }
-const resCls = r => r==='Đạt' ? 'ok' : r==='Trượt' ? 'bad' : '';
+const resCls = r => r==='Đạt' ? 'ok' : 'bad';
 
 function render(d){
   const r = d.result, k = d.kpi;
@@ -258,7 +257,7 @@ function exportXlsx(){
   const S = [
     [KPI.title+' — Đánh giá KPI theo tháng'],
     ['Thành viên', d.member], ['Level', d.level], ['Kỳ đánh giá', mFmt(d.month.key)],
-    ['Dự án', d.projects.map(pLabel).join(', ')], ['Ticket của thành viên', BY_LABEL[d.by]||BY_LABEL.assign],
+    ['Dự án', d.projects.map(pLabel).join(', ')], ['Ticket của thành viên', d.by==='owner'?'Ticket do người đó tạo':'Ticket được giao xử lý'],
     ['Xuất lúc', new Date().toLocaleString('vi-VN')], [],
     ['Chỉ số','Giá trị'],
     ['Ticket trong phạm vi', r.total], ['Đúng SLA', r.pass], ['Trượt SLA', r.fail], ['Trong đó thiếu log (chưa có mốc)', r.missingLog], ['Mẫu số (đúng + trượt)', r.decided],

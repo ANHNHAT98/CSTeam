@@ -3,7 +3,7 @@ const fs = require('fs');
 const os = require('os');
 const { spawn } = require('child_process');
 const express = require('express');
-const session = require('express-session');
+const { cookieSession } = require('./cookieSession');
 const multer = require('multer');
 const erp = require('./erpClient');
 const BUILD = '2026-11-04.1'; // đối chiếu với trang Tạo Ticket để phát hiện deploy thiếu file
@@ -38,21 +38,13 @@ const TEAM_USER = process.env.ADMIN_USER || 'admin';
 const TEAM_PASS = process.env.ADMIN_PASS || 'admin123@';
 
 app.use(express.json({ limit: '10mb' })); // 10mb: trang Báo Cáo Tuần ERP gửi kèm ảnh biểu đồ (base64)
-app.use(
-  session({
-    name: 'hq_ops_sid',
-    secret: SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    rolling: true, // mỗi request hợp lệ sẽ gia hạn lại phiên, đỡ bị hết hạn khi đang dùng dở
-    cookie: {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.COOKIE_SECURE === '1', // bật khi đã chạy sau HTTPS
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 ngày — giảm số lần phải đăng nhập lại
-    },
-  })
-);
+// Phiên đăng nhập lưu trong cookie có chữ ký (cookieSession.js) — không mất khi restart / deploy lại / Render ngủ dậy.
+app.use(cookieSession({
+  name: 'hq_ops_sid',
+  secret: SESSION_SECRET,
+  secure: process.env.COOKIE_SECURE === '1', // bật khi đã chạy sau HTTPS
+  maxAgeMs: 1000 * 60 * 60 * 24 * 7, // 7 ngày, tự gia hạn khi đang dùng
+}));
 
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body || {};
@@ -90,6 +82,20 @@ function requireAuth(req, res, next) {
   if (!req.session.username) return res.status(401).json({ error: 'Chưa đăng nhập' });
   next();
 }
+
+/* Nơi lưu dữ liệu (PostgreSQL/Supabase, SQL Server, GitHub hoặc local) — trang Cài đặt → 🗄 Lưu trữ dữ liệu */
+app.get('/api/store/status', requireAuth, async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try { res.json(await require('./listStore').storeStatus()); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/store/migrate', requireAuth, async (req, res) => { // chuyển ngay mọi dữ liệu cũ (GitHub/./data) sang database
+  try { const r = await require('./listStore').migrateAll(); console.log(`[store] ${req.session.username} chuyển dữ liệu: ${r.filter((x) => x.ok).length}/${r.length} OK`); res.json({ ok: r.every((x) => x.ok), results: r }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.get('/cai-dat/luu-tru', requirePageAuth, (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'protected', 'cai-dat-luu-tru.html'));
+});
 
 app.get('/cai-dat', requirePageAuth, (req, res) => { // Cài đặt: gom cấu hình gửi tự động (nhúng các trang cấu hình với ?cfg=)
   res.set('Cache-Control', 'no-store');
@@ -739,8 +745,7 @@ app.get('/api/projects/customer-report-monthly', requireAuth, async (req, res) =
 
 /* ---------- KPI Team: CS01 "SLA Phản Hồi" / CS02 "SLA Hoàn Tất" — đánh giá THEO THÁNG cho 1 thành viên ----------
    GET /api/kpi/sla-member?kpi=firstResponse|resolution&member=<email>&level=<Fresher|Junior|Middle|Senior>&month=<YYYY-MM>
-       &projects=["ANVY_eSale_Support","MerapLion_eSales"]&by=assign|owner|projectOwner
-   (projectOwner = owner dự án: lấy hết ticket của các dự án đã chọn, không lọc theo người tạo/xử lý)
+       &projects=["ANVY_eSale_Support","MerapLion_eSales"]&by=assign|owner
    Thành viên phải nằm trong danh sách người tạo ticket (ticket-creators.json). Tính ở kpiSla.js, ngưỡng/trọng số ở kpi-sla-config.json. */
 const kpiSlaCache = new Map(); // dữ liệu ERP thô theo dự án+tháng, để đổi thành viên/level không phải gọi ERP lại
 app.get('/api/kpi/sla-member', requireAuth, async (req, res) => {
@@ -758,7 +763,7 @@ app.get('/api/kpi/sla-member', requireAuth, async (req, res) => {
   const projects = (requested.length ? requested : config.defaultProjects).filter((c) => valid.has(c));
   if (!projects.length) return res.status(400).json({ error: 'Chưa chọn dự án hợp lệ.' });
   const month = kpiSla.isMonthKey(req.query.month) ? String(req.query.month) : new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 7);
-  const by = ['owner', 'projectOwner'].includes(req.query.by) ? req.query.by : 'assign';
+  const by = req.query.by === 'owner' ? 'owner' : 'assign';
   const key = `${[...projects].sort().join(',')}|${month}`;
   try {
     let hit = kpiSlaCache.get(key);
@@ -771,10 +776,6 @@ app.get('/api/kpi/sla-member', requireAuth, async (req, res) => {
     }
     const data = kpiSla.evaluateMember(hit.rows, { month, projects, member, by, level, kpiKey, config });
     data.warnings = hit.truncated ? [`Truy vấn chạm giới hạn ${hit.limit} ticket — số liệu có thể thiếu.`] : [];
-    const abiNote = kpiSla.abiNote(projects, config, kpiKey); // dự án ABI: ngưỡng theo bảng SLA Jira (P1–S3)
-    if (abiNote) data.warnings.push(abiNote);
-    const prioNote = kpiSla.priorityNote(projects, config, kpiKey); // ngưỡng theo Priority của các dự án khác ABI
-    if (prioNote) data.warnings.push(prioNote);
     data.config = { levels: config.levels, defaultProjects: config.defaultProjects, thresholds: config.kpis[kpiKey].thresholds, weights: config.kpis[kpiKey].weights, name: config.kpis[kpiKey].matrixName };
     res.json(data);
   } catch (e) {

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lưu trữ dữ liệu — HQSOFT Ops Console</title>
+<style>
+  :root{ --ink:#0F2138; --blue:#1F4E79; --muted:#5B7089; --line:rgba(31,78,121,.18); --ok:#1E7B45; --warn:#9A5B00; --bad:#B42318; }
+  *{box-sizing:border-box;}
+  body{margin:0;background:#EEF2F6;color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;}
+  .wrap{padding:18px 20px 28px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:14px;}
+  h2{font-size:15px;margin:0 0 10px;}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
+  .stat{border:1px solid var(--line);border-radius:8px;padding:10px 14px;min-width:170px;}
+  .stat b{display:block;font-size:20px;margin-top:2px;}
+  .stat span{font-size:12px;color:var(--muted);}
+  .bar{height:8px;background:#E3E9F0;border-radius:6px;overflow:hidden;margin-top:6px;}
+  .bar i{display:block;height:100%;background:var(--blue);}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);}
+  th{font-size:12px;color:var(--muted);font-weight:600;}
+  td.num{text-align:right;font-family:'IBM Plex Mono',monospace;}
+  code{font-family:'IBM Plex Mono',monospace;font-size:12.5px;background:#F1F4F8;padding:1px 5px;border-radius:4px;}
+  button{font:inherit;border:1px solid var(--blue);background:var(--blue);color:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;}
+  button.ghost{background:#fff;color:var(--blue);}
+  button:disabled{opacity:.55;cursor:default;}
+  .msg{margin-top:10px;font-size:13px;}
+  .ok{color:var(--ok);} .warn{color:var(--warn);} .bad{color:var(--bad);}
+  .muted{color:var(--muted);font-size:12.5px;}
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:12.5px;font-weight:600;}
+  .b-ok{background:#E3F4EA;color:var(--ok);} .b-warn{background:#FFF1DB;color:var(--warn);} .b-bad{background:#FDE7E5;color:var(--bad);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h2>Nơi lưu dữ liệu hiện tại</h2>
+    <div class="row" id="head">Đang tải…</div>
+    <div class="msg" id="hint"></div>
+  </div>
+  <div class="card" id="migrateCard" style="display:none">
+    <h2>Chuyển dữ liệu cũ sang database</h2>
+    <p class="muted" style="margin:0 0 10px">Tool tự chuyển từng loại dữ liệu khi được đọc lần đầu. Bấm nút để chuyển <b>toàn bộ</b> ngay một lượt (dữ liệu đã có trong database sẽ giữ nguyên, không bị ghi đè).</p>
+    <button type="button" id="migrate">Chuyển toàn bộ ngay</button>
+    <div class="msg" id="migrateMsg"></div>
+  </div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">Các loại dữ liệu</h2><button type="button" class="ghost" id="reload">↻ Tải lại</button></div>
+    <div id="docs" style="margin-top:10px"></div>
+  </div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const fmtBytes = (n) => n == null ? '—' : n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(2) + ' MB';
+const fmtTime = (s) => s ? new Date(s).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }) : '—';
+const FREE_LIMIT = 500 * 1048576; // gói free Supabase
+const NAMES = { postgres: 'PostgreSQL (Supabase)', sqlserver: 'SQL Server', github: 'GitHub (mỗi lần lưu = 1 commit)', local: 'File trên server (mất khi deploy lại)' };
+
+async function load() {
+  $('head').textContent = 'Đang tải…';
+  let d;
+  try { const r = await fetch('/api/store/status', { cache: 'no-store' }); d = await r.json(); if (!r.ok) throw new Error(d.error || r.status); }
+  catch (e) { $('head').innerHTML = `<span class="bad">Không đọc được trạng thái: ${esc(e.message)}</span>`; return; }
+  const db = d.db || {}; const isDb = d.backend === 'postgres' || d.backend === 'sqlserver';
+  const badge = isDb ? (db.ok ? '<span class="badge b-ok">● Đang kết nối</span>' : '<span class="badge b-bad">● Lỗi kết nối</span>')
+    : d.backend === 'github' ? '<span class="badge b-warn">● Chưa dùng database</span>' : '<span class="badge b-bad">● Không lưu bền</span>';
+  let html = `<div class="stat"><span>Đang lưu vào</span><b style="font-size:16px">${esc(NAMES[d.backend] || d.backend)}</b></div><div>${badge}</div>`;
+  if (isDb && db.ok && db.dbBytes != null) {
+    const pct = Math.min(100, db.dbBytes / FREE_LIMIT * 100);
+    html += `<div class="stat" style="min-width:240px"><span>Dung lượng database (gói free 500 MB)</span><b>${fmtBytes(db.dbBytes)} · ${pct.toFixed(1)}%</b><div class="bar"><i style="width:${Math.max(1, pct)}%;${pct > 80 ? 'background:#B42318' : ''}"></i></div></div>`;
+  }
+  $('head').innerHTML = html;
+  $('hint').innerHTML = isDb && !db.ok ? `<span class="bad">${esc(db.error || '')}</span><br><span class="muted">Kiểm tra lại biến STORE_PG_URL trên Render (dùng chuỗi "Session pooler" của Supabase, đúng mật khẩu).</span>`
+    : !isDb ? '<span class="muted">Để chuyển sang database: thêm biến <code>STORE_PG_URL</code> (chuỗi kết nối Supabase) trên Render → Environment rồi deploy lại.</span>' : '';
+  $('migrateCard').style.display = isDb && db.ok ? '' : 'none';
+
+  const inDb = new Map(((db.ok && db.docs) || []).map((x) => [x.file, x]));
+  const files = [...new Set([...(d.files || []), ...inDb.keys()])].sort();
+  $('docs').innerHTML = `<table><thead><tr><th>Dữ liệu</th>${isDb ? '<th>Trong database</th><th style="text-align:right">Dung lượng</th><th>Cập nhật</th>' : ''}</tr></thead><tbody>${
+    files.map((f) => { const x = inDb.get(f);
+      return `<tr><td><code>${esc(f)}</code></td>${isDb ? (x ? `<td class="ok">✓ Đã có</td><td class="num">${fmtBytes(x.bytes)}</td><td class="muted">${fmtTime(x.updatedAt)}</td>` : '<td class="warn">Chưa chuyển</td><td class="num">—</td><td></td>') : ''}</tr>`; }).join('')
+  }</tbody></table>`;
+}
+
+$('migrate').addEventListener('click', async () => {
+  const b = $('migrate'); b.disabled = true; $('migrateMsg').textContent = 'Đang chuyển…';
+  try {
+    const r = await fetch('/api/store/migrate', { method: 'POST' }); const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+    const bad = d.results.filter((x) => !x.ok);
+    $('migrateMsg').innerHTML = bad.length
+      ? `<span class="bad">Lỗi ${bad.length}/${d.results.length}:</span><br>` + bad.map((x) => `<code>${esc(x.file)}</code> — ${esc(x.error)}`).join('<br>')
+      : `<span class="ok">✓ Đã có đủ ${d.results.length} loại dữ liệu trong database.</span>`;
+  } catch (e) { $('migrateMsg').innerHTML = `<span class="bad">${esc(e.message)}</span>`; }
+  b.disabled = false; load();
+});
+$('reload').addEventListener('click', load);
+load();
+</script>
+</body>
+</html>
