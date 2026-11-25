@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<script src="/beer-loader.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thư viện Prompt &amp; Skill — HQSOFT Ops Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#12233D;--blueprint:#1F4E79;--paper:#EEF2F6;--panel:#FFFFFF;--grid-line:rgba(31,78,121,.14);--grid-line-strong:rgba(31,78,121,.28);--amber:#E8A33D;--success:#3F7D58;--danger:#B23A48;--muted:#5B7089;--radius:10px;
+    --t-prompt:#1F4E79;--t-skill:#6B4FA0;--t-guide:#3F7D58;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;min-height:100vh;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:32px 32px;}
+  .ops-topbar{background:#12233D;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:14px;}
+  .ops-topbar a{color:#fff;text-decoration:none;font-size:13px;font-weight:700;opacity:.9;}
+  .ops-topbar a:hover{opacity:1;text-decoration:underline;}
+  .ops-topbar .crumb{font-size:12px;color:#B9C6D6;font-family:monospace;}
+  .ops-topbar .me{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12.5px;color:#D6E0EC;}
+  .ops-topbar select{font:inherit;font-size:12.5px;padding:4px 8px;border-radius:6px;border:1px solid #3A5578;background:#1B3152;color:#fff;max-width:240px;}
+  .wrap{max-width:1240px;margin:0 auto;padding:26px 24px 80px;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:25px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 16px;line-height:1.6;max-width:900px;}
+  .panel{background:var(--panel);border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;}
+  button{font:inherit;font-size:13.5px;padding:8px 14px;border-radius:8px;border:1px solid var(--blueprint);background:#fff;color:var(--blueprint);cursor:pointer;font-weight:600;}
+  button.primary{background:var(--blueprint);color:#fff;}
+  button.ok{border-color:var(--success);color:var(--success);}
+  button.danger{border-color:var(--danger);color:var(--danger);}
+  button.danger.arm{background:var(--danger);color:#fff;}
+  button.sm{padding:4px 10px;font-size:12.5px;}
+  button:disabled{opacity:.5;cursor:default;}
+  input[type=text],input[type=search],select,textarea{font:inherit;font-size:13.5px;color:var(--ink);padding:8px 11px;border-radius:8px;border:1px solid var(--grid-line-strong);background:#fff;}
+  textarea{width:100%;resize:vertical;line-height:1.5;}
+  .mono{font-family:'IBM Plex Mono',monospace;font-size:12.8px;}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;}
+  .tab{padding:7px 13px;border:1px solid var(--grid-line-strong);border-radius:20px;background:#fff;cursor:pointer;font-size:13px;font-weight:600;color:var(--ink);}
+  .tab.on{background:var(--blueprint);color:#fff;border-color:var(--blueprint);}
+  .tab small{opacity:.7;font-weight:500;margin-left:3px;}
+  .grow{flex:1;min-width:180px;}
+  .chk{display:flex;gap:6px;align-items:center;font-size:13px;cursor:pointer;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;}
+  .card{background:#fff;border:1px solid var(--grid-line-strong);border-radius:var(--radius);padding:14px 15px;display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:box-shadow .15s,transform .15s;border-top:4px solid var(--c,#1F4E79);}
+  .card:hover{box-shadow:0 6px 18px rgba(18,35,61,.12);transform:translateY(-1px);}
+  .card h3{font-size:15px;margin:0;line-height:1.35;}
+  .card .desc{font-size:12.8px;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .card .foot{margin-top:auto;display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:11.5px;color:var(--muted);}
+  .badge{font-size:10.5px;font-weight:700;border-radius:20px;padding:2px 9px;background:#E4EBF3;color:var(--blueprint);letter-spacing:.03em;white-space:nowrap;}
+  .badge.prompt{background:#E4EBF3;color:var(--t-prompt);} .badge.skill{background:#EEE8F7;color:var(--t-skill);} .badge.guide{background:#E6F2EA;color:var(--t-guide);}
+  .tag{font-size:11px;border:1px solid var(--grid-line-strong);border-radius:20px;padding:1px 8px;color:var(--muted);}
+  .mine{color:var(--amber);font-weight:700;}
+  .empty{color:var(--muted);padding:40px 0;text-align:center;font-size:14px;line-height:1.8;}
+  .msg{padding:10px 13px;border-radius:8px;font-size:13.5px;margin:0 0 12px;line-height:1.55;}
+  .msg.err{background:#FBE9EB;border:1px solid #E3A7AF;color:#8B2A36;} .msg.ok{background:#EAF5EE;border:1px solid #B5D8C3;color:#2C5E43;} .msg.info{background:#EAF1F8;border:1px solid var(--grid-line-strong);}
+  details.help{font-size:13px;line-height:1.65;color:var(--ink);}
+  details.help summary{cursor:pointer;font-weight:600;color:var(--blueprint);}
+  details.help code{background:#F1F4F8;padding:1px 5px;border-radius:4px;font-size:12px;}
+  /* modal */
+  .mask{position:fixed;inset:0;background:rgba(12,24,42,.45);display:none;align-items:flex-start;justify-content:center;padding:30px 16px;overflow:auto;z-index:50;}
+  .mask.on{display:flex;}
+  .modal{background:#fff;border-radius:12px;width:min(980px,100%);box-shadow:0 20px 60px rgba(0,0,0,.25);}
+  .mhead{padding:16px 20px;border-bottom:1px solid var(--grid-line);display:flex;gap:12px;align-items:flex-start;}
+  .mhead h2{font-family:'Space Grotesk',sans-serif;font-size:19px;margin:2px 0 4px;}
+  .mhead .x{margin-left:auto;border:0;font-size:20px;padding:0 6px;color:var(--muted);}
+  .mbody{padding:16px 20px;}
+  .mfoot{padding:12px 20px;border-top:1px solid var(--grid-line);display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .meta{color:var(--muted);font-size:12.5px;line-height:1.6;}
+  pre.content{background:#0F1D31;color:#E6EDF6;border-radius:8px;padding:14px 16px;white-space:pre-wrap;word-break:break-word;max-height:420px;overflow:auto;margin:0;font-family:'IBM Plex Mono',monospace;font-size:12.8px;line-height:1.55;}
+  .vars{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px 12px;margin:0 0 12px;}
+  .vars label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--muted);}
+  .files{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px;}
+  .file{font-size:12.5px;padding:4px 10px;border-radius:6px;border:1px solid var(--grid-line-strong);cursor:pointer;background:#fff;}
+  .file.on{background:var(--t-skill);color:#fff;border-color:var(--t-skill);}
+  .form{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;}
+  .form label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--muted);}
+  .form .full{grid-column:1/-1;}
+  .ef{border:1px solid var(--grid-line-strong);border-radius:8px;padding:8px;margin-bottom:8px;}
+  .ef .row{display:flex;gap:8px;margin-bottom:6px;}
+  .hint{color:var(--muted);font-size:12px;line-height:1.55;}
+  @media (max-width:700px){ .form{grid-template-columns:1fr;} .ops-topbar{flex-wrap:wrap;} .ops-topbar .me{margin-left:0;} }
+</style>
+</head>
+<body>
+<div class="ops-topbar">
+  <a href="/">← HQSoft Ops Console</a><span class="crumb">/ ai / thư viện prompt &amp; skill</span>
+</div>
+<div class="wrap">
+  <h1>🧠 Thư viện Prompt &amp; Skill</h1>
+  <p class="sub">Nơi team lưu và chia sẻ <b>prompt AI</b>, <b>skill Claude</b> và <b>hướng dẫn dự án (CLAUDE.md)</b>. Lấy về dùng ngay, hoặc bấm <b>“Nhân bản”</b> để sao chép rồi chỉnh cho đúng yêu cầu riêng (bản gốc giữ nguyên). Dùng chung cho cả team theo tài khoản đăng nhập.</p>
+
+  <div class="panel">
+    <details class="help"><summary>Cách dùng từng loại</summary>
+      <div style="margin-top:8px">
+        <b>💬 Prompt</b> — bấm <i>Dùng</i>, điền các ô biến (vd <code>{{ma_ticket}}</code>), bấm <i>Copy prompt</i> rồi dán vào Claude / ChatGPT. Khi tạo prompt, viết biến dạng <code>{{ten_bien}}</code>.<br>
+        <b>🧩 Skill</b> — bấm <i>Tải .zip</i>.
+        Claude.ai: <i>Settings → Capabilities → Skills → Upload skill</i>, chọn file .zip.
+        Claude Code: giải nén vào thư mục <code>.claude/skills/</code> của dự án (cả team dùng chung qua git) hoặc <code>~/.claude/skills/</code> (chỉ máy bạn).<br>
+        <b>📘 Hướng dẫn dự án</b> — bấm <i>Tải file</i> (mặc định <code>CLAUDE.md</code>), đặt ở thư mục gốc dự án để Claude Code tự đọc; với Claude.ai thì dán vào <i>Project → Instructions</i>.
+      </div>
+    </details>
+  </div>
+
+  <div class="panel toolbar">
+    <div class="tabs" id="tabs"></div>
+    <input type="search" id="q" class="grow" placeholder="Tìm theo tên, mô tả, tag, nội dung…">
+    <select id="fProject"><option value="">Tất cả dự án</option></select>
+    <button class="primary" id="addBtn" type="button">+ Thêm mới</button>
+  </div>
+  <div id="msg"></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<!-- xem / dùng -->
+<div class="mask" id="viewMask"><div class="modal">
+  <div class="mhead"><div><span id="vBadge"></span><h2 id="vTitle"></h2><div class="meta" id="vMeta"></div></div><button class="x" type="button" data-close="viewMask">✕</button></div>
+  <div class="mbody">
+    <div class="meta" id="vDesc" style="margin-bottom:10px;color:var(--ink);font-size:13.5px"></div>
+    <div id="vVars"></div>
+    <div id="vFiles" class="files"></div>
+    <pre class="content" id="vContent"></pre>
+    <div class="msg" id="vMsg" style="display:none;margin-top:10px"></div>
+  </div>
+  <div class="mfoot" id="vActs"></div>
+</div></div>
+
+<!-- thêm / sửa -->
+<div class="mask" id="editMask"><div class="modal">
+  <div class="mhead"><div><h2 id="eTitle">Thêm mới</h2><div class="meta" id="eSub"></div></div><button class="x" type="button" data-close="editMask">✕</button></div>
+  <div class="mbody">
+    <div class="form">
+      <label>Loại<select id="fType"><option value="prompt">💬 Prompt</option><option value="skill">🧩 Skill (Claude)</option><option value="guide">📘 Hướng dẫn dự án (CLAUDE.md)</option></select></label>
+      <label>Dự án (để trống = dùng chung)<select id="fProj"><option value="">— Dùng chung mọi dự án —</option></select></label>
+      <label class="full">Tên<input type="text" id="fTitle" maxlength="150" placeholder="vd: Soạn mail báo nguyên nhân sự cố cho khách"></label>
+      <label class="full">Mô tả ngắn — dùng khi nào, kết quả ra gì<textarea id="fDesc" rows="2" maxlength="1000"></textarea></label>
+      <label>Người phụ trách (không bắt buộc)<input type="text" id="fAuthor" maxlength="80" placeholder="vd: nhatha"></label>
+      <label>Tag (cách nhau dấu phẩy)<input type="text" id="fTags" placeholder="mail, sql, root-cause"></label>
+      <label id="lSkillName">Tên thư mục skill (chữ thường, gạch ngang)<input type="text" id="fSkillName" class="mono" placeholder="vd: root-cause-abi"></label>
+      <label id="lGuideFile">Tên file khi tải<input type="text" id="fGuideFile" class="mono" value="CLAUDE.md"></label>
+      <label class="full"><span id="lContent">Nội dung</span><textarea id="fContent" rows="16" class="mono"></textarea></label>
+      <div class="full hint" id="contentHint"></div>
+      <div class="full" id="filesBox">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><b style="font-size:13px">File phụ của skill</b><span class="hint">(references/*.md, scripts/*.py, templates… — chỉ file chữ, mỗi file ≤ 100 KB)</span></div>
+        <div id="eFiles"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="sm" type="button" id="addFile">+ Thêm file</button>
+          <label class="sm" style="display:inline-flex"><button class="sm" type="button" onclick="document.getElementById('upFiles').click()">⬆ Chọn file từ máy</button></label>
+          <input type="file" id="upFiles" multiple style="display:none">
+        </div>
+      </div>
+    </div>
+    <div class="msg" id="eMsg" style="display:none;margin-top:12px"></div>
+  </div>
+  <div class="mfoot"><button class="primary" type="button" id="saveBtn">Lưu</button><button type="button" data-close="editMask">Huỷ</button></div>
+</div></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const TYPE = { prompt:{ label:'💬 Prompt', c:'var(--t-prompt)' }, skill:{ label:'🧩 Skill', c:'var(--t-skill)' }, guide:{ label:'📘 Hướng dẫn dự án', c:'var(--t-guide)' } };
+const store = { get:(k)=>{ try{ return localStorage.getItem(k)||''; }catch(_){ return ''; } }, set:(k,v)=>{ try{ localStorage.setItem(k,v); }catch(_){} } };
+let ITEMS = [], PROJECTS = [], TAB = (['prompt','skill','guide'].includes(new URLSearchParams(location.search).get('type')) ? new URLSearchParams(location.search).get('type') : 'all'), CUR = null, EDIT = null;
+const pName = (c) => (PROJECTS.find((p) => p.code === c) || {}).name || c;
+const short = (e) => String(e || '').split('@')[0];
+const fmtD = (s) => s ? new Date(s).toLocaleDateString('vi-VN', { timeZone:'Asia/Ho_Chi_Minh' }) : '';
+
+async function api(url, opt){
+  const r = await fetch(url, opt ? { method:opt.method||'POST', headers:{ 'Content-Type':'application/json' }, body: opt.body ? JSON.stringify(opt.body) : undefined } : { cache:'no-store' });
+  if (r.status === 401) { location.href = '/?next=' + encodeURIComponent(location.pathname); throw new Error('Phiên đăng nhập đã hết'); }
+  const j = await r.json().catch(() => ({ error:'HTTP ' + r.status }));
+  if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+  return j;
+}
+function say(el, cls, html){ const m = $(el); if (!html) { m.style.display = 'none'; m.innerHTML = ''; return; } m.className = 'msg ' + cls; m.style.display = ''; m.innerHTML = html; }
+
+async function load(){
+  try{
+    const d = await api('/api/ai-library');
+    ITEMS = d.items || []; PROJECTS = d.projects || [];
+    const pOpts = PROJECTS.map((p) => '<option value="'+esc(p.code)+'">'+esc(p.name)+'</option>').join('');
+    const fp = $('fProject').value; $('fProject').innerHTML = '<option value="">Tất cả dự án</option><option value="__common">Dùng chung</option>' + pOpts; $('fProject').value = fp;
+    $('fProj').innerHTML = '<option value="">— Dùng chung mọi dự án —</option>' + pOpts;
+    render();
+  }catch(e){ $('msg').innerHTML = '<div class="msg err">Không tải được thư viện: '+esc(e.message)+'</div>'; }
+}
+
+function filtered(){
+  const q = $('q').value.trim().toLowerCase(); const fp = $('fProject').value;
+  return ITEMS.filter((x) => (TAB === 'all' || x.type === TAB)
+    && (!fp || (fp === '__common' ? !x.project : x.project === fp))
+    && (!q || [x.title, x.description, (x.tags||[]).join(' '), x.content, x.skillName].join(' ').toLowerCase().includes(q)));
+}
+function render(){
+  const counts = { all: ITEMS.length }; ITEMS.forEach((x) => { counts[x.type] = (counts[x.type]||0) + 1; });
+  $('tabs').innerHTML = [['all','Tất cả'],['prompt',TYPE.prompt.label],['skill',TYPE.skill.label],['guide',TYPE.guide.label]]
+    .map(([k,l]) => '<button type="button" class="tab'+(TAB===k?' on':'')+'" data-t="'+k+'">'+l+'<small>'+(counts[k]||0)+'</small></button>').join('');
+  $('tabs').querySelectorAll('.tab').forEach((b) => b.onclick = () => { TAB = b.dataset.t; history.replaceState(null, '', TAB === 'all' ? location.pathname : '?type=' + TAB); render(); });
+  const list = filtered().sort((a,b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+  $('grid').innerHTML = list.length ? list.map((x) => '<div class="card" data-id="'+esc(x.id)+'" style="--c:'+TYPE[x.type].c+'">'
+      + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="badge '+x.type+'">'+TYPE[x.type].label+'</span>'+(x.project?'<span class="tag">'+esc(pName(x.project))+'</span>':'<span class="tag">Dùng chung</span>')+(x.forkOf?'<span class="tag" title="Nhân bản từ một mục khác">bản sao</span>':'')+'</div>'
+      + '<h3>'+esc(x.title)+'</h3>'
+      + (x.description ? '<div class="desc">'+esc(x.description)+'</div>' : '')
+      + '<div class="foot">'+(x.tags||[]).map((t) => '<span class="tag">#'+esc(t)+'</span>').join('')
+      + '<span style="margin-left:auto">'+(x.author?esc(x.author)+' · ':'')+'</span>'+fmtD(x.updatedAt)+(x.uses?' · '+x.uses+' lượt dùng':'')+'</div></div>').join('')
+    : '<div class="empty" style="grid-column:1/-1">'+(ITEMS.length ? 'Không có mục nào khớp bộ lọc.' : 'Thư viện đang trống.<br>Bấm <b>+ Thêm mới</b> để lưu prompt / skill đầu tiên của team.')+'</div>';
+  $('grid').querySelectorAll('.card').forEach((c) => c.onclick = () => openView(c.dataset.id));
+}
+
+/* ---------- xem / dùng ---------- */
+const varsOf = (t) => [...new Set([...String(t).matchAll(/\{\{\s*([\w\u00C0-\u1EF9 ]{1,40}?)\s*\}\}/g)].map((m) => m[1].trim()))];
+function fillVars(t){ return String(t).replace(/\{\{\s*([\w\u00C0-\u1EF9 ]{1,40}?)\s*\}\}/g, (all, k) => { const el = document.querySelector('#vVars input[data-v="'+CSS.escape(k.trim())+'"]'); return el && el.value ? el.value : all; }); }
+let VFILE = '';
+function openView(id){
+  CUR = ITEMS.find((x) => x.id === id); if (!CUR) return; const x = CUR; VFILE = '';
+  $('vBadge').innerHTML = '<span class="badge '+x.type+'">'+TYPE[x.type].label+'</span>';
+  $('vTitle').textContent = x.title;
+  $('vMeta').innerHTML = (x.project ? 'Dự án: <b>'+esc(pName(x.project))+'</b>' : 'Dùng chung') + (x.author?' · Phụ trách: <b>'+esc(x.author)+'</b>':'')+' · Cập nhật '+fmtD(x.updatedAt)+(x.uses?' · '+x.uses+' lượt dùng':'')+((x.tags||[]).length?' · '+x.tags.map((t)=>'#'+esc(t)).join(' '):'');
+  $('vDesc').textContent = x.description || '';
+  const vars = x.type === 'prompt' ? varsOf(x.content) : [];
+  $('vVars').innerHTML = vars.length ? '<div class="hint" style="margin-bottom:6px">Điền các biến rồi bấm <b>Copy prompt</b> (ô để trống giữ nguyên <code>{{…}}</code>):</div><div class="vars">'+vars.map((v) => '<label>'+esc(v)+'<input type="text" data-v="'+esc(v)+'"></label>').join('')+'</div>' : '';
+  $('vVars').querySelectorAll('input').forEach((i) => i.oninput = showContent);
+  $('vFiles').innerHTML = x.type === 'skill' ? ['SKILL.md', ...(x.files||[]).map((f) => f.name)].map((n) => '<span class="file'+((VFILE||'SKILL.md')===n?' on':'')+'" data-f="'+esc(n)+'">'+esc(n)+'</span>').join('') : '';
+  $('vFiles').querySelectorAll('.file').forEach((f) => f.onclick = () => { VFILE = f.dataset.f; $('vFiles').querySelectorAll('.file').forEach((z) => z.classList.toggle('on', z === f)); showContent(); });
+  showContent(); say('vMsg');
+  const main = x.type === 'prompt' ? '<button class="primary" type="button" id="aCopy">📋 Copy prompt</button>'
+    : x.type === 'skill' ? '<button class="primary" type="button" id="aZip">⬇ Tải .zip</button><button type="button" id="aCopy">📋 Copy SKILL.md</button>'
+    : '<button class="primary" type="button" id="aFile">⬇ Tải '+esc(x.guideFile||'CLAUDE.md')+'</button><button type="button" id="aCopy">📋 Copy</button>';
+  $('vActs').innerHTML = main + '<button class="ok" type="button" id="aFork" title="Sao chép thành mục mới để chỉnh theo yêu cầu riêng">⧉ Nhân bản</button>'
+    + '<button type="button" id="aEdit">✎ Sửa</button>'
+    + '<button class="danger" type="button" id="aDel" style="margin-left:auto">Xoá</button>';
+  if ($('aCopy')) $('aCopy').onclick = async () => { const t = x.type === 'prompt' ? fillVars(x.content) : x.content; await copy(t); used(); say('vMsg', 'ok', 'Đã copy vào clipboard.'); };
+  if ($('aZip')) $('aZip').onclick = () => { download(x.skillName + '.zip', zip([{ name: x.skillName + '/SKILL.md', content: skillMd(x) }, ...(x.files||[]).map((f) => ({ name: x.skillName + '/' + f.name, content: f.content }))]), 'application/zip'); used(); say('vMsg', 'ok', 'Đã tải <b>'+esc(x.skillName)+'.zip</b>. Claude.ai: Settings → Capabilities → Skills → Upload skill. Claude Code: giải nén vào <code>.claude/skills/</code>.'); };
+  if ($('aFile')) $('aFile').onclick = () => { download(x.guideFile || 'CLAUDE.md', new TextEncoder().encode(x.content), 'text/markdown'); used(); say('vMsg', 'ok', 'Đã tải file — đặt ở thư mục gốc của dự án.'); };
+  $('aFork').onclick = () => { close('viewMask'); openEdit(x, true); };
+  $('aEdit').onclick = () => { close('viewMask'); openEdit(x, false); };
+  let armed = false; $('aDel').onclick = async () => {
+    if (!armed) { armed = true; $('aDel').classList.add('arm'); $('aDel').textContent = 'Bấm lần nữa để xoá'; setTimeout(() => { armed = false; if ($('aDel')) { $('aDel').classList.remove('arm'); $('aDel').textContent = 'Xoá'; } }, 4000); return; }
+    try { await api('/api/ai-library/' + encodeURIComponent(x.id), { method:'DELETE' }); close('viewMask'); load(); } catch (e) { say('vMsg', 'err', esc(e.message)); }
+  };
+  $('viewMask').classList.add('on');
+}
+function showContent(){
+  const x = CUR; if (!x) return;
+  let t = x.content;
+  if (x.type === 'prompt') t = fillVars(x.content);
+  if (x.type === 'skill') t = (!VFILE || VFILE === 'SKILL.md') ? skillMd(x) : ((x.files||[]).find((f) => f.name === VFILE) || {}).content || '';
+  $('vContent').textContent = t;
+}
+function used(){ if (CUR) api('/api/ai-library/' + encodeURIComponent(CUR.id) + '/used', {}).then((r) => { CUR.uses = r.uses; }).catch(() => {}); }
+async function copy(t){ try { await navigator.clipboard.writeText(t); } catch (_) { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); document.execCommand('copy'); a.remove(); } }
+/** SKILL.md luôn có frontmatter name/description (Claude cần để nhận skill). */
+function skillMd(x){
+  const c = String(x.content || '');
+  if (/^---\s*\n[\s\S]*?\n---/.test(c)) return c;
+  const d = String(x.description || x.title).replace(/\n/g, ' ').replace(/"/g, "'");
+  return '---\nname: ' + x.skillName + '\ndescription: "' + d + '"\n---\n\n' + c;
+}
+function download(name, bytes, type){ const u = URL.createObjectURL(new Blob([bytes], { type })); const a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 2000); }
+
+/* ---------- zip (không nén, đủ để Claude / hệ điều hành mở) ---------- */
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = (b) => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+function zip(files){
+  const enc = new TextEncoder(); const parts = []; const central = []; let off = 0;
+  const d = new Date(); const time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1); const date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  for (const f of files) {
+    const name = enc.encode(f.name); const data = enc.encode(f.content || ''); const crc = crc32(data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
+    lh.setUint16(10, time, true); lh.setUint16(12, date, true); lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true);
+    lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+    parts.push(new Uint8Array(lh.buffer), name, data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+    ch.setUint16(12, time, true); ch.setUint16(14, date, true); ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true);
+    ch.setUint16(28, name.length, true); ch.setUint32(42, off, true);
+    central.push(new Uint8Array(ch.buffer), name);
+    off += 30 + name.length + data.length;
+  }
+  const cSize = central.reduce((s, p) => s + p.length, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, cSize, true); end.setUint32(16, off, true);
+  const all = [...parts, ...central, new Uint8Array(end.buffer)]; const out = new Uint8Array(all.reduce((s, p) => s + p.length, 0)); let p = 0;
+  all.forEach((a) => { out.set(a, p); p += a.length; });
+  return out;
+}
+
+/* ---------- thêm / sửa ---------- */
+const TPL = {
+  prompt: 'Bạn là chuyên viên CS của HQSOFT, hỗ trợ dự án {{du_an}}.\n\nNhiệm vụ: …\n\nThông tin đầu vào:\n{{noi_dung}}\n\nYêu cầu kết quả:\n- Viết tiếng Việt, ngắn gọn, lịch sự\n- …',
+  skill: '---\nname: ten-skill\ndescription: Mô tả rõ KHI NÀO Claude nên dùng skill này (từ khoá, tình huống) và skill làm gì.\n---\n\n# Tên skill\n\n## Khi nào dùng\n- …\n\n## Các bước\n1. …\n2. …\n\n## Mẫu kết quả\n…',
+  guide: '# Dự án …\n\n## Tổng quan\n- Khách hàng: …\n- Hệ thống: …\n\n## Quy ước\n- …\n\n## Lệnh thường dùng\n- …\n\n## Lưu ý khi sửa code / hỗ trợ khách\n- …',
+};
+const HINT = {
+  prompt: 'Viết biến dạng <code>{{ten_bien}}</code> — khi dùng, trang tự hiện ô để điền rồi copy.',
+  skill: 'Nội dung chính = <b>SKILL.md</b>. Phần đầu <code>---</code> cần <code>name</code> (trùng tên thư mục) và <code>description</code> (Claude dựa vào đây để biết khi nào dùng skill). Nếu bỏ trống phần này, khi tải tool tự thêm từ Tên/Mô tả.',
+  guide: 'Nội dung file hướng dẫn cho AI khi làm việc với dự án (thường là CLAUDE.md đặt ở thư mục gốc dự án).',
+};
+let EFILES = [];
+function openEdit(src, fork){
+  EDIT = fork || !src ? null : src;
+  const x = src || { type: TAB !== 'all' ? TAB : 'prompt', project: $('fProject').value && $('fProject').value !== '__common' ? $('fProject').value : '' };
+  $('eTitle').textContent = fork ? 'Nhân bản' : src ? 'Sửa' : 'Thêm mới';
+  $('eSub').textContent = fork ? 'Sao chép từ “' + src.title + '” — chỉnh rồi Lưu thành mục mới, bản gốc giữ nguyên.' : '';
+  $('fType').value = x.type; $('fType').disabled = Boolean(src);
+  $('fProj').value = x.project || '';
+  $('fTitle').value = src ? (fork ? src.title + ' (bản sao)' : src.title) : '';
+  $('fAuthor').value = (src && !fork && src.author) || '';
+  $('fDesc').value = (src && src.description) || '';
+  $('fTags').value = ((src && src.tags) || []).join(', ');
+  $('fSkillName').value = src && src.skillName ? (fork ? src.skillName + '-ban-sao' : src.skillName) : '';
+  $('fGuideFile').value = (src && src.guideFile) || 'CLAUDE.md';
+  $('fContent').value = src ? src.content : TPL[x.type];
+  EFILES = ((src && src.files) || []).map((f) => ({ ...f }));
+  EDIT_FORK = fork ? src.id : '';
+  syncType(); drawFiles(); say('eMsg');
+  $('editMask').classList.add('on');
+}
+let EDIT_FORK = '';
+function syncType(){
+  const t = $('fType').value;
+  $('lSkillName').style.display = t === 'skill' ? '' : 'none';
+  $('lGuideFile').style.display = t === 'guide' ? '' : 'none';
+  $('filesBox').style.display = t === 'skill' ? '' : 'none';
+  $('lContent').textContent = t === 'skill' ? 'SKILL.md' : t === 'guide' ? 'Nội dung hướng dẫn' : 'Nội dung prompt';
+  $('contentHint').innerHTML = HINT[t];
+}
+$('fType').onchange = () => { const v = $('fContent').value.trim(); if (!v || Object.values(TPL).includes(v)) $('fContent').value = TPL[$('fType').value]; syncType(); };
+function drawFiles(){
+  $('eFiles').innerHTML = EFILES.map((f, i) => '<div class="ef"><div class="row"><input type="text" class="mono grow" data-i="'+i+'" data-k="name" value="'+esc(f.name)+'" placeholder="references/huong-dan.md"><button class="sm danger" type="button" data-del="'+i+'">Xoá</button></div><textarea class="mono" rows="5" data-i="'+i+'" data-k="content">'+esc(f.content)+'</textarea></div>').join('') || '<div class="hint" style="margin-bottom:6px">Chưa có file phụ (không bắt buộc).</div>';
+  $('eFiles').querySelectorAll('[data-k]').forEach((el) => el.oninput = () => { EFILES[+el.dataset.i][el.dataset.k] = el.value; });
+  $('eFiles').querySelectorAll('[data-del]').forEach((b) => b.onclick = () => { EFILES.splice(+b.dataset.del, 1); drawFiles(); });
+}
+$('addFile').onclick = () => { EFILES.push({ name:'', content:'' }); drawFiles(); };
+$('upFiles').onchange = async (ev) => {
+  for (const f of ev.target.files) {
+    if (f.size > 100 * 1024) { say('eMsg', 'err', 'File ' + esc(f.name) + ' quá 100 KB — bỏ qua.'); continue; }
+    const text = await f.text();
+    if (/^skill\.md$/i.test(f.name)) { $('fContent').value = text; continue; }
+    EFILES.push({ name: (f.name.endsWith('.md') ? 'references/' : '') + f.name, content: text });
+  }
+  ev.target.value = ''; drawFiles();
+};
+$('saveBtn').onclick = async () => {
+  const body = { id: EDIT ? EDIT.id : undefined, forkOf: EDIT_FORK || (EDIT && EDIT.forkOf) || '', type: $('fType').value, project: $('fProj').value,
+    title: $('fTitle').value, description: $('fDesc').value, tags: $('fTags').value, author: $('fAuthor').value,
+    content: $('fContent').value, skillName: $('fSkillName').value || $('fTitle').value, guideFile: $('fGuideFile').value, files: EFILES };
+  $('saveBtn').disabled = true; say('eMsg', 'info', 'Đang lưu…');
+  try { const r = await api('/api/ai-library', { body }); close('editMask'); await load(); openView(r.item.id); say('vMsg', 'ok', 'Đã lưu.'); }
+  catch (e) { say('eMsg', 'err', esc(e.message)); }
+  finally { $('saveBtn').disabled = false; }
+};
+
+function close(id){ $(id).classList.remove('on'); }
+document.querySelectorAll('[data-close]').forEach((b) => b.onclick = () => close(b.dataset.close));
+document.querySelectorAll('.mask').forEach((m) => m.addEventListener('mousedown', (e) => { if (e.target === m) close(m.id); }));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('.mask.on').forEach((m) => close(m.id)); });
+$('addBtn').onclick = () => openEdit(null, false);
+['q','fProject'].forEach((id) => $(id).addEventListener(id === 'q' ? 'input' : 'change', render));
+load();
+</script>
+</body>
+</html>

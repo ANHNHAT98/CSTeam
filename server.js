@@ -97,6 +97,28 @@ app.get('/cai-dat/luu-tru', requirePageAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'protected', 'cai-dat-luu-tru.html'));
 });
 
+/* ---------- Thư viện AI: Prompt / Skill / Hướng dẫn dự án (aiLibrary.js, lưu data/ai-library.json → Supabase) ----------
+   GET  /api/ai-library            → { items, members, projects }
+   POST /api/ai-library            (có id = sửa) → { item }
+   DELETE /api/ai-library/:id      ·  POST /api/ai-library/:id/used (đếm lượt copy/tải) */
+const aiLibrary = require('./aiLibrary');
+app.get('/ai/thu-vien', requirePageAuth, (req, res) => { res.set('Cache-Control', 'no-store'); res.sendFile(path.join(__dirname, 'protected', 'ai-thu-vien.html')); });
+app.get('/api/ai-library', requireAuth, async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try { res.json({ items: await aiLibrary.list(), members: loadProjectCreators().creators, projects: loadInstructionProjects().map((p) => ({ code: p.code, name: p.name || p.label || p.code })) }); }
+  catch (e) { res.status(502).json({ error: e.message }); }
+});
+app.post('/api/ai-library', requireAuth, async (req, res) => {
+  try { res.json({ ok: true, ...(await aiLibrary.upsert(req.body || {}, req.session.username)) }); }
+  catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.delete('/api/ai-library/:id', requireAuth, async (req, res) => {
+  try { res.json(await aiLibrary.remove(String(req.params.id))); } catch (e) { res.status(400).json({ error: e.message }); }
+});
+app.post('/api/ai-library/:id/used', requireAuth, async (req, res) => {
+  try { res.json(await aiLibrary.markUsed(String(req.params.id))); } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 app.get('/cai-dat', requirePageAuth, (req, res) => { // Cài đặt: gom cấu hình gửi tự động (nhúng các trang cấu hình với ?cfg=)
   res.set('Cache-Control', 'no-store');
   res.sendFile(path.join(__dirname, 'protected', 'cai-dat.html'));

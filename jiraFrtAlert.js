@@ -247,14 +247,19 @@ async function zaloTest({ chatIds } = {}) {
   const cfg = await getConfig();
   const ids = zaloIds(chatIds && chatIds.length ? chatIds : cfg.zaloChatIds);
   if (!ids.length) throw new Error('Chưa chọn người/nhóm Zalo để gửi thử.');
-  let text;
+  // gửi thử luôn gồm CẢ First Response lẫn Resolution (kể cả loại đang tắt) để xem trước nội dung thật
+  const off = (on) => (on ? '' : ' (cảnh báo tự động đang TẮT)');
+  let parts;
   try {
-    const data = await compute(cfg);
+    const data = await compute({ ...cfg, __all: true });
     const base = String(process.env.JIRA_BASE_URL || '').replace(/\/+$/, '');
     const fr = data.items.filter((i) => i.sla !== 'res'); const rs = data.items.filter((i) => i.sla === 'res');
-    text = [fr.length ? buildZaloText(fr, cfg, base, 'frt') : '', rs.length ? buildZaloText(rs, cfg, base, 'res') : ''].filter(Boolean).join('\n\n');
-  } catch (e) { text = ''; }
-  text = '[THỬ] ' + (text || 'Tin thử từ CS Tool — hiện không có ticket Jira ABI nào sắp trễ First Response.');
+    parts = [
+      fr.length ? buildZaloText(fr, cfg, base, 'frt') + (cfg.enabled ? '' : '\n⚠ Cảnh báo tự động First Response đang TẮT') : `🔔 First Response: không có ticket nào sắp trễ / đã trễ${off(cfg.enabled)}.`,
+      rs.length ? buildZaloText(rs, cfg, base, 'res') + (cfg.res.enabled ? '' : '\n⚠ Cảnh báo tự động Resolution đang TẮT — bật trong Cài đặt để nhận tin thật') : `⏳ Resolution: không có ticket nào sắp trễ / đã trễ${off(cfg.res.enabled)}.`,
+    ];
+  } catch (e) { parts = [`Không đọc được SLA từ Jira: ${e.message}`]; }
+  const text = ['[THỬ] Tin thử từ CS Tool — kết nối Zalo hoạt động tốt ✓', '', ...parts].join('\n\n').replace(/\n{3,}/g, '\n\n');
   return zalo.sendText(ids, text);
 }
 

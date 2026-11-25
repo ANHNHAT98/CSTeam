@@ -45,17 +45,23 @@ async function listChats() { const r = await chatStore.readAll(); return Array.i
     Zalo trả lỗi 408 "Request timeout" khi chờ hết thời gian mà không có tin mới → coi là "không có tin", không phải lỗi. */
 const isNoUpdate = (e) => /\b408\b|timeout/i.test(String(e && e.message));
 async function pullChats() {
-  const found = new Map();
+  const found = new Map(); const debug = [];
+  // bot đang đặt webhook thì getUpdates không chạy → xem và gỡ webhook (tool không dùng webhook)
+  try {
+    const wh = await api('getWebhookInfo', {}, 15000);
+    if (wh && wh.url) { await api('deleteWebhook', {}, 15000); debug.push({ step: 'webhook', note: 'Đã gỡ webhook cũ: ' + wh.url }); }
+  } catch (e) { debug.push({ step: 'webhook', note: 'Không đọc được webhook: ' + e.message }); }
   for (let n = 0; n < 15; n++) {
-    const wait = n === 0 ? 20 : 3; // lần đầu chờ tối đa 20 giây để kịp nhận tin vừa nhắn
+    const wait = n === 0 ? 60 : 3; // lần đầu chờ tối đa 60 giây để kịp nhận tin vừa nhắn
     let r;
     try { r = await api('getUpdates', { timeout: String(wait) }, (wait + 15) * 1000); }
-    catch (e) { if (isNoUpdate(e)) break; if (n === 0) throw e; break; }
+    catch (e) { debug.push({ step: 'getUpdates#' + (n + 1), note: e.message }); if (isNoUpdate(e)) break; if (n === 0) throw e; break; }
+    debug.push({ step: 'getUpdates#' + (n + 1), note: 'Phản hồi: ' + JSON.stringify(r).slice(0, 400) });
     const ups = Array.isArray(r) ? r : r ? [r] : [];
-    const msgs = ups.map((u) => (u && (u.message || (u.result && u.result.message))) || null).filter((m) => m && m.chat && m.chat.id);
+    const msgs = ups.map((u) => (u && (u.message || (u.result && u.result.message) || (u.chat ? u : null))) || null).filter((m) => m && m.chat && m.chat.id);
     if (!msgs.length) break;
     msgs.forEach((m) => {
-      const isGroup = String(m.chat.chat_type || '').toUpperCase() === 'GROUP';
+      const isGroup = String(m.chat.chat_type || m.chat.type || '').toUpperCase() === 'GROUP';
       found.set(String(m.chat.id), {
         id: String(m.chat.id),
         type: isGroup ? 'group' : 'private',
@@ -72,7 +78,7 @@ async function pullChats() {
       return { list: [...map.values()].sort((a, b) => String(b.at).localeCompare(String(a.at))), result: {} };
     }, `zalo: lưu ${found.size} chat`);
   }
-  return { added: found.size, chats: await listChats() };
+  return { added: found.size, chats: await listChats(), debug };
 }
 
 /** Tách văn bản thành các đoạn ≤ 2000 ký tự, ưu tiên ngắt theo dòng. */

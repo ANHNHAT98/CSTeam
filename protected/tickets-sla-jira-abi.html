@@ -1110,9 +1110,10 @@ exportBtn.addEventListener('click', () => {
     drawChats(d.zaloChats || [], ZA_SEL);
   }
   $('zaPull').onclick = async () => {
-    zst('', 'Đang chờ tin nhắn gửi tới bot (tối đa ~20 giây) — nếu chưa nhắn, nhắn bot 1 tin ngay bây giờ…');
+    zst('', 'Đang chờ tin nhắn gửi tới bot (tối đa ~1 phút) — nếu chưa nhắn, nhắn bot 1 tin ngay bây giờ…');
     try{ const sel = zaSelected(); const r = await call('/api/jira-frt-alert/zalo/pull', {}); drawChats(r.chats, sel.length ? sel : (ZA_SEL||[]));
-      zst('ok', (r.bot && r.bot.name ? 'Bot: '+r.bot.name+' · ' : '') + (r.added ? 'Tìm thấy '+r.added+' người/nhóm mới nhắn bot.' : 'Chưa nhận được tin mới. Nhắn bot 1 tin bất kỳ (vd "hi") rồi bấm lại nút này ngay. Người đã có trong danh sách vẫn giữ.') + ' Tick chọn rồi bấm Lưu cấu hình.'); }
+      zst('ok', (r.bot && r.bot.name ? 'Bot: '+r.bot.name+' · ' : '') + (r.added ? 'Tìm thấy '+r.added+' người/nhóm mới nhắn bot.' : 'Chưa nhận được tin mới. Bấm nút này TRƯỚC, rồi trong lúc đang chờ hãy nhắn bot 1 tin (vd "hi"). Người đã có trong danh sách vẫn giữ.') + ' Tick chọn rồi bấm Lưu cấu hình.');
+      $('zaStatus').insertAdjacentHTML('beforeend', (r.debug&&r.debug.length&&!r.added) ? '<details style="margin-top:6px"><summary>Chi tiết phản hồi Zalo (gửi mình nếu vẫn không thấy)</summary><pre style="white-space:pre-wrap;font-size:11.5px">'+esc(r.debug.map(x=>x.step+': '+x.note).join('\n'))+'</pre></details>' : ''); }
     catch(e){ zst('err', e.message); }
   };
   $('zaTest').onclick = async () => {
