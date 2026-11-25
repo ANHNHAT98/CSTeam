@@ -1,6 +1,8 @@
 'use strict';
-/* Gửi tin Zalo qua Zalo Bot API (tạo bot ở https://bot.zapps.vn, lấy token → env ZALO_BOT_TOKEN).
-   - API: POST https://bot-api.zapps.me/bot<TOKEN>/<method>  body JSON → { ok, result | description }
+/* Gửi tin Zalo qua Zalo Bot Platform (tài liệu: https://bot.zaloplatforms.com/docs/).
+   - Tạo bot: app Zalo → tìm OA "Zalo Bot Manager" → Tạo bot (tên bắt đầu bằng "Bot") → token gửi về tin nhắn Zalo → env ZALO_BOT_TOKEN.
+   - API: POST https://bot-api.zaloplatforms.com/bot<TOKEN>/<method>  body JSON → { ok, result | description }
+   - Gói Basic: 3.000 tin/tháng, nhóm chat đang Beta (tối đa 3 nhóm).
    - Chỉ gửi được chữ thường, tối đa 2000 ký tự/tin (dài hơn tự tách nhiều tin).
    - Bot chỉ nhắn được cho người/nhóm đã nhắn bot trước: mỗi người nhắn 1 tin bất kỳ cho bot,
      rồi bấm "Lấy danh sách" để tool đọc getUpdates và lưu chat id (data/zalo-chats.json).
@@ -13,7 +15,7 @@ const MAX_LEN = 2000;
 
 const token = () => String(process.env.ZALO_BOT_TOKEN || '').trim();
 const ready = () => Boolean(token());
-const apiBase = () => String(process.env.ZALO_API_BASE || 'https://bot-api.zapps.me').replace(/\/+$/, '');
+const apiBase = () => String(process.env.ZALO_API_BASE || 'https://bot-api.zaloplatforms.com').replace(/\/+$/, '');
 
 async function api(method, body = {}, timeoutMs = 20000) {
   if (!ready()) throw new Error('Server chưa cấu hình ZALO_BOT_TOKEN.');

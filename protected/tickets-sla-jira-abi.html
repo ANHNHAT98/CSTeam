@@ -1104,7 +1104,7 @@ exportBtn.addEventListener('click', () => {
     $('zaState').className = 'pill ' + (d.zaloReady && c.zaloEnabled ? 'on' : 'off');
     $('zaHint').innerHTML = d.zaloReady
       ? 'Tin Zalo là chữ thường (không bảng), gửi cùng lúc với mail. Đang <b>tắt</b> thì chỉ gửi mail — bật lên và Lưu cấu hình khi muốn dùng.'
-      : 'Server chưa có <code>ZALO_BOT_TOKEN</code>. Tạo bot ở bot.zapps.vn, lấy token, thêm vào Render → Environment rồi tải lại trang.';
+      : 'Server chưa có <code>ZALO_BOT_TOKEN</code>. Tạo bot trong app Zalo (OA <b>Zalo Bot Manager</b> → Tạo bot), lấy token Zalo gửi về, thêm vào Render → Environment rồi tải lại trang.';
     ZA_SEL = c.zaloChatIds || [];
     drawChats(d.zaloChats || [], ZA_SEL);
   }
