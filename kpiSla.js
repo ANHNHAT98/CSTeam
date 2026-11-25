@@ -1,7 +1,8 @@
 'use strict';
 /* KPI Team → CS01 "SLA Phản Hồi" (First Response) và CS02 "SLA Hoàn Tất" (Resolution Time), đánh giá THEO THÁNG cho 1 thành viên.
    - Thành viên: chọn trong danh sách người tạo ticket (ticket-creators.json → /api/erp/ticket-creators).
-   - Ticket của thành viên: mặc định là ticket được GIAO cho người đó (_assign); có thể đổi sang ticket do người đó TẠO (owner).
+   - Ticket của thành viên: mặc định là ticket được GIAO cho người đó (_assign); có thể đổi sang ticket do người đó TẠO (owner)
+     hoặc "Owner dự án" (projectOwner): lấy hết ticket của các dự án đã tích, không cần quan tâm ai tạo.
    - Phạm vi: ticket có Opening On trong tháng, thuộc các dự án được chọn (mặc định AnVy + Merap).
    - Đúng/trượt SLA dùng đúng quy tắc của các trang SLA khác (customerReport.js → slaOne): ngưỡng theo Priority,
      Critical/Urgent tính giờ liên tục, mức khác tính giờ làm việc.
@@ -9,12 +10,15 @@
      (ticket Closed mà thiếu resolution_date = thiếu log → Trượt).
    - Ticket CHƯA CÓ MỐC (CS01: First Responded On; CS02: Resolution Date/Closed) coi như thiếu log → tính là TRƯỢT, không có "Đang chờ".
    - Actual = đúng SLA ÷ (đúng + trượt) × 100%. Progress nội suy theo Min/Target/Max của level; KPI Completion = Progress × trọng số.
+   - Riêng dự án ABI: dữ liệu vẫn từ ERP nhưng NGƯỠNG + khung giờ theo bảng SLA Jira (abiSla.js, cấu hình kpi-sla-config.json → abiJira).
    - Ngưỡng + trọng số theo level: kpi-sla-config.json (lấy từ file Master KPI). */
 
 const fs = require('fs');
 const path = require('path');
 const { normalize, slaOne, vnNow, parseNaive } = require('./customerReport');
 const { monthStartOf, monthEndOf, isMonthKey } = require('./customerReportMonthly');
+const { slaMinutes } = require('./weeklyReport');
+const abi = require('./abiSla'); // dự án ABI: ngưỡng + khung giờ theo bảng SLA Jira (abiSla.js)
 
 const CONFIG_FILE = path.join(__dirname, 'kpi-sla-config.json');
 function loadConfig() { return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')); }
@@ -44,9 +48,33 @@ function progressOfLow(actual, { min, target, max }) {
 const lc = (s) => String(s || '').trim().toLowerCase();
 const round = (x, d) => { const f = 10 ** d; return Math.round(x * f) / f; };
 
+/** SLA theo bảng ngưỡng RIÊNG của từng KPI (kpi-sla-config.json → kpis.<kpi>.priorityThresholds, phút), cho dự án không phải ABI.
+ *  Critical/Urgent tính liên tục 24/7; mức khác chỉ tính giờ làm việc (slaMinutes). Priority trống/lạ/Low → mức "default". Cùng dạng kết quả với slaOne. */
+function slaByPriority(config, kpiKey, t, now) {
+  const th = config.kpis[kpiKey].priorityThresholds;
+  if (!th) return slaOne(t, kpiKey === 'firstResponse' ? 'frt' : 'res', now);
+  if (!t.openDt) return null;
+  const k = lc(t.priority);
+  const threshold = typeof th[k] === 'number' && !k.startsWith('_') ? th[k] : th.default;
+  const target = kpiKey === 'firstResponse' ? t.frtDt : t.resolvedDt;
+  if (target) { const m = slaMinutes(t.priority, t.openDt, target); return { minutes: Math.round(m), threshold, result: m < threshold ? 'Đạt' : 'Trượt', done: true }; }
+  const m = slaMinutes(t.priority, t.openDt, now);
+  return { minutes: Math.round(m), threshold, result: m >= threshold ? 'Trượt' : 'Đang chờ', done: false };
+}
+
+/** Ghi chú ngưỡng theo Priority cho các dự án không phải ABI (hiện ở đầu trang). */
+function priorityNote(projects, config, kpiKey) {
+  const th = config.kpis[kpiKey].priorityThresholds; if (!th) return '';
+  if (!projects.some((p) => !abi.isAbi(config, p))) return '';
+  const f = (m, bizDays) => (bizDays && m % 480 === 0 && m >= 1440 ? `${m / 480} ngày LV` : m % 60 === 0 ? `${m / 60}h` : `${m}p`); // ngày LV = 480 phút, chỉ áp cho mức tính giờ làm việc
+  const live = ['critical', 'urgent'].map((k) => `${k[0].toUpperCase() + k.slice(1)} ${f(th[k])} (24/7)`);
+  const biz = ['high', 'medium'].map((k) => `${k[0].toUpperCase() + k.slice(1)} ${f(th[k], true)}`).concat([`Low/trống ${f(th.default, true)}`]);
+  return `Ngưỡng theo Priority (dự án khác ABI): ${live.join(' · ')} · ${biz.join(' · ')} (chỉ tính giờ làm việc).`;
+}
+
 /**
  * rows: ticket ERP (có thể trùng, đã lọc theo dự án + tháng ở truy vấn; vẫn lọc lại ở đây cho chắc).
- * by: 'assign' (người xử lý) | 'owner' (người tạo).
+ * by: 'assign' (người xử lý) | 'owner' (người tạo) | 'projectOwner' (owner dự án: mọi ticket của dự án đã chọn).
  */
 function evaluateMember(rows, { month, projects, member, by = 'assign', level, kpiKey, config, now = vnNow() }) {
   const kpi = config.kpis[kpiKey];
@@ -64,11 +92,15 @@ function evaluateMember(rows, { month, projects, member, by = 'assign', level, k
       t.resolvedStr = r.resolution_date || ''; t.resolvedDt = parseNaive(t.resolvedStr);
     }
     if (!(t.openDay >= ms && t.openDay <= me)) continue;
-    const mine = by === 'owner' ? lc(r.owner) === who : t.assign.some((a) => lc(a) === who);
+    // by: 'assign' = ticket được giao cho thành viên · 'owner' = ticket do thành viên tạo
+    //     'projectOwner' = owner dự án → lấy TOÀN BỘ ticket của các dự án đã chọn, không quan tâm ai tạo / ai xử lý
+    const mine = by === 'projectOwner' ? true : by === 'owner' ? lc(r.owner) === who : t.assign.some((a) => lc(a) === who);
     if (!mine) continue;
-    const sla = slaOne(t, kpiKey === 'firstResponse' ? 'frt' : 'res', now);
+    // Dự án ABI: dữ liệu vẫn từ ERP, nhưng ngưỡng + khung giờ theo bảng SLA Jira (abiSla.js)
+    const isAbi = abi.isAbi(config, r.project);
+    const sla = isAbi ? abi.slaAbi(config, t, kpiKey === 'firstResponse' ? 'frt' : 'res', now) : slaByPriority(config, kpiKey, t, now);
     tickets.push({
-      name: t.name, project: r.project, subject: t.subject, priority: t.priority, status: t.status,
+      name: t.name, project: r.project, subject: t.subject, priority: isAbi && sla && sla.code ? `${t.priority} (${sla.code})` : t.priority, status: t.status,
       opening: t.opening, firstResponded: t.firstResponded, resolvedAt: t.resolvedStr, owner: r.owner || '', assign: t.assign.join(', '),
       result: !sla ? '' : sla.done ? sla.result : 'Trượt', missingLog: Boolean(sla && !sla.done),
       minutes: sla && sla.done ? sla.minutes : null, threshold: sla ? sla.threshold : null,
@@ -105,4 +137,4 @@ function evaluateMember(rows, { month, projects, member, by = 'assign', level, k
   };
 }
 
-module.exports = { loadConfig, progressOf, progressOfLow, evaluateMember, isMonthKey };
+module.exports = { priorityNote, abiNote: (projects, config, kpiKey) => abi.note(projects, config, kpiKey), loadConfig, progressOf, progressOfLow, evaluateMember, isMonthKey };
