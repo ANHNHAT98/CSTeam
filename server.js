@@ -909,10 +909,13 @@ app.get('/api/bao-cao/cs-am/tickets', requireAuth, async (req, res) => {
     // assign=todo: bổ sung người xử lý từ ToDo (Assign To) — danh sách ticket qua API có thể trả _assign rỗng
     if (req.query.assign === 'todo' && rows.length) {
       const todo = await erp.fetchTodoAssignees(rows.map((t) => t.name), { activeOnly: true });
+      const curOf = (t) => { try { const a = JSON.parse(t._assign || '[]'); return Array.isArray(a) ? a.filter(Boolean) : []; } catch (_) { return []; } };
+      // ticket còn mở nhưng không có ToDo Open (người nhận đã bấm hoàn thành ToDo trên ERP) → lấy người được giao GẦN NHẤT
+      const noOne = rows.filter((t) => !curOf(t).length && !(todo[t.name] || []).length).map((t) => t.name);
+      const last = noOne.length ? await erp.fetchTodoAssignees(noOne, { lastOnly: true }) : {};
       rows = rows.map((t) => {
-        let cur = []; try { const a = JSON.parse(t._assign || '[]'); if (Array.isArray(a)) cur = a; } catch (_) { /* rỗng */ }
-        const all = [...new Set([...cur, ...(todo[t.name] || [])].map((x) => String(x).trim().toLowerCase()).filter(Boolean))];
-        return { ...t, _assign: JSON.stringify(all) };
+        const all = [...new Set([...curOf(t), ...(todo[t.name] || []), ...(last[t.name] || [])].map((x) => String(x).trim().toLowerCase()).filter(Boolean))];
+        return { ...t, _assign: JSON.stringify(all), ...(last[t.name] ? { _assign_last: true } : {}) };
       });
     }
     res.json({ data: rows, erpUrl: erp.getBaseUrl() });

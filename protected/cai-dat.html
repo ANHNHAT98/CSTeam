@@ -55,7 +55,7 @@
       <button type="button" data-k="erp">🤖 Tự động gửi ERP<span class="desc">Ghi Note báo cáo tuần vào ERP theo lịch</span></button>
       <button type="button" data-k="nhac-sla">📧 Nhắc SLA đầu tuần<span class="desc">Mail ticket trễ SLA cho từng thành viên</span></button>
       <div class="nav-group">Jira ABI</div>
-      <button type="button" data-k="frt">🔔 Cảnh báo First Response<span class="desc">Mail / Zalo khi ticket sắp trễ phản hồi</span></button>
+      <button type="button" data-k="frt">🔔 Cảnh báo FRT &amp; Resolution<span class="desc">Mail / Zalo khi ticket sắp trễ phản hồi / xử lý</span></button>
       <div class="nav-group">Hệ thống</div>
       <button type="button" data-k="luu-tru">🗄 Lưu trữ dữ liệu<span class="desc">Database Supabase, dung lượng, chuyển dữ liệu cũ</span></button>
     </div>
@@ -69,7 +69,7 @@
 const ITEMS = {
   'erp':      { title:'🤖 Tự động gửi ERP', src:'/bao-cao/tuan-erp?cfg=auto', page:'/bao-cao/tuan-erp' },
   'nhac-sla': { title:'📧 Nhắc SLA đầu tuần', src:'/bao-cao/tuan-erp?cfg=sla', page:'/bao-cao/tuan-erp' },
-  'frt':      { title:'🔔 Cảnh báo First Response — Jira ABI', src:'/tickets/sla-jira-abi?cfg=alert', page:'/tickets/sla-jira-abi' },
+  'frt':      { title:'🔔 Cảnh báo First Response & Resolution — Jira ABI', src:'/tickets/sla-jira-abi?cfg=alert', page:'/tickets/sla-jira-abi' },
   'luu-tru':  { title:'🗄 Lưu trữ dữ liệu', src:'/cai-dat/luu-tru', page:'/cai-dat/luu-tru' },
 };
 const frame = document.getElementById('frame');

@@ -137,7 +137,7 @@ else if (location.hash === '#canh-bao') location.replace('/cai-dat#frt');
 
   <div id="pgAlert" style="display:none">
   <div class="panel fa" id="faPanel">
-    <h2>🔔 Cảnh báo sắp trễ First Response — cấu hình gửi mail</h2>
+    <h2>🔔 Cảnh báo sắp trễ First Response &amp; Resolution — cấu hình gửi mail</h2>
       <div class="panel-sub" style="margin-top:10px">Cứ <b>5 phút</b> (cron-job.org gọi <code class="tag">POST /api/cron/jira-frt-alert?async=1</code>), tool đọc SLA <b>Time to first response</b> trên Jira của các issue đang mở. Issue <b>chưa phản hồi</b>, SLA không tạm dừng, đã chờ quá số phút cấu hình theo <b>mức P/S</b> (tính theo lịch SLA của Jira: P1/P2/S1 24/7, mức khác giờ hành chính) → gửi 1 mail cảnh báo (qua flow Power Automate dùng chung với Nhắc SLA). Thời gian còn lại lấy đúng số Jira tự tính. Mỗi issue chỉ báo <b>1 lần</b>.</div>
       <div id="faWarn"></div>
       <div class="grid">
@@ -149,6 +149,19 @@ else if (location.hash === '#canh-bao') location.replace('/cai-dat#frt');
       <label class="chk"><input type="checkbox" id="faEnabled"> Bật cảnh báo tự động</label>
       <label class="chk"><input type="checkbox" id="faAssignee"> Gửi thêm cho <b>người được giao</b> trên Jira (nếu Jira cho xem email)</label>
       <label class="chk"><input type="checkbox" id="faBreached"> Báo luôn ticket <b>đã trễ</b> mà chưa phản hồi (1 lần)</label>
+      <div class="res-box" style="margin-top:16px;padding:12px 14px;border:1px solid var(--grid-line-strong);border-radius:8px;background:rgba(31,78,121,.03)">
+        <div style="font-weight:700;font-size:14px">⏳ Cảnh báo sắp trễ Resolution <span class="pill" id="resState" style="margin-left:6px">—</span></div>
+        <div class="panel-sub" style="margin:4px 0 10px">Cùng lượt cron 5 phút, tool đọc SLA <b>Time to resolution</b> trên Jira. Issue chưa xử lý xong, SLA không tạm dừng (ví dụ không ở trạng thái chờ khách), <b>chỉ còn ≤ số phút cấu hình là trễ</b> → gửi <b>mail riêng</b>. Thời gian còn lại lấy đúng số Jira tự tính. Mỗi issue chỉ báo <b>1 lần</b> (sắp trễ và đã trễ tính riêng).</div>
+        <div class="grid">
+          <div><div class="panel-sub" style="margin:0 0 6px;text-transform:uppercase;font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.04em">Nhắc khi còn ≤ bao nhiêu phút</div>
+            <table id="resBefore"></table></div>
+          <label class="f">Gửi đến (trống = dùng người nhận First Response ở trên)<textarea id="resTo"></textarea></label>
+          <label class="f">CC thêm<textarea id="resCc"></textarea></label>
+        </div>
+        <label class="chk"><input type="checkbox" id="resEnabled"> Bật cảnh báo Resolution tự động</label>
+        <label class="chk"><input type="checkbox" id="resBreached"> Báo luôn ticket <b>đã trễ</b> Resolution mà chưa xử lý xong (1 lần)</label>
+        <div class="panel-sub" style="margin:6px 0 0">"Gửi thêm cho người được giao" và Zalo dùng chung cấu hình phía trên.</div>
+      </div>
       <details style="margin-top:10px"><summary style="font-size:12.5px;color:var(--muted)">▸ Nâng cao: JQL lấy issue</summary>
         <textarea id="faJql" style="width:100%;margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:12px"></textarea>
         <div class="panel-sub" style="margin:4px 0 0">Mặc định: <code id="faJqlDef"></code></div>
@@ -1109,7 +1122,7 @@ exportBtn.addEventListener('click', () => {
     catch(e){ zst('err', e.message); }
   };
   function renderRuns(runs){
-    $('faRuns').innerHTML = runs && runs.length ? '<table><tr><th>Lúc</th><th>Bởi</th><th>Gửi đến</th><th>Ticket</th><th>Kết quả</th></tr>'+runs.map(r=>'<tr><td>'+esc(fmt(r.at))+'</td><td>'+esc(r.by)+'</td><td>'+esc(r.test ? 'THỬ → '+r.test : r.to)+'</td><td>'+esc((r.keys||[]).join(', '))+'</td><td'+(r.ok?'':' class="late"')+'>'+(r.ok?'✓ đã gửi':'✗ '+esc(r.error))+(r.zalo?'<br><span class="panel-sub">'+esc(r.zalo)+'</span>':'')+'</td></tr>').join('')+'</table>' : 'Chưa gửi lần nào.';
+    $('faRuns').innerHTML = runs && runs.length ? '<table><tr><th>Lúc</th><th>Loại</th><th>Bởi</th><th>Gửi đến</th><th>Ticket</th><th>Kết quả</th></tr>'+runs.map(r=>'<tr><td>'+esc(fmt(r.at))+'</td><td>'+(r.sla==='res'?'Resolution':'First Response')+'</td><td>'+esc(r.by)+'</td><td>'+esc(r.test ? 'THỬ → '+r.test : r.to)+'</td><td>'+esc((r.keys||[]).join(', '))+'</td><td'+(r.ok?'':' class="late"')+'>'+(r.ok?'✓ đã gửi':'✗ '+esc(r.error))+(r.zalo?'<br><span class="panel-sub">'+esc(r.zalo)+'</span>':'')+'</td></tr>').join('')+'</table>' : 'Chưa gửi lần nào.';
   }
   async function load(){
     try{
@@ -1118,6 +1131,12 @@ exportBtn.addEventListener('click', () => {
       $('faAfter').innerHTML = '<tr><th>Mức</th><th>Nhắc sau (phút)</th><th>Hạn cam kết</th></tr>' + ['P1','P2','S1','P3','S2','P4','S3'].map(k=>'<tr><td><b>'+k+'</b></td><td><input type="number" min="1" max="2400" data-p="'+k+'" value="'+esc(c.afterMinutes[k])+'" style="width:80px;padding:4px 6px"></td><td>'+COMMIT[k]+' phút</td></tr>').join('')
         + '<tr><td>Khác</td><td><input type="number" min="1" max="2400" id="faAfterDef" value="'+esc(c.afterDefault)+'" style="width:80px;padding:4px 6px"></td><td>—</td></tr>';
       $('faTo').value = (c.to||[]).join(', '); $('faCc').value = (c.cc||[]).join(', ');
+      const R = c.res || {}; const RCOMMIT = { P1:240, P2:480, S1:360, P3:1440, S2:1440, P4:2400, S3:2400 };
+      $('resBefore').innerHTML = '<tr><th>Mức</th><th>Còn ≤ (phút)</th><th>Hạn cam kết</th></tr>' + ['P1','P2','S1','P3','S2','P4','S3'].map(k=>'<tr><td><b>'+k+'</b></td><td><input type="number" min="1" max="9600" data-r="'+k+'" value="'+esc((R.beforeMinutes||{})[k])+'" style="width:80px;padding:4px 6px"></td><td>'+mins(RCOMMIT[k])+'</td></tr>').join('')
+        + '<tr><td>Khác</td><td><input type="number" min="1" max="9600" id="resBeforeDef" value="'+esc(R.beforeDefault)+'" style="width:80px;padding:4px 6px"></td><td>—</td></tr>';
+      $('resTo').value = (R.to||[]).join(', '); $('resCc').value = (R.cc||[]).join(', ');
+      $('resEnabled').checked = !!R.enabled; $('resBreached').checked = !!R.alertBreached;
+      $('resState').textContent = R.enabled ? 'Bật' : 'Tắt'; $('resState').className = 'pill '+(R.enabled?'on':'off');
       renderZalo(d, c);
       $('faEnabled').checked = !!c.enabled; $('faAssignee').checked = !!c.includeAssignee; $('faBreached').checked = !!c.alertBreached;
       $('faJql').value = c.jql || d.defaultJql; $('faJqlDef').textContent = d.defaultJql;
@@ -1133,18 +1152,21 @@ exportBtn.addEventListener('click', () => {
   }
   $('faSave').onclick = async () => {
     st('', 'Đang lưu…');
-    try{ await call('/api/jira-frt-alert/config', { afterMinutes:Object.fromEntries([...document.querySelectorAll('#faAfter input[data-p]')].map(x=>[x.dataset.p, Number(x.value)])), afterDefault:Number($('faAfterDef').value), to:$('faTo').value, cc:$('faCc').value, enabled:$('faEnabled').checked, includeAssignee:$('faAssignee').checked, alertBreached:$('faBreached').checked, jql:$('faJql').value, zaloEnabled:$('zaEnabled').checked, zaloChatIds:zaSelected() }); st('ok', 'Đã lưu.'); load(); }
+    try{ await call('/api/jira-frt-alert/config', { afterMinutes:Object.fromEntries([...document.querySelectorAll('#faAfter input[data-p]')].map(x=>[x.dataset.p, Number(x.value)])), afterDefault:Number($('faAfterDef').value), to:$('faTo').value, cc:$('faCc').value, enabled:$('faEnabled').checked, includeAssignee:$('faAssignee').checked, alertBreached:$('faBreached').checked, jql:$('faJql').value, zaloEnabled:$('zaEnabled').checked, zaloChatIds:zaSelected(),
+      res:{ enabled:$('resEnabled').checked, alertBreached:$('resBreached').checked, to:$('resTo').value, cc:$('resCc').value, beforeDefault:Number($('resBeforeDef').value), beforeMinutes:Object.fromEntries([...document.querySelectorAll('#resBefore input[data-r]')].map(x=>[x.dataset.r, Number(x.value)])) } }); st('ok', 'Đã lưu.'); load(); }
     catch(e){ st('err', e.message); }
   };
   $('faPreview').onclick = async () => {
     st('', 'Đang đọc SLA từ Jira…'); $('faResult').innerHTML = '';
     try{
       const d = await call('/api/jira-frt-alert/preview', {});
-      st('ok', 'Đã kiểm tra '+d.checked+' issue đang mở · '+d.running+' issue đang chạy SLA First Response'+(d.slaErrors?' · '+d.slaErrors+' issue không đọc được SLA':'')+' · '+d.items.length+' issue cần cảnh báo.');
-      $('faResult').innerHTML = d.items.length ? '<table><tr><th>Issue</th><th>Priority</th><th>Tiêu đề</th><th>Người xử lý</th><th>Đã chờ / mốc nhắc</th><th>Còn lại</th><th>Hạn phản hồi</th><th>Mục tiêu Jira / cam kết</th><th>Đã báo?</th></tr>'
-        + d.items.map(i=>'<tr><td>'+esc(i.key)+(i.hqTicketId?'<br><span class="panel-sub">'+esc(i.hqTicketId)+'</span>':'')+'</td><td>'+esc(i.priority)+'</td><td>'+esc(i.summary)+'</td><td>'+esc(i.assignee||'(chưa giao)')+(i.assigneeEmail?'<br><span class="panel-sub">'+esc(i.assigneeEmail)+'</span>':'')+'</td><td>'+(i.elapsedMin!=null?mins(i.elapsedMin):'—')+' / '+i.afterMin+' phút</td><td class="'+i.kind+'">'+(i.kind==='late'?'Đã trễ '+mins(i.remainingMin):'Còn '+mins(i.remainingMin))+'</td><td>'+esc(fmt(i.dueIso))+'</td><td'+(i.goalMin!=null&&i.commitMin!=null&&i.goalMin!==i.commitMin?' class="late" title="Mục tiêu SLA trên Jira khác bảng cam kết"':'')+'>'+(i.goalMin!=null?i.goalMin+'p':'—')+' / '+(i.commitMin!=null?i.commitMin+'p':'—')+'</td><td>'+(i.alreadySent?'✓ đã báo':'chưa')+'</td></tr>').join('')+'</table>'
-        + (d.mail ? '<div class="panel-sub" style="margin-top:8px">Lượt cron kế tiếp sẽ gửi (ticket chưa báo) đến: <b>'+esc(d.mail.to.join(', '))+'</b>'+(d.mail.cc.length?' · CC '+esc(d.mail.cc.join(', ')):'')+'<br>Tiêu đề: '+esc(d.mail.subject)+'</div>' : '')
-        : '<div class="panel-sub" style="margin-top:8px">Không có issue nào quá mốc nhắc mà chưa phản hồi 🎉</div>';
+      st('ok', 'Đã kiểm tra '+d.checked+' issue đang mở · '+d.running+' đang chạy SLA First Response · '+(d.resRunning||0)+' đang chạy SLA Resolution'+(d.slaErrors?' · '+d.slaErrors+' issue không đọc được SLA':'')+' · '+d.items.length+' cảnh báo.');
+      const tbl = (list, sla) => '<table><tr><th>Issue</th><th>Priority</th><th>Tiêu đề</th><th>Người xử lý</th><th>'+(sla==='res'?'Đã xử lý / mốc nhắc':'Đã chờ / mốc nhắc')+'</th><th>Còn lại</th><th>'+(sla==='res'?'Hạn xử lý xong':'Hạn phản hồi')+'</th><th>Mục tiêu Jira / cam kết</th><th>Đã báo?</th></tr>'
+        + list.map(i=>'<tr><td>'+esc(i.key)+(i.hqTicketId?'<br><span class="panel-sub">'+esc(i.hqTicketId)+'</span>':'')+'</td><td>'+esc(i.priority)+'</td><td>'+esc(i.summary)+'</td><td>'+esc(i.assignee||'(chưa giao)')+(i.assigneeEmail?'<br><span class="panel-sub">'+esc(i.assigneeEmail)+'</span>':'')+'</td><td>'+(i.elapsedMin!=null?mins(i.elapsedMin):'—')+(sla==='res' ? ' / còn ≤ '+i.beforeMin+'p' : ' / '+i.afterMin+' phút')+'</td><td class="'+i.kind+'">'+(i.kind==='late'?'Đã trễ '+mins(i.remainingMin):'Còn '+mins(i.remainingMin))+'</td><td>'+esc(fmt(i.dueIso))+'</td><td'+(i.goalMin!=null&&i.commitMin!=null&&i.goalMin!==i.commitMin?' class="late" title="Mục tiêu SLA trên Jira khác bảng cam kết"':'')+'>'+(i.goalMin!=null?mins(i.goalMin):'—')+' / '+(i.commitMin!=null?mins(i.commitMin):'—')+'</td><td>'+(i.alreadySent?'✓ đã báo':'chưa')+'</td></tr>').join('')+'</table>';
+      const mailNote = sla => { const m = (d.mails||[]).find(x=>x.sla===sla); return m ? '<div class="panel-sub" style="margin-top:8px">'+(m.enabled ? 'Lượt cron kế tiếp sẽ gửi' : 'Đang TẮT — nếu bật sẽ gửi')+' (ticket chưa báo) đến: <b>'+esc(m.to.join(', '))+'</b>'+(m.cc.length?' · CC '+esc(m.cc.join(', ')):'')+'<br>Tiêu đề: '+esc(m.subject)+'</div>' : ''; };
+      const fr = d.items.filter(i=>i.sla!=='res'), rs = d.items.filter(i=>i.sla==='res');
+      $('faResult').innerHTML = '<h3 style="margin:12px 0 6px;font-size:14px">🔔 First Response</h3>' + (fr.length ? tbl(fr,'frt') + mailNote('frt') : '<div class="panel-sub">Không có issue nào quá mốc nhắc mà chưa phản hồi 🎉</div>')
+        + '<h3 style="margin:16px 0 6px;font-size:14px">⏳ Resolution</h3>' + (rs.length ? tbl(rs,'res') + mailNote('res') : '<div class="panel-sub">Không có issue nào sắp trễ Resolution 🎉</div>');
     }catch(e){ st('err', e.message); }
   };
   $('faSendTest').onclick = async () => {
