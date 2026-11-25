@@ -169,7 +169,8 @@ else if (location.hash === '#canh-bao') location.replace('/cai-dat#frt');
       <div class="za" style="margin-top:14px;padding:12px 14px;border:1px dashed var(--grid-line-strong);border-radius:8px">
         <div style="font-weight:700;font-size:13.5px">💬 Gửi thêm qua Zalo <span class="pill" id="zaState" style="margin-left:6px">—</span></div>
         <div class="panel-sub" id="zaHint" style="margin:4px 0 8px"></div>
-        <label class="chk"><input type="checkbox" id="zaEnabled"> Bật gửi Zalo khi có cảnh báo (tắt = chỉ gửi mail)</label>
+        <label class="chk"><input type="checkbox" id="zaEnabled"> <b>Gửi thêm tin Zalo khi có cảnh báo</b></label>
+        <div class="panel-sub" style="margin:2px 0 6px 24px">☑ Tích: gửi <b>mail + tin Zalo</b> cùng lúc — mail cho các email đã thiết lập, Zalo cho người/nhóm đã chọn bên dưới.<br>☐ Không tích: <b>chỉ gửi mail</b> như bình thường, không gửi Zalo.</div>
         <div id="zaChats" style="margin:8px 0;font-size:13px"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-ghost" id="zaPull" type="button">Lấy người/nhóm đã nhắn bot</button>
@@ -1109,9 +1110,9 @@ exportBtn.addEventListener('click', () => {
     drawChats(d.zaloChats || [], ZA_SEL);
   }
   $('zaPull').onclick = async () => {
-    zst('', 'Đang đọc tin nhắn gửi tới bot…');
+    zst('', 'Đang chờ tin nhắn gửi tới bot (tối đa ~20 giây) — nếu chưa nhắn, nhắn bot 1 tin ngay bây giờ…');
     try{ const sel = zaSelected(); const r = await call('/api/jira-frt-alert/zalo/pull', {}); drawChats(r.chats, sel.length ? sel : (ZA_SEL||[]));
-      zst('ok', (r.bot && r.bot.name ? 'Bot: '+r.bot.name+' · ' : '') + (r.added ? 'Tìm thấy '+r.added+' người/nhóm mới nhắn bot.' : 'Không có tin nhắn mới (người đã có trong danh sách vẫn giữ).') + ' Tick chọn rồi bấm Lưu cấu hình.'); }
+      zst('ok', (r.bot && r.bot.name ? 'Bot: '+r.bot.name+' · ' : '') + (r.added ? 'Tìm thấy '+r.added+' người/nhóm mới nhắn bot.' : 'Chưa nhận được tin mới. Nhắn bot 1 tin bất kỳ (vd "hi") rồi bấm lại nút này ngay. Người đã có trong danh sách vẫn giữ.') + ' Tick chọn rồi bấm Lưu cấu hình.'); }
     catch(e){ zst('err', e.message); }
   };
   $('zaTest').onclick = async () => {

@@ -41,13 +41,16 @@ async function getMe() {
 
 async function listChats() { const r = await chatStore.readAll(); return Array.isArray(r) ? r : []; }
 
-/** Đọc các tin mới nhắn cho bot (getUpdates trả từng tin một) → lưu chat id. */
+/** Đọc các tin mới nhắn cho bot (getUpdates = long polling, trả từng tin một) → lưu chat id.
+    Zalo trả lỗi 408 "Request timeout" khi chờ hết thời gian mà không có tin mới → coi là "không có tin", không phải lỗi. */
+const isNoUpdate = (e) => /\b408\b|timeout/i.test(String(e && e.message));
 async function pullChats() {
   const found = new Map();
   for (let n = 0; n < 15; n++) {
+    const wait = n === 0 ? 20 : 3; // lần đầu chờ tối đa 20 giây để kịp nhận tin vừa nhắn
     let r;
-    try { r = await api('getUpdates', { timeout: 1 }, 15000); }
-    catch (e) { if (n === 0) throw e; break; }
+    try { r = await api('getUpdates', { timeout: String(wait) }, (wait + 15) * 1000); }
+    catch (e) { if (isNoUpdate(e)) break; if (n === 0) throw e; break; }
     const ups = Array.isArray(r) ? r : r ? [r] : [];
     const msgs = ups.map((u) => (u && (u.message || (u.result && u.result.message))) || null).filter((m) => m && m.chat && m.chat.id);
     if (!msgs.length) break;
